@@ -39,7 +39,7 @@ def read_config(config_file):
 
 # return error message as json format
 def json_str_error(error):
-    return json.dumps({'Error': error})
+    return {'Error': error}
 
 
 def convert_to_json(keys, values, sort=False):
