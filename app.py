@@ -1,5 +1,4 @@
-from sys import prefix
-from flask import  Flask, request, g, Blueprint
+from flask import  Flask, redirect, g, Blueprint
 from flask_restplus import Resource, Api, marshal_with, fields
 
 import utils
@@ -14,37 +13,31 @@ app = Flask(__name__)
 logger = utils.get_logger(__name__)
 
 
-@api.response(200, 'Just a hello from API')
+@api.doc(description='just a hello from API')
 class Greeter(Resource):
     def get(self):
-        return {'message': 'Welcome to altrepo API!'}, 200
+        return {'message': 'Welcome to altrepodb API!'}, 200
 
 
-version_fields ={
-    'version': fields.String,
-    'description': fields.String
-}
-@api.response(200, 'API version and description')
+version_fields = api.model('APIVersion',
+    {
+        'name': fields.String(attribute='title', description='API name'),
+        'version': fields.String(description='API version'),
+        'description': fields.String(description='API description')
+    }
+)
+
+@api.doc(description='get API information')
 class ApiVersion(Resource):
-    @marshal_with(version_fields)
+    @api.doc(model=version_fields)
+    @marshal_with(version_fields, envelope='api')
     def get(self):
         return api, 200
 
 
-class DBTest(Resource):
-    def get(self):
-        conn = g.connection
-        conn.request_line = \
-            """SELECT * FROM system.numbers LIMIT 10"""
-        status, response = conn.send_request()
-        if not status:
-            return response, 500
-        return {'numbers': [_[0] for _ in response]}
-
-
 @app.route('/')
-def test():
-    return "It's alive!"
+def hello():
+    return redirect("api", code=302)
 
 
 @app.before_request
@@ -56,8 +49,8 @@ def drop_connection(exception):
     g.connection.drop_connection()
 
 def configure_app(flask_app):
-    app.config['SWAGGER_UI_DOC_EXPANSION'] = 'list'
-    # flask_app.config['RESTPLUS_VALIDATE'] = True
+    flask_app.config['SWAGGER_UI_DOC_EXPANSION'] = 'list'
+    flask_app.config['RESTPLUS_VALIDATE'] = True
     # flask_app.config['RESTPLUS_MASK_SWAGGER'] = False
     # flask_app.config['ERROR_404_HELP'] = False
 
@@ -69,7 +62,6 @@ def initialize_app(flask_app):
 
     api.add_resource(Greeter, '/hello/')
     api.add_resource(ApiVersion, '/version/')
-    api.add_resource(DBTest, '/database_test/')
 
     flask_app.register_blueprint(api_bp)
 

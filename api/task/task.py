@@ -1,8 +1,12 @@
-from flask import Blueprint, g, request
+from flask import Blueprint, g
 from flask_restplus import Resource, fields, marshal_with
 from api.restplus import api
-from api.task.endpoints.task_diff import TaskDiff
 from utils import get_logger
+
+from api.task.parsers import task_info_args
+from  api.task.serializers import task_test_model
+from api.task.endpoints.task_diff import TaskDiff
+from api.task.endpoints.task_info import TaskInfo
 
 logger = get_logger(__name__)
 
@@ -10,28 +14,36 @@ task_bp = Blueprint('task', __name__)
 
 ns = api.namespace('task', description='Test task API')
 
-@ns.route('/test')
-class TaskTest(Resource):
-    def get(self):
-        conn = g.connection
-        conn.request_line = \
-            """SELECT * FROM system.numbers LIMIT 10"""
-        status, response = conn.send_request()
-        if not status:
-            return response, 500
-        res = [_[0] for _ in response]
-        return {'message': 'test task API',
-        'res': res}
 
 @ns.route('/task_diff/<int:id>')
 @api.doc(
     params={'id': 'task ID'},
     responses={
-        200: TaskDiff.description,
-        404: 'task ID not found in DB'
-    }
+        404: 'Task ID not found in database'
+    },
+    description=TaskDiff.description
 )
 class routeTaskDiff(Resource):
+    @api.doc(model=task_test_model)
+    @marshal_with(task_test_model)
     def get(self, id):
         task_diff = TaskDiff(g.connection, id)
+        return task_diff.get()
+
+
+@ns.route('/task_info/<int:id>')
+@api.doc(
+    params={'id': 'task ID'},
+    responses={
+        404: 'Task ID not found in database'
+    },
+    description=TaskInfo.description
+)
+class routeTaskInfo(Resource):
+    @api.expect(task_info_args)
+    @api.doc(model=task_test_model)
+    @marshal_with(task_test_model)
+    def get(self, id):
+        args = task_info_args.parse_args()
+        task_diff = TaskInfo(g.connection, id, args['try'], args['iteration'])
         return task_diff.get()

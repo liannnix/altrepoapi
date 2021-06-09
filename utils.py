@@ -41,6 +41,11 @@ def read_config(config_file):
 def json_str_error(error):
     return {'Error': error}
 
+# build SQL error response
+def build_sql_error_response(response, cls, code):
+    response['module'] = cls.__class__.__name__
+    response['sql_request'] = cls.conn.request_line
+    return response, code
 
 def convert_to_json(keys, values, sort=False):
     js = {}
