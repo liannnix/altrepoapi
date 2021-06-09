@@ -7,7 +7,7 @@ import configparser
 from collections import defaultdict
 import mmh3
 
-from paths import namespace
+from settings import namespace
 
 def mmhash(val):
     a, b = mmh3.hash64(val, signed=False)

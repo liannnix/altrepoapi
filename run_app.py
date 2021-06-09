@@ -3,7 +3,7 @@ from collections import defaultdict
 from gunicorn.app.wsgiapp import run
 
 import utils
-from paths import namespace
+from settings import namespace
 
 
 def start():

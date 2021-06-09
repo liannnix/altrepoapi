@@ -1,7 +1,7 @@
 import time
 from clickhouse_driver import Client, errors
 from utils import get_logger, exception_to_logger, json_str_error, print_statusbar, func_time
-from paths import namespace
+from settings import namespace
 
 logger = get_logger(__name__)
 
