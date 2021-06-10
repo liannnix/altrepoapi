@@ -1,4 +1,4 @@
-from flask_restplus import reqparse
+from flask_restx import reqparse
 
 task_info_args = reqparse.RequestParser()
 task_info_args.add_argument('try', type=int, required=False, help='task try', location='args')

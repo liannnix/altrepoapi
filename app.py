@@ -1,5 +1,5 @@
-from flask import  Flask, redirect, g, Blueprint
-from flask_restplus import Resource, Api, marshal_with, fields
+from flask import  Flask, redirect, g, Blueprint, request
+from flask_restx import Resource, marshal_with, fields
 
 import utils
 from utils import func_time, json_serialize
@@ -43,6 +43,7 @@ def hello():
 @app.before_request
 def init_db_connection():
     g.connection = Connection()
+    g.url = request.url
 
 @app.teardown_request
 def drop_connection(exception):
@@ -51,8 +52,7 @@ def drop_connection(exception):
 def configure_app(flask_app):
     flask_app.config['SWAGGER_UI_DOC_EXPANSION'] = 'list'
     flask_app.config['RESTPLUS_VALIDATE'] = True
-    # flask_app.config['RESTPLUS_MASK_SWAGGER'] = False
-    # flask_app.config['ERROR_404_HELP'] = False
+    flask_app.config['ERROR_404_HELP'] = False
 
 def initialize_app(flask_app):
     configure_app(flask_app)

@@ -6,6 +6,7 @@ import argparse
 import configparser
 from collections import defaultdict
 import mmh3
+from urllib.parse import unquote
 
 from settings import namespace
 
@@ -36,16 +37,28 @@ def read_config(config_file):
 
     return False
 
+def url_logging(logger, url):
+    logger.info(unquote(url))
 
 # return error message as json format
 def json_str_error(error):
     return {'Error': error}
 
 # build SQL error response
-def build_sql_error_response(response, cls, code):
-    response['module'] = cls.__class__.__name__
-    response['sql_request'] = cls.conn.request_line
+def build_sql_error_response(response, cls, code, debug):
+    if debug:
+        response['module'] = cls.__class__.__name__
+        response['sql_request'] = [_ for _ in cls.conn.request_line.split('\n')]
     return response, code
+
+def convert_to_dict(keys, values):
+    res = {}
+
+    for i in range(len(values)):
+        res[i] = dict([(keys[j], values[i][j]) for j in range(len(values[i]))])
+    
+    return res
+
 
 def convert_to_json(keys, values, sort=False):
     js = {}
