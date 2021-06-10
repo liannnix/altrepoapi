@@ -7,17 +7,10 @@ from database.connection import Connection
 from settings import namespace
 
 from api.restplus import api
-from api.task.task import ns as task_test_ns
+from api.task.task import ns as task_ns
 
 app = Flask(__name__)
 logger = utils.get_logger(__name__)
-
-
-@api.doc(description='just a hello from API')
-class Greeter(Resource):
-    def get(self):
-        return {'message': 'Welcome to altrepodb API!'}, 200
-
 
 version_fields = api.model('APIVersion',
     {
@@ -58,9 +51,8 @@ def initialize_app(flask_app):
     configure_app(flask_app)
     api_bp = Blueprint('api', __name__, url_prefix='/api')
     api.init_app(api_bp)
-    api.add_namespace(task_test_ns)
+    api.add_namespace(task_ns)
 
-    api.add_resource(Greeter, '/hello/')
     api.add_resource(ApiVersion, '/version/')
 
     flask_app.register_blueprint(api_bp)

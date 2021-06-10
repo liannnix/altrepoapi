@@ -30,7 +30,6 @@ class TaskInfo():
             return False
         return True
         
-
     def check_params(self):
         if self.task_try is not None and self.task_iter is not None:
             if self.task_try > 0 and self.task_iter > 0:
