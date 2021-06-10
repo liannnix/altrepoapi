@@ -15,14 +15,16 @@ task_bp = Blueprint('task', __name__)
 ns = api.namespace('task', description='Test task API')
 
 
-@ns.route('/task_info/<int:id>')
-@ns.doc(
-    params={'id': 'task ID'},
-    responses={
-        400: 'Request parameters validation failed',
-        404: 'Task ID not found in database'
-    },
-    description="get information for task by ID"
+@ns.route('/task_info/<int:id>',
+    doc={
+        'params': {'id': 'task ID'},
+        'description': "get information for task by ID",
+        'responses': {
+            200: 'Success',
+            400: 'Request parameters validation error',
+            404: 'Task ID not found in database'
+        }
+    }
 )
 class routeTaskInfo(Resource):
     @ns.expect(task_info_args)
@@ -32,7 +34,6 @@ class routeTaskInfo(Resource):
         url_logging(logger, g.url)
         task_diff = TaskInfo(g.connection, id, args['try'], args['iteration'])
         if not task_diff.check_task_id():
-            # abort(404, message='Task ID not found in database', task_id=id)
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
         if not task_diff.check_params():
             abort(400, message=f"Request parameters validation failed", args=args)

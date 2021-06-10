@@ -1,4 +1,4 @@
-from flask_restx import fields, Model
+from flask_restx import fields
 from api.restplus import api
 
 task_info_model = api.model('TaskInfoModel',

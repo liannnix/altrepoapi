@@ -1,5 +1,5 @@
 from flask import  Flask, redirect, g, Blueprint, request
-from flask_restx import Resource, marshal_with, fields
+from flask_restx import Resource, fields
 
 import utils
 from utils import func_time, json_serialize
@@ -20,10 +20,10 @@ version_fields = api.model('APIVersion',
     }
 )
 
-@api.doc(description='get API information')
+@api.route('/version/')
 class ApiVersion(Resource):
-    @api.doc(model=version_fields)
-    @marshal_with(version_fields, envelope='api')
+    @api.doc('get API information')
+    @api.marshal_with(version_fields)
     def get(self):
         return api, 200
 
@@ -44,17 +44,16 @@ def drop_connection(exception):
 
 def configure_app(flask_app):
     flask_app.config['SWAGGER_UI_DOC_EXPANSION'] = 'list'
-    flask_app.config['RESTPLUS_VALIDATE'] = True
+    flask_app.config['SWAGGER_UI_REQUEST_DURATION'] = True
+    flask_app.config['RESTX_VALIDATE'] = True
     flask_app.config['ERROR_404_HELP'] = False
+    flask_app.config['RESTX_MASK_SWAGGER'] = False
 
 def initialize_app(flask_app):
     configure_app(flask_app)
     api_bp = Blueprint('api', __name__, url_prefix='/api')
     api.init_app(api_bp)
     api.add_namespace(task_ns)
-
-    api.add_resource(ApiVersion, '/version/')
-
     flask_app.register_blueprint(api_bp)
 
 initialize_app(app)

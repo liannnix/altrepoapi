@@ -25,11 +25,11 @@ class TaskInfo():
         status, response = self.conn.send_request()
         if not status:
             return build_sql_error_response(response, self, 500)
-        
+
         if response[0][0] == 0:
             return False
         return True
-        
+
     def check_params(self):
         if self.task_try is not None and self.task_iter is not None:
             if self.task_try > 0 and self.task_iter > 0:
@@ -52,7 +52,7 @@ class TaskInfo():
         status, response = self.conn.send_request()
         if not status:
             return build_sql_error_response(response, self, 500, self.DEBUG)
-        
+
         if not response:
             return build_sql_error_response(
                 {"Error": f"No data found in database for task '{self.task_id}'"},
@@ -70,7 +70,7 @@ class TaskInfo():
         status, response = self.conn.send_request()
         if not status:
             return build_sql_error_response(response, self, 500, self.DEBUG)
-        
+
         if not response:
             return build_sql_error_response(
                 {"Error": f"No data found in database for task '{self.task_id}' with rebuild '{try_iteration}'"},
@@ -88,19 +88,19 @@ class TaskInfo():
                     for val in sublist]
 
         self.conn.request_line = sql.get_packages_info.format(hshs=tuple(pkg_hshs))
-        
+
         status, response = self.conn.send_request()
         if not status:
             return build_sql_error_response(response, self, 500, self.DEBUG)
-        
+
         name_hsh = tuplelist_to_dict(response, 5)
 
         self.conn.request_line = sql.get_task_approvals.format(id=self.task_id)
-        
+
         status, response = self.conn.send_request()
         if not status:
             return build_sql_error_response(response, self, 500, self.DEBUG)
-        
+
         if not response:
             for hsh, subtask in pkg_subtask.items():
                 pkg_subtask[hsh] = [pkg_subtask[hsh]] + ['', '']
@@ -125,7 +125,7 @@ class TaskInfo():
                 user_id,
                 task_status,
                 *pkg_subtask[pkg[0]],
-                task_message, 
+                task_message,
                 try_iteration,
                 sorted(all_rebuilds),
                 tuplelist_to_dict(
