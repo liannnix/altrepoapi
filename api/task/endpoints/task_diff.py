@@ -212,4 +212,4 @@ class TaskDiff():
                             if res_list_add:
                                 result_dict[arch][name][type_]['add'] = res_list_add
 
-        return result_dict
+        return result_dict, 200

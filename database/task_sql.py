@@ -356,7 +356,7 @@ INNER JOIN
     FROM Depends_buffer
     WHERE pkg_hash IN
     (
-        SELECT * FROM {tmp_table}
+        SELECT * FROM {table}
     )
         AND dp_type IN
         (

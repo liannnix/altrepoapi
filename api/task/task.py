@@ -66,8 +66,26 @@ class routeTaskRepo(Resource):
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
         task_repo.build_task_repo()
         if task_repo.status:
-            # return json.dumps(task_repo.repo, sort_keys=False, default=json_serialize), 200
             return task_repo.get()
         else:
             return task_repo.error
 
+
+@ns.route('/task_diff/<int:id>',
+    doc={
+        'params': {'id': 'task ID'},
+        'description': "get task difference by ID",
+        'responses': {
+            404: 'Task ID not found in database'
+        }
+    }
+)
+class routeTaskRepo(Resource):
+    # @ns.doc(model=task_repo_model)
+    # @ns.marshal_with(task_repo_model)
+    def get(self, id):
+        url_logging(logger, g.url)
+        task_diff = TaskDiff(g.connection, id)
+        if not task_diff.check_task_id():
+            abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
+        return task_diff.get()
