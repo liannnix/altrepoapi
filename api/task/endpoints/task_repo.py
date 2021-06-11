@@ -196,11 +196,11 @@ class TaskRepo:
             'task_repo_pkgs': tuple(task_current_repo_pkgs),
             'task_add_pkgs': tuple(task_add_pkgs),
             'task_del_pkgs': tuple(task_del_pkgs),
-            'last_repo_pkgs': tuple(last_repo_pkgs),
+            # 'last_repo_pkgs': tuple(last_repo_pkgs),
             'last_repo_contents': last_repo_contents,
             'tasks_diff_list': list(tasks_diff_list),
-            'tasks_diff_add_hshs': tuple(tasks_diff_add_hshs),
-            'tasks_diff_del_hshs': tuple(tasks_diff_add_hshs)
+            # 'tasks_diff_add_hshs': tuple(tasks_diff_add_hshs),
+            # 'tasks_diff_del_hshs': tuple(tasks_diff_add_hshs)
         }
         self.status = True
 
@@ -282,10 +282,3 @@ class TaskRepo:
         }
 
         return res, 200
-
-
-            
-
-        
-        
-
