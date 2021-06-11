@@ -211,7 +211,7 @@ class TaskRepo:
             return self.error
         
         # create temporary table for packages hashaes
-        self.conn.request_line = sql.repo_create_tmp_table
+        self.conn.request_line = sql.repo_create_tmp_hshs_table.format(table='tmpPkgHshs')
         status, response = self.conn.send_request()
         if status is False:
             self.store_sql_error(response, ll.ERROR)
@@ -221,13 +221,13 @@ class TaskRepo:
         if self.include_task_packages:
             # use task_current_repo_pkgs
             self.conn.request_line = (
-                sql.repo_insert_into_tmp_table,
+                sql.repo_insert_into_tmp_hshs_table.format(table='tmpPkgHshs'),
                 ({'pkghash': _} for _ in self.repo['task_repo_pkgs'])
             )
         else:
             # use task_base_repo_pkgs
             self.conn.request_line = (
-                sql.repo_insert_into_tmp_table,
+                sql.repo_insert_into_tmp_hshs_table.format(table='tmpPkgHshs'),
                 ({'pkghash': _} for _ in self.repo['base_repo_pkgs'])
             )
         
@@ -236,7 +236,7 @@ class TaskRepo:
             self.store_sql_error(response, ll.ERROR)
             return self.error
 
-        self.conn.request_line = sql.repo_get_packages_by_hshs
+        self.conn.request_line = sql.repo_get_packages_by_hshs.format(table='tmpPkgHshs')
 
         status, response = self.conn.send_request()
         if status is False:
