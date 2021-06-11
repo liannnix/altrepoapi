@@ -1,6 +1,6 @@
 from utils import get_logger, build_sql_error_response, mmhash
 from utils import join_tuples, logger_level as ll
-from database.task_sql import SQL as sql
+from database.task_sql import tasksql
 from collections import defaultdict
 
 logger = get_logger(__name__)
@@ -15,6 +15,7 @@ class TaskRepo:
         self.status = False
         self.error = None
         self.repo = {}
+        self.sql = tasksql
 
     def store_sql_error(self, message, severity):
         self.error = build_sql_error_response(message, self, 500, self.DEBUG)
@@ -31,7 +32,7 @@ class TaskRepo:
             logger.debug(self.error)
 
     def check_task_id(self):
-        self.conn.request_line = sql.check_task.format(id=self.task_id)
+        self.conn.request_line = self.sql.check_task.format(id=self.task_id)
 
         status, response = self.conn.send_request()
         if not status:
@@ -50,7 +51,7 @@ class TaskRepo:
             self.store_sql_error({"Error": f"Non-existent task {self.task_id}"}, ll.ERROR)
             return self.repo
 
-        self.conn.request_line = sql.get_task_repo.format(id=self.task_id)
+        self.conn.request_line = self.sql.get_task_repo.format(id=self.task_id)
 
         status, response = self.conn.send_request()
         if status is False:
@@ -63,7 +64,7 @@ class TaskRepo:
 
         task_repo = response[0][0]
 
-        self.conn.request_line = sql.repo_get_task_content.format(id=self.task_id)
+        self.conn.request_line = self.sql.repo_get_task_content.format(id=self.task_id)
 
         status, response = self.conn.send_request()
         if status is False:
@@ -88,7 +89,7 @@ class TaskRepo:
             task_tplan_hashes.add(mmhash(t))
 
         self.conn.request_line = (
-            sql.repo_get_single_task_plan_hshs, {'hshs': tuple(task_tplan_hashes), 'act': 'add'}
+            self.sql.repo_get_single_task_plan_hshs, {'hshs': tuple(task_tplan_hashes), 'act': 'add'}
         )
 
         status, response = self.conn.send_request()
@@ -102,7 +103,7 @@ class TaskRepo:
             task_add_pkgs = set()
 
         self.conn.request_line = (
-            sql.repo_get_single_task_plan_hshs, {'hshs': tuple(task_tplan_hashes), 'act': 'delete'}
+            self.sql.repo_get_single_task_plan_hshs, {'hshs': tuple(task_tplan_hashes), 'act': 'delete'}
         )
 
         status, response = self.conn.send_request()
@@ -115,7 +116,7 @@ class TaskRepo:
         else:
             task_del_pkgs = set()
 
-        self.conn.request_line = sql.repo_get_tasks_diff_list.format(id=self.task_id, repo=task_repo)
+        self.conn.request_line = self.sql.repo_get_tasks_diff_list.format(id=self.task_id, repo=task_repo)
 
         status, response = self.conn.send_request()
         if status is False:
@@ -126,7 +127,7 @@ class TaskRepo:
         if response:
             tasks_diff_list += {_[0] for _ in response}
 
-        self.conn.request_line = sql.repo_get_last_repo.format(id=self.task_id, repo=task_repo)
+        self.conn.request_line = self.sql.repo_get_last_repo.format(id=self.task_id, repo=task_repo)
 
         status, response = self.conn.send_request()
         if status is False:
@@ -139,7 +140,7 @@ class TaskRepo:
 
         last_repo_pkgs = set(join_tuples(response))
 
-        self.conn.request_line = sql.repo_get_last_repo_content.format(id=self.task_id, repo=task_repo)
+        self.conn.request_line = self.sql.repo_get_last_repo_content.format(id=self.task_id, repo=task_repo)
 
         status, response = self.conn.send_request()
         if status is False:
@@ -154,7 +155,7 @@ class TaskRepo:
 
         if tasks_diff_list:
             self.conn.request_line = (
-                sql.repo_get_tasks_plan_hshs, {'id': tuple(tasks_diff_list), 'act': 'add'}
+                self.sql.repo_get_tasks_plan_hshs, {'id': tuple(tasks_diff_list), 'act': 'add'}
             )
 
             status, response = self.conn.send_request()
@@ -168,7 +169,7 @@ class TaskRepo:
                 tasks_diff_add_hshs = set(join_tuples(response))
 
             self.conn.request_line = (
-                sql.repo_get_tasks_plan_hshs, {'id': tuple(tasks_diff_list), 'act': 'delete'}
+                self.sql.repo_get_tasks_plan_hshs, {'id': tuple(tasks_diff_list), 'act': 'delete'}
             )
 
             status, response = self.conn.send_request()
@@ -211,7 +212,7 @@ class TaskRepo:
             return self.error
         
         # create temporary table for packages hashaes
-        self.conn.request_line = sql.repo_create_tmp_hshs_table.format(table='tmpPkgHshs')
+        self.conn.request_line = self.sql.create_tmp_hshs_table.format(table='tmpPkgHshs')
         status, response = self.conn.send_request()
         if status is False:
             self.store_sql_error(response, ll.ERROR)
@@ -221,13 +222,13 @@ class TaskRepo:
         if self.include_task_packages:
             # use task_current_repo_pkgs
             self.conn.request_line = (
-                sql.repo_insert_into_tmp_hshs_table.format(table='tmpPkgHshs'),
+                self.sql.insert_into_tmp_hshs_table.format(table='tmpPkgHshs'),
                 ({'pkghash': _} for _ in self.repo['task_repo_pkgs'])
             )
         else:
             # use task_base_repo_pkgs
             self.conn.request_line = (
-                sql.repo_insert_into_tmp_hshs_table.format(table='tmpPkgHshs'),
+                self.sql.insert_into_tmp_hshs_table.format(table='tmpPkgHshs'),
                 ({'pkghash': _} for _ in self.repo['base_repo_pkgs'])
             )
         
@@ -236,7 +237,7 @@ class TaskRepo:
             self.store_sql_error(response, ll.ERROR)
             return self.error
 
-        self.conn.request_line = sql.repo_get_packages_by_hshs.format(table='tmpPkgHshs')
+        self.conn.request_line = self.sql.repo_get_packages_by_hshs.format(table='tmpPkgHshs')
 
         status, response = self.conn.send_request()
         if status is False:

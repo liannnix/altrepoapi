@@ -1,7 +1,9 @@
 import os
 import getpass
+from dataclasses import dataclass
 
 
+@dataclass
 class BasePathNamespace:
     PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
     # configuration parameters

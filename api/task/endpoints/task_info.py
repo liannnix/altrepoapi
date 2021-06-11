@@ -1,5 +1,5 @@
 from utils import get_logger, build_sql_error_response, tuplelist_to_dict, convert_to_dict
-from database.task_sql import SQL as sql
+from database.task_sql import tasksql
 
 from operator import itemgetter
 
@@ -18,9 +18,10 @@ class TaskInfo():
         self.task_id = id_
         self.task_try = try_
         self.task_iter = iter_
+        self.sql = tasksql
 
     def check_task_id(self):
-        self.conn.request_line = sql.check_task.format(id=self.task_id)
+        self.conn.request_line = self.sql.check_task.format(id=self.task_id)
 
         status, response = self.conn.send_request()
         if not status:
@@ -48,7 +49,7 @@ class TaskInfo():
         else:
             try_iteration = None
 
-        self.conn.request_line = sql.get_task_info.format(id=self.task_id)
+        self.conn.request_line = self.sql.get_task_info.format(id=self.task_id)
 
         status, response = self.conn.send_request()
         if not status:
@@ -63,9 +64,9 @@ class TaskInfo():
         branch, user_id = response[0][1], response[0][2]
         all_rebuilds = [i[0] for i in response]
 
-        self.conn.request_line = sql.get_task_content.format(id=self.task_id)
+        self.conn.request_line = self.sql.get_task_content.format(id=self.task_id)
         if try_iteration:
-            self.conn.request_line = sql.get_task_content_rebuild.format(
+            self.conn.request_line = self.sql.get_task_content_rebuild.format(
                 id=self.task_id, ti=try_iteration)
 
         status, response = self.conn.send_request()
@@ -88,7 +89,7 @@ class TaskInfo():
         pkg_hshs = [val for sublist in [[i[0]] + i[4] for i in response]
                     for val in sublist]
 
-        self.conn.request_line = sql.get_packages_info.format(hshs=tuple(pkg_hshs))
+        self.conn.request_line = self.sql.get_packages_info.format(hshs=tuple(pkg_hshs))
 
         status, response = self.conn.send_request()
         if not status:
@@ -96,7 +97,7 @@ class TaskInfo():
 
         name_hsh = tuplelist_to_dict(response, 5)
 
-        self.conn.request_line = sql.get_task_approvals.format(id=self.task_id)
+        self.conn.request_line = self.sql.get_task_approvals.format(id=self.task_id)
 
         status, response = self.conn.send_request()
         if not status:

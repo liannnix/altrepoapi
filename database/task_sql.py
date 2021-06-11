@@ -15,7 +15,10 @@ WHERE task_id = {id}
 """
 
     get_task_info = """
-SELECT DISTINCT TI.try_iter, task_repo, task_owner
+SELECT DISTINCT
+    TI.try_iter,
+    task_repo,
+    task_owner
 FROM Tasks_buffer
 LEFT JOIN
 (
@@ -26,7 +29,8 @@ WHERE task_id = {id}
 """
 
     get_task_content = """
-SELECT titer_srcrpm_hash,
+SELECT
+    titer_srcrpm_hash,
     TS.task_state AS status,
     subtask_id,
     concat(toString(task_try), '.', toString(task_iter)) AS ti,
@@ -35,7 +39,8 @@ SELECT titer_srcrpm_hash,
 FROM TaskIterations_buffer
 CROSS JOIN 
 (
-    SELECT argMax(task_state, task_changed) AS task_state,
+    SELECT
+        argMax(task_state, task_changed) AS task_state,
         argMax(task_message, task_changed) AS task_message
     FROM TaskStates_buffer
     WHERE task_id = {id}
@@ -43,20 +48,23 @@ CROSS JOIN
 WHERE task_id = {id}
     AND (task_try, task_iter) IN
     (
-        SELECT argMax(task_try, task_changed),
+        SELECT
+            argMax(task_try, task_changed),
             argMax(task_iter, task_changed)
         FROM TaskIterations_buffer
         WHERE task_id = {id}
     )
-GROUP BY titer_srcrpm_hash,
-        status,
-        subtask_id,
-        ti
+GROUP BY
+    titer_srcrpm_hash,
+    status,
+    subtask_id,
+    ti
 ORDER BY subtask_id
 """
 
     get_task_content_rebuild = """
-SELECT titer_srcrpm_hash,
+SELECT
+    titer_srcrpm_hash,
     TS.task_state AS status,
     subtask_id,
     concat(toString(task_try), '.', toString(task_iter)) AS ti,
@@ -65,22 +73,25 @@ SELECT titer_srcrpm_hash,
 FROM TaskIterations_buffer
 CROSS JOIN
 (
-    SELECT argMax(task_state, task_changed) AS task_state,
+    SELECT
+        argMax(task_state, task_changed) AS task_state,
         argMax(task_message, task_changed) AS task_message
     FROM TaskStates_buffer
     WHERE task_id = {id}
 ) AS TS
 WHERE task_id = {id}
     AND (task_try, task_iter) = {ti}
-GROUP BY titer_srcrpm_hash,
-        status,
-        subtask_id,
-        ti
+GROUP BY
+    titer_srcrpm_hash,
+    status,
+    subtask_id,
+    ti
 ORDER BY subtask_id
 """
 
     get_packages_info = """
-SELECT pkg_hash,
+SELECT
+    pkg_hash,
     pkg_name,
     pkg_version,
     pkg_release,
@@ -104,7 +115,8 @@ WHERE tupleElement(res, 6) = 0
 """
 
     repo_get_task_content = """
-SELECT titer_srcrpm_hash,
+SELECT
+    titer_srcrpm_hash,
     subtask_id,
     subtask_arch,
     task_try,
@@ -114,15 +126,18 @@ FROM TaskIterations_buffer
 WHERE task_id = {id}
     AND (task_try, task_iter) IN
     (
-        SELECT argMax(task_try, task_changed), argMax(task_iter, task_changed)
+        SELECT
+            argMax(task_try, task_changed),
+            argMax(task_iter, task_changed)
         FROM TaskIterations_buffer
         WHERE task_id = {id}
     )
-GROUP BY titer_srcrpm_hash,
-        subtask_id,
-        subtask_arch,
-        task_try,
-        task_iter
+GROUP BY
+    titer_srcrpm_hash,
+    subtask_id,
+    subtask_arch,
+    task_try,
+    task_iter
 ORDER BY subtask_id
 """
 
@@ -221,7 +236,8 @@ WITH
         FROM TaskStates_buffer
         WHERE (task_id = {id}) AND (task_prev != 0)
     ) AS current_task_last_changed
-SELECT pkgset_nodename,
+SELECT
+    pkgset_nodename,
     pkgset_date,
     pkgset_tag,
     pkgset_kv.k,
@@ -250,10 +266,12 @@ WHERE pkgset_uuid IN
     repo_get_tasks_plan_hshs = """
 SELECT DISTINCT pkgh_mmh
 FROM PackageHash_buffer
-WHERE pkgh_sha256 IN (
+WHERE pkgh_sha256 IN
+(
     SELECT tplan_sha256
     FROM TaskPlanPkgHash
-    WHERE tplan_hash IN (
+    WHERE tplan_hash IN
+    (
         SELECT tplan_hash
         FROM task_plan_hashes
         WHERE task_id IN %(id)s
@@ -262,12 +280,16 @@ WHERE pkgh_sha256 IN (
 )
 """
 
-    repo_create_tmp_table = """
-CREATE TEMPORARY TABLE tmpPkgHashes (pkghash UInt64)
+    create_tmp_hshs_table = """
+CREATE TEMPORARY TABLE {table} (pkghash UInt64)
 """
 
-    repo_insert_into_tmp_table = """
-INSERT INTO tmpPkgHashes VALUES
+    insert_into_tmp_hshs_table = """
+INSERT INTO {table} VALUES
+"""
+
+    truncate_tmp_table = """
+TRUNCATE TABLE {table}
 """
 
     repo_get_packages_by_hshs = """
@@ -281,6 +303,74 @@ SELECT DISTINCT
 FROM Packages_buffer
 WHERE pkg_hash IN
 (
-    SELECT * FROM tmpPkgHashes
+    SELECT * FROM {table}
 )
 """
+
+    diff_get_packages_by_hshs = """
+SELECT 
+    pkg_name,
+    pkg_arch,
+    pkg_filename
+FROM Packages_buffer
+WHERE pkg_hash IN
+(
+    SELECT * FROM {table}
+)
+    AND pkg_name NOT LIKE '%%-debuginfo'
+ORDER BY pkg_name
+"""
+
+    diff_get_repo_pkgs = """
+SELECT pkg_hash
+FROM Packages_buffer
+WHERE pkg_hash IN
+(
+    SELECT * FROM {tmp_table1}
+)
+    AND pkg_name IN
+    (
+        SELECT DISTINCT pkg_name
+        FROM Packages_buffer
+        WHERE pkg_hash IN
+        (
+            SELECT * FROM {tmp_table2}
+        )
+            AND pkg_name NOT LIKE '%%-debuginfo'
+    )
+"""
+
+    diff_get_depends_by_hshs = """
+SELECT
+    pkg_name,
+    dp_type,
+    pkg_arch,
+    groupUniqArray(dp_name)
+FROM Packages_buffer
+INNER JOIN
+(
+    SELECT DISTINCT
+        pkg_hash,
+        dp_name,
+        dp_type
+    FROM Depends_buffer
+    WHERE pkg_hash IN
+    (
+        SELECT * FROM {tmp_table}
+    )
+        AND dp_type IN
+        (
+            'provide',
+            'require',
+            'obsolete',
+            'conflict'
+        )
+) AS Deps USING pkg_hash
+WHERE pkg_name NOT LIKE '%%-debuginfo'
+GROUP BY
+    pkg_name,
+    pkg_arch,
+    dp_type
+"""
+
+tasksql = SQL()

@@ -3,7 +3,6 @@ from flask_restx import Resource, fields
 
 import utils
 from database.connection import Connection
-from settings import namespace
 
 from api.restplus import api
 from api.task.task import ns as task_ns
