@@ -24,7 +24,8 @@ class TaskInfo():
 
         status, response = self.conn.send_request()
         if not status:
-            return build_sql_error_response(response, self, 500)
+            logger.error(build_sql_error_response(response, self, 500, self.DEBUG))
+            return False
 
         if response[0][0] == 0:
             return False

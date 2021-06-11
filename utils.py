@@ -7,8 +7,17 @@ import configparser
 from collections import defaultdict
 import mmh3
 from urllib.parse import unquote
+from dataclasses import dataclass
 
 from settings import namespace
+
+@dataclass(frozen=True)
+class logger_level:
+    DEBUG = logging.DEBUG
+    INFO = logging.INFO
+    WARNING = logging.WARNING
+    ERROR = logging.ERROR
+    CRITICAL = logging.CRITICAL
 
 def mmhash(val):
     a, b = mmh3.hash64(val, signed=False)
@@ -26,6 +35,7 @@ def get_logger(name):
 
 
 def exception_to_logger(exception):
+    # return exception.args[0].split('\n')[0]
     return exception.args[0].split('\n')[0]
 
 
@@ -48,7 +58,12 @@ def json_str_error(error):
 def build_sql_error_response(response, cls, code, debug):
     if debug:
         response['module'] = cls.__class__.__name__
-        response['sql_request'] = [_ for _ in cls.conn.request_line.split('\n')]
+        requestline = cls.conn.request_line
+        if isinstance(requestline, tuple):
+            response['sql_request'] = [_ for _ in requestline[0].split('\n') if len(_) > 0]
+            # response['sql_payload'] = list(requestline[1])
+        else:
+            response['sql_request'] = [_ for _ in requestline.split('\n')]
     return response, code
 
 def convert_to_dict(keys, values):
@@ -140,13 +155,3 @@ def func_time(logger):
         return wrapper
 
     return decorator
-
-
-def json_serialize(obj):
-    if isinstance(obj, (datetime.datetime, datetime.date)):
-        return obj.isoformat()
-    else:
-        try:
-            return str(obj)
-        except:
-            raise TypeError (f"Type {type(obj)} not serializable")

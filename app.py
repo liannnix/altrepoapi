@@ -2,7 +2,6 @@ from flask import  Flask, redirect, g, Blueprint, request
 from flask_restx import Resource, fields
 
 import utils
-from utils import func_time, json_serialize
 from database.connection import Connection
 from settings import namespace
 

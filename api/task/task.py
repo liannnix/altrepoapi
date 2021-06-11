@@ -3,10 +3,11 @@ from flask_restx import Resource, abort
 from api.restplus import api
 from utils import get_logger, url_logging
 
-from api.task.parsers import task_info_args
-from  api.task.serializers import task_info_model
+from api.task.parsers import task_info_args, task_repo_args
+from  api.task.serializers import task_info_model, task_repo_model
 from api.task.endpoints.task_diff import TaskDiff
 from api.task.endpoints.task_info import TaskInfo
+from api.task.endpoints.task_repo import TaskRepo
 
 logger = get_logger(__name__)
 
@@ -41,3 +42,31 @@ class routeTaskInfo(Resource):
         if code != 200:
             abort(code, message="Error occured during request handeling", details=result)
         return result, code
+
+
+@ns.route('/task_repo/<int:id>',
+    doc={
+        'params': {'id': 'task ID'},
+        'description': "get repository state by ID",
+        'responses': {
+            400: 'Request parameters validation error',
+            404: 'Task ID not found in database'
+        }
+    }
+)
+class routeTaskRepo(Resource):
+    @ns.expect(task_repo_args)
+    @ns.doc(model=task_repo_model)
+    # @ns.marshal_with(task_repo_model)
+    def get(self, id):
+        args = task_repo_args.parse_args()
+        url_logging(logger, g.url)
+        task_repo = TaskRepo(g.connection, id, args['include_task_packages'])
+        if not task_repo.check_task_id():
+            abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
+        task_repo.build_task_repo()
+        if task_repo.status:
+            # return json.dumps(task_repo.repo, sort_keys=False, default=json_serialize), 200
+            return task_repo.get()
+        else:
+            return task_repo.error
