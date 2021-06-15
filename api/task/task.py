@@ -4,7 +4,7 @@ from api.restplus import api
 from utils import get_logger, url_logging
 
 from api.task.parsers import task_info_args, task_repo_args
-from  api.task.serializers import task_info_model, task_repo_model
+from  api.task.serializers import task_info_model, task_repo_model, task_diff_model
 from api.task.endpoints.task_diff import TaskDiff
 from api.task.endpoints.task_info import TaskInfo
 from api.task.endpoints.task_repo import TaskRepo
@@ -56,8 +56,7 @@ class routeTaskInfo(Resource):
 )
 class routeTaskRepo(Resource):
     @ns.expect(task_repo_args)
-    @ns.doc(model=task_repo_model)
-    # @ns.marshal_with(task_repo_model)
+    @ns.marshal_with(task_repo_model)
     def get(self, id):
         args = task_repo_args.parse_args()
         url_logging(logger, g.url)
@@ -80,9 +79,8 @@ class routeTaskRepo(Resource):
         }
     }
 )
-class routeTaskRepo(Resource):
-    # @ns.doc(model=task_repo_model)
-    # @ns.marshal_with(task_repo_model)
+class routeTaskDiff(Resource):
+    @ns.marshal_with(task_diff_model)
     def get(self, id):
         url_logging(logger, g.url)
         task_diff = TaskDiff(g.connection, id)

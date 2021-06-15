@@ -206,10 +206,35 @@ class TaskDiff():
                         res_list_add = [dep for dep in task_set - repo_set]
 
                         if res_list_del or res_list_add:
-                            result_dict[arch][name][type_] = {}
-                            if res_list_del:
-                                result_dict[arch][name][type_]['del'] = res_list_del
-                            if res_list_add:
-                                result_dict[arch][name][type_]['add'] = res_list_add
+                            result_dict[arch][name]['deps'] = []
+                            result_dict[arch][name]['deps'].append(
+                                {
+                                    'type': type_,
+                                    'del': res_list_del,
+                                    'add': res_list_add
+                                }
+                            )
 
-        return result_dict, 200
+        result_dict_2 = {
+            'task_id': self.task_id,
+            'task_diff': []
+        }
+
+        for k, v in result_dict.items():
+            arch_dict = {
+                'arch': k,
+                'packages': []
+            }
+            for pkg, val in v.items():
+                arch_dict['packages'].append(
+                    {
+                        'package': pkg,
+                        'del': val['del'],
+                        'add': val['add'],
+                        'dependencies': val['deps']
+                    }
+
+                )
+            result_dict_2['task_diff'].append(arch_dict)
+
+        return result_dict_2, 200

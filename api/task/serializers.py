@@ -20,9 +20,12 @@ task_repo_info_model = api.model('TaskRepoInfoModel',{
         'tag': fields.String(description='package set upload tag')
 })
 
-### FIXME: correctly displayed in Swagger UI but doesn't work with marshalling
 task_repo_archs_model = api.model('TaskRepoArchsModel', {
-    '*': fields.Nested(task_repo_package_model, as_list=True)
+    'arch': fields.String(description='architecture'),
+    'packages': fields.Nested(task_repo_package_model,
+        description='packages list',
+        as_list=True
+    )
 })
 
 task_repo_model = api.model('TaskRepoModel',{
@@ -36,28 +39,30 @@ task_repo_model = api.model('TaskRepoModel',{
             description='list of tasks applied to base package set'
         ),
         'archs': fields.Nested(task_repo_archs_model,
-            description='list of packages by architectures'
+            description='list of packages by architectures',
+            as_list=True
         )
 })
-### FIXME: correct for marshalling but wrong displayed in Swagger UI ##
-# task_repo_packages = fields.Nested(task_repo_package_model, as_list=True)
-# task_repo_packages_wild = fields.Wildcard(task_repo_packages)
 
-# task_repo_archs_model = api.model('TaskRepoArchsModel', {
-#     '*': task_repo_packages_wild
-# })
+task_diff_dependencies_model = api.model('TaskDiffDependenciesModel', {
+    'type': fields.String,
+    'del': fields.List(fields.String),
+    'add': fields.List(fields.String)
+})
 
-# task_repo_model = api.model('TaskRepoModel',{
-#         'task_id': fields.Integer(description='task id'),
-#         'base_repository': fields.Nested(
-#             task_repo_info_model,
-#             description='last uploaded package set used as base'
-#         ),
-#         'task_diff_list': fields.List(
-#             fields.Integer,
-#             description='list of tasks applied to base package set'
-#         ),
-#         'archs': fields.Nested(task_repo_archs_model,
-#             description='list of packages by architectures'
-#         )
-### END ###
+task_diff_packages_model = api.model('TaskDiffPackagesModel', {
+    'package': fields.String,
+    'del': fields.List(fields.String),
+    'add': fields.List(fields.String),
+    'dependencies': fields.Nested(task_diff_dependencies_model, as_list=True) 
+})
+
+task_diff_archs_model = api.model('TaskDiffArchsModel', {
+    'arch': fields.String,
+    'packages': fields.Nested(task_diff_packages_model, as_list=True)
+})
+
+task_diff_model = api.model('TaskDiffModel', {
+    'task_id': fields.Integer,
+    'task_diff': fields.Nested(task_diff_archs_model, as_list=True)
+})

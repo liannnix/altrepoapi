@@ -279,7 +279,15 @@ class TaskRepo:
                 'tag': self.repo['last_repo_contents'][2]
             },
             'task_diff_list': self.repo['tasks_diff_list'],
-            'archs': repo_pkgs
+            'archs': []
         }
+
+        for k, v in repo_pkgs.items():
+            res['archs'].append(
+                {
+                    'arch': k,
+                    'packages': v
+                }
+            )
 
         return res, 200
