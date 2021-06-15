@@ -79,9 +79,9 @@ class TaskRepo:
         task_try = 0
         task_iter = 0
         for el in response:
-            task_archs.add(el[2])
-            task_try = el[3]
-            task_iter = el[4]
+            task_archs.add(el[0])
+            task_try = el[1]
+            task_iter = el[2]
 
         task_tplan_hashes = set()
         for arch in task_archs:

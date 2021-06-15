@@ -116,12 +116,9 @@ WHERE tupleElement(res, 6) = 0
 
     repo_get_task_content = """
 SELECT
-    titer_srcrpm_hash,
-    subtask_id,
     subtask_arch,
     task_try,
-    task_iter,
-    groupUniqArray(arrayJoin(titer_pkgs_hash))
+    task_iter
 FROM TaskIterations_buffer
 WHERE task_id = {id}
     AND (task_try, task_iter) IN
