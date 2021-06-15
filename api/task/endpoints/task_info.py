@@ -9,7 +9,7 @@ class TaskInfo():
     Otpionally uses task try and iteration parameters
 
     Returns:
-        tuple(dict, int): retrun task information or error (if occures) and http response code (200, 400, 404, 500)
+        tuple(dict, int): retrun task information or error (if occured) and http response code (200, 400, 404, 500)
     """
     DEBUG = True
 
