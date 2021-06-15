@@ -16,13 +16,17 @@ WHERE task_id = {id}
 
     get_task_info = """
 SELECT DISTINCT
-    TI.try_iter,
+    TI.task_try,
+    TI.task_iter,
     task_repo,
     task_owner
 FROM Tasks_buffer
 LEFT JOIN
 (
-    SELECT task_id, concat(toString(task_try), '.', toString(task_iter)) AS try_iter
+    SELECT
+        task_id,
+        task_try,
+        task_iter
     FROM TaskIterations_buffer
 ) AS TI USING task_id
 WHERE task_id = {id}

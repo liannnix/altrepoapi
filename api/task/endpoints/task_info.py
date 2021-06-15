@@ -61,8 +61,8 @@ class TaskInfo():
                 self, 404, self.DEBUG
             )
 
-        branch, user_id = response[0][1], response[0][2]
-        all_rebuilds = [i[0] for i in response]
+        branch, user_id = response[0][2], response[0][3]
+        all_rebuilds = [(i[0], i[1]) for i in response]
 
         self.conn.request_line = self.sql.get_task_content.format(id=self.task_id)
         if try_iteration:
