@@ -1,6 +1,7 @@
 import os
 import getpass
 from dataclasses import dataclass
+import logging
 
 
 @dataclass
@@ -24,6 +25,8 @@ class BasePathNamespace:
     DATABASE_USER = 'default'
     DATABASE_PASS = ''
     FLASK_DEBUG = True
+    SQL_DEBUG = True
+    LOG_LEVEL = logging.DEBUG
 
 
 namespace = BasePathNamespace()

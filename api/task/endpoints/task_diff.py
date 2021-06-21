@@ -5,11 +5,12 @@ from utils import join_tuples, remove_duplicate, logger_level as ll
 from database.task_sql import tasksql
 from api.task.endpoints.task_repo import TaskRepo
 from api.misc import lut
+from settings import namespace
 
 logger = get_logger(__name__)
 
 class TaskDiff:
-    DEBUG = True
+    DEBUG = namespace.SQL_DEBUG
 
     def __init__(self, connection, id):
         self.conn = connection

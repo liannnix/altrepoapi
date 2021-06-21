@@ -4,7 +4,7 @@ from api.restplus import api
 from utils import get_logger, url_logging
 
 from api.task.parsers import task_info_args, task_repo_args
-from  api.task.serializers import task_info_model, task_repo_model, task_diff_model
+from api.task.serializers import task_info_model, task_repo_model, task_diff_model
 from api.task.endpoints.task_diff import TaskDiff
 from api.task.endpoints.task_info import TaskInfo
 from api.task.endpoints.task_repo import TaskRepo

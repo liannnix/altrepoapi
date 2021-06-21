@@ -26,7 +26,7 @@ def mmhash(val):
 def get_logger(name):
     logging.basicConfig(
         format=u'%(levelname)-8s [%(asctime)s] %(message)s',
-        level=logging.DEBUG,
+        level=namespace.LOG_LEVEL,
         filename=namespace.LOG_FILE
     )
     logger = logging.getLogger(name)
