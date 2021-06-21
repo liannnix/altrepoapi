@@ -13,7 +13,7 @@ logger = get_logger(__name__)
 
 task_bp = Blueprint('task', __name__)
 
-ns = api.namespace('task', description='Test task API')
+ns = api.namespace('task', description="Task's information API")
 
 
 @ns.route('/task_info/<int:id>',
