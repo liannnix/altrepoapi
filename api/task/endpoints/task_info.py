@@ -1,9 +1,8 @@
-from flask_restx.inputs import date_from_iso8601
-from utils import get_logger, build_sql_error_response, tuplelist_to_dict
-from utils import convert_to_dict, datetime_to_iso, mmhash, logger_level as ll
+from utils import get_logger, build_sql_error_response
+from utils import datetime_to_iso, mmhash, logger_level as ll
 from database.task_sql import tasksql
+from settings import namespace
 
-from operator import itemgetter
 from collections import defaultdict
 
 logger = get_logger(__name__)
@@ -164,13 +163,7 @@ class Task:
             self.store_sql_error(response, ll.ERROR, 500)
             return {}
         if not response:
-            # self.store_sql_error(
-            #     {"Error": f"No data found in database for task '{self.task_id}' with rebuild '{try_iter}'"},
-            #     ll.INFO, 404
-            # )
-            # return {}
-            self.task['plan']['add']['src'] = {}
-            self.task['plan']['add']['bin'] = {}
+            pass
 
         for el in response:
             if el[6] == 1:
@@ -198,13 +191,7 @@ class Task:
             self.store_sql_error(response, ll.ERROR, 500)
             return {}
         if not response:
-            # self.store_sql_error(
-            #     {"Error": f"No data found in database for task '{self.task_id}' with rebuild '{try_iter}'"},
-            #     ll.INFO, 404
-            # )
-            # return {}
-            self.task['plan']['del']['src'] = {}
-            self.task['plan']['del']['bin'] = {}
+            pass
 
         for el in response:
             if el[6] == 1:
@@ -245,7 +232,6 @@ class Task:
                 for tapp in self.task['subtasks'][subtask]['approvals']:
                     tapp['date'] = datetime_to_iso(tapp['date'])
 
-        #  Formatting and clean up resulting task dictionary
         self.task['state'] = self.task['state_raw']['task_state']
         self.task['runby'] = self.task['state_raw']['task_runby']
         self.task['depends'] = self.task['state_raw']['task_depends']
@@ -257,12 +243,8 @@ class Task:
         self.task['prev'] = self.task['state_raw']['task_prev']
         self.task['last_changed'] = datetime_to_iso(self.task['state_raw']['task_changed'])
 
-        # del self.task['archs']
-        # del self.task['tplan_hashes']
-
         for subtask in self.task['subtasks'].keys():
             contents = {'archs': []}
-            #  collect all from Tasks
             for sub_ in self.task['subtasks_raw']:
                 if sub_['subtask_id'] == subtask:
                     contents['last_changed'] = datetime_to_iso(sub_['subtask_changed'])
@@ -279,7 +261,6 @@ class Task:
                     contents['srpm_name'] = sub_['subtask_srpm_name']
                     contents['srpm_evr'] = sub_['subtask_srpm_evr']
                     break
-            #  collect all from TaskIterations
             for iter_ in self.task['iterations_raw']:
                 if iter_['subtask_id'] == subtask and iter_['subtask_arch'] == 'x86_64':
                     if iter_['titer_srcrpm_hash'] != 0 and iter_['titer_srcrpm_hash'] in self.task['plan']['add']['src']:
@@ -310,7 +291,7 @@ class TaskInfo:
     Returns:
         tuple(dict, int): retrun task information or error (if occured) and http response code (200, 400, 404, 500)
     """
-    DEBUG = True
+    DEBUG = namespace.SQL_DEBUG
 
     def __init__(self, connection, id_, try_, iter_) -> None:
         self.conn = connection
