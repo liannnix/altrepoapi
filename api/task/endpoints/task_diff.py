@@ -8,7 +8,7 @@ from api.misc import lut
 
 logger = get_logger(__name__)
 
-class TaskDiff():
+class TaskDiff:
     DEBUG = True
 
     def __init__(self, connection, id):
@@ -89,7 +89,7 @@ class TaskDiff():
                 self.store_sql_error(response, ll.ERROR)
                 return self.error
 
-            self.conn.request_line = self.sql.diff_get_packages_by_hshs.format(table='tmpTaskDelHshs')
+            self.conn.request_line = self.sql.diff_packages_by_hshs.format(table='tmpTaskDelHshs')
             status, response = self.conn.send_request()
             if status is False:
                 self.store_sql_error(response, ll.ERROR)
@@ -119,7 +119,7 @@ class TaskDiff():
                 self.store_sql_error(response, ll.ERROR)
                 return self.error
 
-            self.conn.request_line = self.sql.diff_get_packages_by_hshs.format(table='tmpTaskAddHshs')
+            self.conn.request_line = self.sql.diff_packages_by_hshs.format(table='tmpTaskAddHshs')
             status, response = self.conn.send_request()
             if status is False:
                 self.store_sql_error(response, ll.ERROR)
@@ -133,7 +133,7 @@ class TaskDiff():
                         result_dict[el[1]][el[0]]['add'].append(el[2])
 
         if task_add_pkgs:
-            self.conn.request_line = self.sql.diff_get_repo_pkgs.format(
+            self.conn.request_line = self.sql.diff_repo_pkgs.format(
                 tmp_table1='tmpRepoHshs',
                 tmp_table2='tmpTaskAddHshs'
             )
@@ -163,7 +163,7 @@ class TaskDiff():
                 self.store_sql_error(response, ll.ERROR)
                 return self.error
 
-            self.conn.request_line = self.sql.diff_get_depends_by_hshs.format(table='tmpRepoHshs')
+            self.conn.request_line = self.sql.diff_depends_by_hshs.format(table='tmpRepoHshs')
             status, response = self.conn.send_request()
             if status is False:
                 self.store_sql_error(response, ll.ERROR)
@@ -171,7 +171,7 @@ class TaskDiff():
 
             repo_deps = response
 
-            self.conn.request_line = self.sql.diff_get_depends_by_hshs.format(table='tmpTaskAddHshs')
+            self.conn.request_line = self.sql.diff_depends_by_hshs.format(table='tmpTaskAddHshs')
             status, response = self.conn.send_request()
             if status is False:
                 self.store_sql_error(response, ll.ERROR)
