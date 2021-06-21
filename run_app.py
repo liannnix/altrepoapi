@@ -7,6 +7,8 @@ from settings import namespace
 
 
 def start():
+    assert sys.version_info >= (3, 8), "Pyhton version 3.8 or newer is required!"
+
     launch_props = [
         ('DATABASE_HOST', str), ('DATABASE_NAME', str),
         ('TRY_CONNECTION_NUMBER', int), ('TRY_TIMEOUT', int),
