@@ -6,6 +6,7 @@ from database.connection import Connection
 
 from api.restplus import api
 from api.task.task import ns as task_ns
+from api.package.package import ns as package_ns
 
 app = Flask(__name__)
 logger = utils.get_logger(__name__)
@@ -52,6 +53,7 @@ def initialize_app(flask_app):
     api_bp = Blueprint('api', __name__, url_prefix='/api')
     api.init_app(api_bp)
     api.add_namespace(task_ns)
+    api.add_namespace(package_ns)
     flask_app.register_blueprint(api_bp)
 
 initialize_app(app)
