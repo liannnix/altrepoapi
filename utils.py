@@ -155,3 +155,6 @@ def func_time(logger):
         return wrapper
 
     return decorator
+
+def datetime_to_iso(dt):
+    return dt.isoformat()
