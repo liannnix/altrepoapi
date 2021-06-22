@@ -42,15 +42,28 @@ class BuildDependency:
         else:
             logger.debug(self.error)
 
+    def store_error(self, message, severity, http_code):
+        self.error = message, http_code
+        self.status = False
+        if severity == ll.CRITICAL:
+            logger.critical(self.error)
+        elif severity == ll.ERROR:
+            logger.error(self.error)
+        elif severity == ll.WARNING:
+            logger.warning(self.error)
+        elif severity == ll.INFO:
+            logger.info(self.error)
+        else:
+            logger.debug(self.error)
+
     def build_dependencies(self):
         # do all kind of black magic here
-
+        input_pkgs = self.packages
         depends_type_to_sql = {
             'source': (1,),
             'binary': (0,),
             'both': (1, 0)
         }
-
         sourcef = depends_type_to_sql[self.dptype]
 
         if self.arch:
@@ -58,8 +71,6 @@ class BuildDependency:
                 self.arch.append('noarch')
         else:
             self.arch = ['x86_64', 'noarch']
-
-        input_pkgs = self.packages
 
         # create tmp table with list of packages
         tmp_table_name = 'tmp_pkg_ls'
@@ -189,8 +200,8 @@ class BuildDependency:
         # check leaf, if true, get dependencies of leaf package
         if self.leaf:
             if self.leaf not in pkgs_to_sort_dict.keys():
-                self.store_sql_error(
-                    {"message": f"Package {self.leaf} not in dependencies list"},
+                self.store_error(
+                    {"message": f"Package {self.leaf} not in dependencies list for {self.packages}"},
                     ll.INFO,
                     404
                 )
@@ -376,7 +387,7 @@ class PackageBuildDependency:
 
     def get(self):
         # arguments processing
-        print(f"DBG: args : {self.args}")
+        pass
         # init BuildDependency class with args
         self.bd = BuildDependency(
             self.conn,
@@ -398,6 +409,5 @@ class PackageBuildDependency:
         if self.bd.status:
             # result processing
             return res, 200
-            # return self.args, 200
         else:
             return self.bd.error
