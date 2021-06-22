@@ -25,11 +25,9 @@ class ApiVersion(Resource):
     def get(self):
         return api, 200
 
-
 @app.route('/')
 def hello():
     return redirect("api", code=302)
-
 
 @app.before_request
 def init_db_connection():
