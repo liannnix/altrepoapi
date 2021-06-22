@@ -1,4 +1,4 @@
-from flask_restx import reqparse
+from flask_restx import reqparse, inputs
 
 package_info_args = reqparse.RequestParser()
 # package_info_args.add_argument(
@@ -74,7 +74,7 @@ pkg_build_dep_args.add_argument(
 )
 pkg_build_dep_args.add_argument(
     'finite_package',
-    type=bool,
+    type=inputs.boolean,
     default=False,
     required=False,
     help='topological tree leaves packages',
