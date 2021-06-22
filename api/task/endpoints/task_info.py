@@ -1,7 +1,7 @@
 from utils import get_logger, build_sql_error_response
 from utils import datetime_to_iso, mmhash, logger_level as ll
 from database.task_sql import tasksql
-from settings import namespace
+from settings import namespace as settings
 
 from collections import defaultdict
 
@@ -291,7 +291,7 @@ class TaskInfo:
     Returns:
         tuple(dict, int): retrun task information or error (if occured) and http response code (200, 400, 404, 500)
     """
-    DEBUG = namespace.SQL_DEBUG
+    DEBUG = settings.SQL_DEBUG
 
     def __init__(self, connection, id_, try_, iter_) -> None:
         self.conn = connection
