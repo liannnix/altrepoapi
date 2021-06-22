@@ -2,12 +2,12 @@ from utils import get_logger, build_sql_error_response, mmhash
 from utils import join_tuples, logger_level as ll
 from database.task_sql import tasksql
 from collections import defaultdict
-from settings import namespace
+from settings import namespace as settings
 
 logger = get_logger(__name__)
 
 class TaskRepo:
-    DEBUG = namespace.SQL_DEBUG
+    DEBUG = settings.SQL_DEBUG
 
     def __init__(self, connection, id, include_task_packages):
         self.conn = connection

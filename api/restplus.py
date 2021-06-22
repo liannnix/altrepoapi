@@ -1,5 +1,5 @@
 from flask_restx import Api
-from settings import namespace
+from settings import namespace as settings
 from utils import get_logger
 
 logger = get_logger(__name__)
@@ -17,7 +17,7 @@ def default_error_handler(e):
     message = 'An unhandled exception occurred.'
     logger.exception(message)
 
-    if not namespace.FLASK_DEBUG:
+    if not settings.FLASK_DEBUG:
         return {'message': message}, 500
 
 # @api.errorhandler(NoResultFound)
