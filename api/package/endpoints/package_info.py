@@ -3,8 +3,6 @@ from utils import datetime_to_iso, mmhash, logger_level as ll
 from database.package_sql import packagesql
 from settings import namespace
 
-from collections import defaultdict
-
 logger = get_logger(__name__)
 
 
