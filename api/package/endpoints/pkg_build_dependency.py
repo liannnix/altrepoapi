@@ -8,21 +8,21 @@ logger = get_logger(__name__)
 
 class BuildDependency:
     def __init__(
-        self, connection, pkgname, branch, arch, leaf, depth,
-        dptype, filter, filtersrc, finitepkg, debug_
+        self, connection, packages, branch, archs, leaf, depth,
+        dptype, filterbybin, filterbysrc, finitepkg, debug_
     ):
         self.conn = connection
         self.sql = packagesql
         self.DEBUG = debug_
         self.status = False
-        self.input_packages = pkgname
+        self.input_packages = packages
         self.branch = branch
-        self.arch = arch
+        self.arch = archs
         self.leaf = leaf
         self.depth = depth
         self.dptype = dptype
-        self.reqfilter = filter
-        self.reqfiltersrc = filtersrc
+        self.reqfilter = filterbybin
+        self.reqfiltersrc = filterbysrc
         self.finitepkg = finitepkg
         self.result = {}
 
@@ -42,7 +42,10 @@ class BuildDependency:
 
     def build_dependencies(self):
         # do all kind of black magic here
-        
+
+
+
+        # magic ends here
         self.status = True
         return self.result
 
@@ -54,40 +57,45 @@ class PackageBuildDependency:
         self.conn = connection
         self.sql = packagesql
         self.args = kwargs
-        self.validation_results = []
+        self.validation_results = None
 
     def check_params(self):
+        self.validation_results = []
         if self.args['branch'] not in lut.known_branches:
             self.validation_results.append(f"unknown package set name : {self.args['branch']}")
-            return False
+            self.validation_results.append(f"allowed package set names are : {lut.known_branches}")
 
-        for arch in self.args['arch']:
-            if arch not in lut.known_archs:
-                self.validation_results.append(f"unknown package arch : {arch}")
-                return False
+        if self.args['arch']:
+            for arch in self.args['arch']:
+                if arch not in lut.known_archs:
+                    self.validation_results.append(f"unknown package arch : {arch}")
 
         if self.args['depth'] < 1 or self.args['depth'] > settings.DEPENDENCY_MAX_DEPTH:
             self.validation_results.append(f"dependency depth should be in range (1...{settings.DEPENDENCY_MAX_DEPTH})")
-            return False
 
-        return True
+        if self.args['dptype'] not in ('source', 'binary', 'both'):
+            self.validation_results.append(f"dependency type should be one of 'source', 'binary' or 'both' not '{self.args['dptype']}'")
+
+        if self.validation_results != []:
+            return False
+        else:
+            return True
 
     def get(self):
         # arguments processing
         print(f"DBG: args : {self.args}")
-        pass
         # init BuildDependency class with args
         self.bd = BuildDependency(
             self.conn,
-            None,
+            self.args['package'],
             self.args['branch'],
             self.args['arch'],
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
+            self.args['leaf'],
+            self.args['depth'],
+            self.args['dptype'],
+            self.args['filter_by_package'],
+            self.args['filter_by_source'],
+            self.args['finite_package'],
             self.DEBUG)
         
         # build result

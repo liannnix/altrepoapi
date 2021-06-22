@@ -5,7 +5,7 @@ from api.restplus import api
 from utils import get_logger, url_logging
 
 from api.package.parsers import package_info_args, pkg_build_dep_args
-from api.package.serializers import package_info_model
+from api.package.serializers import package_info_model, pkg_build_dep_model
 from api.package.endpoints.package_info import PackageInfo
 from api.package.endpoints.pkg_build_dependency import PackageBuildDependency
 

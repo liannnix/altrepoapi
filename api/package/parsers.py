@@ -11,7 +11,7 @@ package_info_args = reqparse.RequestParser()
 
 pkg_build_dep_args = reqparse.RequestParser()
 pkg_build_dep_args.add_argument(
-    'name',
+    'package',
     type=str,
     action='split',
     required=True,
@@ -46,5 +46,37 @@ pkg_build_dep_args.add_argument(
     default=1,
     required=False,
     help='dependency depth',
+    location='args'
+)
+pkg_build_dep_args.add_argument(
+    'dptype',
+    type=str,
+    default='both',
+    required=False,
+    help='dependency type [source|binary|both]',
+    location='args'
+)
+pkg_build_dep_args.add_argument(
+    'filter_by_package',
+    type=str,
+    action='split',
+    required=False,
+    help='filter result by dependency on binary packages',
+    location='args'
+)
+pkg_build_dep_args.add_argument(
+    'filter_by_source',
+    type=str,
+    # action='split',
+    required=False,
+    help='filter result by dependency on source package',
+    location='args'
+)
+pkg_build_dep_args.add_argument(
+    'finite_package',
+    type=bool,
+    default=False,
+    required=False,
+    help='topological tree leaves packages',
     location='args'
 )

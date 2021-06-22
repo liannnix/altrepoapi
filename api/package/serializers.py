@@ -7,3 +7,7 @@ package_info_model = api.model('PackageInfoPackageModel',{
     'release': fields.String(description='package release'),
     'filename': fields.String(description='package file name')
 })
+
+pkg_build_dep_model = package_info_model = api.model('PackageBuildDependencyModel',{
+    
+})
