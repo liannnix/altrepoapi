@@ -31,7 +31,7 @@ class routeTaskInfo(Resource):
     @ns.expect(task_info_args)
     @ns.marshal_with(task_info_model, as_list=True)
     def get(self, id):
-        args = task_info_args.parse_args()
+        args = task_info_args.parse_args(strict=True)
         url_logging(logger, g.url)
         task_info = TaskInfo(g.connection, id, args['try'], args['iteration'])
         if not task_info.check_task_id():
@@ -58,7 +58,7 @@ class routeTaskRepo(Resource):
     @ns.expect(task_repo_args)
     @ns.marshal_with(task_repo_model)
     def get(self, id):
-        args = task_repo_args.parse_args()
+        args = task_repo_args.parse_args(strict=True)
         url_logging(logger, g.url)
         task_repo = TaskRepo(g.connection, id, args['include_task_packages'])
         if not task_repo.check_task_id():
