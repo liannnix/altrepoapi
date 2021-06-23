@@ -1,5 +1,5 @@
 from utils import get_logger, build_sql_error_response
-from utils import tuplelist_to_dict, join_tuples, logger_level as ll, convert_to_json
+from utils import tuplelist_to_dict, join_tuples, logger_level as ll, convert_to_dict
 from database.package_sql import packagesql
 from settings import namespace as settings
 from api.misc import lut
@@ -28,9 +28,7 @@ class BuildDependency:
         self.finitepkg = finitepkg
         self.result = {}
 
-    def store_sql_error(self, message, severity, http_code):
-        self.error = build_sql_error_response(message, self, http_code, self.DEBUG)
-        self.status = False
+    def _log_error(self, severity):
         if severity == ll.CRITICAL:
             logger.critical(self.error)
         elif severity == ll.ERROR:
@@ -42,19 +40,15 @@ class BuildDependency:
         else:
             logger.debug(self.error)
 
-    def store_error(self, message, severity, http_code):
+    def _store_sql_error(self, message, severity, http_code):
+        self.error = build_sql_error_response(message, self, http_code, self.DEBUG)
+        self.status = False
+        self._log_error(severity)
+
+    def _store_error(self, message, severity, http_code):
         self.error = message, http_code
         self.status = False
-        if severity == ll.CRITICAL:
-            logger.critical(self.error)
-        elif severity == ll.ERROR:
-            logger.error(self.error)
-        elif severity == ll.WARNING:
-            logger.warning(self.error)
-        elif severity == ll.INFO:
-            logger.info(self.error)
-        else:
-            logger.debug(self.error)
+        self._log_error(severity)
 
     def build_dependencies(self):
         # do all kind of black magic here
@@ -79,7 +73,7 @@ class BuildDependency:
         )
         status, response = self.conn.send_request()
         if status is False:
-            self.store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, ll.ERROR, 500)
             return self.result
 
         # base query - first iteration, build requires depth 1
@@ -93,7 +87,7 @@ class BuildDependency:
         )
         status, response = self.conn.send_request()
         if status is False:
-            self.store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, ll.ERROR, 500)
             return self.result
 
         if self.depth > 1:
@@ -109,7 +103,7 @@ class BuildDependency:
                 ), {'sfilter': sourcef, 'branch': self.branch})
             status, response = self.conn.send_request()
             if status is False:
-                self.store_sql_error(response, ll.ERROR, 500)
+                self._store_sql_error(response, ll.ERROR, 500)
                 return self.result
 
         self.conn.request_line = (
@@ -118,7 +112,7 @@ class BuildDependency:
         )
         status, response = self.conn.send_request()
         if status is False:
-            self.store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, ll.ERROR, 500)
             return self.result
 
         # get package acl
@@ -133,7 +127,7 @@ class BuildDependency:
         )
         status, response = self.conn.send_request()
         if status is False:
-            self.store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, ll.ERROR, 500)
             return self.result
 
         # get source dependencies
@@ -148,7 +142,7 @@ class BuildDependency:
             )
             status, response = self.conn.send_request()
             if status is False:
-                self.store_sql_error(response, ll.ERROR, 500)
+                self._store_sql_error(response, ll.ERROR, 500)
                 return self.result
 
         # get binary dependencies
@@ -163,14 +157,14 @@ class BuildDependency:
             )
             status, response = self.conn.send_request()
             if status is False:
-                self.store_sql_error(response, ll.ERROR, 500)
+                self._store_sql_error(response, ll.ERROR, 500)
                 return self.result
 
         # select all filtered package with dependencies
         self.conn.request_line = self.sql.get_all_filtred_pkgs_with_deps
         status, response = self.conn.send_request()
         if status is False:
-            self.store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, ll.ERROR, 500)
             return self.result
 
         pkgs_to_sort_dict = tuplelist_to_dict(response, 1)
@@ -192,7 +186,7 @@ class BuildDependency:
             )
             status, response = self.conn.send_request()
             if status is False:
-                self.store_sql_error(response, ll.ERROR, 500)
+                self._store_sql_error(response, ll.ERROR, 500)
                 return self.result
 
             filter_by_tops = join_tuples(response)
@@ -200,7 +194,7 @@ class BuildDependency:
         # check leaf, if true, get dependencies of leaf package
         if self.leaf:
             if self.leaf not in pkgs_to_sort_dict.keys():
-                self.store_error(
+                self._store_error(
                     {"message": f"Package {self.leaf} not in dependencies list for {self.packages}"},
                     ll.INFO,
                     404
@@ -254,7 +248,7 @@ class BuildDependency:
         )
         status, response = self.conn.send_request()
         if status is False:
-            self.store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, ll.ERROR, 500)
             return self.result
 
         # form list of packages with it information
@@ -286,7 +280,7 @@ class BuildDependency:
                 })
                 status, response = self.conn.send_request()
                 if status is False:
-                    self.store_sql_error(response, ll.ERROR, 500)
+                    self._store_sql_error(response, ll.ERROR, 500)
                     return self.result
 
                 reqfilter_binpkgs = join_tuples(response)
@@ -299,23 +293,23 @@ class BuildDependency:
                 base_query = base_query.format(pkg=reqfilter_binpkgs[0])
             else:
                 last_query = None
+                # FIXME: rewrite that awful cyclic SQL build!!!
                 for pkg in reqfilter_binpkgs:
                     if not last_query:
                         last_query = base_query.format(pkg=pkg)
 
-                    last_query = "{} AND pkgname IN ({})" \
+                    last_query = "{} AND pkg_name IN ({})" \
                                 "".format(last_query, base_query.format(pkg=pkg))
 
                 base_query = last_query
 
             self.conn.request_line = (
-                self.sql.get_filter_pkgs.format(base_query=base_query), {
-                    'branch': self.branch, 'archs': tuple(self.arch)
-                }
+                self.sql.get_filter_pkgs.format(base_query=base_query),
+                {'branch': self.branch, 'archs': tuple(self.arch)}
             )
             status, response = self.conn.send_request()
             if status is False:
-                self.store_sql_error(response, ll.ERROR, 500)
+                self._store_sql_error(response, ll.ERROR, 500)
                 return self.result
 
             filter_pkgs = join_tuples(response)
@@ -324,6 +318,7 @@ class BuildDependency:
         sorted_dict = {}
         for pkg in pkg_info_list:
             if (filter_pkgs and pkg[0] in filter_pkgs) or not filter_pkgs:
+                # FIXME: find out what below 'if' is for? doesn't make sense at a glance
                 # if task_id:
                 #     if pkg[0] not in input_pkgs:
                 #         sorted_dict[sorted_pkgs.index(pkg[0])] = pkg
@@ -335,10 +330,10 @@ class BuildDependency:
         if self.finitepkg:
             sorted_dict = [pkg for pkg in sorted_dict if pkg[0] in filter_by_tops]
         
-        js_keys = ['name', 'version', 'release', 'epoch', 'serial_', 'sourcerpm',
+        keys = ['name', 'version', 'release', 'epoch', 'serial_', 'sourcerpm',
                'branch', 'archs', 'buildtime', 'cycle', 'requires', 'acl']
 
-        self.result = convert_to_json(js_keys, sorted_dict)
+        self.result = convert_to_dict(keys, sorted_dict)
 
         # magic ends here
         self.status = True
@@ -355,6 +350,7 @@ class PackageBuildDependency:
         self.validation_results = None
 
     def check_params(self):
+        logger.debug(f"args : {self.args}")
         self.validation_results = []
         if self.args['branch'] not in lut.known_branches:
             self.validation_results.append(f"unknown package set name : {self.args['branch']}")
@@ -403,7 +399,7 @@ class PackageBuildDependency:
             self.DEBUG)
         
         # build result
-        res = self.bd.build_dependencies()
+        res = [_ for _ in self.bd.build_dependencies().values()]
 
         # format result
         if self.bd.status:

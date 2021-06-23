@@ -59,7 +59,7 @@ class routePackageBuildDependency(Resource):
     @ns.expect(pkg_build_dep_args)
     # @ns.marshal_with(pkg_build_dep_model)
     def get(self):
-        args = pkg_build_dep_args.parse_args()
+        args = pkg_build_dep_args.parse_args(strict=True)
         url_logging(logger, g.url)
         pkg_build_dep = PackageBuildDependency(g.connection, **args)
         if not pkg_build_dep.check_params():
