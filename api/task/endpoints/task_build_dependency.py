@@ -111,7 +111,6 @@ class TaskBuildDependency:
             )
             return self.error
         self.args['package'] = list({pkg[0] for pkg in response})
-        print(f"DBG: args : {self.args}")
         # init BuildDependency class with args
         self.bd = BuildDependency(
             self.conn,
