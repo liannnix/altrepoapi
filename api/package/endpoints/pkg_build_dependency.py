@@ -399,7 +399,11 @@ class PackageBuildDependency:
             self.DEBUG)
         
         # build result
-        res = [_ for _ in self.bd.build_dependencies().values()]
+        res = {
+            'request_args' : self.args,
+            'dependencies': [_ for _ in self.bd.build_dependencies().values()]
+        }
+        res['length'] = len(res['dependencies'])
 
         # format result
         if self.bd.status:
