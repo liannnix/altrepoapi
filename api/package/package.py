@@ -4,10 +4,11 @@ from flask_restx import Resource, abort
 from api.restplus import api
 from utils import get_logger, url_logging
 
-from api.package.parsers import package_info_args, pkg_build_dep_args
-from api.package.serializers import package_info_model, pkg_build_dep_model
+from api.package.parsers import package_info_args, pkg_build_dep_args, misconflict_pkg_args
+from api.package.serializers import package_info_model, pkg_build_dep_model, misconflict_pkgs_model
 from api.package.endpoints.package_info import PackageInfo
 from api.package.endpoints.pkg_build_dependency import PackageBuildDependency
+from api.package.endpoints.misconflict_packages import PackageMisconflictPackages
 
 
 logger = get_logger(__name__)
@@ -34,7 +35,6 @@ class routePackageInfo(Resource):
     def get(self, pkg):
         args = package_info_args.parse_args()
         url_logging(logger, g.url)
-        # pkg_info = PackageInfo(g.connection, id, args['try'], args['iteration'])
         pkg_info = PackageInfo(g.connection, pkg, args['pkg_hash'])
         if not pkg_info.check_package():
             abort(404, message=f"Package '{pkg}' not found in database", package=pkg)
@@ -68,3 +68,28 @@ class routePackageBuildDependency(Resource):
             args=args,
             validation_message=pkg_build_dep.validation_results)
         return pkg_build_dep.get()
+
+
+@ns.route('/misconflict/',
+    doc={
+        'description': ("get packages with conflicting files in packages"
+        "that do not have a conflict in dependencies"),
+        'responses': {
+            400: 'Request parameters validation error',
+            404: 'Requested data not found in database'
+        }
+    }
+)
+class routePackageMisconflictPackages(Resource):
+    @ns.expect(misconflict_pkg_args)
+    @ns.marshal_with(misconflict_pkgs_model)
+    def get(self):
+        args = misconflict_pkg_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        misconflict_pkg = PackageMisconflictPackages(g.connection, **args)
+        if not misconflict_pkg.check_params():
+            abort(400, 
+            message=f"Request parameters validation error",
+            args=args,
+            validation_message=misconflict_pkg.validation_results)
+        return misconflict_pkg.get()

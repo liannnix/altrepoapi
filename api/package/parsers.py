@@ -80,3 +80,28 @@ pkg_build_dep_args.add_argument(
     help='topological tree leaves packages',
     location='args'
 )
+
+misconflict_pkg_args = reqparse.RequestParser()
+misconflict_pkg_args.add_argument(
+    'package',
+    type=str,
+    action='split',
+    required=True,
+    help='package or list of packages',
+    location='args'
+)
+misconflict_pkg_args.add_argument(
+    'branch',
+    type=str,
+    required=True,
+    help='name of packageset',
+    location='args'
+)
+misconflict_pkg_args.add_argument(
+    'arch',
+    type=str,
+    action='split',
+    required=False,
+    help='list of packages architectures',
+    location='args'
+)
