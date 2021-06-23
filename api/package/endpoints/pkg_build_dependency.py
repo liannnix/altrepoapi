@@ -337,7 +337,6 @@ class BuildDependency:
 
         # magic ends here
         self.status = True
-        return self.result
 
 
 class PackageBuildDependency:
@@ -399,15 +398,16 @@ class PackageBuildDependency:
             self.DEBUG)
         
         # build result
-        res = {
-            'request_args' : self.args,
-            'dependencies': [_ for _ in self.bd.build_dependencies().values()]
-        }
-        res['length'] = len(res['dependencies'])
+        self.bd.build_dependencies()
 
         # format result
         if self.bd.status:
             # result processing
+            res = {
+                'request_args' : self.args,
+                'dependencies': [_ for _ in self.bd.result.values()]
+            }
+            res['length'] = len(res['dependencies'])
             return res, 200
         else:
             return self.bd.error
