@@ -131,3 +131,28 @@ task_info_model = api.model('TaskInfoModel',{
     'subtasks': fields.Nested(task_info_subtask_model, as_list=True, description='task subtasks'),
     'plan': fields.Nested(task_info_plan2_model, description='task packages add/delete')
 })
+
+task_build_dep_el_model = api.model('TaskBuildDependencyElementModel',{
+    'name': fields.String(description='package name'),
+    'version': fields.String(description='package version'),
+    'release': fields.String(description='package release'),
+    'epoch': fields.Integer(description='package name'),
+    'serial': fields.Integer(attribute='serial_', description='package name'),
+    'sourcerpm': fields.String(description='source package file'),
+    'branch': fields.String(description='package set name'),
+    'buildtime': fields.String(description='package build time'),
+    'archs': fields.List(fields.String, description='package archs'),
+    'cycle': fields.List(fields.String, description='package cycle dependencies'),
+    'requires': fields.List(fields.String, description='package requirements'),
+    'acl': fields.List(fields.String, description='package ACL list')
+})
+
+task_build_dep_model = package_info_model = api.model('TaskBuildDependencyModel',{
+    'id': fields.Integer(description='task id'),
+    'request_args': fields.Raw(description='request arguments'),
+    'length': fields.Integer(description='number of packages found'),
+    'dependencies': fields.Nested(task_build_dep_el_model,
+        description='build dependency results',
+        as_list=True
+    )
+})

@@ -3,11 +3,12 @@ from flask_restx import Resource, abort
 from api.restplus import api
 from utils import get_logger, url_logging
 
-from api.task.parsers import task_info_args, task_repo_args
-from api.task.serializers import task_info_model, task_repo_model, task_diff_model
+from api.task.parsers import task_info_args, task_repo_args, task_build_dep_args
+from api.task.serializers import task_info_model, task_repo_model, task_diff_model, task_build_dep_model
 from api.task.endpoints.task_diff import TaskDiff
 from api.task.endpoints.task_info import TaskInfo
 from api.task.endpoints.task_repo import TaskRepo
+from api.task.endpoints.task_build_dependency import TaskBuildDependency
 
 logger = get_logger(__name__)
 
@@ -87,3 +88,30 @@ class routeTaskDiff(Resource):
         if not task_diff.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
         return task_diff.get()
+
+
+@ns.route('/build_dependency/<int:id>',
+    doc={
+        'params': {'id': 'task ID'},
+        'description': "get packages build dependencies",
+        'responses': {
+            400: 'Request parameters validation error',
+            404: 'Requested data not found in database'
+        }
+    }
+)
+class routePackageBuildDependency(Resource):
+    @ns.expect(task_build_dep_args)
+    @ns.marshal_with(task_build_dep_model)
+    def get(self, id):
+        args = task_build_dep_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        task_build_dep = TaskBuildDependency(g.connection, id, **args)
+        if not task_build_dep.check_params():
+            abort(400, 
+            message=f"Request parameters validation error",
+            args=args,
+            validation_message=task_build_dep.validation_results)
+        if not task_build_dep.check_task_id():
+            abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
+        return task_build_dep.get()
