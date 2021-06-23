@@ -27,6 +27,7 @@ class BasePathNamespace:
     FLASK_DEBUG = True
     SQL_DEBUG = True
     LOG_LEVEL = logging.DEBUG
+    DEPENDENCY_MAX_DEPTH = 5
 
 
 namespace = BasePathNamespace()

@@ -461,4 +461,30 @@ GROUP BY
     dp_type
 """
 
+    build_task_src_packages = """
+WITH
+(
+    SELECT max(task_changed)
+    FROM TaskIterations_buffer
+    WHERE task_id = {id}
+) as last_changed
+SELECT DISTINCT pkg_name
+FROM Packages_buffer
+WHERE pkg_hash IN
+(
+    SELECT titer_srcrpm_hash
+    FROM TaskIterations_buffer
+    WHERE task_id = {id}
+        AND task_changed = last_changed
+)
+UNION ALL
+SELECT DISTINCT subtask_package
+FROM Tasks
+WHERE task_id = {id}
+    AND task_changed = last_changed
+    AND subtask_type = 'delete'
+    AND subtask_deleted = 0
+"""
+
+
 tasksql = SQL()
