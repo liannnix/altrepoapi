@@ -74,13 +74,11 @@ def convert_to_dict(keys, values):
     
     return res
 
-
 def convert_to_json(keys, values, sort=False):
     js = {}
 
     for i in range(len(values)):
-        js[i] = dict([(keys[j], values[i][j])
-                      for j in range(len(values[i]))])
+        js[i] = dict([(keys[j], values[i][j]) for j in range(len(values[i]))])
 
         for key in js[i]:
             if key == 'date':
@@ -89,7 +87,6 @@ def convert_to_json(keys, values, sort=False):
                 )
 
     return json.dumps(js, sort_keys=sort)
-
 
 def join_tuples(tuple_list):
     return tuple([tuple_[0] for tuple_ in tuple_list])
