@@ -22,9 +22,7 @@ class Task:
             'iter': iter_
         }
 
-    def store_sql_error(self, message, severity, http_code):
-        self.error = build_sql_error_response(message, self, http_code, self.DEBUG)
-        self.status = False
+    def _log_error(self, severity):
         if severity == ll.CRITICAL:
             logger.critical(self.error)
         elif severity == ll.ERROR:
@@ -36,6 +34,11 @@ class Task:
         else:
             logger.debug(self.error)
 
+    def _store_sql_error(self, message, severity, http_code):
+        self.error = build_sql_error_response(message, self, http_code, self.DEBUG)
+        self.status = False
+        self._log_error(severity)
+
     def build_task_state(self):
         if self.task['try'] is not None and self.task['iter'] is not None:
             try_iter = (self.task['try'], self.task['iter'])
@@ -45,10 +48,10 @@ class Task:
         self.conn.request_line = self.sql.task_repo_owner.format(id=self.task_id)
         status, response = self.conn.send_request()
         if not status:
-            self.store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, ll.ERROR, 500)
             return {}
         if not response:
-            self.store_sql_error(
+            self._store_sql_error(
                 {"Error": f"No data found in database for task '{self.task_id}'"},
                 ll.INFO, 404
             )
@@ -60,10 +63,10 @@ class Task:
         self.conn.request_line = self.sql.task_all_iterations.format(id=self.task_id)
         status, response = self.conn.send_request()
         if not status:
-            self.store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, ll.ERROR, 500)
             return {}
         if not response:
-            self.store_sql_error(
+            self._store_sql_error(
                 {"Error": f"No data found in database for task '{self.task_id}'"},
                 ll.INFO, 404
             )
@@ -78,7 +81,7 @@ class Task:
 
         if try_iter:
             if try_iter not in self.task['rebuilds']:
-                self.store_sql_error(
+                self._store_sql_error(
                     {"Error": f"No data found in database for task '{self.task_id}' with rebuild '{try_iter}'"},
                     ll.INFO, 404
                 )
@@ -96,10 +99,10 @@ class Task:
         )
         status, response = self.conn.send_request()
         if not status:
-            self.store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, ll.ERROR, 500)
             return {}
         if not response:
-            self.store_sql_error(
+            self._store_sql_error(
                 {"Error": f"No data found in database for task '{self.task_id}' with rebuild '{try_iter}'"},
                 ll.INFO, 404
             )
@@ -112,10 +115,10 @@ class Task:
         )
         status, response = self.conn.send_request()
         if not status:
-            self.store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, ll.ERROR, 500)
             return {}
         if not response:
-            self.store_sql_error(
+            self._store_sql_error(
                 {"Error": f"No data found in database for task '{self.task_id}' with rebuild '{try_iter}'"},
                 ll.INFO, 404
             )
@@ -128,10 +131,10 @@ class Task:
         )
         status, response = self.conn.send_request()
         if not status:
-            self.store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, ll.ERROR, 500)
             return {}
         if not response:
-            self.store_sql_error(
+            self._store_sql_error(
                 {"Error": f"No data found in database for task '{self.task_id}' with rebuild '{try_iter}'"},
                 ll.INFO, 404
             )
@@ -160,7 +163,7 @@ class Task:
         )
         status, response = self.conn.send_request()
         if not status:
-            self.store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, ll.ERROR, 500)
             return {}
         if not response:
             pass
@@ -188,7 +191,7 @@ class Task:
         )
         status, response = self.conn.send_request()
         if not status:
-            self.store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, ll.ERROR, 500)
             return {}
         if not response:
             pass
@@ -214,7 +217,7 @@ class Task:
         self.conn.request_line = self.sql.task_approvals.format(id=self.task_id)
         status, response = self.conn.send_request()
         if not status:
-            self.store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, ll.ERROR, 500)
             return {}
 
         for subtask in self.task['subtasks']:
