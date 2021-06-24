@@ -98,7 +98,7 @@ misconflict_pkg_args.add_argument(
     location='args'
 )
 misconflict_pkg_args.add_argument(
-    'arch',
+    'archs',
     type=str,
     action='split',
     required=False,
