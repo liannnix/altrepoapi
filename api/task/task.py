@@ -87,7 +87,10 @@ class routeTaskDiff(Resource):
         task_diff = TaskDiff(g.connection, id)
         if not task_diff.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
-        return task_diff.get()
+        result, code = task_diff.get()
+        if code != 200:
+            abort(code, message="Error occured during request handeling", details=result)
+        return result, code
 
 
 @ns.route('/build_dependency/<int:id>',
@@ -114,4 +117,7 @@ class routePackageBuildDependency(Resource):
             validation_message=task_build_dep.validation_results)
         if not task_build_dep.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
-        return task_build_dep.get()
+        result, code = task_build_dep.get()
+        if code != 200:
+            abort(code, message="Error occured during request handeling", details=result)
+        return result, code
