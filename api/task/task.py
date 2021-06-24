@@ -112,10 +112,12 @@ class routePackageBuildDependency(Resource):
         url_logging(logger, g.url)
         task_build_dep = TaskBuildDependency(g.connection, id, **args)
         if not task_build_dep.check_params():
-            abort(400, 
-            message=f"Request parameters validation error",
-            args=args,
-            validation_message=task_build_dep.validation_results)
+            abort(
+                400, 
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=task_build_dep.validation_results
+            )
         if not task_build_dep.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
         result, code = task_build_dep.get()
@@ -142,10 +144,12 @@ class routeTaskMisconflictPackages(Resource):
         url_logging(logger, g.url)
         task_misconflict = TaskMisconflictPackages(g.connection, id, **args)
         if not task_misconflict.check_params():
-            abort(400, 
-            message=f"Request parameters validation error",
-            args=args,
-            validation_message=task_misconflict.validation_results)
+            abort(
+                400, 
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=task_misconflict.validation_results
+            )
         if not task_misconflict.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
         result, code = task_misconflict.get()
