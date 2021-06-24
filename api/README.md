@@ -10,7 +10,7 @@ http://altrepo.api.address/api/
 
 ## Dependencies
 
-* flask-restx
+* !python3-module-flask-restx!
 * python3-module-flask
 * python3-module-clickhouse-driver
 * python3-module-rpm
