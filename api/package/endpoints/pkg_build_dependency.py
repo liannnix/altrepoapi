@@ -26,7 +26,7 @@ class BuildDependency:
         self.reqfilter = filterbybin
         self.reqfiltersrc = filterbysrc
         self.finitepkg = finitepkg
-        self.result = {}
+        self.result = None
 
     def _log_error(self, severity):
         if severity == ll.CRITICAL:
@@ -329,13 +329,10 @@ class BuildDependency:
 
         if self.finitepkg:
             sorted_dict = [pkg for pkg in sorted_dict if pkg[0] in filter_by_tops]
-        
-        keys = ['name', 'version', 'release', 'epoch', 'serial_', 'sourcerpm',
-               'branch', 'archs', 'buildtime', 'cycle', 'requires', 'acl']
-
-        self.result = convert_to_dict(keys, sorted_dict)
-
         # magic ends here
+        keys = ['name', 'version', 'release', 'epoch', 'serial_', 'sourcerpm',
+                'branch', 'archs', 'buildtime', 'cycle', 'requires', 'acl']
+        self.result = convert_to_dict(keys, sorted_dict)        
         self.status = True
 
 
