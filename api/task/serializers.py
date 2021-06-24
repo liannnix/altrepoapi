@@ -156,3 +156,23 @@ task_build_dep_model = package_info_model = api.model('TaskBuildDependencyModel'
         as_list=True
     )
 })
+
+misconflict_pkg_model = api.model('TaskMisconflictPackageModel',{
+    'input_package': fields.String(description='package name'),
+    'conflict_package': fields.String(description='package name'),
+    'version': fields.String(description='package version'),
+    'release': fields.String(description='package release'),
+    'epoch': fields.Integer(description='package name'),
+    'archs': fields.List(fields.String, description='package archs'),
+    'files_with_conflict': fields.List(fields.String, description='conflict files')
+})
+
+misconflict_pkgs_model = api.model('TaskMisconflictPackagesModel',{
+    'id': fields.Integer(description='task id'),
+    'request_args': fields.Raw(description='request arguments'),
+    'length': fields.Integer(description='number of packages found'),
+    'conflicts': fields.Nested(misconflict_pkg_model,
+        description='conflicts',
+        as_list=True
+    )
+})

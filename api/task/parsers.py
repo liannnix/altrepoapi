@@ -82,3 +82,13 @@ task_build_dep_args.add_argument(
     help='topological tree leaves packages',
     location='args'
 )
+
+task_misconflict_args = reqparse.RequestParser()
+task_misconflict_args.add_argument(
+    'archs',
+    type=str,
+    action='split',
+    required=False,
+    help='list of packages architectures',
+    location='args'
+)

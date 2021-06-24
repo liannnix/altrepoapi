@@ -3,11 +3,12 @@ from flask_restx import Resource, abort
 from api.restplus import api
 from utils import get_logger, url_logging
 
-from api.task.parsers import task_info_args, task_repo_args, task_build_dep_args
-from api.task.serializers import task_info_model, task_repo_model, task_diff_model, task_build_dep_model
+from api.task.parsers import task_info_args, task_repo_args, task_build_dep_args, task_misconflict_args
+from api.task.serializers import task_info_model, task_repo_model, task_diff_model, task_build_dep_model, misconflict_pkgs_model
 from api.task.endpoints.task_diff import TaskDiff
 from api.task.endpoints.task_info import TaskInfo
 from api.task.endpoints.task_repo import TaskRepo
+from api.task.endpoints.misconflict_packages import TaskMisconflictPackages
 from api.task.endpoints.task_build_dependency import TaskBuildDependency
 
 logger = get_logger(__name__)
@@ -118,6 +119,36 @@ class routePackageBuildDependency(Resource):
         if not task_build_dep.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
         result, code = task_build_dep.get()
+        if code != 200:
+            abort(code, message="Error occured during request handeling", details=result)
+        return result, code
+
+@ns.route('/misconflict/<int:id>',
+    doc={
+        'params': {'id': 'task ID'},
+        'description': ("get packages with conflicting files in packages "
+        "from task that do not have a conflict in dependencies"),
+        'responses': {
+            400: 'Request parameters validation error',
+            404: 'Requested data not found in database'
+        }
+    }
+)
+class routeTaskMisconflictPackages(Resource):
+    @ns.expect(task_misconflict_args)
+    @ns.marshal_with(misconflict_pkgs_model)
+    def get(self, id):
+        args = task_misconflict_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        task_misconflict = TaskMisconflictPackages(g.connection, id, **args)
+        if not task_misconflict.check_params():
+            abort(400, 
+            message=f"Request parameters validation error",
+            args=args,
+            validation_message=task_misconflict.validation_results)
+        if not task_misconflict.check_task_id():
+            abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
+        result, code = task_misconflict.get()
         if code != 200:
             abort(code, message="Error occured during request handeling", details=result)
         return result, code

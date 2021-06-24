@@ -486,5 +486,21 @@ WHERE task_id = {id}
     AND subtask_deleted = 0
 """
 
+    misconflict_get_pkgs_of_task = """
+WITH 
+    (
+        SELECT max(task_changed)
+        FROM TaskIterations_buffer
+        WHERE task_id = {id}
+    ) AS last_changed
+SELECT DISTINCT pkg_name
+FROM Packages_buffer
+WHERE pkg_hash IN 
+(
+    SELECT arrayJoin(titer_pkgs_hash)
+    FROM TaskIterations_buffer
+    WHERE (task_id = {id}) AND (task_changed = last_changed)
+)
+"""
 
 tasksql = SQL()
