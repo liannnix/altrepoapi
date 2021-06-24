@@ -26,7 +26,8 @@ class BuildDependency:
         self.reqfilter = filterbybin
         self.reqfiltersrc = filterbysrc
         self.finitepkg = finitepkg
-        self.result = None
+        self.result = {}
+        self.error = None
 
     def _log_error(self, severity):
         if severity == ll.CRITICAL:
@@ -74,7 +75,7 @@ class BuildDependency:
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, ll.ERROR, 500)
-            return self.result
+            return
 
         # base query - first iteration, build requires depth 1
         self.conn.request_line = (
@@ -88,7 +89,7 @@ class BuildDependency:
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, ll.ERROR, 500)
-            return self.result
+            return
 
         if self.depth > 1:
             # sql wrapper for increase depth
@@ -104,7 +105,7 @@ class BuildDependency:
             status, response = self.conn.send_request()
             if status is False:
                 self._store_sql_error(response, ll.ERROR, 500)
-                return self.result
+                return
 
         self.conn.request_line = (
             self.sql.get_acl.format(tmp_table=tmp_table_name),
@@ -113,7 +114,7 @@ class BuildDependency:
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, ll.ERROR, 500)
-            return self.result
+            return
 
         # get package acl
         pkg_acl_dict = {}
@@ -128,7 +129,7 @@ class BuildDependency:
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, ll.ERROR, 500)
-            return self.result
+            return
 
         # get source dependencies
         if self.dptype in ('source', 'both'):
@@ -143,7 +144,7 @@ class BuildDependency:
             status, response = self.conn.send_request()
             if status is False:
                 self._store_sql_error(response, ll.ERROR, 500)
-                return self.result
+                return
 
         # get binary dependencies
         if self.dptype in ('binary', 'both'):
@@ -158,20 +159,21 @@ class BuildDependency:
             status, response = self.conn.send_request()
             if status is False:
                 self._store_sql_error(response, ll.ERROR, 500)
-                return self.result
+                return
 
         # select all filtered package with dependencies
         self.conn.request_line = self.sql.get_all_filtred_pkgs_with_deps
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, ll.ERROR, 500)
-            return self.result
+            return
 
         pkgs_to_sort_dict = tuplelist_to_dict(response, 1)
 
         if not pkgs_to_sort_dict:
+            # nothing left after filtering
             self.status = True
-            return self.result
+            return
 
         if self.finitepkg:
             all_dependencies = []
@@ -187,7 +189,7 @@ class BuildDependency:
             status, response = self.conn.send_request()
             if status is False:
                 self._store_sql_error(response, ll.ERROR, 500)
-                return self.result
+                return
 
             filter_by_tops = join_tuples(response)
 
@@ -199,7 +201,7 @@ class BuildDependency:
                     ll.INFO,
                     404
                 )
-                return self.result
+                return
 
         pkg_ls_with_empty_reqs = []
         for pkg, reqs in pkgs_to_sort_dict.items():
@@ -249,7 +251,7 @@ class BuildDependency:
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, ll.ERROR, 500)
-            return self.result
+            return
 
         # form list of packages with it information
         pkg_info_list = []
@@ -281,7 +283,7 @@ class BuildDependency:
                 status, response = self.conn.send_request()
                 if status is False:
                     self._store_sql_error(response, ll.ERROR, 500)
-                    return self.result
+                    return
 
                 reqfilter_binpkgs = join_tuples(response)
 
@@ -310,7 +312,7 @@ class BuildDependency:
             status, response = self.conn.send_request()
             if status is False:
                 self._store_sql_error(response, ll.ERROR, 500)
-                return self.result
+                return
 
             filter_pkgs = join_tuples(response)
 
