@@ -64,7 +64,10 @@ class MisconflictPackages:
             return
         if not response:
             self._store_error(
-                {"message": f"Packages {list(self.packages)} not in package set '{self.branch}' for archs {list(self.archs)}"},
+                {"message": (
+                    f"Packages {list(self.packages)} not in package set '{self.branch}'"
+                    f" for archs {list(self.archs)}"
+                )},
                 ll.INFO, 404
             )
             return
@@ -77,7 +80,11 @@ class MisconflictPackages:
         if len(input_pkgs_names) != len(self.packages):
             # return utils.json_str_error("Error of input data.")
             self._store_error(
-                {"message": f"Packages ({set(self.packages) - input_pkgs_names}) not in package set '{self.branch}'"},
+                {"message": (
+                    f"Packages ({set(self.packages) - input_pkgs_names}) not in"
+                    f" package set '{self.branch}'"
+                    f" for archs {list(self.archs)}"
+                )},
                 ll.INFO,
                 404
             )

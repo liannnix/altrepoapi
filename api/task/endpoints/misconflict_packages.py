@@ -76,7 +76,7 @@ class TaskMisconflictPackages:
             self._store_sql_error(response, ll.ERROR, 500)
             return self.error
         if not response:
-            self._store_sql_error(
+            self._store_error(
                 {"message": f"No data found in database for task '{self.task_id}'"},
                 ll.INFO, 404
             )
@@ -90,7 +90,7 @@ class TaskMisconflictPackages:
             self._store_sql_error(response, ll.ERROR, 500)
             return self.error
         if not response:
-            self._store_sql_error(
+            self._store_error(
                 {"message": f"No packages found in database for task '{self.task_id}'"},
                 ll.INFO, 404
             )
