@@ -75,7 +75,7 @@ class routePackageBuildDependency(Resource):
 
 @ns.route('/misconflict/',
     doc={
-        'description': ("get packages with conflicting files in packages"
+        'description': ("get packages with conflicting files in packages "
         "that do not have a conflict in dependencies"),
         'responses': {
             400: 'Request parameters validation error',
