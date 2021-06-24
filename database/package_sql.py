@@ -376,5 +376,121 @@ WHERE pkg_name IN
     AND pkg_arch IN %(archs)s
 """
 
+    misconflict_get_hshs_by_pkgs = """
+SELECT
+    pkg_hash,
+    pkg_name
+FROM last_packages
+WHERE pkg_name IN %(pkgs)s
+  AND pkgset_name = %(branch)s
+  AND pkg_sourcepackage = 0
+  AND pkg_arch IN %(arch)s
+"""
+
+    misconflict_get_pkgs_with_conflict = """
+SELECT *
+FROM
+(
+    SELECT
+        InPkg.pkg_hash,
+        pkg_hash,
+        files,
+        foundpkgname
+    FROM
+    (
+        SELECT
+            InPkg.pkg_hash,
+            pkg_hash,
+            groupUniqArray(file_hashname) AS files
+        FROM
+        (
+            SELECT
+                pkg_hash,
+                file_hashname
+            FROM Files_buffer
+            PREWHERE file_hashname IN
+            (
+                SELECT file_hashname
+                FROM Files_buffer
+                WHERE pkg_hash IN %(hshs)s AND file_class != 'directory'
+            )
+                AND pkg_hash IN
+                (
+                    SELECT pkg_hash
+                    FROM last_packages
+                    WHERE pkg_hash NOT IN %(hshs)s
+                        AND pkgset_name= %(branch)s
+                        AND pkg_sourcepackage = 0
+                        AND pkg_name NOT LIKE '%%-debuginfo'
+                        AND pkg_arch IN %(arch)s
+                )
+            ) AS LeftPkg
+            LEFT JOIN
+            (
+                SELECT
+                    pkg_hash,
+                    file_hashname
+                FROM Files_buffer
+                WHERE pkg_hash IN %(hshs)s AND file_class != 'directory'
+            ) AS InPkg USING file_hashname
+        GROUP BY (InPkg.pkg_hash, pkg_hash)
+    ) AS Sel1
+    LEFT JOIN
+    (
+        SELECT
+            pkg_name AS foundpkgname,
+            pkg_hash
+        FROM last_packages
+        WHERE pkgset_name = %(branch)s AND pkg_sourcepackage = 0
+    ) AS pkgCom ON Sel1.pkg_hash = pkgCom.pkg_hash
+) AS Sel2
+LEFT JOIN
+(
+    SELECT
+        pkg_name AS inpkgname,
+        pkg_hash
+    FROM last_packages
+    WHERE pkgset_name = %(branch)s AND pkg_sourcepackage = 0
+) AS pkgIn ON pkgIn.pkg_hash = InPkg.pkg_hash
+WHERE foundpkgname != inpkgname
+"""
+
+    misconflict_get_fnames_by_fnhashs = """
+SELECT fn_hash,
+       fn_name
+FROM FileNames_buffer
+WHERE fn_hash IN %(hshs)s
+"""
+
+    misconflict_get_pkg_archs = """
+SELECT
+    pkg_name,
+    groupUniqArray(pkg_arch)
+FROM Packages_buffer
+WHERE pkg_hash IN {hshs}
+GROUP BY pkg_name
+"""
+
+    misconflict_get_meta_by_hshs = """
+SELECT 
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_epoch,
+    groupUniqArray(pkg_arch)
+FROM last_packages
+WHERE pkg_name IN %(pkgs)s
+    AND pkgset_name = %(branch)s
+    AND pkg_sourcepackage = 0
+    AND pkg_arch IN %(arch)s
+GROUP BY 
+(
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_epoch
+)
+"""
+
 
 packagesql = SQL()
