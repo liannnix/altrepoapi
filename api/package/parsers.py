@@ -83,7 +83,7 @@ pkg_build_dep_args.add_argument(
 
 misconflict_pkg_args = reqparse.RequestParser()
 misconflict_pkg_args.add_argument(
-    'package',
+    'packages',
     type=str,
     action='split',
     required=True,

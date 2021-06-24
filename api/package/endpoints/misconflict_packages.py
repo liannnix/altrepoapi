@@ -19,7 +19,8 @@ class MisconflictPackages:
         self.packages = packages
         self.branch = branch
         self.arch = archs
-        self.result = None
+        self.result = {}
+        self.error = None
 
     def _log_error(self, severity):
         if severity == ll.CRITICAL:
@@ -60,13 +61,13 @@ class MisconflictPackages:
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, ll.ERROR, 500)
-            return self.result
+            return
         if not response:
             self._store_error(
-                {"message": f"Packages {self.packages} not in package set {self.branch}"},
+                {"message": f"Packages {list(self.packages)} not in package set '{self.branch}'"},
                 ll.INFO, 404
             )
-            return self.result
+            return
 
         # check the existence of a package by comparing the number of input
         # and selected from database
@@ -80,7 +81,7 @@ class MisconflictPackages:
                 ll.INFO,
                 404
             )
-            return self.result
+            return
 
         # get list of (input package | conflict package | conflict files)
         self.conn.request_line = (
@@ -90,11 +91,11 @@ class MisconflictPackages:
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, ll.ERROR, 500)
-            return self.result
+            return
         if not response:
             # no conflict found
             self.status = True
-            return self.result
+            return
         # replace 'file_hashname' by 'fn_name' from FileNames
         hshs_files = response
         # 1. collect all files_hashnames
@@ -116,7 +117,7 @@ class MisconflictPackages:
                 ll.INFO,
                 500
             )
-            return self.result
+            return
 
         f_hashnames = {}
         for r in response:
@@ -151,7 +152,7 @@ class MisconflictPackages:
                 ll.ERROR,
                 500
             )
-            return self.result
+            return
 
         # create dict with package names by hashes
         hsh_name_dict = defaultdict(dict)
@@ -183,7 +184,7 @@ class MisconflictPackages:
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, ll.ERROR, 500)
-            return self.result
+            return
 
         pkg_archs_dict = tuplelist_to_dict(response, 1)
 
@@ -205,7 +206,7 @@ class MisconflictPackages:
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, ll.ERROR, 500)
-            return self.result
+            return
 
         # form dict name - package info
         name_info_dict = {}
@@ -265,7 +266,7 @@ class PackageMisconflictPackages:
         # init BuildDependency class with args
         self.mp = MisconflictPackages(
             self.conn,
-            self.args['package'],
+            self.args['packages'],
             self.args['branch'].lower(),
             self.args['arch'],
             self.DEBUG)
@@ -280,7 +281,7 @@ class PackageMisconflictPackages:
                 'request_args' : self.args,
                 'conflicts': [_ for _ in self.mp.result.values()]
             }
-            res['length'] = len(res['dependencies'])
+            res['length'] = len(res['conflicts'])
             return res, 200
         else:
             return self.mp.error
