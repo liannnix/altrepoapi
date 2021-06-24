@@ -67,7 +67,10 @@ class routePackageBuildDependency(Resource):
             message=f"Request parameters validation error",
             args=args,
             validation_message=pkg_build_dep.validation_results)
-        return pkg_build_dep.get()
+        result, code = pkg_build_dep.get()
+        if code != 200:
+            abort(code, message="Error occured during request handeling", details=result)
+        return result, code
 
 
 @ns.route('/misconflict/',
@@ -92,4 +95,7 @@ class routePackageMisconflictPackages(Resource):
             message=f"Request parameters validation error",
             args=args,
             validation_message=misconflict_pkg.validation_results)
-        return misconflict_pkg.get()
+        result, code = misconflict_pkg.get()
+        if code != 200:
+            abort(code, message="Error occured during request handeling", details=result)
+        return result, code
