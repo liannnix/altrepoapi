@@ -193,6 +193,7 @@ task_find_pkgset_el_model = ns.model('TaskFindPackagesetElementModel',{
 
 task_find_pkgset_model = ns.model('TaskFindPackagesetModel',{
     'id': fields.Integer(description='task id'),
+    'request_args': fields.Raw(description='request arguments'),
     'task_packages': fields.List(fields.String, description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
     'packages': fields.Nested(task_find_pkgset_el_model,

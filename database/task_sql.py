@@ -519,6 +519,7 @@ SELECT DISTINCT
 FROM last_packages_with_source
 WHERE sourcepkgname IN %(pkgs)s
     AND pkg_name NOT LIKE '%%-debuginfo'
+    {branchs}
 GROUP BY
     pkgset_name,
     sourcepkgname,

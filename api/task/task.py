@@ -12,8 +12,8 @@ from .endpoints.find_packageset import FindPackageset
 
 ns = Namespace('task', description="Task's information API")
 
-from .parsers import task_info_args, task_repo_args
-from .parsers import task_misconflict_args, task_build_dep_args
+from .parsers import task_info_args, task_repo_args, task_misconflict_args
+from .parsers import task_build_dep_args, task_find_pkgset_args
 from .serializers import task_info_model, task_repo_model, task_diff_model
 from .serializers import task_build_dep_model, misconflict_pkgs_model, task_find_pkgset_model
 
@@ -170,10 +170,19 @@ class routeTaskMisconflictPackages(Resource):
     }
 )
 class routeTaskDiff(Resource):
+    @ns.expect(task_find_pkgset_args)
     @ns.marshal_with(task_find_pkgset_model)
     def get(self, id):
         url_logging(logger, g.url)
-        task = FindPackageset(g.connection, id)
+        args = task_find_pkgset_args.parse_args(strict=True)
+        task = FindPackageset(g.connection, id,  **args)
+        if not task.check_params():
+            abort(
+                400, 
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=task.validation_results
+            )
         if not task.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
         result, code = task.get()

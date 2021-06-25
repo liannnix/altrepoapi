@@ -92,3 +92,13 @@ task_misconflict_args.add_argument(
     help='list of packages architectures',
     location='args'
 )
+
+task_find_pkgset_args = reqparse.RequestParser()
+task_find_pkgset_args.add_argument(
+    'branches',
+    type=str,
+    action='split',
+    required=False,
+    help='list of package sets to filter result',
+    location='args'
+)
