@@ -1,13 +1,86 @@
 from flask_restx import reqparse, inputs
 
 package_info_args = reqparse.RequestParser()
-# package_info_args.add_argument(
-#     'pkg_hash',
-#     type=int,
-#     required=False,
-#     help='package hash',
-#     location='args'
-# )
+package_info_args.add_argument(
+    'sha1',
+    type=str,
+    required=False,
+    help='package SHA1 checksum',
+    location='args'
+)
+package_info_args.add_argument(
+    'name',
+    type=str,
+    required=False,
+    help='package name',
+    location='args'
+)
+package_info_args.add_argument(
+    'version',
+    type=str,
+    required=False,
+    help='package version',
+    location='args'
+)
+package_info_args.add_argument(
+    'release',
+    type=str,
+    required=False,
+    help='package release',
+    location='args'
+)
+package_info_args.add_argument(
+    'arch',
+    type=str,
+    required=False,
+    help='package arch',
+    location='args'
+)
+package_info_args.add_argument(
+    'disttag',
+    type=str,
+    required=False,
+    help='package disttag',
+    location='args'
+)
+package_info_args.add_argument(
+    'source',
+    type=inputs.boolean,
+    default=False,
+    required=False,
+    help='is source package',
+    location='args'
+)
+package_info_args.add_argument(
+    'packager',
+    type=str,
+    required=False,
+    help='package packager name',
+    location='args'
+)
+package_info_args.add_argument(
+    'packager_email',
+    type=str,
+    required=False,
+    help='package packager email',
+    location='args'
+)
+package_info_args.add_argument(
+    'branch',
+    type=str,
+    required=False,
+    help='name of packageset',
+    location='args'
+)
+package_info_args.add_argument(
+    'full',
+    type=inputs.boolean,
+    default=False,
+    required=False,
+    help='show full package information',
+    location='args'
+)
+
 
 pkg_build_dep_args = reqparse.RequestParser()
 pkg_build_dep_args.add_argument(

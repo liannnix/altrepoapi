@@ -2,7 +2,7 @@ from os import name
 from flask import Blueprint, g
 from flask_restx import Resource, abort
 from api.restplus import api
-from utils import get_logger, url_logging
+from utils import get_logger, url_logging, response_error_parser
 
 from api.package.parsers import package_info_args, pkg_build_dep_args, misconflict_pkg_args
 from api.package.serializers import package_info_model, pkg_build_dep_model, misconflict_pkgs_model
@@ -18,12 +18,10 @@ task_bp = Blueprint('package', __name__)
 ns = api.namespace('package', description="Packages information API")
 
 
-@ns.route('/package_info/<string:pkg>',
+@ns.route('/package_info/',
     doc={
-        'params': {'pkg': 'package name'},
-        'description': "get information for package by name",
+        'description': "get information for package by parameters from last packages",
         'responses': {
-            200: 'Success',
             400: 'Request parameters validation error',
             404: 'Package not found in database'
         }
@@ -32,17 +30,20 @@ ns = api.namespace('package', description="Packages information API")
 class routePackageInfo(Resource):
     @ns.expect(package_info_args)
     @ns.marshal_with(package_info_model, as_list=True)
-    def get(self, pkg):
-        args = package_info_args.parse_args()
+    def get(self):
+        args = package_info_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        pkg_info = PackageInfo(g.connection, pkg, args['pkg_hash'])
-        if not pkg_info.check_package():
-            abort(404, message=f"Package '{pkg}' not found in database", package=pkg)
+        pkg_info = PackageInfo(g.connection, **args)
         if not pkg_info.check_params():
-            abort(400, message=f"Request parameters validation failed", args=args)
+            abort(
+                400, 
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=pkg_info.validation_results
+                )
         result, code =  pkg_info.get()
         if code != 200:
-            abort(code, message="Error occured during request handeling", details=result)
+            abort(code, **response_error_parser(result))
         return result, code
 
 
@@ -63,13 +64,15 @@ class routePackageBuildDependency(Resource):
         url_logging(logger, g.url)
         pkg_build_dep = PackageBuildDependency(g.connection, **args)
         if not pkg_build_dep.check_params():
-            abort(400, 
-            message=f"Request parameters validation error",
-            args=args,
-            validation_message=pkg_build_dep.validation_results)
+            abort(
+                400, 
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=pkg_build_dep.validation_results
+                )
         result, code = pkg_build_dep.get()
         if code != 200:
-            abort(code, message="Error occured during request handeling", details=result)
+            abort(code, **response_error_parser(result))
         return result, code
 
 
@@ -91,11 +94,13 @@ class routePackageMisconflictPackages(Resource):
         url_logging(logger, g.url)
         misconflict_pkg = PackageMisconflictPackages(g.connection, **args)
         if not misconflict_pkg.check_params():
-            abort(400, 
-            message=f"Request parameters validation error",
-            args=args,
-            validation_message=misconflict_pkg.validation_results)
+            abort(
+                400, 
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=misconflict_pkg.validation_results
+                )
         result, code = misconflict_pkg.get()
         if code != 200:
-            abort(code, message="Error occured during request handeling", details=result)
+            abort(code, **response_error_parser(result))
         return result, code

@@ -492,5 +492,38 @@ GROUP BY
 )
 """
 
+    pkg_info_get_changelog = """
+SELECT
+    pkg_hash,
+    changelog
+FROM PackageChangelog_view
+WHERE pkg_hash IN %(pkghshs)s
+"""
+
+    pkg_info_get_pkgs_template = """
+SELECT DISTINCT
+    pkg_hash,
+    {p_params}
+FROM last_packages
+WHERE {p_values} {branch}
+"""
+
+    pkg_info_get_files = """
+SELECT
+    pkg_hash,
+    groupUniqArray(file_name)
+FROM Files_view
+WHERE pkg_hash IN %(pkghshs)s
+GROUP BY pkg_hash
+"""
+
+    pkg_info_get_depends = """
+SELECT DISTINCT
+    pkg_hash,
+    dp_type,
+    dp_name
+FROM last_depends
+WHERE pkg_hash IN %(pkghshs)s
+"""
 
 packagesql = SQL()
