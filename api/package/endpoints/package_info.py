@@ -52,9 +52,6 @@ class PackageInfo:
                 self.validation_results.append(f"unknown package arch : {self.args['arch']}")
                 self.validation_results.append(f"allowed archs are : {lut.default_archs}")
 
-        # if self.args['buildtime'] is not None and self.args['buildtime'] <= 0:
-        #     self.validation_results.append(f"'buildtime' should be positive integer UNIX time")
-
         param_keys = ('sha1', 'name', 'version', 'release', 'arch', 'disttag', 'packager', 'packager_email')
         is_set = False
         for k in param_keys:
