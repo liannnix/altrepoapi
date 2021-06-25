@@ -1,7 +1,7 @@
 import os
 import getpass
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 
 
 @dataclass

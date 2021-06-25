@@ -1,7 +1,9 @@
 from flask import  Flask, redirect, g, Blueprint, request
 from flask_restx import Resource, fields
+
 from utils import get_logger
 from settings import namespace as settings
+
 from database.connection import Connection
 from api import api
 

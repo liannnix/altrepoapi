@@ -1,8 +1,9 @@
+from settings import namespace as settings
 from utils import get_logger, build_sql_error_response
 from utils import tuplelist_to_dict, join_tuples, logger_level as ll, convert_to_dict
-from database.package_sql import packagesql
-from settings import namespace as settings
+
 from api.misc import lut
+from database.package_sql import packagesql
 from libs.dependency_sorting import SortList
 
 logger = get_logger(__name__)

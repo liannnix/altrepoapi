@@ -1,8 +1,9 @@
+from settings import namespace as settings
 from utils import get_logger, build_sql_error_response, logger_level as ll
+
+from api.misc import lut
 from database.task_sql import tasksql
 from api.package.endpoints.pkg_build_dependency import BuildDependency
-from api.misc import lut
-from settings import namespace as settings
 
 logger = get_logger(__name__)
 

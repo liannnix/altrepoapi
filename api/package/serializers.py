@@ -1,4 +1,5 @@
 from flask_restx import fields
+
 from api.package.package import ns
 
 package_info_changelog_el_model = ns.model('PackageInfoChangelogElementModel', {

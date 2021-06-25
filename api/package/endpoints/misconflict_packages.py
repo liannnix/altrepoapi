@@ -1,9 +1,11 @@
 from collections import defaultdict
-from utils import get_logger, build_sql_error_response, logger_level as ll
-from utils import tuplelist_to_dict, join_tuples, remove_duplicate, convert_to_dict
-from database.package_sql import packagesql
+
 from settings import namespace as settings
+from utils import get_logger, build_sql_error_response, logger_level as ll
+from utils import tuplelist_to_dict, remove_duplicate, convert_to_dict
+
 from api.misc import lut
+from database.package_sql import packagesql
 from libs.conflict_filter import ConflictFilter
 from libs.exceptions import SqlRequestError
 

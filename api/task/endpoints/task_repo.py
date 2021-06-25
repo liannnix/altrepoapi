@@ -1,8 +1,10 @@
+from collections import defaultdict
+
+from settings import namespace as settings
 from utils import get_logger, build_sql_error_response, mmhash
 from utils import join_tuples, logger_level as ll
+
 from database.task_sql import tasksql
-from collections import defaultdict
-from settings import namespace as settings
 
 logger = get_logger(__name__)
 

@@ -1,7 +1,8 @@
-from utils import get_logger, build_sql_error_response, logger_level as ll
-from database.task_sql import tasksql
 from settings import namespace as settings
+from utils import get_logger, build_sql_error_response, logger_level as ll
+
 from api.misc import lut
+from database.task_sql import tasksql
 from api.package.endpoints.misconflict_packages import MisconflictPackages
 
 logger = get_logger(__name__)

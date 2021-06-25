@@ -1,11 +1,13 @@
 from copy import deepcopy
 from collections import defaultdict
+
+from settings import namespace as settings
 from utils import get_logger, build_sql_error_response
 from utils import join_tuples, remove_duplicate, logger_level as ll
+
+from api.misc import lut
 from database.task_sql import tasksql
 from api.task.endpoints.task_repo import TaskRepo
-from api.misc import lut
-from settings import namespace as settings
 
 logger = get_logger(__name__)
 

@@ -1,7 +1,8 @@
-import time
+from time import sleep
 from clickhouse_driver import Client, errors
-from utils import get_logger, exception_to_logger, json_str_error, print_statusbar, func_time
+
 from settings import namespace
+from utils import get_logger, exception_to_logger, json_str_error, print_statusbar, func_time
 
 logger = get_logger(__name__)
 
@@ -97,7 +98,7 @@ class Connection:
                 if status:
                     break
 
-                time.sleep(namespace.TRY_TIMEOUT)
+                sleep(namespace.TRY_TIMEOUT)
 
         if status:
             self.db_connection.db_query = self.request_line

@@ -1,9 +1,10 @@
+from collections import defaultdict
+
+from settings import namespace as settings
 from utils import get_logger, build_sql_error_response
 from utils import datetime_to_iso, mmhash, logger_level as ll
-from database.task_sql import tasksql
-from settings import namespace as settings
 
-from collections import defaultdict
+from database.task_sql import tasksql
 
 logger = get_logger(__name__)
 

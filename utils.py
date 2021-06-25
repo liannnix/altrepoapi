@@ -1,3 +1,4 @@
+import mmh3
 import json
 import time
 import logging
@@ -5,11 +6,10 @@ import datetime
 import argparse
 import configparser
 from collections import defaultdict
-import mmh3
 from urllib.parse import unquote
 from dataclasses import dataclass
 
-from settings import namespace
+from settings import namespace as settings
 
 @dataclass(frozen=True)
 class logger_level:
@@ -26,8 +26,8 @@ def mmhash(val):
 def get_logger(name):
     logging.basicConfig(
         format=u'%(levelname)-8s [%(asctime)s] %(message)s',
-        level=namespace.LOG_LEVEL,
-        filename=namespace.LOG_FILE
+        level=settings.LOG_LEVEL,
+        filename=settings.LOG_FILE
     )
     logger = logging.getLogger(name)
 
