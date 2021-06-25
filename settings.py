@@ -24,7 +24,7 @@ class BasePathNamespace:
     TRY_TIMEOUT = 5
     DATABASE_USER = 'default'
     DATABASE_PASS = ''
-    FLASK_DEBUG = True
+    FLASK_DEBUG = False
     SQL_DEBUG = True
     LOG_LEVEL = logging.DEBUG
     DEPENDENCY_MAX_DEPTH = 5
