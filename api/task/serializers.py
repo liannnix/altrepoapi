@@ -136,8 +136,8 @@ task_build_dep_el_model = api.model('TaskBuildDependencyElementModel',{
     'name': fields.String(description='package name'),
     'version': fields.String(description='package version'),
     'release': fields.String(description='package release'),
-    'epoch': fields.Integer(description='package name'),
-    'serial': fields.Integer(attribute='serial_', description='package name'),
+    'epoch': fields.Integer(description='package epoch'),
+    'serial': fields.Integer(attribute='serial_', description='package serial'),
     'sourcerpm': fields.String(description='source package file'),
     'branch': fields.String(description='package set name'),
     'buildtime': fields.String(description='package build time'),
@@ -162,7 +162,7 @@ misconflict_pkg_model = api.model('TaskMisconflictPackageModel',{
     'conflict_package': fields.String(description='package name'),
     'version': fields.String(description='package version'),
     'release': fields.String(description='package release'),
-    'epoch': fields.Integer(description='package name'),
+    'epoch': fields.Integer(description='package epoch'),
     'archs': fields.List(fields.String, description='package archs'),
     'files_with_conflict': fields.List(fields.String, description='conflict files')
 })
