@@ -3,16 +3,16 @@ from flask_restx import Resource, abort, Namespace
 
 from utils import get_logger, url_logging, response_error_parser
 
-from api.task.endpoints.task_diff import TaskDiff
-from api.task.endpoints.task_info import TaskInfo
-from api.task.endpoints.task_repo import TaskRepo
-from api.task.endpoints.misconflict_packages import TaskMisconflictPackages
-from api.task.endpoints.task_build_dependency import TaskBuildDependency
+from .endpoints.task_diff import TaskDiff
+from .endpoints.task_info import TaskInfo
+from .endpoints.task_repo import TaskRepo
+from .endpoints.misconflict_packages import TaskMisconflictPackages
+from .endpoints.task_build_dependency import TaskBuildDependency
 
 ns = Namespace('task', description="Task's information API")
 
-from api.task.parsers import task_info_args, task_repo_args, task_build_dep_args, task_misconflict_args
-from api.task.serializers import task_info_model, task_repo_model, task_diff_model, task_build_dep_model, misconflict_pkgs_model
+from .parsers import task_info_args, task_repo_args, task_build_dep_args, task_misconflict_args
+from .serializers import task_info_model, task_repo_model, task_diff_model, task_build_dep_model, misconflict_pkgs_model
 
 logger = get_logger(__name__)
 
