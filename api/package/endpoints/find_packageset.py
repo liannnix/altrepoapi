@@ -59,7 +59,7 @@ class FindPackageset:
 
         if not response:
             self._store_error(
-                {"message": f"No results found in last packages for given parameters",
+                {"message": f"No results found in last package sets for given parameters",
                 "args": self.args},
                 ll.INFO,
                 404
