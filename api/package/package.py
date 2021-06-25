@@ -31,15 +31,15 @@ class routePackageInfo(Resource):
     def get(self):
         args = package_info_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        pkg_info = PackageInfo(g.connection, **args)
-        if not pkg_info.check_params():
+        pkg = PackageInfo(g.connection, **args)
+        if not pkg.check_params():
             abort(
                 400, 
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=pkg_info.validation_results
+                validation_message=pkg.validation_results
                 )
-        result, code =  pkg_info.get()
+        result, code =  pkg.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
@@ -60,15 +60,15 @@ class routePackageBuildDependency(Resource):
     def get(self):
         args = pkg_build_dep_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        pkg_build_dep = PackageBuildDependency(g.connection, **args)
-        if not pkg_build_dep.check_params():
+        pkg = PackageBuildDependency(g.connection, **args)
+        if not pkg.check_params():
             abort(
                 400, 
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=pkg_build_dep.validation_results
+                validation_message=pkg.validation_results
                 )
-        result, code = pkg_build_dep.get()
+        result, code = pkg.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
@@ -90,15 +90,15 @@ class routePackageMisconflictPackages(Resource):
     def get(self):
         args = misconflict_pkg_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        misconflict_pkg = PackageMisconflictPackages(g.connection, **args)
-        if not misconflict_pkg.check_params():
+        pkg = PackageMisconflictPackages(g.connection, **args)
+        if not pkg.check_params():
             abort(
                 400, 
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=misconflict_pkg.validation_results
+                validation_message=pkg.validation_results
                 )
-        result, code = misconflict_pkg.get()
+        result, code = pkg.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
@@ -119,8 +119,8 @@ class routeFindPackageset(Resource):
     def get(self):
         args = pkg_find_pkgset_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        pkg_set= FindPackageset(g.connection, **args)
-        result, code =  pkg_set.get()
+        pkg= FindPackageset(g.connection, **args)
+        result, code =  pkg.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
