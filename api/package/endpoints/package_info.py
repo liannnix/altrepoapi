@@ -31,12 +31,10 @@ class PackageInfo:
 
     def _store_sql_error(self, message, severity, http_code):
         self.error = build_sql_error_response(message, self, http_code, self.DEBUG)
-        # self.status = False
         self._log_error(severity)
 
     def _store_error(self, message, severity, http_code):
         self.error = message, http_code
-        # self.status = False
         self._log_error(severity)
 
     def check_params(self):
