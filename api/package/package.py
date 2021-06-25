@@ -1,21 +1,17 @@
-from os import name
-from flask import Blueprint, g
-from flask_restx import Resource, abort
-from api.restplus import api
+from flask import g
+from flask_restx import Resource, abort, Namespace
 from utils import get_logger, url_logging, response_error_parser
 
-from api.package.parsers import package_info_args, pkg_build_dep_args, misconflict_pkg_args
-from api.package.serializers import package_info_model, pkg_build_dep_model, misconflict_pkgs_model
 from api.package.endpoints.package_info import PackageInfo
 from api.package.endpoints.pkg_build_dependency import PackageBuildDependency
 from api.package.endpoints.misconflict_packages import PackageMisconflictPackages
 
+ns = Namespace('package', description="Packages information API")
+
+from api.package.parsers import package_info_args, pkg_build_dep_args, misconflict_pkg_args
+from api.package.serializers import package_info_model, pkg_build_dep_model, misconflict_pkgs_model
 
 logger = get_logger(__name__)
-
-task_bp = Blueprint('package', __name__)
-
-ns = api.namespace('package', description="Packages information API")
 
 
 @ns.route('/package_info/',

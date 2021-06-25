@@ -1,20 +1,20 @@
 from flask_restx import fields
-from api.restplus import api
+from api.task.task import ns
 
-task_repo_package_model = api.model('TaskRepoPackageModel',{
+task_repo_package_model = ns.model('TaskRepoPackageModel',{
     'name': fields.String(description='package name'),
     'version': fields.String(description='package version'),
     'release': fields.String(description='package release'),
     'filename': fields.String(description='package file name')
 })
 
-task_repo_info_model = api.model('TaskRepoInfoModel',{
+task_repo_info_model = ns.model('TaskRepoInfoModel',{
     'name': fields.String(description='package set name'),
     'date': fields.String(description='package set upload date in ISO8601 format'),
     'tag': fields.String(description='package set upload tag')
 })
 
-task_repo_archs_model = api.model('TaskRepoArchsModel', {
+task_repo_archs_model = ns.model('TaskRepoArchsModel', {
     'arch': fields.String(description='architecture'),
     'packages': fields.Nested(task_repo_package_model,
         description='packages list',
@@ -22,7 +22,7 @@ task_repo_archs_model = api.model('TaskRepoArchsModel', {
     )
 })
 
-task_repo_model = api.model('TaskRepoModel',{
+task_repo_model = ns.model('TaskRepoModel',{
     'task_id': fields.Integer(description='task id'),
     'base_repository': fields.Nested(
         task_repo_info_model,
@@ -38,50 +38,50 @@ task_repo_model = api.model('TaskRepoModel',{
     )
 })
 
-task_diff_dependencies_model = api.model('TaskDiffDependenciesModel', {
+task_diff_dependencies_model = ns.model('TaskDiffDependenciesModel', {
     'type': fields.String,
     'del': fields.List(fields.String),
     'add': fields.List(fields.String)
 })
 
-task_diff_packages_model = api.model('TaskDiffPackagesModel', {
+task_diff_packages_model = ns.model('TaskDiffPackagesModel', {
     'package': fields.String,
     'del': fields.List(fields.String),
     'add': fields.List(fields.String),
     'dependencies': fields.Nested(task_diff_dependencies_model, as_list=True) 
 })
 
-task_diff_archs_model = api.model('TaskDiffArchsModel', {
+task_diff_archs_model = ns.model('TaskDiffArchsModel', {
     'arch': fields.String,
     'packages': fields.Nested(task_diff_packages_model, as_list=True)
 })
 
-task_diff_model = api.model('TaskDiffModel', {
+task_diff_model = ns.model('TaskDiffModel', {
     'task_id': fields.Integer,
     'task_diff': fields.Nested(task_diff_archs_model, as_list=True)
 })
 
-task_info_package_model = api.model('TaskInfoPackageModel',{
+task_info_package_model = ns.model('TaskInfoPackageModel',{
     'name': fields.String(description='package name'),
     'version': fields.String(description='package version'),
     'release': fields.String(description='package release'),
     'filename': fields.String(description='package file name')
 })
 
-task_info_approvals_model = api.model('TaskInfoApprovalsModel',{
+task_info_approvals_model = ns.model('TaskInfoApprovalsModel',{
     'date': fields.String(description='approval date'),
     'type': fields.String(description='approval type'),
     'name': fields.String(description='approver name'),
     'message': fields.String(description='approval message')
 })
 
-task_info_archs_model = api.model('TaskInfoArchsModel',{
+task_info_archs_model = ns.model('TaskInfoArchsModel',{
     'last_changed': fields.String(description='iteration state last changed'),
     'arch': fields.String(description='iteration arch'),
     'status': fields.String(description='iteration state')
 })
 
-task_info_subtask_model = api.model('TaskInfoSubtaskModel',{
+task_info_subtask_model = ns.model('TaskInfoSubtaskModel',{
     'subtask_id': fields.Integer(description='subtask id'),
     'last_changed': fields.String(description='subtask state last changed'),
     'userid': fields.String(description='subtask creator'),
@@ -101,17 +101,17 @@ task_info_subtask_model = api.model('TaskInfoSubtaskModel',{
     'archs': fields.Nested(task_info_archs_model, as_list=True, description='subtask archs')
 })
 
-task_info_plan_model = api.model('TaskInfoPlanModel',{
+task_info_plan_model = ns.model('TaskInfoPlanModel',{
     'src': fields.Nested(task_info_package_model, as_list=True, description='source packages'),
     'bin': fields.Nested(task_info_package_model, as_list=True, description='binary packages'),
 })
 
-task_info_plan2_model = api.model('TaskInfoPlan2Model',{
+task_info_plan2_model = ns.model('TaskInfoPlan2Model',{
     'add': fields.Nested(task_info_plan_model, description='added packages'),
     'del': fields.Nested(task_info_plan_model, description='deleted packages')
 })
 
-task_info_model = api.model('TaskInfoModel',{
+task_info_model = ns.model('TaskInfoModel',{
     'id': fields.Integer(description='task id'),
     'prev': fields.Integer(description='previous task id'),
     'try': fields.Integer(description='task try'),
@@ -132,7 +132,7 @@ task_info_model = api.model('TaskInfoModel',{
     'plan': fields.Nested(task_info_plan2_model, description='task packages add/delete')
 })
 
-task_build_dep_el_model = api.model('TaskBuildDependencyElementModel',{
+task_build_dep_el_model = ns.model('TaskBuildDependencyElementModel',{
     'name': fields.String(description='package name'),
     'version': fields.String(description='package version'),
     'release': fields.String(description='package release'),
@@ -147,7 +147,7 @@ task_build_dep_el_model = api.model('TaskBuildDependencyElementModel',{
     'acl': fields.List(fields.String, description='package ACL list')
 })
 
-task_build_dep_model = package_info_model = api.model('TaskBuildDependencyModel',{
+task_build_dep_model = package_info_model = ns.model('TaskBuildDependencyModel',{
     'id': fields.Integer(description='task id'),
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
@@ -157,7 +157,7 @@ task_build_dep_model = package_info_model = api.model('TaskBuildDependencyModel'
     )
 })
 
-misconflict_pkg_model = api.model('TaskMisconflictPackageModel',{
+misconflict_pkg_model = ns.model('TaskMisconflictPackageModel',{
     'input_package': fields.String(description='package name'),
     'conflict_package': fields.String(description='package name'),
     'version': fields.String(description='package version'),
@@ -167,7 +167,7 @@ misconflict_pkg_model = api.model('TaskMisconflictPackageModel',{
     'files_with_conflict': fields.List(fields.String, description='conflict files')
 })
 
-misconflict_pkgs_model = api.model('TaskMisconflictPackagesModel',{
+misconflict_pkgs_model = ns.model('TaskMisconflictPackagesModel',{
     'id': fields.Integer(description='task id'),
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),

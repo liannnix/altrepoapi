@@ -1,15 +1,12 @@
 from flask import  Flask, redirect, g, Blueprint, request
 from flask_restx import Resource, fields
-
-import utils
+from utils import get_logger
+from settings import namespace as settings
 from database.connection import Connection
-
-from api.restplus import api
-from api.task.task import ns as task_ns
-from api.package.package import ns as package_ns
+from api import api
 
 app = Flask(__name__)
-logger = utils.get_logger(__name__)
+logger = get_logger(__name__)
 
 version_fields = api.model('APIVersion',
     {
@@ -39,6 +36,20 @@ def init_db_connection():
 def drop_connection(exception):
     g.connection.drop_connection()
 
+@api.errorhandler
+def default_error_handler(e):
+    message = 'An unhandled exception occurred.'
+    logger.exception(message)
+
+    if not settings.FLASK_DEBUG:
+        return {'message': message}, 500
+
+# @api.errorhandler(NoResultFound)
+# def database_not_found_error_handler(e):
+#     """No results found in database"""
+#     log.warning(traceback.format_exc())
+#     return {'message': 'A database result was required but none was found.'}, 404
+
 def configure_app(flask_app):
     flask_app.config['SWAGGER_UI_DOC_EXPANSION'] = 'list'
     flask_app.config['SWAGGER_UI_REQUEST_DURATION'] = True
@@ -50,8 +61,6 @@ def initialize_app(flask_app):
     configure_app(flask_app)
     api_bp = Blueprint('api', __name__, url_prefix='/api')
     api.init_app(api_bp)
-    api.add_namespace(task_ns)
-    api.add_namespace(package_ns)
     flask_app.register_blueprint(api_bp)
 
 initialize_app(app)

@@ -1,21 +1,21 @@
 from flask_restx import fields
-from api.restplus import api
+from api.package.package import ns
 
-package_info_changelog_el_model = api.model('PackageInfoChangelogElementModel', {
+package_info_changelog_el_model = ns.model('PackageInfoChangelogElementModel', {
     'date': fields.String(description='changelog date'),
     'name': fields.String(description='changelog name'),
     'evr': fields.String(description='changelog EVR'),
     'message': fields.String(description='changelog message')
 })
 
-package_info_dependencies_model = api.model('PackageInfoDependenciesModel', {
+package_info_dependencies_model = ns.model('PackageInfoDependenciesModel', {
     'require': fields.List(fields.String, description='package requires'),
     'provide': fields.List(fields.String, description='package provides'),
     'conflict': fields.List(fields.String, description='package conflicts'),
     'obsolete': fields.List(fields.String, description='package obsoletes')
 })
 
-package_info_package_model = api.model('PackageInfoPackageModel', {
+package_info_package_model = ns.model('PackageInfoPackageModel', {
     'name': fields.String(attribute='pkg_name', description='package name'),
     'version': fields.String(attribute='pkg_version', description='package version'),
     'release': fields.String(attribute='pkg_release', description='package release'),
@@ -71,7 +71,7 @@ package_info_package_model = api.model('PackageInfoPackageModel', {
     'depends': fields.Nested(package_info_dependencies_model, as_list=True, description='package dependencies')
 })
 
-package_info_model = api.model('PackageInfoModel',{
+package_info_model = ns.model('PackageInfoModel',{
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
     'packages': fields.Nested(package_info_package_model,
@@ -80,7 +80,7 @@ package_info_model = api.model('PackageInfoModel',{
     )
 })
 
-pkg_build_dep_el_model = api.model('PackageBuildDependencyElementModel',{
+pkg_build_dep_el_model = ns.model('PackageBuildDependencyElementModel',{
     'name': fields.String(description='package name'),
     'version': fields.String(description='package version'),
     'release': fields.String(description='package release'),
@@ -95,7 +95,7 @@ pkg_build_dep_el_model = api.model('PackageBuildDependencyElementModel',{
     'acl': fields.List(fields.String, description='package ACL list')
 })
 
-pkg_build_dep_model = api.model('PackageBuildDependencyModel',{
+pkg_build_dep_model = ns.model('PackageBuildDependencyModel',{
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
     'dependencies': fields.Nested(pkg_build_dep_el_model,
@@ -104,7 +104,7 @@ pkg_build_dep_model = api.model('PackageBuildDependencyModel',{
     )
 })
 
-misconflict_pkg_model = api.model('PackageMisconflictPackageModel',{
+misconflict_pkg_model = ns.model('PackageMisconflictPackageModel',{
     'input_package': fields.String(description='package name'),
     'conflict_package': fields.String(description='package name'),
     'version': fields.String(description='package version'),
@@ -114,7 +114,7 @@ misconflict_pkg_model = api.model('PackageMisconflictPackageModel',{
     'files_with_conflict': fields.List(fields.String, description='conflict files')
 })
 
-misconflict_pkgs_model = api.model('PackageMisconflictPackagesModel',{
+misconflict_pkgs_model = ns.model('PackageMisconflictPackagesModel',{
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
     'conflicts': fields.Nested(misconflict_pkg_model,
