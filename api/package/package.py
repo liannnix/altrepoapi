@@ -3,14 +3,15 @@ from flask_restx import Resource, abort, Namespace
 
 from utils import get_logger, url_logging, response_error_parser
 
-from api.package.endpoints.package_info import PackageInfo
-from api.package.endpoints.pkg_build_dependency import PackageBuildDependency
-from api.package.endpoints.misconflict_packages import PackageMisconflictPackages
+from .endpoints.package_info import PackageInfo
+from .endpoints.pkg_build_dependency import PackageBuildDependency
+from .endpoints.misconflict_packages import PackageMisconflictPackages
+from .endpoints.find_packageset import FindPackageset
 
 ns = Namespace('package', description="Packages information API")
 
-from api.package.parsers import package_info_args, pkg_build_dep_args, misconflict_pkg_args
-from api.package.serializers import package_info_model, pkg_build_dep_model, misconflict_pkgs_model
+from .parsers import package_info_args, pkg_build_dep_args, misconflict_pkg_args, pkg_find_pkgset_args
+from .serializers import package_info_model, pkg_build_dep_model, misconflict_pkgs_model, pkg_find_pkgset_model
 
 logger = get_logger(__name__)
 
@@ -26,7 +27,7 @@ logger = get_logger(__name__)
 )
 class routePackageInfo(Resource):
     @ns.expect(package_info_args)
-    @ns.marshal_with(package_info_model, as_list=True)
+    @ns.marshal_with(package_info_model)
     def get(self):
         args = package_info_args.parse_args(strict=True)
         url_logging(logger, g.url)
@@ -76,7 +77,7 @@ class routePackageBuildDependency(Resource):
 @ns.route('/misconflict/',
     doc={
         'description': ("get packages with conflicting files in packages "
-        "that do not have a conflict in dependencies"),
+            "that do not have a conflict in dependencies"),
         'responses': {
             400: 'Request parameters validation error',
             404: 'Requested data not found in database'
@@ -98,6 +99,28 @@ class routePackageMisconflictPackages(Resource):
                 validation_message=misconflict_pkg.validation_results
                 )
         result, code = misconflict_pkg.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route('/find_packageset',
+    doc={
+        'description': ("get information about packages from package sets "
+            "by given source packages list"),
+        'responses': {
+            404: 'Package not found in database'
+        }
+    }
+)
+class routeFindPackageset(Resource):
+    @ns.expect(pkg_find_pkgset_args)
+    @ns.marshal_with(pkg_find_pkgset_model)
+    def get(self):
+        args = pkg_find_pkgset_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        pkg_set= FindPackageset(g.connection, **args)
+        result, code =  pkg_set.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code

@@ -178,3 +178,13 @@ misconflict_pkg_args.add_argument(
     help='list of packages architectures',
     location='args'
 )
+
+pkg_find_pkgset_args = reqparse.RequestParser()
+pkg_find_pkgset_args.add_argument(
+    'packages',
+    type=str,
+    action='split',
+    required=True,
+    help='package or list of packages',
+    location='args'
+)

@@ -526,4 +526,28 @@ FROM last_depends
 WHERE pkg_hash IN %(pkghshs)s
 """
 
+    get_branch_with_pkgs = """
+SELECT DISTINCT
+    pkgset_name,
+    sourcepkgname,
+    toString(any(pkgset_date)) AS pkgset_date,
+    groupUniqArray(pkg_name) AS pkgnames,
+    pkg_version,
+    pkg_release,
+    any(pkg_disttag),
+    any(pkg_packager_email),
+    toString(toDateTime(any(pkg_buildtime))) AS buildtime,
+    groupUniqArray(pkg_arch)
+FROM last_packages_with_source
+WHERE sourcepkgname IN %(pkgs)s
+    AND pkg_name NOT LIKE '%%-debuginfo'
+GROUP BY
+    pkgset_name,
+    sourcepkgname,
+    pkg_version,
+    pkg_release
+ORDER BY pkgset_date DESC
+"""
+
+
 packagesql = SQL()
