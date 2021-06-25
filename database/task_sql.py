@@ -499,8 +499,51 @@ WHERE pkg_hash IN
 (
     SELECT arrayJoin(titer_pkgs_hash)
     FROM TaskIterations_buffer
-    WHERE (task_id = {id}) AND (task_changed = last_changed)
+    WHERE task_id = {id}
+        AND task_changed = last_changed
 )
 """
+
+    get_branch_with_pkgs = """
+SELECT DISTINCT
+    pkgset_name,
+    sourcepkgname,
+    toString(any(pkgset_date)) AS pkgset_date,
+    groupUniqArray(pkg_name) AS pkgnames,
+    pkg_version,
+    pkg_release,
+    any(pkg_disttag),
+    any(pkg_packager_email),
+    toString(toDateTime(any(pkg_buildtime))) AS buildtime,
+    groupUniqArray(pkg_arch)
+FROM last_packages_with_source
+WHERE sourcepkgname IN %(pkgs)s
+    AND pkg_name NOT LIKE '%%-debuginfo'
+GROUP BY
+    pkgset_name,
+    sourcepkgname,
+    pkg_version,
+    pkg_release
+ORDER BY pkgset_date DESC
+"""
+
+    task_src_packages = """
+WITH
+(
+    SELECT max(task_changed)
+    FROM TaskIterations_buffer
+    WHERE task_id = {id}
+) as last_changed
+SELECT DISTINCT pkg_name
+FROM Packages_buffer
+WHERE pkg_hash IN
+(
+    SELECT titer_srcrpm_hash
+    FROM TaskIterations_buffer
+    WHERE task_id = {id}
+        AND task_changed = last_changed
+)
+"""
+
 
 tasksql = SQL()

@@ -39,7 +39,6 @@ class TaskDiff:
 
     def check_task_id(self):
         self.conn.request_line = self.sql.check_task.format(id=self.task_id)
-
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, ll.INFO)

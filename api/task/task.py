@@ -8,11 +8,14 @@ from .endpoints.task_info import TaskInfo
 from .endpoints.task_repo import TaskRepo
 from .endpoints.misconflict_packages import TaskMisconflictPackages
 from .endpoints.task_build_dependency import TaskBuildDependency
+from .endpoints.find_packageset import FindPackageset
 
 ns = Namespace('task', description="Task's information API")
 
-from .parsers import task_info_args, task_repo_args, task_build_dep_args, task_misconflict_args
-from .serializers import task_info_model, task_repo_model, task_diff_model, task_build_dep_model, misconflict_pkgs_model
+from .parsers import task_info_args, task_repo_args
+from .parsers import task_misconflict_args, task_build_dep_args
+from .serializers import task_info_model, task_repo_model, task_diff_model
+from .serializers import task_build_dep_model, misconflict_pkgs_model, task_find_pkgset_model
 
 logger = get_logger(__name__)
 
@@ -34,12 +37,12 @@ class routeTaskInfo(Resource):
     def get(self, id):
         args = task_info_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        task_info = TaskInfo(g.connection, id, args['try'], args['iteration'])
-        if not task_info.check_task_id():
+        task = TaskInfo(g.connection, id, args['try'], args['iteration'])
+        if not task.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
-        if not task_info.check_params():
+        if not task.check_params():
             abort(400, message=f"Request parameters validation failed", args=args)
-        result, code =  task_info.get()
+        result, code =  task.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
@@ -61,14 +64,14 @@ class routeTaskRepo(Resource):
     def get(self, id):
         args = task_repo_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        task_repo = TaskRepo(g.connection, id, args['include_task_packages'])
-        if not task_repo.check_task_id():
+        task = TaskRepo(g.connection, id, args['include_task_packages'])
+        if not task.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
-        task_repo.build_task_repo()
-        if task_repo.status:
-            return task_repo.get()
+        task.build_task_repo()
+        if task.status:
+            return task.get()
         else:
-            return task_repo.error
+            return task.error
 
 
 @ns.route('/task_diff/<int:id>',
@@ -84,10 +87,10 @@ class routeTaskDiff(Resource):
     @ns.marshal_with(task_diff_model)
     def get(self, id):
         url_logging(logger, g.url)
-        task_diff = TaskDiff(g.connection, id)
-        if not task_diff.check_task_id():
+        task = TaskDiff(g.connection, id)
+        if not task.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
-        result, code = task_diff.get()
+        result, code = task.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
@@ -109,17 +112,17 @@ class routePackageBuildDependency(Resource):
     def get(self, id):
         args = task_build_dep_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        task_build_dep = TaskBuildDependency(g.connection, id, **args)
-        if not task_build_dep.check_params():
+        task = TaskBuildDependency(g.connection, id, **args)
+        if not task.check_params():
             abort(
                 400, 
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=task_build_dep.validation_results
+                validation_message=task.validation_results
             )
-        if not task_build_dep.check_task_id():
+        if not task.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
-        result, code = task_build_dep.get()
+        result, code = task.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
@@ -141,17 +144,39 @@ class routeTaskMisconflictPackages(Resource):
     def get(self, id):
         args = task_misconflict_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        task_misconflict = TaskMisconflictPackages(g.connection, id, **args)
-        if not task_misconflict.check_params():
+        task = TaskMisconflictPackages(g.connection, id, **args)
+        if not task.check_params():
             abort(
                 400, 
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=task_misconflict.validation_results
+                validation_message=task.validation_results
             )
-        if not task_misconflict.check_task_id():
+        if not task.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
-        result, code = task_misconflict.get()
+        result, code = task.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+@ns.route('/find_packageset/<int:id>',
+    doc={
+        'params': {'id': 'task ID'},
+        'description': ("get information about packages from package sets "
+            "by list of source packages from task"),
+        'responses': {
+            404: 'Task ID not found in database'
+        }
+    }
+)
+class routeTaskDiff(Resource):
+    @ns.marshal_with(task_find_pkgset_model)
+    def get(self, id):
+        url_logging(logger, g.url)
+        task = FindPackageset(g.connection, id)
+        if not task.check_task_id():
+            abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
+        result, code = task.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code

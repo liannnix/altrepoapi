@@ -177,3 +177,26 @@ misconflict_pkgs_model = ns.model('TaskMisconflictPackagesModel',{
         as_list=True
     )
 })
+
+task_find_pkgset_el_model = ns.model('TaskFindPackagesetElementModel',{
+    'branch': fields.String(description='package set name'),
+    'pkgset_datetime': fields.String(description='package set date'),
+    'sourcepkgname': fields.String(description='source package name'),
+    'packages': fields.List(fields.String, description='binary packages list'),
+    'version': fields.String(description='package version'),
+    'release': fields.String(description='package release'),
+    'disttag': fields.String(description='package disttag'),
+    'packager_email': fields.String( description='package packager email'),
+    'buildtime': fields.String(description='package build time'),
+    'archs': fields.List(fields.String, description='binary packages archs')
+})
+
+task_find_pkgset_model = ns.model('TaskFindPackagesetModel',{
+    'id': fields.Integer(description='task id'),
+    'task_packages': fields.List(fields.String, description='request arguments'),
+    'length': fields.Integer(description='number of packages found'),
+    'packages': fields.Nested(task_find_pkgset_el_model,
+        description='package set packages information',
+        as_list=True
+    )
+})
