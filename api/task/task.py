@@ -1,7 +1,7 @@
 from flask import Blueprint, g
 from flask_restx import Resource, abort
 from api.restplus import api
-from utils import get_logger, url_logging
+from utils import get_logger, url_logging, response_error_parser
 
 from api.task.parsers import task_info_args, task_repo_args, task_build_dep_args, task_misconflict_args
 from api.task.serializers import task_info_model, task_repo_model, task_diff_model, task_build_dep_model, misconflict_pkgs_model
@@ -42,7 +42,7 @@ class routeTaskInfo(Resource):
             abort(400, message=f"Request parameters validation failed", args=args)
         result, code =  task_info.get()
         if code != 200:
-            abort(code, message="Error occured during request handeling", details=result)
+            abort(code, **response_error_parser(result))
         return result, code
 
 
@@ -90,7 +90,7 @@ class routeTaskDiff(Resource):
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
         result, code = task_diff.get()
         if code != 200:
-            abort(code, message="Error occured during request handeling", details=result)
+            abort(code, **response_error_parser(result))
         return result, code
 
 
@@ -122,7 +122,7 @@ class routePackageBuildDependency(Resource):
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
         result, code = task_build_dep.get()
         if code != 200:
-            abort(code, message="Error occured during request handeling", details=result)
+            abort(code, **response_error_parser(result))
         return result, code
 
 @ns.route('/misconflict/<int:id>',
@@ -154,5 +154,5 @@ class routeTaskMisconflictPackages(Resource):
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
         result, code = task_misconflict.get()
         if code != 200:
-            abort(code, message="Error occured during request handeling", details=result)
+            abort(code, **response_error_parser(result))
         return result, code

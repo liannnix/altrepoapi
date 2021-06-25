@@ -66,6 +66,16 @@ def build_sql_error_response(response, cls, code, debug):
             response['sql_request'] = [_ for _ in requestline.split('\n')]
     return response, code
 
+def response_error_parser(response):
+    try:
+        msg = response.get('message')
+        if not msg:
+            msg = response.get('error') or response.get('Error')
+        details = [{k: v} for k, v in response.items() if k not in ('message', 'error', 'Error')]
+        return {'message': msg, 'details': details}
+    except:
+        return {'message': response}
+
 def convert_to_dict(keys, values):
     res = {}
 
