@@ -48,7 +48,7 @@ class PackageInfo:
         if self.args['arch']:
             if self.args['arch'] not in lut.known_archs:
                 self.validation_results.append(f"unknown package arch : {self.args['arch']}")
-                self.validation_results.append(f"allowed archs are : {lut.default_archs}")
+                self.validation_results.append(f"allowed archs are : {lut.known_archs}")
 
         param_keys = ('sha1', 'name', 'version', 'release', 'arch', 'disttag', 'packager', 'packager_email')
         is_set = False
