@@ -2,6 +2,7 @@ from settings import namespace as settings
 from utils import get_logger, build_sql_error_response, logger_level as ll
 from utils import convert_to_dict
 
+from api.misc import lut
 from database.package_sql import packagesql
 
 logger = get_logger(__name__)
@@ -13,8 +14,9 @@ class FindPackageset:
         self.conn = connection
         self.sql = packagesql
         self.args = kwargs
-        self.packages = tuple(self.args['packages'])
+        self.packages = None
         self.error = None
+        self.validation_results = None
 
     def _log_error(self, severity):
         if severity == ll.CRITICAL:
@@ -36,19 +38,36 @@ class FindPackageset:
         self.error = message, http_code
         self._log_error(severity)
 
-    def get(self):
-        for pkg in self.packages:
+    def check_params(self):
+        logger.debug(f"args : {self.args}")
+        self.validation_results = []
+
+        if self.args['branches']:
+            for br in self.args['branches']:
+                if br not in lut.known_branches:
+                    self.validation_results.append(f"unknown package set name : {br}")
+                    self.validation_results.append(f"allowed package set names are : {lut.known_branches}")
+                    break
+
+        for pkg in self.args['packages']:
             if pkg == '':
-                self._store_error(
-                    {"message": f"package list from argument should not contain empty values",
-                    "packages": self.packages},
-                    ll.INFO,
-                    400
-                )
-                return self.error
+                self.validation_results.append("package list from argument should not contain empty values")
+                break
+
+        if self.validation_results != []:
+            return False
+        else:
+            return True
+
+    def get(self):
+        self.packages = tuple(self.args['packages'])
+        if self.args['branches']:
+            branchs_cond =  f"AND pkgset_name IN {tuple(self.args['branches'])}"
+        else:
+            branchs_cond = ''
 
         self.conn.request_line = (
-            self.sql.get_branch_with_pkgs,
+            self.sql.get_branch_with_pkgs.format(branchs=branchs_cond),
             {'pkgs': self.packages}
         )
         status, response = self.conn.send_request()

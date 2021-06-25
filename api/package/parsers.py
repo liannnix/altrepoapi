@@ -188,3 +188,11 @@ pkg_find_pkgset_args.add_argument(
     help='package or list of packages',
     location='args'
 )
+pkg_find_pkgset_args.add_argument(
+    'branches',
+    type=str,
+    action='split',
+    required=False,
+    help='list of package sets to filter result',
+    location='args'
+)

@@ -109,6 +109,7 @@ class routePackageMisconflictPackages(Resource):
         'description': ("get information about packages from package sets "
             "by given source packages list"),
         'responses': {
+            400: 'Request parameters validation error',
             404: 'Package not found in database'
         }
     }
@@ -120,6 +121,13 @@ class routeFindPackageset(Resource):
         args = pkg_find_pkgset_args.parse_args(strict=True)
         url_logging(logger, g.url)
         pkg= FindPackageset(g.connection, **args)
+        if not pkg.check_params():
+            abort(
+                400, 
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=pkg.validation_results
+                )
         result, code =  pkg.get()
         if code != 200:
             abort(code, **response_error_parser(result))
