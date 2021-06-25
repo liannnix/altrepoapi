@@ -16,7 +16,7 @@ from .serializers import package_info_model, pkg_build_dep_model, misconflict_pk
 logger = get_logger(__name__)
 
 
-@ns.route('/package_info/',
+@ns.route('/package_info',
     doc={
         'description': "get information for package by parameters from last packages",
         'responses': {
@@ -45,7 +45,7 @@ class routePackageInfo(Resource):
         return result, code
 
 
-@ns.route('/build_dependency/',
+@ns.route('/build_dependency',
     doc={
         'description': "get packages build dependencies",
         'responses': {
@@ -74,7 +74,7 @@ class routePackageBuildDependency(Resource):
         return result, code
 
 
-@ns.route('/misconflict/',
+@ns.route('/misconflict',
     doc={
         'description': ("get packages with conflicting files in packages "
             "that do not have a conflict in dependencies"),
