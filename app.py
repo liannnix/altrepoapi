@@ -18,7 +18,7 @@ version_fields = api.model('APIVersion',
     }
 )
 
-@api.route('/version/')
+@api.route('/version')
 class ApiVersion(Resource):
     @api.doc('get API information')
     @api.marshal_with(version_fields)
