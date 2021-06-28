@@ -1,6 +1,8 @@
+from collections import namedtuple
+
 from settings import namespace as settings
 from utils import get_logger, build_sql_error_response, logger_level as ll
-from utils import tuplelist_to_dict, convert_to_dict
+from utils import tuplelist_to_dict
 
 from api.misc import lut
 from database.package_sql import packagesql
@@ -149,15 +151,17 @@ class PackageByFileName:
             package += (ids_filename_dict[package[0]],)
             output_values.append(package[1:])
 
-        output_params = ['pkgcs', 'name', 'sourcepackage', 'version', 'release',
-                        'disttag', 'arch', 'branch', 'files']
+        PkgInfo = namedtuple('PkgInfo', [
+            'pkgcs', 'name', 'sourcepackage', 'version','release',
+            'disttag', 'arch', 'branch', 'files'
+        ])
 
-        retval = convert_to_dict(output_params, tuple(output_values))
+        retval = [PkgInfo(*el)._asdict() for el in output_values]
 
         res = {
                 'request_args' : self.args,
                 'length': len(retval),
-                'packages': [_ for _ in retval.values()]
+                'packages': retval
             }
         return res, 200
 
@@ -299,14 +303,16 @@ class PackageByFileMD5:
             package += (ids_filename_dict[package[0]],)
             output_values.append(package[1:])
 
-        output_params = ['pkgcs', 'name', 'sourcepackage', 'version', 'release',
-                        'disttag', 'arch', 'branch', 'files']
+        PkgInfo = namedtuple('PkgInfo', [
+            'pkgcs', 'name', 'sourcepackage', 'version','release',
+            'disttag', 'arch', 'branch', 'files'
+        ])
 
-        retval = convert_to_dict(output_params, tuple(output_values))
+        retval = [PkgInfo(*el)._asdict() for el in output_values]
 
         res = {
                 'request_args' : self.args,
                 'length': len(retval),
-                'packages': [_ for _ in retval.values()]
+                'packages': retval
             }
         return res, 200
