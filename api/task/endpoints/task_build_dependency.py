@@ -135,9 +135,9 @@ class TaskBuildDependency:
             res = {
                 'id': self.task_id,
                 'request_args' : self.args,
-                'dependencies': [_ for _ in self.bd.result.values()]
+                'length': len(self.bd.result),
+                'dependencies': self.bd.result
             }
-            res['length'] = len(res['dependencies'])
             return res, 200
         else:
             return self.bd.error

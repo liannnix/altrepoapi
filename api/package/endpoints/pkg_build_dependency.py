@@ -1,6 +1,8 @@
+from collections import namedtuple
+
 from settings import namespace as settings
 from utils import get_logger, build_sql_error_response
-from utils import tuplelist_to_dict, join_tuples, logger_level as ll, convert_to_dict
+from utils import tuplelist_to_dict, join_tuples, logger_level as ll
 
 from api.misc import lut
 from database.package_sql import packagesql
@@ -321,11 +323,6 @@ class BuildDependency:
         sorted_dict = {}
         for pkg in pkg_info_list:
             if (filter_pkgs and pkg[0] in filter_pkgs) or not filter_pkgs:
-                # FIXME: find out what below 'if' is for? doesn't make sense at a glance
-                # if task_id:
-                #     if pkg[0] not in input_pkgs:
-                #         sorted_dict[sorted_pkgs.index(pkg[0])] = pkg
-                # else:
                 sorted_dict[sorted_pkgs.index(pkg[0])] = pkg
 
         sorted_dict = list(dict(sorted(sorted_dict.items())).values())
@@ -333,9 +330,12 @@ class BuildDependency:
         if self.finitepkg:
             sorted_dict = [pkg for pkg in sorted_dict if pkg[0] in filter_by_tops]
         # magic ends here
-        keys = ['name', 'version', 'release', 'epoch', 'serial_', 'sourcerpm',
-                'branch', 'archs', 'buildtime', 'cycle', 'requires', 'acl']
-        self.result = convert_to_dict(keys, sorted_dict)        
+        PackageDependencies = namedtuple('PackageDependencies', [
+            'name', 'version', 'release', 'epoch', 'serial_', 'sourcerpm',
+            'branch', 'archs', 'buildtime', 'cycle', 'requires', 'acl'
+        ])
+
+        self.result = [PackageDependencies(*el)._asdict() for el in sorted_dict]      
         self.status = True
 
 
@@ -405,9 +405,9 @@ class PackageBuildDependency:
             # result processing
             res = {
                 'request_args' : self.args,
-                'dependencies': [_ for _ in self.bd.result.values()]
+                'length': len(self.bd.result),
+                'dependencies': self.bd.result
             }
-            res['length'] = len(res['dependencies'])
             return res, 200
         else:
             return self.bd.error
