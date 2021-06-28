@@ -21,7 +21,7 @@ logger = get_logger(__name__)
 
 @ns.route('/package_info',
     doc={
-        'description': "get information for package by parameters from last packages",
+        'description': "Get information for package by parameters from last packages",
         'responses': {
             400: 'Request parameters validation error',
             404: 'Package not found in database'
@@ -50,7 +50,7 @@ class routePackageInfo(Resource):
 
 @ns.route('/build_dependency',
     doc={
-        'description': "get packages build dependencies",
+        'description': "Get packages build dependencies by set of parameters",
         'responses': {
             400: 'Request parameters validation error',
             404: 'Requested data not found in database'
@@ -79,8 +79,8 @@ class routePackageBuildDependency(Resource):
 
 @ns.route('/misconflict',
     doc={
-        'description': ("get packages with conflicting files in packages "
-            "that do not have a conflict in dependencies"),
+        'description': ("Get packages with conflicting files in packages "
+            "that don't have a conflict in dependencies"),
         'responses': {
             400: 'Request parameters validation error',
             404: 'Requested data not found in database'
@@ -109,7 +109,7 @@ class routePackageMisconflictPackages(Resource):
 
 @ns.route('/find_packageset',
     doc={
-        'description': ("get information about packages from package sets "
+        'description': ("Get information about packages from package sets "
             "by given source packages list"),
         'responses': {
             400: 'Request parameters validation error',
