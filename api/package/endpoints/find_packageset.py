@@ -1,6 +1,7 @@
+from collections import namedtuple
+
 from settings import namespace as settings
 from utils import get_logger, build_sql_error_response, logger_level as ll
-from utils import convert_to_dict
 
 from api.misc import lut
 from database.package_sql import packagesql
@@ -84,12 +85,12 @@ class FindPackageset:
             )
             return self.error
 
-        param_ls = [
+        PkgsetInfo = namedtuple('PkgsetInfo', [
             'branch', 'sourcepkgname', 'pkgset_datetime', 'packages', 'version',
             'release', 'disttag', 'packager_email', 'buildtime', 'archs'
-        ]
+        ])
 
-        res = [_ for _ in convert_to_dict(param_ls, response).values()]
+        res = [PkgsetInfo(*el)._asdict() for el in response]
 
         res = {
             'request_args': self.args,
