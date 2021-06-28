@@ -308,11 +308,11 @@ class PackageByFileMD5:
             'disttag', 'arch', 'branch', 'files'
         ])
 
-        retval = [PkgInfo(*el)._asdict() for el in output_values]
+        res = [PkgInfo(*el)._asdict() for el in output_values]
 
         res = {
                 'request_args' : self.args,
-                'length': len(retval),
-                'packages': retval
+                'length': len(res),
+                'packages': res
             }
         return res, 200
