@@ -114,9 +114,9 @@ class TaskMisconflictPackages:
             res = {
                 'id': self.task_id,
                 'request_args' : self.args,
-                'conflicts': [_ for _ in self.mp.result.values()]
+                'length': len(self.mp.result),
+                'conflicts': self.mp.result
             }
-            res['length'] = len(res['conflicts'])
             return res, 200
         else:
             return self.mp.error

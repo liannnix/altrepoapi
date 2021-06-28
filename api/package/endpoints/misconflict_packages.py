@@ -1,8 +1,8 @@
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 
 from settings import namespace as settings
 from utils import get_logger, build_sql_error_response, logger_level as ll
-from utils import tuplelist_to_dict, remove_duplicate, convert_to_dict
+from utils import tuplelist_to_dict, remove_duplicate
 
 from api.misc import lut
 from database.package_sql import packagesql
@@ -237,9 +237,12 @@ class MisconflictPackages:
                 result_list_info.append(pkg)
 
         # magic ends here
-        keys = ['input_package', 'conflict_package', 'version', 'release',
-                'epoch', 'archs', 'files_with_conflict']
-        self.result = convert_to_dict(keys, result_list_info)
+        ConflictPackages = namedtuple('ConflictPackages', [
+            'input_package', 'conflict_package', 'version', 'release',
+            'epoch', 'archs', 'files_with_conflict'
+        ])
+
+        self.result = [ConflictPackages(*el)._asdict() for el in result_list_info]
         self.status = True
 
 
@@ -288,9 +291,9 @@ class PackageMisconflictPackages:
             # result processing
             res = {
                 'request_args' : self.args,
-                'conflicts': [_ for _ in self.mp.result.values()]
+                'length': len(self.mp.result),
+                'conflicts': self.mp.result
             }
-            res['length'] = len(res['conflicts'])
             return res, 200
         else:
             return self.mp.error
