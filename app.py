@@ -58,6 +58,7 @@ def configure_app(flask_app):
     flask_app.config['RESTX_VALIDATE'] = True
     flask_app.config['ERROR_404_HELP'] = False
     flask_app.config['RESTX_MASK_SWAGGER'] = False
+    flask_app.config['BUNDLE_ERRORS'] = True
 
 def initialize_app(flask_app):
     configure_app(flask_app)
