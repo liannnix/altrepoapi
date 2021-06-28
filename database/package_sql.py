@@ -6,6 +6,9 @@ class SQL:
 CREATE TEMPORARY TABLE {tmp_table} {columns}
 """
 
+    select_all_tmp_table = """
+SELECT * FROM {tmp_table}
+"""
 
     insert_build_req_deep_1 = """
 INSERT INTO {tmp_table}
@@ -548,6 +551,68 @@ GROUP BY
     pkg_version,
     pkg_release
 ORDER BY pkgset_date DESC
+"""
+
+    gen_table_hshs_by_file = """
+CREATE TEMPORARY TABLE {tmp_table} AS
+SELECT DISTINCT
+    pkg_hash,
+    file_hashname
+FROM Files_buffer
+WHERE pkg_hash IN
+(
+    SELECT pkg_hash
+    FROM last_packages
+    WHERE pkgset_name = %(branch)s
+        AND pkg_arch IN %(arch)s
+)
+    AND {param}
+"""
+
+    gen_table_hshs_by_file_mod_hashname = """
+file_hashname IN
+(
+    SELECT fn_hash
+    FROM {tmp_table}
+)
+"""
+
+    gen_table_hshs_by_file_mod_md5 = """
+file_md5 = unhex(%(elem)s)
+"""
+
+    gen_table_fnhshs_by_file = """
+CREATE TEMPORARY TABLE {tmp_table} AS
+SELECT fn_hash, fn_name
+FROM FileNames_buffer
+WHERE fn_name LIKE %(elem)s
+"""
+
+    pkg_by_file_get_meta_by_hshs = """
+SELECT pkg_hash,
+       lower(hex(pkg_cs)) AS pkg_cs,
+       pkg_name,
+       pkg_sourcepackage,
+       pkg_version,
+       pkg_release,
+       pkg_disttag,
+       pkg_arch,
+       %(branch)s
+FROM Packages_buffer
+WHERE pkg_hash IN
+(
+    SELECT pkg_hash FROM {tmp_table}
+)
+"""
+
+    pkg_by_file_get_fnames_by_fnhashs = """
+SELECT fn_hash,
+       fn_name
+FROM FileNames_buffer
+WHERE fn_hash IN
+(
+    SELECT file_hashname from {tmp_table}
+)
 """
 
 

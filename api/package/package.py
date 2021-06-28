@@ -7,11 +7,14 @@ from .endpoints.package_info import PackageInfo
 from .endpoints.pkg_build_dependency import PackageBuildDependency
 from .endpoints.misconflict_packages import PackageMisconflictPackages
 from .endpoints.find_packageset import FindPackageset
+from .endpoints.package_by_file import PackageByFileName, PackageByFileMD5
 
 ns = Namespace('package', description="Packages information API")
 
-from .parsers import package_info_args, pkg_build_dep_args, misconflict_pkg_args, pkg_find_pkgset_args
-from .serializers import package_info_model, pkg_build_dep_model, misconflict_pkgs_model, pkg_find_pkgset_model
+from .parsers import package_info_args, pkg_build_dep_args, misconflict_pkg_args
+from .parsers import pkg_find_pkgset_args, pkg_by_file_name_args, pkg_by_file_md5_args
+from .serializers import package_info_model, pkg_build_dep_model, misconflict_pkgs_model
+from .serializers import pkg_find_pkgset_model, pkg_by_file_name_model
 
 logger = get_logger(__name__)
 
@@ -121,6 +124,67 @@ class routeFindPackageset(Resource):
         args = pkg_find_pkgset_args.parse_args(strict=True)
         url_logging(logger, g.url)
         pkg= FindPackageset(g.connection, **args)
+        if not pkg.check_params():
+            abort(
+                400, 
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=pkg.validation_results
+                )
+        result, code =  pkg.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route('/package_by_file_name',
+    doc={
+        'description': ("Get information about packages from  last package sets "
+            "by given file name and package set name."
+            "\nFile name wildcars '*' is allowed."),
+        'responses': {
+            400: 'Request parameters validation error',
+            404: 'Package not found in database'
+        }
+    }
+)
+class routePackageByFileName(Resource):
+    @ns.expect(pkg_by_file_name_args)
+    @ns.marshal_with(pkg_by_file_name_model)
+    def get(self):
+        args = pkg_by_file_name_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        pkg= PackageByFileName(g.connection, **args)
+        if not pkg.check_params():
+            abort(
+                400, 
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=pkg.validation_results
+                )
+        result, code =  pkg.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route('/package_by_file_md5',
+    doc={
+        'description': ("Get information about packages from  last package sets "
+            "by given file MD5 checksum and package set name"),
+        'responses': {
+            400: 'Request parameters validation error',
+            404: 'Package not found in database'
+        }
+    }
+)
+class routePackageByFileMD5(Resource):
+    @ns.expect(pkg_by_file_md5_args)
+    @ns.marshal_with(pkg_by_file_name_model)
+    def get(self):
+        args = pkg_by_file_md5_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        pkg= PackageByFileMD5(g.connection, **args)
         if not pkg.check_params():
             abort(
                 400, 

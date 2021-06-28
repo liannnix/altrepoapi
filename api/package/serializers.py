@@ -23,7 +23,7 @@ package_info_package_model = ns.model('PackageInfoPackageModel', {
     'sha1': fields.String(attribute='pkg_cs', description='package SHA1 header checksum'),
     'packager': fields.String(attribute='pkg_packager', description='package packager name'),
     'packager_email': fields.String(attribute='pkg_packager_email', description='package packager email'),
-    'arch': fields.String(attribute='pkg_arch', description='package archs'),
+    'arch': fields.String(attribute='pkg_arch', description='package arch'),
     'epoch': fields.Integer(attribute='pkg_epoch', description='package epoch'),
     'disttag': fields.String(attribute='pkg_disttag', description='package disttag'),
     'sourcepackage': fields.Integer(attribute='pkg_sourcepackage', description='is sourcepackage'),
@@ -141,6 +141,26 @@ pkg_find_pkgset_model = ns.model('PackageFindPackagesetModel',{
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
     'packages': fields.Nested(pkg_find_pkgset_el_model,
+        description='package set packages information',
+        as_list=True
+    )
+})
+
+pkg_by_file_name_el_model = ns.model('PackageByFileNameElementModel',{
+    'name': fields.String(description='package name'),
+    'version': fields.String(description='package version'),
+    'release': fields.String(description='package release'),
+    'disttag': fields.String(description='package disttag'),
+    'sha1': fields.String(attribute='pkgcs', description='package name'),
+    'branch': fields.String(description='package set name'),
+    'arch': fields.String(description='package arch'),
+    'files': fields.List(fields.String, description='found files')
+})
+
+pkg_by_file_name_model = ns.model('PackageByFileNameModel',{
+    'request_args': fields.Raw(description='request arguments'),
+    'length': fields.Integer(description='number of packages found'),
+    'packages': fields.Nested(pkg_by_file_name_el_model,
         description='package set packages information',
         as_list=True
     )

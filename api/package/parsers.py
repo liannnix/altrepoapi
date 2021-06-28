@@ -196,3 +196,49 @@ pkg_find_pkgset_args.add_argument(
     help='list of package sets to filter result',
     location='args'
 )
+
+pkg_by_file_name_args = reqparse.RequestParser()
+pkg_by_file_name_args.add_argument(
+    'file',
+    type=str,
+    required=True,
+    help='file name',
+    location='args'
+)
+pkg_by_file_name_args.add_argument(
+    'branch',
+    type=str,
+    required=True,
+    help='name of package set',
+    location='args'
+)
+pkg_by_file_name_args.add_argument(
+    'arch',
+    type=str,
+    required=False,
+    help='packages architecture',
+    location='args'
+)
+
+pkg_by_file_md5_args = reqparse.RequestParser()
+pkg_by_file_md5_args.add_argument(
+    'md5',
+    type=str,
+    required=True,
+    help='file MD5 checksum',
+    location='args'
+)
+pkg_by_file_md5_args.add_argument(
+    'branch',
+    type=str,
+    required=True,
+    help='name of package set',
+    location='args'
+)
+pkg_by_file_md5_args.add_argument(
+    'arch',
+    type=str,
+    required=False,
+    help='packages architecture',
+    location='args'
+)
