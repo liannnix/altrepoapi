@@ -84,7 +84,7 @@ package_info_args.add_argument(
 
 pkg_build_dep_args = reqparse.RequestParser()
 pkg_build_dep_args.add_argument(
-    'package',
+    'packages',
     type=str,
     action='split',
     required=True,
@@ -240,5 +240,21 @@ pkg_by_file_md5_args.add_argument(
     type=str,
     required=False,
     help='packages architecture',
+    location='args'
+)
+
+dependent_packages_args = reqparse.RequestParser()
+dependent_packages_args.add_argument(
+    'name',
+    type=str,
+    required=True,
+    help='package name',
+    location='args'
+)
+dependent_packages_args.add_argument(
+    'branch',
+    type=str,
+    required=True,
+    help='name of package set',
     location='args'
 )

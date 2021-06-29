@@ -8,14 +8,12 @@ package_info_changelog_el_model = ns.model('PackageInfoChangelogElementModel', {
     'evr': fields.String(description='changelog EVR'),
     'message': fields.String(description='changelog message')
 })
-
 package_info_dependencies_model = ns.model('PackageInfoDependenciesModel', {
     'require': fields.List(fields.String, description='package requires'),
     'provide': fields.List(fields.String, description='package provides'),
     'conflict': fields.List(fields.String, description='package conflicts'),
     'obsolete': fields.List(fields.String, description='package obsoletes')
 })
-
 package_info_package_model = ns.model('PackageInfoPackageModel', {
     'name': fields.String(attribute='pkg_name', description='package name'),
     'version': fields.String(attribute='pkg_version', description='package version'),
@@ -71,7 +69,6 @@ package_info_package_model = ns.model('PackageInfoPackageModel', {
     'files': fields.List(fields.String, description='package files'),
     'depends': fields.Nested(package_info_dependencies_model, as_list=True, description='package dependencies')
 })
-
 package_info_model = ns.model('PackageInfoModel',{
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
@@ -95,7 +92,6 @@ pkg_build_dep_el_model = ns.model('PackageBuildDependencyElementModel',{
     'requires': fields.List(fields.String, description='package requirements'),
     'acl': fields.List(fields.String, description='package ACL list')
 })
-
 pkg_build_dep_model = ns.model('PackageBuildDependencyModel',{
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
@@ -114,7 +110,6 @@ misconflict_pkg_model = ns.model('PackageMisconflictPackageModel',{
     'archs': fields.List(fields.String, description='package archs'),
     'files_with_conflict': fields.List(fields.String, description='conflict files')
 })
-
 misconflict_pkgs_model = ns.model('PackageMisconflictPackagesModel',{
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
@@ -136,7 +131,6 @@ pkg_find_pkgset_el_model = ns.model('PackageFindPackagesetElementModel',{
     'buildtime': fields.String(description='package build time'),
     'archs': fields.List(fields.String, description='binary packages archs')
 })
-
 pkg_find_pkgset_model = ns.model('PackageFindPackagesetModel',{
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
@@ -156,12 +150,30 @@ pkg_by_file_name_el_model = ns.model('PackageByFileNameElementModel',{
     'arch': fields.String(description='package arch'),
     'files': fields.List(fields.String, description='found files')
 })
-
 pkg_by_file_name_model = ns.model('PackageByFileNameModel',{
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
     'packages': fields.Nested(pkg_by_file_name_el_model,
         description='package set packages information',
+        as_list=True
+    )
+})
+
+dependent_packages_el_model = ns.model('DependentPackagesElementModel',{
+    'name': fields.String(description='package name'),
+    'version': fields.String(description='package version'),
+    'release': fields.String(description='package release'),
+    'epoch': fields.Integer(description='package epoch'),
+    'serial': fields.Integer(description='package serial'),
+    'sourcerpm': fields.String(description='source package file'),
+    'branch': fields.String(description='package set name'),
+    'archs': fields.List(fields.String, description='binary packages archs')
+})
+dependent_packages_model = ns.model('DependentPackagesModel',{
+    'request_args': fields.Raw(description='request arguments'),
+    'length': fields.Integer(description='number of packages found'),
+    'packages': fields.Nested(dependent_packages_el_model,
+        description='dependent packages information',
         as_list=True
     )
 })

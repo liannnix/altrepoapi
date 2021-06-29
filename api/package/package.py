@@ -8,13 +8,15 @@ from .endpoints.pkg_build_dependency import PackageBuildDependency
 from .endpoints.misconflict_packages import PackageMisconflictPackages
 from .endpoints.find_packageset import FindPackageset
 from .endpoints.package_by_file import PackageByFileName, PackageByFileMD5
+from .endpoints.dependent_packages import DependentPackages
 
 ns = Namespace('package', description="Packages information API")
 
 from .parsers import package_info_args, pkg_build_dep_args, misconflict_pkg_args
 from .parsers import pkg_find_pkgset_args, pkg_by_file_name_args, pkg_by_file_md5_args
+from .parsers import dependent_packages_args
 from .serializers import package_info_model, pkg_build_dep_model, misconflict_pkgs_model
-from .serializers import pkg_find_pkgset_model, pkg_by_file_name_model
+from .serializers import pkg_find_pkgset_model, pkg_by_file_name_model, dependent_packages_model
 
 logger = get_logger(__name__)
 
@@ -185,6 +187,36 @@ class routePackageByFileMD5(Resource):
         args = pkg_by_file_md5_args.parse_args(strict=True)
         url_logging(logger, g.url)
         pkg= PackageByFileMD5(g.connection, **args)
+        if not pkg.check_params():
+            abort(
+                400, 
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=pkg.validation_results
+                )
+        result, code =  pkg.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route('/dependent_packages',
+    doc={
+        'description': ("Get information about packages whose binary packages "
+            "depends on given package"),
+        'responses': {
+            400: 'Request parameters validation error',
+            404: 'Package not found in database'
+        }
+    }
+)
+class routeDependentPackages(Resource):
+    @ns.expect(dependent_packages_args)
+    @ns.marshal_with(dependent_packages_model)
+    def get(self):
+        args = dependent_packages_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        pkg= DependentPackages(g.connection, **args)
         if not pkg.check_params():
             abort(
                 400, 
