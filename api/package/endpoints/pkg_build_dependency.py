@@ -386,7 +386,7 @@ class PackageBuildDependency:
         # init BuildDependency class with args
         self.bd = BuildDependency(
             self.conn,
-            self.args['package'],
+            self.args['packages'],
             self.args['branch'].lower(),
             self.args['arch'],
             self.args['leaf'],
