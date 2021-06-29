@@ -2,7 +2,6 @@ from collections import namedtuple
 
 from settings import namespace as settings
 from utils import get_logger, build_sql_error_response, logger_level as ll
-from utils import tuplelist_to_dict
 
 from api.misc import lut
 from database.packageset_sql import pkgsetsql
@@ -72,8 +71,6 @@ class PackagesetPackages:
         else:
             self.archs = lut.known_archs
         self.archs = tuple(self.archs)
-
-        print(f"DBG: archs : {self.archs}")
 
         depends_type_to_sql = {
             'source': (1,),
