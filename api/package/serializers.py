@@ -192,7 +192,7 @@ unpackaged_dirs_args_model = ns.model('UnpackagedDirsModel',{
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
     'packages': fields.Nested(unpackaged_dirs_args_el_model,
-        description='unpackaged directories information',
+        description='packages with unpackaged directories',
         as_list=True
     )
 })
