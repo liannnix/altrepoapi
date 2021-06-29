@@ -53,6 +53,7 @@ task_build_dep_args.add_argument(
 task_build_dep_args.add_argument(
     'dptype',
     type=str,
+    choices=('both', 'source', 'binary'),
     default='both',
     required=False,
     help='dependency type [source|binary|both]',
