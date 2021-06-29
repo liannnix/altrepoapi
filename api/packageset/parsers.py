@@ -2,10 +2,17 @@ from flask_restx import reqparse, inputs
 
 pkgset_compare_args = reqparse.RequestParser()
 pkgset_compare_args.add_argument(
-    'branch',
+    'pkgset1',
     type=str,
     required=True,
-    help='name of packageset',
+    help='first packageset name',
+    location='args'
+)
+pkgset_compare_args.add_argument(
+    'pkgset2',
+    type=str,
+    required=True,
+    help='second packageset name',
     location='args'
 )
 

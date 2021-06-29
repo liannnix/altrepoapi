@@ -39,5 +39,75 @@ GROUP BY
 ORDER BY pkg_name
 """
 
+    get_compare_info = """
+SELECT
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    Df.pkg_name,
+    Df.pkg_version,
+    Df.pkg_release
+FROM
+(
+    SELECT
+        pkg_name,
+        pkg_version,
+        pkg_release
+    FROM last_packages
+    WHERE pkgset_name = %(pkgset1)s
+        AND pkg_sourcepackage = 1
+        AND
+        (
+            pkg_name,
+            pkg_version,
+            pkg_release
+        ) NOT IN
+        (
+            SELECT
+                pkg_name,
+                pkg_version,
+                pkg_release
+            FROM last_packages
+            WHERE pkgset_name = %(pkgset2)s
+                AND pkg_sourcepackage = 1
+        )
+        AND pkg_name IN
+        (
+            SELECT pkg_name
+            FROM last_packages
+            WHERE pkgset_name = %(pkgset2)s
+                AND pkg_sourcepackage = 1
+        )
+) AS PkgSet2
+INNER JOIN
+(
+    SELECT
+        pkg_name,
+        pkg_version,
+        pkg_release
+    FROM last_packages
+    WHERE pkgset_name = %(pkgset2)s
+        AND pkg_sourcepackage = 1
+) AS Df USING pkg_name
+UNION ALL
+SELECT
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    '',
+    '',
+    ''
+FROM last_packages
+WHERE pkgset_name = %(pkgset1)s
+    AND pkg_sourcepackage = 1
+    AND pkg_name NOT IN
+    (
+        SELECT pkg_name
+        FROM last_packages
+        WHERE pkgset_name = %(pkgset2)s
+            AND pkg_sourcepackage = 1
+    )
+"""
+
 
 pkgsetsql = SQL()
