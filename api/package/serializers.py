@@ -177,3 +177,22 @@ dependent_packages_model = ns.model('DependentPackagesModel',{
         as_list=True
     )
 })
+
+unpackaged_dirs_args_el_model = ns.model('UnpackagedDirsElementModel', {
+    'package': fields.String(description='package name'),
+    'directory': fields.String(description='unpackaged directory'),
+    'version': fields.String(description='package version'),
+    'release': fields.String(description='package release'),
+    'epoch': fields.Integer(description='package epoch'),
+    'packager': fields.String(description='maintainer name'),
+    'email': fields.String(description='maintainer email'),
+    'archs': fields.List(fields.String, description='binary packages archs')
+})
+unpackaged_dirs_args_model = ns.model('UnpackagedDirsModel',{
+    'request_args': fields.Raw(description='request arguments'),
+    'length': fields.Integer(description='number of packages found'),
+    'packages': fields.Nested(unpackaged_dirs_args_el_model,
+        description='unpackaged directories information',
+        as_list=True
+    )
+})

@@ -665,5 +665,67 @@ GROUP BY
 )
 """
 
+    get_unpackaged_dirs = """
+SELECT DISTINCT
+    Pkg.pkg_name,
+    extract(file_name, '^(.+)/([^/]+)$') AS dir,
+    Pkg.pkg_version,
+    Pkg.pkg_release,
+    Pkg.pkg_epoch,
+    Pkg.pkg_packager,
+    Pkg.pkg_packager_email,
+    groupUniqArray(Pkg.pkg_arch)
+FROM Files_view
+LEFT JOIN
+(
+    SELECT
+        pkg_hash,
+        pkg_name,
+        pkg_version,
+        pkg_release,
+        pkg_epoch,
+        pkg_disttag,
+        pkg_packager_email,
+        pkg_packager,
+        pkg_arch
+    FROM Packages_buffer
+) AS Pkg USING pkg_hash
+WHERE file_class = 'file'
+    AND pkg_hash IN
+    (
+        SELECT pkg_hash
+        FROM last_packages
+        WHERE pkgset_name = %(branch)s
+            AND pkg_packager_email LIKE %(email)s
+            AND pkg_sourcepackage = 0
+            AND pkg_arch IN %(archs)s
+    )
+    AND file_hashdir NOT IN
+    (
+        SELECT file_hashname
+        FROM Files_buffer
+        WHERE file_class = 'directory'
+            AND pkg_hash IN
+            (
+                SELECT pkg_hash
+                FROM last_packages
+                WHERE pkgset_name = %(branch)s
+                AND pkg_sourcepackage = 0
+                AND pkg_arch IN %(archs)s
+            )
+    )
+GROUP BY
+(
+    Pkg.pkg_name,
+    dir,
+    Pkg.pkg_version,
+    Pkg.pkg_release,
+    Pkg.pkg_epoch,
+    Pkg.pkg_packager,
+    Pkg.pkg_packager_email
+)
+ORDER BY pkg_packager_email
+"""
+
 
 packagesql = SQL()

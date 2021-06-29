@@ -258,3 +258,27 @@ dependent_packages_args.add_argument(
     help='name of package set',
     location='args'
 )
+
+unpackaged_dirs_args = reqparse.RequestParser()
+unpackaged_dirs_args.add_argument(
+    'packager',
+    type=str,
+    required=True,
+    help='maintainer nickname',
+    location='args'
+)
+unpackaged_dirs_args.add_argument(
+    'branch',
+    type=str,
+    required=True,
+    help='name of package set',
+    location='args'
+)
+unpackaged_dirs_args.add_argument(
+    'archs',
+    type=str,
+    action='split',
+    required=False,
+    help='list of packages architectures',
+    location='args'
+)
