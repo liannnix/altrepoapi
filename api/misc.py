@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class LookupTables:
-    known_branches = ['c8.1', 'p8', 'p7', 'p9', 'sisyphus', 'c8', 'c9f1', 'c9f2']
+    known_branches = ['c8.1', 'p8', 'p7', 'p9', 'sisyphus', 'c8', 'c9f1', 'c9f2', 'p10']
     known_archs = [
         'x86_64', 'noarch', 'x86_64-i586', 'armh', 'arm',
         'i586', 'pentium4', 'athlon', 'pentium3', 'i686',
