@@ -2,7 +2,7 @@ import rpm
 from collections import defaultdict
 from dataclasses import dataclass
 
-from utils import get_logger, logger_level as ll, build_sql_error_response
+from utils import get_logger, logger_level as ll
 from utils import tuplelist_to_dict, remove_duplicate
 
 from .exceptions import SqlRequestError
@@ -43,8 +43,10 @@ class ConflictFilter:
     Class contains method which finds conflicts and obsoletes between two
     packages and its auxiliary methods.
 
+    :param connection: database connection instance
     :param pbranch: name of package repository
     :param parch: packages archs
+    :param debug_: SQL debug flag
     """
 
     def __init__(self, connection, pbranch, parch, debug_):
