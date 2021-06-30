@@ -88,11 +88,12 @@ class PackageDependencies:
     in clickhouse database.
     """
 
-    def __init__(self, connection, pbranch, debug_):
+    def __init__(self, connection, packages, branch, archs, debug_):
         self.conn = connection
         self.sql = PackageDependenciesSQL()
-        self.pbranch = pbranch
-        self.static_archs = ['x86_64', 'noarch']
+        self.packages = packages
+        self.branch = branch
+        self.archs = archs
         self.dep_dict = {}
         self._tmp_table = 'tmp_pkg_hshs'
         self.DEBUG = debug_
@@ -129,19 +130,18 @@ class PackageDependencies:
         self.status = False
         self._log_error(severity)
 
-    def get_package_dep_set(self, pkgs=None, first=False):
+    def _get_package_dep_set(self, pkgs=None, first=False):
 
         self.conn.request_line = self.sql.get_srchsh_for_binary.format(
             pkgs=pkgs,
-            branch=self.pbranch,
-            archs=tuple(self.static_archs)
+            branch=self.branch,
+            archs=tuple(self.archs)
         )
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, ll.ERROR)
             raise SqlRequestError(self.error)
 
-        # TODO: quite optimized by using sets. Is further optimization required?
         tmp_list = []
         for key, val in response:
             if first:
@@ -179,12 +179,12 @@ class PackageDependencies:
         if not tmp_list:
             return self.dep_dict
 
-        return self.get_package_dep_set(
+        return self._get_package_dep_set(
             pkgs=self.sql.select_from_tmp_table.format(tmp_table=self._tmp_table)
         )
 
     def build_result(self):
-        hsh_dict = self.dep_dict
+        hsh_dict = self._get_package_dep_set(self.packages, first=True)
         tmp_table = 'all_hshs'
         self.conn.request_line = self.sql.create_tmp_table.format(
             tmp_table=tmp_table
@@ -199,7 +199,6 @@ class PackageDependencies:
         self.conn.request_line = (
             self.sql.insert_to_tmp_table.format(tmp_tbl=tmp_table),
             ((hsh,) for hsh in hsh_list)
-            # tuple([(hsh,) for hsh in hsh_list])
         )
         status, response = self.conn.send_request()
         if status is False:
