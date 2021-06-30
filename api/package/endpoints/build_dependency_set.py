@@ -23,6 +23,9 @@ class BuildDependencySet:
         self.archs = archs
         self.result = []
         self.error = None
+        # add 'noarch' to archs list
+        if 'noarch' not in self.archs:
+            self.archs += ['noarch']
 
     def _log_error(self, severity):
         if severity == ll.CRITICAL:
@@ -87,16 +90,10 @@ class BuildDependencySet:
 
         hshs = join_tuples(response)
 
-        pkg_deps = PackageDependencies(self.conn, self.branch, self.DEBUG)
-
-        if self.archs:
-            pkg_deps.static_archs += [
-                arch for arch in self.archs
-                if arch not in pkg_deps.static_archs
-            ]
+        pkg_deps = PackageDependencies(self.conn, hshs, self.branch, self.archs, self.DEBUG)
 
         try:
-            pkg_deps.get_package_dep_set(pkgs=hshs, first=True)
+            self.result = pkg_deps.build_result()
         except SqlRequestError as e:
             self._store_error(
                 {
@@ -108,22 +105,8 @@ class BuildDependencySet:
             )
             return
 
-        try:
-            result_dict = pkg_deps.build_result()
-        except SqlRequestError as e:
-            self._store_error(
-                {
-                    'message': f"Error occured in ConflictFilter",
-                    'error': e.dErrorArguments
-                },
-                ll.ERROR,
-                500
-            )
-            return
-
-
-        self.result = result_dict
         self.status = True
+        return
 
 
 class PackageBuildDependencySet:
@@ -160,7 +143,8 @@ class PackageBuildDependencySet:
 
     def get(self):
         # arguments processing
-        pass
+        if self.args['archs'] is None:
+            self.args['archs'] = ['x86_64']
         # init BuildDependency class with args
         self.bds = BuildDependencySet(
             self.conn,
