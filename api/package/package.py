@@ -266,7 +266,7 @@ class routeUnpackagedDirs(Resource):
 
 @ns.route('/build_dependency_set',
     doc={
-        'description': ("Get list of packages used for build given "
+        'description': ("Get list of packages required for build by given "
             "packages list recursively"),
         'responses': {
             400: 'Request parameters validation error',
