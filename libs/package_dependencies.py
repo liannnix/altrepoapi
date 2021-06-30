@@ -59,7 +59,7 @@ GROUP BY srchsh
 
     get_meta_by_hshs = """
 SELECT
-    pkg_hash,
+    groupUniqArray(pkg_hash),
     pkg_name,
     pkg_version,
     pkg_release,
@@ -73,7 +73,6 @@ WHERE pkg_hash IN
 )
 GROUP BY
 (
-    pkg_hash,
     pkg_name,
     pkg_version,
     pkg_release,
@@ -215,36 +214,31 @@ class PackageDependencies:
             self._store_sql_error(response, ll.ERROR)
             raise SqlRequestError(self.error)
 
-        dict_info = tuplelist_to_dict(response, 5)
+        dict_info = dict([(tuple(r[0]), r[1:]) for r in response])
 
-        # TODO: arch join removed
         PkgInfo = namedtuple('PkgInfo', ['name', 'version', 'release', 'epoch', 'archs'])
         result_list = []
 
         for pkg, hshs in hsh_dict.items():
             counter = 0
-            control_list, pkg_req_list = [], []
+            control_list = set()
+            pkg_req_list = []
 
             for hsh in hshs:
-                # first = dict_info[hsh]
-                # archs = ()
+                dict_info_key = [k for k in dict_info.keys() if hsh in k][0]
+                dict_info_val = dict_info[dict_info_key]
+                control_list_el = tuple(dict_info_val[:4])
 
-                # for hh in hshs:
-                #     second = dict_info[hh]
-                #     if first[:3] == second[:3]:
-                #         archs += tuple(second[4])
-
-                # dict_info[hsh][4] = tuple(set(archs))
-
-                if dict_info[hsh] not in control_list:
-                    control_list.append(dict_info[hsh])
-                    pkg_req_list.append(PkgInfo(*dict_info[hsh])._asdict())
+                if control_list_el not in control_list:
+                    control_list.add(control_list_el)
+                    pkg_req_list.append(PkgInfo(*dict_info_val)._asdict())
                     counter += 1
-
+            
+            pkg_key = [k for k in dict_info.keys() if pkg in k][0]
             result_list.append({
-                'package': dict_info[pkg][0],
+                'package': dict_info[pkg_key][0],
                 'length': counter,
-                'depends': pkg_req_list
+                'depends': sorted(pkg_req_list, key=lambda val: val['name'])
             })
 
         return result_list
