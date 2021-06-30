@@ -9,6 +9,7 @@ from .endpoints.task_repo import TaskRepo
 from .endpoints.misconflict_packages import TaskMisconflictPackages
 from .endpoints.task_build_dependency import TaskBuildDependency
 from .endpoints.find_packageset import FindPackageset
+from .endpoints.build_dependency_set import TaskBuildDependencySet
 
 ns = Namespace('task', description="Task's information API")
 
@@ -106,7 +107,7 @@ class routeTaskDiff(Resource):
         }
     }
 )
-class routePackageBuildDependency(Resource):
+class routeTaskBuildDependency(Resource):
     @ns.expect(task_build_dep_args)
     @ns.marshal_with(task_build_dep_model)
     def get(self, id):
@@ -169,7 +170,7 @@ class routeTaskMisconflictPackages(Resource):
         }
     }
 )
-class routeTaskDiff(Resource):
+class routeTaskFindPackageset(Resource):
     @ns.expect(task_find_pkgset_args)
     @ns.marshal_with(task_find_pkgset_model)
     def get(self, id):
