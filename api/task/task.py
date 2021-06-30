@@ -96,7 +96,7 @@ class routeTaskDiff(Resource):
         return result, code
 
 
-@ns.route('/build_dependency/<int:id>',
+@ns.route('/what_depends_src/<int:id>',
     doc={
         'params': {'id': 'task ID'},
         'description': "get packages build dependencies",
