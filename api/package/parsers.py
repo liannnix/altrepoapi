@@ -283,3 +283,28 @@ unpackaged_dirs_args.add_argument(
     help='list of packages architectures',
     location='args'
 )
+
+build_dep_set_args = reqparse.RequestParser()
+build_dep_set_args.add_argument(
+    'packages',
+    type=str,
+    action='split',
+    required=True,
+    help='package or list of packages',
+    location='args'
+)
+build_dep_set_args.add_argument(
+    'branch',
+    type=str,
+    required=True,
+    help='name of packageset',
+    location='args'
+)
+build_dep_set_args.add_argument(
+    'archs',
+    type=str,
+    action='split',
+    required=False,
+    help='list of packages architectures',
+    location='args'
+)

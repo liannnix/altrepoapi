@@ -196,3 +196,19 @@ unpackaged_dirs_args_model = ns.model('UnpackagedDirsModel',{
         as_list=True
     )
 })
+
+build_dep_set_pkg_model = ns.model('BuildDependencySetPackageModel',{
+    'name': fields.String(description='package name'),
+    'version': fields.String(description='package version'),
+    'release': fields.String(description='package release'),
+    'epoch': fields.Integer(description='package epoch'),
+    'archs': fields.List(fields.String, description='binary packages archs')
+})
+build_dep_set_model = ns.model('BuildDependencySetModel',{
+    'request_args': fields.Raw(description='request arguments'),
+    'length': fields.Integer(description='number of packages found'),
+    'packages': fields.Nested(build_dep_set_pkg_model,
+        description='build requirements packages information',
+        as_list=True
+    )
+})

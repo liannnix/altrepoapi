@@ -10,15 +10,17 @@ from .endpoints.find_packageset import FindPackageset
 from .endpoints.package_by_file import PackageByFileName, PackageByFileMD5
 from .endpoints.dependent_packages import DependentPackages
 from .endpoints.unpackaged_dirs import UnpackagedDirs
+from .endpoints.build_dependency_set import PackageBuildDependencySet
 
 ns = Namespace('package', description="Packages information API")
 
 from .parsers import package_info_args, pkg_build_dep_args, misconflict_pkg_args
 from .parsers import pkg_find_pkgset_args, pkg_by_file_name_args, pkg_by_file_md5_args
-from .parsers import dependent_packages_args, unpackaged_dirs_args
+from .parsers import dependent_packages_args, unpackaged_dirs_args, build_dep_set_args
 from .serializers import package_info_model, pkg_build_dep_model, misconflict_pkgs_model
 from .serializers import pkg_find_pkgset_model, pkg_by_file_name_model
 from .serializers import dependent_packages_model, unpackaged_dirs_args_model
+from .serializers import build_dep_set_model
 
 logger = get_logger(__name__)
 
@@ -52,7 +54,7 @@ class routePackageInfo(Resource):
         return result, code
 
 
-@ns.route('/build_dependency',
+@ns.route('/what_depends_src',
     doc={
         'description': "Get packages build dependencies by set of parameters",
         'responses': {
@@ -257,6 +259,36 @@ class routeUnpackagedDirs(Resource):
                 validation_message=pkg.validation_results
                 )
         result, code =  pkg.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route('/build_dependency_set',
+    doc={
+        'description': ("Get list of packages used for build given "
+            "packages list"),
+        'responses': {
+            400: 'Request parameters validation error',
+            404: 'Requested data not found in database'
+        }
+    }
+)
+class routePackageBuildDependencySet(Resource):
+    @ns.expect(build_dep_set_args)
+    # @ns.marshal_with(build_dep_set_model)
+    def get(self):
+        args = build_dep_set_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        pkg = PackageBuildDependencySet(g.connection, **args)
+        if not pkg.check_params():
+            abort(
+                400, 
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=pkg.validation_results
+                )
+        result, code = pkg.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
