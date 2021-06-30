@@ -204,10 +204,18 @@ build_dep_set_pkg_model = ns.model('BuildDependencySetPackageModel',{
     'epoch': fields.Integer(description='package epoch'),
     'archs': fields.List(fields.String, description='binary packages archs')
 })
+build_dep_set_pkgs_model = ns.model('BuildDependencySetPackagesModel',{
+    'package': fields.String(description='source package name'),
+    'length': fields.Integer(description='number of dependency packages found'),
+    'depends': fields.Nested(build_dep_set_pkg_model,
+        description='build requirements packages information',
+        as_list=True
+    )
+})
 build_dep_set_model = ns.model('BuildDependencySetModel',{
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
-    'packages': fields.Nested(build_dep_set_pkg_model,
+    'packages': fields.Nested(build_dep_set_pkgs_model,
         description='build requirements packages information',
         as_list=True
     )

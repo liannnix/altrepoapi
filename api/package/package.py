@@ -276,7 +276,7 @@ class routeUnpackagedDirs(Resource):
 )
 class routePackageBuildDependencySet(Resource):
     @ns.expect(build_dep_set_args)
-    # @ns.marshal_with(build_dep_set_model)
+    @ns.marshal_with(build_dep_set_model)
     def get(self):
         args = build_dep_set_args.parse_args(strict=True)
         url_logging(logger, g.url)
