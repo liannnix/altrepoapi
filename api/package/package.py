@@ -267,7 +267,7 @@ class routeUnpackagedDirs(Resource):
 @ns.route('/build_dependency_set',
     doc={
         'description': ("Get list of packages used for build given "
-            "packages list"),
+            "packages list recursively"),
         'responses': {
             400: 'Request parameters validation error',
             404: 'Requested data not found in database'
