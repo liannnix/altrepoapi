@@ -50,30 +50,6 @@ class BuildDependencySet:
         self._log_error(severity)
 
     def build_dependency_set(self):
-
-        # if values['task']:
-        #     g.connection.request_line = \
-        #         "SELECT task_repo FROM Tasks WHERE task_id = {}".format(values['task'])
-
-        #     status, response = g.connection.send_request()
-        #     if status is False:
-        #         return response
-
-        #     pbranch = response[0][0]
-
-        #     g.connection.request_line = (
-        #         QM.build_dep_set_get_src_hsh_by_task, {'task': values['task']}
-        #     )
-
-        #     status, response = g.connection.send_request()
-        #     if status is False:
-        #         return response
-
-        #     hshs = utils.join_tuples(response)
-        # else:
-        # pkg_ls = tuple(values['pkg_ls'].split(','))
-        # pbranch = values['branch']
-
         self.conn.request_line = self.sql.get_pkg_hshs.format(
             pkgs=self.packages, branch=self.branch
         )
