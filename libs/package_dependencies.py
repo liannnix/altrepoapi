@@ -1,7 +1,8 @@
 from dataclasses import dataclass
+from collections import namedtuple
 
 from utils import get_logger, logger_level as ll
-from utils import tuplelist_to_dict, remove_duplicate
+from utils import tuplelist_to_dict
 
 from .exceptions import SqlRequestError
 
@@ -141,21 +142,18 @@ class PackageDependencies:
             self._store_sql_error(response, ll.ERROR)
             raise SqlRequestError(self.error)
 
-        # FIXME: needed optimization
+        # TODO: quite optimized by using sets. Is further optimization required?
         tmp_list = []
         for key, val in response:
             if first:
                 self.dep_dict[key] = val
-                tmp_list = val
-                # tmp_list += [hsh for hsh in val if hsh not in tmp_list]
+                tmp_list += list(set(val) - set(tmp_list))
             else:
                 for pkg, hshs in self.dep_dict.items():
                     hshs_set = set(hshs)
                     if key in hshs_set:
                         uniq_hshs = list(set(val) - hshs_set)
-                        # uniq_hshs = [l for l in val if l not in hshs]
                         self.dep_dict[pkg] += uniq_hshs
-                        # self.dep_dict[pkg] += tuple(uniq_hshs)
                         tmp_list += uniq_hshs
 
         self.conn.request_line = self.sql.drop_tmp_table.format(tmp_table=self._tmp_table)
@@ -172,7 +170,7 @@ class PackageDependencies:
 
         self.conn.request_line = (
             self.sql.insert_to_tmp_table.format(tmp_tbl=self._tmp_table),
-            tuple([(hsh,) for hsh in tmp_list])
+            ((hsh,) for hsh in tmp_list)
         )
         status, response = self.conn.send_request()
         if status is False:
@@ -186,8 +184,8 @@ class PackageDependencies:
             pkgs=self.sql.select_from_tmp_table.format(tmp_table=self._tmp_table)
         )
 
-    # @staticmethod
-    def make_result_dict(self, hsh_list, hsh_dict):
+    def build_result(self):
+        hsh_dict = self.dep_dict
         tmp_table = 'all_hshs'
         self.conn.request_line = self.sql.create_tmp_table.format(
             tmp_table=tmp_table
@@ -197,15 +195,18 @@ class PackageDependencies:
             self._store_sql_error(response, ll.ERROR)
             raise SqlRequestError(self.error)
 
+        hsh_list = tuple(hsh_dict.keys()) + tuple([hsh for val in hsh_dict.values() for hsh in val])
+
         self.conn.request_line = (
             self.sql.insert_to_tmp_table.format(tmp_tbl=tmp_table),
-            tuple([(hsh,) for hsh in hsh_list])
+            ((hsh,) for hsh in hsh_list)
+            # tuple([(hsh,) for hsh in hsh_list])
         )
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, ll.ERROR)
             raise SqlRequestError(self.error)
-
+        # get information for all packages in hsh_dict (keys and values) 
         self.conn.request_line = self.sql.get_meta_by_hshs.format(
             tmp_table=tmp_table
         )
@@ -216,35 +217,34 @@ class PackageDependencies:
 
         dict_info = tuplelist_to_dict(response, 5)
 
-        # FIXME: needed optimization (archs)
-        fields = ['name', 'version', 'release', 'epoch', 'archs']
-        result_dict = {}
+        # TODO: arch join removed
+        PkgInfo = namedtuple('PkgInfo', ['name', 'version', 'release', 'epoch', 'archs'])
+        result_list = []
+
         for pkg, hshs in hsh_dict.items():
-
             counter = 0
-            control_list, pkg_req_dict = [], {}
+            control_list, pkg_req_list = [], []
+
             for hsh in hshs:
-                first = dict_info[hsh]
+                # first = dict_info[hsh]
+                # archs = ()
 
-                archs = ()
-                for hh in hshs:
-                    second = dict_info[hh]
+                # for hh in hshs:
+                #     second = dict_info[hh]
+                #     if first[:3] == second[:3]:
+                #         archs += tuple(second[4])
 
-                    if first[:3] == second[:3]:
-                        archs += tuple(second[4])
-
-                dict_info[hsh][4] = tuple(set(archs))
+                # dict_info[hsh][4] = tuple(set(archs))
 
                 if dict_info[hsh] not in control_list:
                     control_list.append(dict_info[hsh])
-
-                    pkg_info_dict = {}
-                    for i in range(len(fields)):
-                        pkg_info_dict[fields[i]] = dict_info[hsh][i]
-
-                    pkg_req_dict[counter] = pkg_info_dict
+                    pkg_req_list.append(PkgInfo(*dict_info[hsh])._asdict())
                     counter += 1
 
-            result_dict[dict_info[pkg][0]] = pkg_req_dict
+            result_list.append({
+                'package': dict_info[pkg][0],
+                'length': counter,
+                'depends': pkg_req_list
+            })
 
-        return result_dict
+        return result_list

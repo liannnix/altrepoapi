@@ -96,7 +96,7 @@ class BuildDependencySet:
             ]
 
         try:
-            dep_hsh_list = pkg_deps.get_package_dep_set(pkgs=hshs, first=True)
+            pkg_deps.get_package_dep_set(pkgs=hshs, first=True)
         except SqlRequestError as e:
             self._store_error(
                 {
@@ -109,11 +109,7 @@ class BuildDependencySet:
             return
 
         try:
-            result_dict = pkg_deps.make_result_dict(
-                list(dep_hsh_list.keys()) +
-                [hsh for val in dep_hsh_list.values() for hsh in val],
-                dep_hsh_list
-            )
+            result_dict = pkg_deps.build_result()
         except SqlRequestError as e:
             self._store_error(
                 {
