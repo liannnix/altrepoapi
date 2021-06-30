@@ -546,5 +546,22 @@ WHERE pkg_hash IN
 )
 """
 
+    task_src_pkg_hashes = """
+WITH
+(
+    SELECT max(task_changed)
+    FROM TaskIterations_buffer
+    WHERE task_id = {id}
+) as last_changed
+SELECT DISTINCT pkg_hash
+FROM
+(
+    SELECT titer_srcrpm_hash AS pkg_hash
+    FROM TaskIterations_buffer
+    WHERE task_id = {id}
+        AND task_changed = last_changed
+)
+"""
+
 
 tasksql = SQL()

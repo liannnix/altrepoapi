@@ -201,3 +201,28 @@ task_find_pkgset_model = ns.model('TaskFindPackagesetModel',{
         as_list=True
     )
 })
+
+build_dep_set_pkg_model = ns.model('BuildDependencySetPackageModel',{
+    'name': fields.String(description='package name'),
+    'version': fields.String(description='package version'),
+    'release': fields.String(description='package release'),
+    'epoch': fields.Integer(description='package epoch'),
+    'archs': fields.List(fields.String, description='binary packages archs')
+})
+build_dep_set_pkgs_model = ns.model('BuildDependencySetPackagesModel',{
+    'package': fields.String(description='source package name'),
+    'length': fields.Integer(description='number of dependency packages found'),
+    'depends': fields.Nested(build_dep_set_pkg_model,
+        description='build requirements packages information',
+        as_list=True
+    )
+})
+build_dep_set_model = ns.model('BuildDependencySetModel',{
+    'id': fields.Integer(description='task id'),
+    'request_args': fields.Raw(description='request arguments'),
+    'length': fields.Integer(description='number of packages found'),
+    'packages': fields.Nested(build_dep_set_pkgs_model,
+        description='build requirements packages information',
+        as_list=True
+    )
+})

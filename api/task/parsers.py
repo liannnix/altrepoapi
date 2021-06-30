@@ -103,3 +103,13 @@ task_find_pkgset_args.add_argument(
     help='list of package sets to filter result',
     location='args'
 )
+
+task_buid_dep_set_args = reqparse.RequestParser()
+task_buid_dep_set_args.add_argument(
+    'archs',
+    type=str,
+    action='split',
+    required=False,
+    help='list of packages architectures',
+    location='args'
+)
