@@ -102,10 +102,11 @@ class TaskDiff:
 
             if response:
                 for el in response:
-                    if el[2].endswith('.src.rpm'):
-                        result_dict['src'][el[0]]['del'].append(el[2])
-                    else:
-                        result_dict[el[1]][el[0]]['del'].append(el[2])
+                    p_name, p_arch, p_fname = el
+                    if p_fname.endswith('.src.rpm'):
+                        p_arch = 'src'
+                    if p_fname not in result_dict[p_arch][p_name]['del']:
+                        result_dict[p_arch][p_name]['del'].append(p_fname)
 
         if task_add_pkgs:
             # create tmp table with task add packages hashes
@@ -132,10 +133,11 @@ class TaskDiff:
 
             if response:
                 for el in response:
-                    if el[2].endswith('.src.rpm'):
-                        result_dict['src'][el[0]]['add'].append(el[2])
-                    else:
-                        result_dict[el[1]][el[0]]['add'].append(el[2])
+                    p_name, p_arch, p_fname = el
+                    if p_fname.endswith('.src.rpm'):
+                        p_arch = 'src'
+                    if p_fname not in result_dict[p_arch][p_name]['add']:
+                        result_dict[p_arch][p_name]['add'].append(p_fname)
 
         if task_add_pkgs:
             self.conn.request_line = self.sql.diff_repo_pkgs.format(
