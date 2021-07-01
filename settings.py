@@ -8,11 +8,9 @@ from dataclasses import dataclass
 class BasePathNamespace:
     PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
     # configuration parameters
-    PROJECT_NAME = "altrepo_server_ng"
+    PROJECT_NAME = "altrepo_api"
     CONFIG_FILE = "/etc/{}/dbconfig.conf".format(PROJECT_NAME)
-    # FIXME: debug purpose log location
-    LOG_FILE = "/home/{}/src/{}/server.log".format(getpass.getuser(), PROJECT_NAME)
-    # LOG_FILE = "/home/{}/{}.log".format(getpass.getuser(), PROJECT_NAME)
+    LOG_FILE = "/home/{}/{}.log".format(getpass.getuser(), PROJECT_NAME)
     # application launch parameters
     DEFAULT_HOST = '127.0.0.1'
     DEFAULT_PORT = 5000
