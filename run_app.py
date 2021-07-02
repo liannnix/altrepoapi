@@ -3,7 +3,7 @@ from collections import defaultdict
 from gunicorn.app.wsgiapp import run
 
 import utils
-from settings import namespace
+from settings import namespace as settings
 
 
 def start():
@@ -24,9 +24,9 @@ def start():
         ('--dbname', str, None, 'database name'),
         ('--dbuser', str, None, 'database user'),
         ('--dbpassword', str, None, 'database password'),
-        ('--config', str, namespace.CONFIG_FILE, 'namespace to db config file'),
+        ('--config', str, settings.CONFIG_FILE, 'path to db config file'),
         ('--prcs', str, None, 'number of worker processes'),
-        ('--logs', str, None, 'namespace to log files'),
+        ('--logs', str, None, 'path to log files'),
     ]
 
     parser = utils.make_argument_parser(pars_args)
@@ -42,19 +42,19 @@ def start():
 
         params = {
             'database': [
-                ('host', namespace.DATABASE_HOST),
-                ('name', namespace.DATABASE_NAME),
-                ('try_numbers', namespace.TRY_CONNECTION_NUMBER),
-                ('try_timeout', namespace.TRY_TIMEOUT),
-                ('user', namespace.DATABASE_USER),
-                ('password', namespace.DATABASE_PASS)
+                ('host', settings.DATABASE_HOST),
+                ('name', settings.DATABASE_NAME),
+                ('try_numbers', settings.TRY_CONNECTION_NUMBER),
+                ('try_timeout', settings.TRY_TIMEOUT),
+                ('user', settings.DATABASE_USER),
+                ('password', settings.DATABASE_PASS)
             ],
             'application': [
-                ('host', namespace.DEFAULT_HOST),
-                ('port', namespace.DEFAULT_PORT),
-                ('processes', namespace.WORKER_PROCESSES)
+                ('host', settings.DEFAULT_HOST),
+                ('port', settings.DEFAULT_PORT),
+                ('processes', settings.WORKER_PROCESSES)
             ],
-            'other': [('logfiles', namespace.LOG_FILE)]
+            'other': [('logfiles', settings.LOG_FILE)]
         }
 
         val_list = []
@@ -65,7 +65,7 @@ def start():
 
         for i in range(len(val_list)):
             if val_list[i]:
-                namespace.__setattr__(
+                settings.__setattr__(
                     launch_props[i][0], launch_props[i][1](val_list[i])
                 )
 
@@ -78,14 +78,14 @@ def start():
             pars_val = parser.__getattribute__(parser_keys[i])
 
             if pars_val:
-                namespace.__setattr__(
+                settings.__setattr__(
                     launch_props[i][0], launch_props[i][1](pars_val)
                 )
 
     sys.argv = [
-        sys.argv[0], '-b', '{}:{:d}'.format(namespace.DEFAULT_HOST,
-                                            namespace.DEFAULT_PORT),
-        '-w', namespace.WORKER_PROCESSES, 'app:app', '--timeout', '120'
+        sys.argv[0], '-b', '{}:{:d}'.format(settings.DEFAULT_HOST,
+                                            settings.DEFAULT_PORT),
+        '-w', settings.WORKER_PROCESSES, 'app:app', '--timeout', '120'
     ]
 
     run()
