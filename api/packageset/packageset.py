@@ -16,7 +16,7 @@ logger = get_logger(__name__)
 
 @ns.route('/repository_packages',
     doc={
-        'description': ("Get list of packageset files in accordance "
+        'description': ("Get list of packageset packages in accordance "
             "to given parameters"),
         'responses': {
             400: 'Request parameters validation error',
