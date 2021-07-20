@@ -57,3 +57,13 @@ pkgset_packages_args.add_argument(
     help='package buildtime',
     location='args'
 )
+
+package_chlog_args = reqparse.RequestParser()
+package_chlog_args.add_argument(
+    'last',
+    type=int,
+    default=1,
+    required=False,
+    help='changelog history length',
+    location='args'
+)

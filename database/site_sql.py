@@ -37,5 +37,10 @@ WHERE pkgset_name = '{branch}'
 ORDER BY pkg_name
 """
 
+    get_pkg_changelog = """
+SELECT changelog
+FROM PackageChangelog_view
+WHERE pkg_hash = {pkghash}
+"""
 
 sitesql = SQL()
