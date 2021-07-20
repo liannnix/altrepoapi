@@ -22,5 +22,11 @@ class LookupTables:
         'pkg_optflags', 'pkg_disturl', 'pkg_payloadformat', 'pkg_payloadcompressor',
         'pkg_payloadflags', 'pkg_platform', 'pkg_sourcepackage'
     ]
-
+    pkg_groups = [
+        'Accessibility', 'Archiving', 'Books', 'Communications', 'Databases', 'Development',
+        'Documentation', 'Editors', 'Education', 'Emulators', 'Engineering', 'File tools',
+        'Games', 'Graphical desktop', 'Graphics', 'Monitoring', 'Networking', 'Office',
+        'Other', 'Publishing', 'Sciences', 'Security', 'Shells', 'Sound', 'System',
+        'Terminals', 'Text tools', 'Toys', 'Video'
+    ]
 lut = LookupTables()
