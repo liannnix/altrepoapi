@@ -43,4 +43,56 @@ FROM PackageChangelog_view
 WHERE pkg_hash = {pkghash}
 """
 
+    get_pkg_info = """
+SELECT
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_buildtime,
+    pkg_url,
+    pkg_license,
+    pkg_summary,
+    pkg_description,
+    pkg_packager,
+    pkg_packager_email,
+    pkg_group_
+FROM Packages_buffer
+WHERE pkg_hash = {pkghash}
+"""
+
+    get_pkg_maintaners = """
+SELECT DISTINCT
+    pkg_packager,
+    pkg_packager_email
+FROM Packages_buffer
+WHERE pkg_name = '{name}'
+    AND pkg_sourcepackage = 1
+"""
+
+    get_binary_pkgs = """
+SELECT DISTINCT pkg_name
+FROM Packages_buffer
+WHERE pkg_srcrpm_hash = {pkghash}
+    AND pkg_sourcepackage = 0
+ORDER BY pkg_name ASC
+"""
+
+    get_pkg_acl = """
+SELECT acl_list
+FROM Acl
+WHERE acl_for = '{name}'
+    AND acl_branch = '{branch}'
+"""
+
+    get_pkg_versions = """
+SELECT DISTINCT
+    pkgset_name,
+    pkg_version,
+    pkg_release
+FROM last_packages
+WHERE pkg_name = '{name}'
+    AND pkg_sourcepackage = 0
+"""
+
+
 sitesql = SQL()

@@ -1,15 +1,7 @@
-from flask_restx import reqparse, inputs
+from flask_restx import reqparse
 
-site_hello_args = reqparse.RequestParser()
 
 package_info_args = reqparse.RequestParser()
-package_info_args.add_argument(
-    'name',
-    type=str,
-    required=True,
-    help='package name',
-    location='args'
-)
 package_info_args.add_argument(
     'branch',
     type=str,
@@ -18,10 +10,11 @@ package_info_args.add_argument(
     location='args'
 )
 package_info_args.add_argument(
-    'group',
-    type=str,
+    'changelog_last',
+    type=int,
+    default=3,
     required=False,
-    help='package category',
+    help='changelog history length',
     location='args'
 )
 
@@ -60,7 +53,7 @@ pkgset_packages_args.add_argument(
 
 package_chlog_args = reqparse.RequestParser()
 package_chlog_args.add_argument(
-    'last',
+    'changelog_last',
     type=int,
     default=1,
     required=False,
