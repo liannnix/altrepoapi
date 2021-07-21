@@ -202,7 +202,7 @@ class PackageInfo:
             self._store_sql_error(response, ll.ERROR, 500)
             return self.error
         PkgVersions = namedtuple('PkgVersions', ['branch', 'version', 'release', 'pkghash'])
-        pkg_versions = [PkgVersions(*_)._asdict() for _ in response]
+        pkg_versions = [PkgVersions(*el)._asdict() for el in response]
         # get provided binary packages
         bin_packages_list = []
         self.conn.request_line = self.sql.get_binary_pkgs.format(pkghash=self.pkghash)
