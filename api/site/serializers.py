@@ -105,6 +105,7 @@ task_by_name_task_model = ns.model('SiteTaskByNameTaskModel', {
     'state': fields.String(description='task state'),
     'branch': fields.String(description='task branch'),
     'owner': fields.String(description='task owner nickname'),
+    'changed': fields.String(description='task last changed (ISO 8601 format)'),
     'packages': fields.Nested(
         task_by_name_pkg_model,
         description='task packages',

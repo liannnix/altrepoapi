@@ -111,8 +111,7 @@ WHERE pkgset_name = '{branch}'
 
     get_tasks_by_pkg_name = """
 SELECT
-    T1.task_id AS task_id,
-    T1.task_state AS task_state,
+    T1.*,
     groupUniqArray(tuple(T2.*)) AS gears
 FROM 
 (

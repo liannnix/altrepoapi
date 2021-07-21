@@ -2,6 +2,7 @@ from collections import namedtuple
 
 from settings import namespace as settings
 from utils import get_logger, build_sql_error_response, logger_level as ll
+from utils import datetime_to_iso
 
 from api.misc import lut
 from database.site_sql import sitesql
@@ -72,11 +73,12 @@ class TasksByPackage:
             )
             return self.error
         
-        TaskMeta = namedtuple('TaskMeta', ['id', 'state', 'packages'])
+        TaskMeta = namedtuple('TaskMeta', ['id', 'state', 'changed', 'packages'])
         retval = [TaskMeta(*el)._asdict() for el in response]
 
         for task in retval:
             pkg_ls = []
+            task['changed'] = datetime_to_iso(task['changed'])
             task['branch'] = task['packages'][0][1]
             task['owner'] = task['packages'][0][2]
             for pkg in task['packages']:
