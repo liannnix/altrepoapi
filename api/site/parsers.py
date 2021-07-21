@@ -76,3 +76,12 @@ pkgset_pkghash_args.add_argument(
     help='package name',
     location='args'
 )
+
+task_by_name_args = reqparse.RequestParser()
+task_by_name_args.add_argument(
+    'name',
+    type=str,
+    required=True,
+    help='package name',
+    location='args'
+)

@@ -109,5 +109,54 @@ WHERE pkgset_name = '{branch}'
     AND pkg_sourcepackage = 1
 """
 
+    get_tasks_by_pkg_name = """
+SELECT
+    T1.task_id AS task_id,
+    T1.task_state AS task_state,
+    groupUniqArray(tuple(T2.*)) AS gears
+FROM 
+(
+    SELECT DISTINCT
+        task_id,
+        TS.task_state,
+        TS.changed AS task_changed
+    FROM TaskIterations
+    LEFT JOIN 
+    (
+        SELECT
+            task_id,
+            argMax(task_state, task_changed) AS task_state,
+            max(task_changed) AS changed
+        FROM TaskStates_buffer
+        GROUP BY task_id
+    ) AS TS USING (task_id)
+    WHERE titer_srcrpm_hash IN 
+    (
+        SELECT pkg_hash
+        FROM Packages_buffer
+        WHERE pkg_name LIKE '{name}'
+            AND pkg_sourcepackage = 1
+    )
+) AS T1
+LEFT JOIN 
+(
+    SELECT
+        task_id,
+        task_repo,
+        task_owner,
+        subtask_type,
+        subtask_dir,
+        subtask_srpm_name,
+        subtask_package
+    FROM Tasks_buffer
+    WHERE subtask_deleted = 0
+) AS T2 USING (task_id)
+GROUP BY
+    task_id,
+    task_state,
+    task_changed
+ORDER BY task_changed DESC
+"""
+
 
 sitesql = SQL()

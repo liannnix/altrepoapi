@@ -66,7 +66,8 @@ pkgset_packages_el_model = ns.model('SitePackagesElementModel', {
 pkgset_packages_model = ns.model('SitePackagesModel', {
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
-    'packages': fields.Nested(pkgset_packages_el_model,
+    'packages': fields.Nested(
+        pkgset_packages_el_model,
         description='unpackaged directories information',
         as_list=True
     )
@@ -82,7 +83,8 @@ package_chlog_model = ns.model('SiteChangelogModel', {
     'pkghash': fields.String(description='package hash UInt64 as string'),
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number changelog records'),
-    'changelog': fields.Nested(package_chlog_el_model,
+    'changelog': fields.Nested(
+        package_chlog_el_model,
         description='package changelog',
         as_list=True
     )
@@ -91,4 +93,30 @@ package_chlog_model = ns.model('SiteChangelogModel', {
 pkgset_pkghash_model = ns.model('SitePackagesetPackageHashModel', {
     'request_args': fields.Raw(description='request arguments'),
     'pkghash': fields.String(description='package hash UInt64 as string')
+})
+
+
+task_by_name_pkg_model = ns.model('SiteTaskByNamePackageModel', {
+    'type': fields.String(description='subtask type [gear|package]'),
+    'name': fields.String(description='package name or git link')
+})
+task_by_name_task_model = ns.model('SiteTaskByNameTaskModel', {
+    'id': fields.Integer(description='task id'),
+    'state': fields.String(description='task state'),
+    'branch': fields.String(description='task branch'),
+    'owner': fields.String(description='task owner nickname'),
+    'packages': fields.Nested(
+        task_by_name_pkg_model,
+        description='task packages',
+        as_list=True
+    )
+})
+task_by_name_model = ns.model('SiteTaskByNameModel', {
+    'request_args': fields.Raw(description='request arguments'),
+    'length': fields.Integer(description='number of tasks found'),
+    'tasks': fields.Nested(
+        task_by_name_task_model,
+        description='tasks list',
+        as_list=True
+    )
 })
