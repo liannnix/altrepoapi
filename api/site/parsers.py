@@ -60,3 +60,19 @@ package_chlog_args.add_argument(
     help='changelog history length',
     location='args'
 )
+
+pkgset_pkghash_args = reqparse.RequestParser()
+pkgset_pkghash_args.add_argument(
+    'branch',
+    type=str,
+    required=True,
+    help='name of packageset',
+    location='args'
+)
+pkgset_pkghash_args.add_argument(
+    'name',
+    type=str,
+    required=True,
+    help='package name',
+    location='args'
+)

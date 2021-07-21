@@ -4,12 +4,14 @@ from flask_restx import Resource, abort, Namespace
 from utils import get_logger, url_logging, response_error_parser
 
 from .endpoints.package_info import PackageInfo, PackageChangelog
-from .endpoints.pkgset_packages import PackagesetPackages
+from .endpoints.pkgset_packages import PackagesetPackages, PackagesetPackageHash
 
 ns = Namespace('site', description="web site API")
 
 from .parsers import pkgset_packages_args, package_chlog_args, package_info_args
+from .parsers import pkgset_pkghash_args
 from .serializers import pkgset_packages_model, package_chlog_model, package_info_model
+from .serializers import pkgset_pkghash_model
 
 logger = get_logger(__name__)
 
@@ -93,6 +95,36 @@ class routePackageInfo(Resource):
         args = package_info_args.parse_args(strict=True)
         url_logging(logger, g.url)
         pkg = PackageInfo(g.connection, pkghash, **args)
+        if not pkg.check_params():
+            abort(
+                400, 
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=pkg.validation_results
+                )
+        result, code =  pkg.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route('/pkghash_by_name',
+    doc={
+        'description': ("Get source package hash by package name and "
+            "package set name"),
+        'responses': {
+            400: 'Request parameters validation error',
+            404: 'Package not found in database'
+        }
+    }
+)
+class routePackagesetPackageHash(Resource):
+    @ns.expect(pkgset_pkghash_args)
+    @ns.marshal_with(pkgset_pkghash_model)
+    def get(self):
+        args = pkgset_pkghash_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        pkg= PackagesetPackageHash(g.connection, **args)
         if not pkg.check_params():
             abort(
                 400, 

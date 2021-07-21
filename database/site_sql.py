@@ -94,5 +94,13 @@ WHERE pkg_name = '{name}'
     AND pkg_sourcepackage = 0
 """
 
+    get_pkghash_by_name = """
+SELECT DISTINCT pkg_hash
+FROM last_packages
+WHERE pkgset_name = '{branch}'
+    AND pkg_name = '{name}'
+    AND pkg_sourcepackage = 1
+"""
+
 
 sitesql = SQL()
