@@ -88,10 +88,11 @@ WHERE acl_for = '{name}'
 SELECT DISTINCT
     pkgset_name,
     pkg_version,
-    pkg_release
+    pkg_release,
+    toString(pkg_hash)
 FROM last_packages
 WHERE pkg_name = '{name}'
-    AND pkg_sourcepackage = 0
+    AND pkg_sourcepackage = 1
 """
 
     get_pkghash_by_name = """

@@ -192,7 +192,9 @@ class PackageInfo:
         if not status:
             self._store_sql_error(response, ll.ERROR, 500)
             return self.error
-        pkg_versions = [{'branch': _[0], 'version': _[1], 'release': _[2]} for _ in response]
+        PkgVersions = namedtuple('PkgVersions', ['branch', 'version', 'release', 'pkghash'])
+        # pkg_versions = [{'branch': _[0], 'version': _[1], 'release': _[2], 'pkghash': _[3]} for _ in response]
+        pkg_versions = [PkgVersions(*_)._asdict() for _ in response]
         # get provided binary packages
         bin_packages_list = []
         self.conn.request_line = self.sql.get_binary_pkgs.format(pkghash=self.pkghash)

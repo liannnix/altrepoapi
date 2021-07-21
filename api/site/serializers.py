@@ -15,7 +15,8 @@ package_maintaners_el_model = ns.model('SitePackageInfoMaintainersElementModel',
 package_versions_el_model= ns.model('SitePackageVersionsElementModel', {
     'branch': fields.String(description='package set name'),
     'version': fields.String(description='package version'),
-    'release': fields.String(description='package release')
+    'release': fields.String(description='package release'),
+    'pkghash': fields.String(description='package hash UInt64 as string')
 })
 package_info_model = ns.model('SitePackageInfoModel',{
     'pkghash': fields.String(description='package hash UInt64 as string'),
