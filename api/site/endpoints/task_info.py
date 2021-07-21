@@ -92,7 +92,10 @@ class TasksByPackage:
                 else:
                     for el in pkg[4:]:
                         if el != "":
-                            pkg_ls.append({'type': 'package', 'name': el})
+                            if el.endswith('.git'):
+                                pkg_ls.append({'type': 'gear', 'name': el})
+                            else:
+                                pkg_ls.append({'type': 'package', 'name': el})
                             break
             task['packages'] = pkg_ls
 
