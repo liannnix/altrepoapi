@@ -25,6 +25,7 @@ package_info_model = ns.model('SitePackageInfoModel',{
     'version': fields.String(description='package version'),
     'release': fields.String(description='package release'),
     'buildtime': fields.Integer(description='package build time'),
+    'task': fields.Integer(description='package build task'),
     'license': fields.String(description='package license'),
     'category': fields.String(description='package group'),
     'url': fields.String(description='package url'),

@@ -95,6 +95,12 @@ WHERE pkg_name = '{name}'
     AND pkg_sourcepackage = 1
 """
 
+    get_pkg_task_by_hash = """
+SELECT DISTINCT task_id
+FROM TaskIterations_buffer
+WHERE titer_srcrpm_hash = {pkghash}
+"""
+
     get_pkghash_by_name = """
 SELECT DISTINCT pkg_hash
 FROM last_packages

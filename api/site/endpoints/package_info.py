@@ -160,6 +160,15 @@ class PackageInfo:
             )
             return self.error
         pkg_info = PkgMeta(*response[0])._asdict()
+        # get package task
+        pkg_task = 0
+        self.conn.request_line = self.sql.get_pkg_task_by_hash.format(pkghash=self.pkghash)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, ll.ERROR, 500)
+            return self.error
+        if response:
+            pkg_task = response[0][0]
         # get package maintaners
         pkg_maintainers = []
         self.conn.request_line = self.sql.get_pkg_maintaners.format(
@@ -193,7 +202,6 @@ class PackageInfo:
             self._store_sql_error(response, ll.ERROR, 500)
             return self.error
         PkgVersions = namedtuple('PkgVersions', ['branch', 'version', 'release', 'pkghash'])
-        # pkg_versions = [{'branch': _[0], 'version': _[1], 'release': _[2], 'pkghash': _[3]} for _ in response]
         pkg_versions = [PkgVersions(*_)._asdict() for _ in response]
         # get provided binary packages
         bin_packages_list = []
@@ -236,6 +244,7 @@ class PackageInfo:
                 'pkghash': str(self.pkghash),
                 'request_args' : self.args,
                 **pkg_info,
+                'task': pkg_task,
                 'packages': bin_packages_list,
                 'changelog': changelog_list,
                 'maintainers': pkg_maintainers,
