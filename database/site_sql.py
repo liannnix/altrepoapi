@@ -11,7 +11,7 @@ SELECT * FROM {tmp_table}
 """
 
     get_repo_packages = """
-SELECT
+SELECT DISTINCT
     toString(pkg_hash),
     pkg_name,
     pkg_version,
