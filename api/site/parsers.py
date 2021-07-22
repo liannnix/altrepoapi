@@ -85,3 +85,26 @@ task_by_name_args.add_argument(
     help='package name',
     location='args'
 )
+
+pkgs_by_name_args = reqparse.RequestParser()
+pkgs_by_name_args.add_argument(
+    'name',
+    type=str,
+    required=True,
+    help='package name',
+    location='args'
+)
+pkgs_by_name_args.add_argument(
+    'branch',
+    type=str,
+    required=False,
+    help='name of packageset',
+    location='args'
+)
+pkgs_by_name_args.add_argument(
+    'arch',
+    type=str,
+    required=False,
+    help='arch of binary packages',
+    location='args'
+)

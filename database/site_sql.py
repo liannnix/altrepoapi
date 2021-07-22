@@ -157,5 +157,43 @@ GROUP BY
 ORDER BY task_changed DESC
 """
 
+    get_find_packages_by_name = """
+SELECT
+    pkg_name,
+    groupUniqArray((pkgset_name, pkg_version, pkg_release, toString(pkg_hash))),
+    max(pkg_buildtime),
+    argMax(pkg_url, pkg_buildtime),
+    argMax(pkg_summary, pkg_buildtime),
+    any(pkg_group_)
+FROM last_packages
+WHERE pkg_name LIKE '%{name}%'
+    AND pkg_sourcepackage = 1
+    {branch}
+GROUP BY pkg_name
+ORDER BY pkg_name
+UNION ALL
+SELECT
+    pkg_name,
+    groupUniqArray((pkgset_name, pkg_version, pkg_release, toString(pkg_hash))),
+    max(pkg_buildtime),
+    argMax(pkg_url, pkg_buildtime),
+    argMax(pkg_summary, pkg_buildtime),
+    any(pkg_group_)
+FROM last_packages
+WHERE pkg_name NOT LIKE '%{name}%'
+    AND pkg_sourcepackage = 1
+    {branch}
+    AND pkg_sourcerpm IN 
+(
+    SELECT pkg_sourcerpm
+    FROM Packages_buffer
+    WHERE pkg_sourcepackage = 0
+        AND pkg_name LIKE '%{name}%'
+        {arch}
+)
+GROUP BY pkg_name
+ORDER BY pkg_name
+"""
+
 
 sitesql = SQL()

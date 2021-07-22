@@ -4,15 +4,15 @@ from flask_restx import Resource, abort, Namespace
 from utils import get_logger, url_logging, response_error_parser
 
 from .endpoints.package_info import PackageInfo, PackageChangelog
-from .endpoints.pkgset_packages import PackagesetPackages, PackagesetPackageHash
+from .endpoints.pkgset_packages import PackagesetPackages, PackagesetPackageHash, PackagesetFindPackages
 from .endpoints.task_info import TasksByPackage
 
 ns = Namespace('site', description="web site API")
 
 from .parsers import pkgset_packages_args, package_chlog_args, package_info_args
-from .parsers import pkgset_pkghash_args, task_by_name_args
+from .parsers import pkgset_pkghash_args, task_by_name_args, pkgs_by_name_args
 from .serializers import pkgset_packages_model, package_chlog_model, package_info_model
-from .serializers import pkgset_pkghash_model, task_by_name_model
+from .serializers import pkgset_pkghash_model, task_by_name_model, fing_pkgs_by_name_model
 
 logger = get_logger(__name__)
 
@@ -155,6 +155,35 @@ class routeTasksByPackage(Resource):
         args = task_by_name_args.parse_args(strict=True)
         url_logging(logger, g.url)
         pkg= TasksByPackage(g.connection, **args)
+        if not pkg.check_params():
+            abort(
+                400, 
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=pkg.validation_results
+                )
+        result, code =  pkg.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route('/find_packages',
+    doc={
+        'description': "Find packages by name",
+        'responses': {
+            400: 'Request parameters validation error',
+            404: 'Data not found in database'
+        }
+    }
+)
+class routePackagesetFindPackages(Resource):
+    @ns.expect(pkgs_by_name_args)
+    @ns.marshal_with(fing_pkgs_by_name_model)
+    def get(self):
+        args = pkgs_by_name_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        pkg= PackagesetFindPackages(g.connection, **args)
         if not pkg.check_params():
             abort(
                 400, 

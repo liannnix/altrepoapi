@@ -121,3 +121,25 @@ task_by_name_model = ns.model('SiteTaskByNameModel', {
         as_list=True
     )
 })
+
+fing_pkgs_by_name_pkg_model = ns.model('SIteFingPackagesPackageModel', {
+    'name': fields.String(description='package name'),
+    'buildtime': fields.Integer(description='package build time'),
+    'url': fields.String(description='package url'),
+    'summary': fields.String(description='package summary'),
+    'category': fields.String(description='package category'),
+    'versions': fields.Nested(
+        package_versions_el_model,
+        as_list=True,
+        description='all package versions'
+    )
+})
+fing_pkgs_by_name_model = ns.model('SIteFingPackagesModel', {
+    'request_args': fields.Raw(description='request arguments'),
+    'length': fields.Integer(description='number of packages found'),
+    'packages': fields.Nested(
+        fing_pkgs_by_name_pkg_model,
+        description='found packages',
+        as_list=True
+    )
+})
