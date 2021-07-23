@@ -257,11 +257,11 @@ class PackagesetFindPackages:
         l_in = []
         l_out = []
         for k in pkgs_dict.keys():
-            if k.find(pkg_name) == -1:
+            if k.lower().find(pkg_name.lower()) == -1:
                 l_out.append(k)
             else:
                 l_in.append(k)
-        l_in.sort(key=lambda x: relevance_weight(x, pkg_name))
+        l_in.sort(key=lambda x: relevance_weight(x.lower(), pkg_name.lower()))
         l_out.sort()
         return [(_, *pkgs_dict[_]) for _ in (l_in + l_out)]
 

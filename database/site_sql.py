@@ -166,7 +166,7 @@ SELECT
     argMax(pkg_summary, pkg_buildtime),
     any(pkg_group_)
 FROM last_packages
-WHERE pkg_name LIKE '%{name}%'
+WHERE pkg_name ILIKE '%{name}%'
     AND pkg_sourcepackage = 1
     {branch}
 GROUP BY pkg_name
@@ -180,7 +180,7 @@ SELECT
     argMax(pkg_summary, pkg_buildtime),
     any(pkg_group_)
 FROM last_packages
-WHERE pkg_name NOT LIKE '%{name}%'
+WHERE pkg_name NOT ILIKE '%{name}%'
     AND pkg_sourcepackage = 1
     {branch}
     AND pkg_sourcerpm IN 
@@ -188,7 +188,7 @@ WHERE pkg_name NOT LIKE '%{name}%'
     SELECT pkg_sourcerpm
     FROM Packages_buffer
     WHERE pkg_sourcepackage = 0
-        AND pkg_name LIKE '%{name}%'
+        AND pkg_name ILIKE '%{name}%'
         {arch}
 )
 GROUP BY pkg_name
