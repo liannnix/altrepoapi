@@ -314,3 +314,64 @@ class PackagesetFindPackages:
                 'packages': res
             }
         return res, 200
+
+
+class AllPackagesets:
+    DEBUG = settings.SQL_DEBUG
+
+    def __init__(self, connection, **kwargs) -> None:
+        self.conn = connection
+        self.sql = sitesql
+        self.args = kwargs
+        self.validation_results = None
+
+    def _log_error(self, severity):
+        if severity == ll.CRITICAL:
+            logger.critical(self.error)
+        elif severity == ll.ERROR:
+            logger.error(self.error)
+        elif severity == ll.WARNING:
+            logger.warning(self.error)
+        elif severity == ll.INFO:
+            logger.info(self.error)
+        else:
+            logger.debug(self.error)
+
+    def _store_sql_error(self, message, severity, http_code):
+        self.error = build_sql_error_response(message, self, http_code, self.DEBUG)
+        self._log_error(severity)
+
+    def _store_error(self, message, severity, http_code):
+        self.error = message, http_code
+        self._log_error(severity)
+
+    def check_params(self):
+        return True
+
+    def get(self):
+        self.conn.request_line = self.sql.get_all_pkgset_names
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {"message": f"No data not found in database",
+                "args": self.args},
+                ll.INFO,
+                404
+            )
+            return self.error
+
+        branches = response[0][0]
+        res = [_ for _ in branches if _.startswith('s')]
+        res += sorted([_ for _ in branches if _.startswith('p')], reverse=True)
+        res += sorted([_ for _ in branches if _.startswith('c')], reverse=True)
+        res += sorted([_ for _ in branches if _.startswith('t')], reverse=True)
+        res += sorted([_ for _ in branches if _ not in res], reverse=True)
+
+        res = {
+                'length': len(res),
+                'branches': res
+            }
+        return res, 200

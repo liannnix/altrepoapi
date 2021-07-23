@@ -195,5 +195,17 @@ GROUP BY pkg_name
 ORDER BY pkg_name
 """
 
+    get_all_pkgset_names = """
+SELECT groupUniqArray(pkgset_nodename)
+FROM PackageSetName
+WHERE pkgset_depth = 0
+"""
+
+    get_all_bin_pkg_archs = """
+SELECT groupUniqArray(pkg_arch)
+FROM Packages
+WHERE pkg_sourcepackage = 0
+"""
+
 
 sitesql = SQL()

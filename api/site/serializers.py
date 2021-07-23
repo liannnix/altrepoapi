@@ -122,7 +122,7 @@ task_by_name_model = ns.model('SiteTaskByNameModel', {
     )
 })
 
-fing_pkgs_by_name_pkg_model = ns.model('SIteFingPackagesPackageModel', {
+fing_pkgs_by_name_pkg_model = ns.model('SiteFingPackagesPackageModel', {
     'name': fields.String(description='package name'),
     'buildtime': fields.Integer(description='package build time'),
     'url': fields.String(description='package url'),
@@ -134,7 +134,7 @@ fing_pkgs_by_name_pkg_model = ns.model('SIteFingPackagesPackageModel', {
         description='all package versions'
     )
 })
-fing_pkgs_by_name_model = ns.model('SIteFingPackagesModel', {
+fing_pkgs_by_name_model = ns.model('SiteFingPackagesModel', {
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
     'packages': fields.Nested(
@@ -142,4 +142,14 @@ fing_pkgs_by_name_model = ns.model('SIteFingPackagesModel', {
         description='found packages',
         as_list=True
     )
+})
+
+all_pkgsets_model = ns.model('SiteAllPackagasetsModel', {
+    'length': fields.Integer(description='number of package sets found'),
+    'branches': fields.List(fields.String, description='list of package sets')
+})
+
+all_archs_model =  ns.model('SiteAllArchsModel', {
+    'length': fields.Integer(description='number of binary package archs found'),
+    'archs': fields.List(fields.String, description='list of binary package archs')
 })
