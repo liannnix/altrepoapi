@@ -1,4 +1,4 @@
-from utils import join_tuples
+from utils import get_logger, join_tuples
 
 from api.base import APIWorker
 from api.misc import lut
@@ -55,9 +55,12 @@ class BuildDependencySet(APIWorker):
         return
 
 
-class PackageBuildDependencySet(APIWorker):
+class PackageBuildDependencySet:
     def __init__(self, connection, **kwargs) -> None:
-        super().__init__(connection, packagesql, **kwargs)
+        self.conn = connection
+        self.args = kwargs
+        self.validation_results = None
+        self.logger = get_logger(__name__)
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
