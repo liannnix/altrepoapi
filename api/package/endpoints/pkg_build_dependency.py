@@ -14,7 +14,9 @@ class BuildDependency(APIWorker):
         self, connection, packages, branch, archs, leaf, depth,
         dptype, filterbybin, filterbysrc, finitepkg, **kwargs
     ):
-        self.status = False
+        self.conn = connection
+        self.args = kwargs
+        self.sql = packagesql
         self.packages = packages
         self.branch = branch
         self.arch = archs
@@ -25,7 +27,7 @@ class BuildDependency(APIWorker):
         self.reqfiltersrc = filterbysrc
         self.finitepkg = finitepkg
         self.result = {}
-        super().__init__(connection, packagesql, **kwargs)
+        super().__init__()
 
     def build_dependencies(self):
         # do all kind of black magic here

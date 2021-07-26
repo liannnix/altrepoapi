@@ -7,8 +7,11 @@ from database.site_sql import sitesql
 
 
 class TasksByPackage(APIWorker):
-    def __init__(self, connection, **kwargs) -> None:
-        super().__init__(connection, sitesql, **kwargs)
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sitesql
+        super().__init__()
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")

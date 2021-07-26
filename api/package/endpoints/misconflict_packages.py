@@ -11,12 +11,14 @@ from libs.exceptions import SqlRequestError
 
 class MisconflictPackages(APIWorker):
     def __init__(self, connection, packages, branch, archs, **kwargs) -> None:
-        self.status = False
+        self.conn = connection
+        self.args = kwargs
+        self.sql = packagesql
         self.packages = packages
         self.branch = branch
         self.archs = archs
         self.result = {}
-        super().__init__(connection, packagesql, **kwargs)
+        super().__init__()
 
     def build_dependencies(self):
         # do all kind of black magic here

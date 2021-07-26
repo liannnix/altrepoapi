@@ -8,8 +8,11 @@ from database.package_sql import packagesql
 
 
 class PackageByFileName(APIWorker):
-    def __init__(self, connection, **kwargs) -> None:
-        super().__init__(connection, packagesql, **kwargs)
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = packagesql
+        super().__init__()
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
@@ -139,8 +142,11 @@ class PackageByFileName(APIWorker):
 
 
 class PackageByFileMD5(APIWorker):
-    def __init__(self, connection, **kwargs) -> None:
-        super().__init__(connection, packagesql, **kwargs)
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = packagesql
+        super().__init__()
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")

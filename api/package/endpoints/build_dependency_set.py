@@ -9,7 +9,9 @@ from libs.exceptions import SqlRequestError
 
 class BuildDependencySet(APIWorker):
     def __init__(self, connection, packages, branch, archs, **kwargs):
-        self.status = False
+        self.conn = connection
+        self.args = kwargs
+        self.sql = packagesql
         self.packages = tuple(packages)
         self.branch = branch
         self.archs = archs
@@ -17,7 +19,7 @@ class BuildDependencySet(APIWorker):
         # add 'noarch' to archs list
         if 'noarch' not in self.archs:
             self.archs += ['noarch']
-        super().__init__(connection, packagesql, **kwargs)
+        super().__init__()
 
     def build_dependency_set(self):
         self.conn.request_line = self.sql.get_pkg_hshs.format(

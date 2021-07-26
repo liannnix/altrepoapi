@@ -10,7 +10,10 @@ from database.site_sql import sitesql
 class PackageChangelog(APIWorker):
     def __init__(self, connection, pkghash, **kwargs):
         self.pkghash = pkghash
-        super().__init__(connection, sitesql, **kwargs)
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sitesql
+        super().__init__()
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
@@ -67,7 +70,10 @@ class PackageChangelog(APIWorker):
 class PackageInfo(APIWorker):
     def __init__(self, connection, pkghash, **kwargs):
         self.pkghash = pkghash
-        super().__init__(connection, sitesql, **kwargs)
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sitesql
+        super().__init__()
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
@@ -204,7 +210,10 @@ class PackageInfo(APIWorker):
 
 class AllPackageArchs(APIWorker):
     def __init__(self, connection, **kwargs):
-        super().__init__(connection, sitesql, **kwargs)
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sitesql
+        super().__init__()
 
     def get(self):
         self.conn.request_line = self.sql.get_all_bin_pkg_archs

@@ -7,9 +7,6 @@ class APIWorker:
     def __init__(self):
         self.logger = get_logger(__name__)
         self.ll = logger_level
-        # self.conn = connection
-        # self.args = kwargs
-        # self.sql = sql
         self.status = False
         self.error = None
         self.validation_results = None
@@ -29,10 +26,12 @@ class APIWorker:
     def _store_sql_error(self, message, severity, http_code):
         self.error = build_sql_error_response(message, self, http_code, self.DEBUG)
         self._log_error(severity)
+        self.status = False
 
     def _store_error(self, message, severity, http_code):
         self.error = message, http_code
         self._log_error(severity)
+        self.status = False
 
     def check_params(self):
         return True

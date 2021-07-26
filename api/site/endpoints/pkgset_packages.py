@@ -8,8 +8,11 @@ from database.site_sql import sitesql
 
 
 class PackagesetPackages(APIWorker):
-    def __init__(self, connection, **kwargs) -> None:
-        super().__init__(connection, sitesql, **kwargs)
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sitesql
+        super().__init__()
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
@@ -91,8 +94,11 @@ class PackagesetPackages(APIWorker):
 
 
 class PackagesetPackageHash(APIWorker):
-    def __init__(self, connection, **kwargs) -> None:
-        super().__init__(connection, sitesql, **kwargs)
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sitesql
+        super().__init__()
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
@@ -141,8 +147,11 @@ class PackagesetPackageHash(APIWorker):
 
 
 class PackagesetFindPackages(APIWorker):
-    def __init__(self, connection, **kwargs) -> None:
-        super().__init__(connection, sitesql, **kwargs)
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sitesql
+        super().__init__()
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
@@ -240,8 +249,11 @@ class PackagesetFindPackages(APIWorker):
 
 
 class AllPackagesets(APIWorker):
-    def __init__(self, connection, **kwargs) -> None:
-        super().__init__(connection, sitesql, **kwargs)
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sitesql
+        super().__init__()
 
     def get(self):
         self.conn.request_line = self.sql.get_all_pkgset_names

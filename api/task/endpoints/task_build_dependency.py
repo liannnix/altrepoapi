@@ -8,8 +8,11 @@ from api.package.endpoints.pkg_build_dependency import BuildDependency
 
 class TaskBuildDependency(APIWorker):
     def __init__(self, connection, id, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = tasksql
         self.task_id = id
-        super().__init__(connection, tasksql, **kwargs)
+        super().__init__()
 
     def check_task_id(self):
         self.conn.request_line = self.sql.check_task.format(id=self.task_id)

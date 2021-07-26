@@ -6,8 +6,11 @@ from database.packageset_sql import pkgsetsql
 
 
 class PackagesetCompare(APIWorker):
-    def __init__(self, connection, **kwargs) -> None:
-        super().__init__(connection, pkgsetsql, **kwargs)
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = pkgsetsql
+        super().__init__()
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
