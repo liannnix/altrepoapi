@@ -38,12 +38,17 @@ class routeTaskInfo(Resource):
     def get(self, id):
         args = task_info_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        task = TaskInfo(g.connection, id, args['try'], args['iteration'])
-        if not task.check_task_id():
+        wrk = TaskInfo(g.connection, id, **args)
+        if not wrk.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
-        if not task.check_params():
-            abort(400, message=f"Request parameters validation failed", args=args)
-        result, code =  task.get()
+        if not wrk.check_params():
+            abort(
+                400, 
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results
+            )
+        result, code =  wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
@@ -65,14 +70,14 @@ class routeTaskRepo(Resource):
     def get(self, id):
         args = task_repo_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        task = TaskRepo(g.connection, id, args['include_task_packages'])
-        if not task.check_task_id():
+        wrk = TaskRepo(g.connection, id, args['include_task_packages'])
+        if not wrk.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
-        task.build_task_repo()
-        if task.status:
-            return task.get()
+        wrk.build_task_repo()
+        if wrk.status:
+            return wrk.get()
         else:
-            return task.error
+            return wrk.error
 
 
 @ns.route('/task_diff/<int:id>',
@@ -88,10 +93,10 @@ class routeTaskDiff(Resource):
     @ns.marshal_with(task_diff_model)
     def get(self, id):
         url_logging(logger, g.url)
-        task = TaskDiff(g.connection, id)
-        if not task.check_task_id():
+        wrk = TaskDiff(g.connection, id)
+        if not wrk.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
-        result, code = task.get()
+        result, code = wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
@@ -113,17 +118,17 @@ class routeTaskBuildDependency(Resource):
     def get(self, id):
         args = task_build_dep_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        task = TaskBuildDependency(g.connection, id, **args)
-        if not task.check_params():
+        wrk = TaskBuildDependency(g.connection, id, **args)
+        if not wrk.check_params():
             abort(
                 400, 
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=task.validation_results
+                validation_message=wrk.validation_results
             )
-        if not task.check_task_id():
+        if not wrk.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
-        result, code = task.get()
+        result, code = wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
@@ -146,17 +151,17 @@ class routeTaskMisconflictPackages(Resource):
     def get(self, id):
         args = task_misconflict_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        task = TaskMisconflictPackages(g.connection, id, **args)
-        if not task.check_params():
+        wrk = TaskMisconflictPackages(g.connection, id, **args)
+        if not wrk.check_params():
             abort(
                 400, 
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=task.validation_results
+                validation_message=wrk.validation_results
             )
-        if not task.check_task_id():
+        if not wrk.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
-        result, code = task.get()
+        result, code = wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
@@ -179,17 +184,17 @@ class routeTaskFindPackageset(Resource):
     def get(self, id):
         url_logging(logger, g.url)
         args = task_find_pkgset_args.parse_args(strict=True)
-        task = FindPackageset(g.connection, id,  **args)
-        if not task.check_params():
+        wrk = FindPackageset(g.connection, id,  **args)
+        if not wrk.check_params():
             abort(
                 400, 
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=task.validation_results
+                validation_message=wrk.validation_results
             )
-        if not task.check_task_id():
+        if not wrk.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
-        result, code = task.get()
+        result, code = wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
@@ -212,17 +217,17 @@ class routeTaskBuildDependencySet(Resource):
     def get(self, id):
         url_logging(logger, g.url)
         args = task_buid_dep_set_args.parse_args(strict=True)
-        task = TaskBuildDependencySet(g.connection, id,  **args)
-        if not task.check_params():
+        wrk = TaskBuildDependencySet(g.connection, id,  **args)
+        if not wrk.check_params():
             abort(
                 400, 
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=task.validation_results
+                validation_message=wrk.validation_results
             )
-        if not task.check_task_id():
+        if not wrk.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
-        result, code = task.get()
+        result, code = wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code

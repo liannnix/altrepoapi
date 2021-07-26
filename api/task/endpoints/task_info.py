@@ -1,62 +1,82 @@
 from collections import defaultdict
 
-from settings import namespace as settings
-from utils import get_logger, build_sql_error_response
-from utils import datetime_to_iso, mmhash, logger_level as ll
+from utils import datetime_to_iso, mmhash
 
+from api.base import APIWorker
 from database.task_sql import tasksql
 
-logger = get_logger(__name__)
 
+class TaskInfo(APIWorker):
+    """Get information about the task based on task ID
+    Otpionally uses task try and iteration parameters
 
-class Task:
-    def __init__(self, connection, id_, try_, iter_, debug_):
+    Returns:
+        tuple(dict, int): retrun task information or error (if occured) and http response code (200, 400, 404, 500)
+    """
+    def __init__(self, connection, id_, **kwargs) -> None:
         self.conn = connection
+        self.args = kwargs
         self.sql = tasksql
-        self.DEBUG = debug_
-        self.status = False
         self.task_id = id_
         self.task = defaultdict(lambda: None, key=None)
-        self.task = {
-            'id': id_,
-            'try': try_,
-            'iter': iter_
-        }
+        super().__init__()
 
-    def _log_error(self, severity):
-        if severity == ll.CRITICAL:
-            logger.critical(self.error)
-        elif severity == ll.ERROR:
-            logger.error(self.error)
-        elif severity == ll.WARNING:
-            logger.warning(self.error)
-        elif severity == ll.INFO:
-            logger.info(self.error)
+    def check_task_id(self):
+        self.conn.request_line = self.sql.check_task.format(id=self.task_id)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.INFO, 500)
+            return False
+
+        if response[0][0] == 0:
+            return False
+        return True
+
+    def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        self.validation_results = []
+
+        if self.args['try'] is not None and self.args['iteration'] is not None:
+            if self.args['try'] > 0 and self.args['iteration'] > 0:
+                pass
+            else:
+                self.validation_results.append(
+                    f"Task try and iteration parameters should be both greater than 0"
+                )
+        elif self.args['try'] is None and self.args['iteration'] is None:
+            pass
         else:
-            logger.debug(self.error)
+            self.validation_results.append(
+                f"Task try and iteration parameters should be both specified"
+            )
 
-    def _store_sql_error(self, message, severity, http_code):
-        self.error = build_sql_error_response(message, self, http_code, self.DEBUG)
-        self.status = False
-        self._log_error(severity)
+        if self.validation_results != []:
+            return False
+        else:
+            return True
 
     def build_task_state(self):
-        if self.task['try'] is not None and self.task['iter'] is not None:
-            try_iter = (self.task['try'], self.task['iter'])
+        self.task = {
+            'id': self.task_id,
+            'try': self.task_try,
+            'iter': self.task_iter
+        }
+        if self.task_try is not None and self.task_iter is not None:
+            try_iter = (self.task_try, self.task_iter)
         else:
             try_iter = None
 
         self.conn.request_line = self.sql.task_repo_owner.format(id=self.task_id)
         status, response = self.conn.send_request()
         if not status:
-            self._store_sql_error(response, ll.ERROR, 500)
-            return {}
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return None
         if not response:
             self._store_sql_error(
                 {"Error": f"No data found in database for task '{self.task_id}'"},
-                ll.INFO, 404
+                self.ll.INFO, 404
             )
-            return {}
+            return None
 
         self.task['branch'] = response[0][0] 
         self.task['user'] = response[0][1]
@@ -64,14 +84,14 @@ class Task:
         self.conn.request_line = self.sql.task_all_iterations.format(id=self.task_id)
         status, response = self.conn.send_request()
         if not status:
-            self._store_sql_error(response, ll.ERROR, 500)
-            return {}
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return None
         if not response:
             self._store_sql_error(
                 {"Error": f"No data found in database for task '{self.task_id}'"},
-                ll.INFO, 404
+                self.ll.INFO, 404
             )
-            return {}
+            return None
 
         self.task['rebuilds'] = {(i[0], i[1]): {'subtasks': [], 'changed': i[3]} for i in response}
         for ti in self.task['rebuilds'].keys():
@@ -84,9 +104,9 @@ class Task:
             if try_iter not in self.task['rebuilds']:
                 self._store_sql_error(
                     {"Error": f"No data found in database for task '{self.task_id}' with rebuild '{try_iter}'"},
-                    ll.INFO, 404
+                    self.ll.INFO, 404
                 )
-                return {}
+                return None
         else:
             try_iter = max(self.task['rebuilds'])
             self.task['try'], self.task['iter'] = try_iter
@@ -100,14 +120,14 @@ class Task:
         )
         status, response = self.conn.send_request()
         if not status:
-            self._store_sql_error(response, ll.ERROR, 500)
-            return {}
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return None
         if not response:
             self._store_sql_error(
                 {"Error": f"No data found in database for task '{self.task_id}' with rebuild '{try_iter}'"},
-                ll.INFO, 404
+                self.ll.INFO, 404
             )
-            return {}
+            return None
 
         self.task['state_raw'] = dict(zip(self.sql.task_state_keys, response[0]))
 
@@ -116,14 +136,14 @@ class Task:
         )
         status, response = self.conn.send_request()
         if not status:
-            self._store_sql_error(response, ll.ERROR, 500)
-            return {}
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return None
         if not response:
             self._store_sql_error(
                 {"Error": f"No data found in database for task '{self.task_id}' with rebuild '{try_iter}'"},
-                ll.INFO, 404
+                self.ll.INFO, 404
             )
-            return {}
+            return None
 
         self.task['subtasks_raw'] = [dict(zip(self.sql.task_subtasks_keys, r)) for r in response]
 
@@ -132,14 +152,14 @@ class Task:
         )
         status, response = self.conn.send_request()
         if not status:
-            self._store_sql_error(response, ll.ERROR, 500)
-            return {}
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return None
         if not response:
             self._store_sql_error(
                 {"Error": f"No data found in database for task '{self.task_id}' with rebuild '{try_iter}'"},
-                ll.INFO, 404
+                self.ll.INFO, 404
             )
-            return {}
+            return None
 
         self.task['iterations_raw'] = [dict(zip(self.sql.task_iterations_keys, r)) for r in response]
 
@@ -164,8 +184,8 @@ class Task:
         )
         status, response = self.conn.send_request()
         if not status:
-            self._store_sql_error(response, ll.ERROR, 500)
-            return {}
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return None
         if not response:
             pass
 
@@ -192,8 +212,8 @@ class Task:
         )
         status, response = self.conn.send_request()
         if not status:
-            self._store_sql_error(response, ll.ERROR, 500)
-            return {}
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return None
         if not response:
             pass
 
@@ -218,8 +238,8 @@ class Task:
         self.conn.request_line = self.sql.task_approvals.format(id=self.task_id)
         status, response = self.conn.send_request()
         if not status:
-            self._store_sql_error(response, ll.ERROR, 500)
-            return {}
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return None
 
         for subtask in self.task['subtasks']:
             self.task['subtasks'][subtask].update({'approvals': []})
@@ -284,68 +304,34 @@ class Task:
 
         self.task['all_rebuilds'] = [(str(_[0]) + '.' + str(_[1])) for _ in sorted(self.task['rebuilds'].keys())]
 
+        self.task['rebuilds'] = self.task['all_rebuilds']
+
+        subtasks = []
+        for subtask, contents in self.task['subtasks'].items():
+            subtask_dict = {'subtask_id': subtask}
+            subtask_dict.update(contents)
+            subtasks.append(subtask_dict)
+        self.task['subtasks'] = subtasks
+
+        self.task['plan']['add']['src'] = [_ for _ in self.task['plan']['add']['src'].values()]
+        self.task['plan']['add']['bin'] = [_ for _ in self.task['plan']['add']['bin'].values()]
+        self.task['plan']['del']['src'] = [_ for _ in self.task['plan']['del']['src'].values()]
+        self.task['plan']['del']['bin'] = [_ for _ in self.task['plan']['del']['bin'].values()]
+
+        del self.task['iterations_raw']
+        del self.task['subtasks_raw']
+        del self.task['state_raw']
+        del self.task['tplan_hashes']
+
         self.status = True
-        return self.task
-        
-
-class TaskInfo:
-    """Get information about the task based on task ID
-    Otpionally uses task try and iteration parameters
-
-    Returns:
-        tuple(dict, int): retrun task information or error (if occured) and http response code (200, 400, 404, 500)
-    """
-    DEBUG = settings.SQL_DEBUG
-
-    def __init__(self, connection, id_, try_, iter_) -> None:
-        self.conn = connection
-        self.task_id = id_
-        self.task_try = try_
-        self.task_iter = iter_
-        self.sql = tasksql
-        self.task = Task(self.conn, self.task_id, self.task_try, self.task_iter, self.DEBUG)
-
-    def check_task_id(self):
-        self.conn.request_line = self.sql.check_task.format(id=self.task_id)
-
-        status, response = self.conn.send_request()
-        if not status:
-            logger.error(build_sql_error_response(response, self, 500, self.DEBUG))
-            return False
-
-        if response[0][0] == 0:
-            return False
-        return True
-
-    def check_params(self):
-        if self.task_try is not None and self.task_iter is not None:
-            if self.task_try > 0 and self.task_iter > 0:
-                return True
-            else:
-                return False
-        elif self.task_try is None and self.task_iter is None:
-            return True
-        else:
-            return False
+        return None
 
     def get(self):
-        res = self.task.build_task_state()
+        self.task_try = self.args['try']
+        self.task_iter = self.args['iteration']
+        self.build_task_state()
 
-        if self.task.status:
-            res['rebuilds'] = res['all_rebuilds']
-
-            subtasks = []
-            for subtask, contents in res['subtasks'].items():
-                subtask_dict = {'subtask_id': subtask}
-                subtask_dict.update(contents)
-                subtasks.append(subtask_dict)
-            res['subtasks'] = subtasks
-
-            res['plan']['add']['src'] = [_ for _ in res['plan']['add']['src'].values()]
-            res['plan']['add']['bin'] = [_ for _ in res['plan']['add']['bin'].values()]
-            res['plan']['del']['src'] = [_ for _ in res['plan']['del']['src'].values()]
-            res['plan']['del']['bin'] = [_ for _ in res['plan']['del']['bin'].values()]
-            
-            return res, 200
+        if self.status:            
+            return self.task, 200
         else:
-            return self.task.error 
+            return self.error 
