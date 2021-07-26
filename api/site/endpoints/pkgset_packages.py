@@ -272,7 +272,7 @@ class AllPackagesets(APIWorker):
 
         branches = response[0][0]
         res = [_ for _ in branches if _.startswith('s')]
-        res += sorted([_ for _ in branches if _.startswith('p')], reverse=True)
+        res += sorted([_ for _ in branches if _.startswith('p')], key=lambda k: int(k[1:]), reverse=True)
         res += sorted([_ for _ in branches if _.startswith('c')], reverse=True)
         res += sorted([_ for _ in branches if _.startswith('t')], reverse=True)
         res += sorted([_ for _ in branches if _ not in res], reverse=True)

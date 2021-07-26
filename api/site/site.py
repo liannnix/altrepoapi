@@ -38,7 +38,7 @@ class routePackagesetPackages(Resource):
         wrk= PackagesetPackages(g.connection, **args)
         if not wrk.check_params():
             abort(
-                400, 
+                400,
                 message=f"Request parameters validation error",
                 args=args,
                 validation_message=wrk.validation_results
@@ -69,7 +69,7 @@ class routePackageChangelog(Resource):
         wrk = PackageChangelog(g.connection, pkghash, **args)
         if not wrk.check_params():
             abort(
-                400, 
+                400,
                 message=f"Request parameters validation error",
                 args=args,
                 validation_message=wrk.validation_results
@@ -100,7 +100,7 @@ class routePackageInfo(Resource):
         wrk = PackageInfo(g.connection, pkghash, **args)
         if not wrk.check_params():
             abort(
-                400, 
+                400,
                 message=f"Request parameters validation error",
                 args=args,
                 validation_message=wrk.validation_results
@@ -130,7 +130,7 @@ class routePackagesetPackageHash(Resource):
         wrk= PackagesetPackageHash(g.connection, **args)
         if not wrk.check_params():
             abort(
-                400, 
+                400,
                 message=f"Request parameters validation error",
                 args=args,
                 validation_message=wrk.validation_results
@@ -159,7 +159,7 @@ class routeTasksByPackage(Resource):
         wrk= TasksByPackage(g.connection, **args)
         if not wrk.check_params():
             abort(
-                400, 
+                400,
                 message=f"Request parameters validation error",
                 args=args,
                 validation_message=wrk.validation_results
@@ -188,7 +188,7 @@ class routePackagesetFindPackages(Resource):
         wrk= PackagesetFindPackages(g.connection, **args)
         if not wrk.check_params():
             abort(
-                400, 
+                400,
                 message=f"Request parameters validation error",
                 args=args,
                 validation_message=wrk.validation_results
@@ -216,7 +216,7 @@ class routeAllPackagesets(Resource):
         wrk= AllPackagesets(g.connection, **args)
         if not wrk.check_params():
             abort(
-                400, 
+                400,
                 message=f"Request parameters validation error",
                 args=args,
                 validation_message=wrk.validation_results
@@ -244,7 +244,7 @@ class routeAllPackageArchs(Resource):
         wrk= AllPackageArchs(g.connection, **args)
         if not wrk.check_params():
             abort(
-                400, 
+                400,
                 message=f"Request parameters validation error",
                 args=args,
                 validation_message=wrk.validation_results
