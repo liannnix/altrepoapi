@@ -1,50 +1,20 @@
-from settings import namespace as settings
-from utils import get_logger, build_sql_error_response, logger_level as ll
-
+from api.base import APIWorker
 from api.misc import lut
 from database.task_sql import tasksql
 from api.package.endpoints.build_dependency_set import BuildDependencySet
 
-logger = get_logger(__name__)
 
-
-class TaskBuildDependencySet:
-    DEBUG = settings.SQL_DEBUG
-
-    def __init__(self, connection, id, **kwargs) -> None:
-        self.conn = connection
+class TaskBuildDependencySet(APIWorker):
+    def __init__(self, connection, id, **kwargs):
         self.task_id = id
-        self.sql = tasksql
-        self.args = kwargs
-        self.validation_results = None
-        self.error = None
-
-    def _log_error(self, severity):
-        if severity == ll.CRITICAL:
-            logger.critical(self.error)
-        elif severity == ll.ERROR:
-            logger.error(self.error)
-        elif severity == ll.WARNING:
-            logger.warning(self.error)
-        elif severity == ll.INFO:
-            logger.info(self.error)
-        else:
-            logger.debug(self.error)
-
-    def _store_sql_error(self, message, severity, http_code):
-        self.error = build_sql_error_response(message, self, http_code, self.DEBUG)
-        self._log_error(severity)
-
-    def _store_error(self, message, severity, http_code):
-        self.error = message, http_code
-        self._log_error(severity)
+        super().__init__(connection, tasksql, **kwargs)
 
     def check_task_id(self):
         self.conn.request_line = self.sql.check_task.format(id=self.task_id)
 
         status, response = self.conn.send_request()
         if not status:
-            logger.error(build_sql_error_response(response, self, 500, self.DEBUG))
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return False
 
         if response[0][0] == 0:
@@ -52,7 +22,7 @@ class TaskBuildDependencySet:
         return True
 
     def check_params(self):
-        logger.debug(f"args : {self.args}")
+        self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
         if self.args['archs']:
@@ -76,12 +46,12 @@ class TaskBuildDependencySet:
         self.conn.request_line = self.sql.task_repo.format(id=self.task_id)
         status, response = self.conn.send_request()
         if not status:
-            self._store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
         if not response:
             self._store_error(
                 {"message": f"No data found in database for task '{self.task_id}'"},
-                ll.INFO, 404
+                self.ll.INFO, 404
             )
             return self.error
 
@@ -90,12 +60,12 @@ class TaskBuildDependencySet:
         self.conn.request_line = self.sql.task_src_packages.format(id=self.task_id)
         status, response = self.conn.send_request()
         if not status:
-            self._store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
         if not response:
             self._store_error(
                 {"message": f"No packages found in database for task '{self.task_id}'"},
-                ll.INFO, 404
+                self.ll.INFO, 404
             )
             return self.error
         self.args['packages'] = [pkg[0] for pkg in response]
@@ -104,8 +74,7 @@ class TaskBuildDependencySet:
             self.conn,
             self.args['packages'],
             self.args['branch'],
-            self.args['archs'],
-            self.DEBUG
+            self.args['archs']
         )
         # build result
         self.bds.build_dependency_set()
