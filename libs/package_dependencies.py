@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from collections import namedtuple
 
 from utils import get_logger, logger_level as ll
-from utils import tuplelist_to_dict
 
 from .exceptions import SqlRequestError
 
