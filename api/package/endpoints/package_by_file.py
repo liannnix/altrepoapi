@@ -1,46 +1,18 @@
 from collections import namedtuple
 
-from settings import namespace as settings
-from utils import get_logger, build_sql_error_response, logger_level as ll
 from utils import tuplelist_to_dict
 
+from api.base import APIWorker
 from api.misc import lut
 from database.package_sql import packagesql
 
-logger = get_logger(__name__)
 
-
-class PackageByFileName:
-    DEBUG = settings.SQL_DEBUG
-
+class PackageByFileName(APIWorker):
     def __init__(self, connection, **kwargs) -> None:
-        self.conn = connection
-        self.sql = packagesql
-        self.args = kwargs
-        self.validation_results = None
-
-    def _log_error(self, severity):
-        if severity == ll.CRITICAL:
-            logger.critical(self.error)
-        elif severity == ll.ERROR:
-            logger.error(self.error)
-        elif severity == ll.WARNING:
-            logger.warning(self.error)
-        elif severity == ll.INFO:
-            logger.info(self.error)
-        else:
-            logger.debug(self.error)
-
-    def _store_sql_error(self, message, severity, http_code):
-        self.error = build_sql_error_response(message, self, http_code, self.DEBUG)
-        self._log_error(severity)
-
-    def _store_error(self, message, severity, http_code):
-        self.error = message, http_code
-        self._log_error(severity)
+        super().__init__(connection, packagesql, **kwargs)
 
     def check_params(self):
-        logger.debug(f"args : {self.args}")
+        self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
         if self.args['file'] == '':
@@ -81,19 +53,19 @@ class PackageByFileName:
         )
         status, response = self.conn.send_request()
         if not status:
-            self._store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
 
         self.conn.request_line = self.sql.select_all_tmp_table.format(tmp_table='TmpFileNames')
         status, response = self.conn.send_request()
         if not status:
-            self._store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
         if not response:
             self._store_error(
                 {"message": f"No data found in database for given parameters",
                 "args": self.args},
-                ll.INFO,
+                self.ll.INFO,
                 404
             )
             return self.error
@@ -110,20 +82,20 @@ class PackageByFileName:
         )
         status, response = self.conn.send_request()
         if not status:
-            self._store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
 
         self.conn.request_line = self.sql.select_all_tmp_table.format(tmp_table='TmpFiles')
         status, response = self.conn.send_request()
         if not status:
-            self._store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
 
         if not response:
             self._store_error(
                 {"message": f"No data found in database for given parameters",
                 "args": self.args},
-                ll.INFO,
+                self.ll.INFO,
                 404
             )
             return self.error
@@ -143,7 +115,7 @@ class PackageByFileName:
         )
         status, response = self.conn.send_request()
         if not status:
-            self._store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
 
         output_values = []
@@ -166,37 +138,12 @@ class PackageByFileName:
         return res, 200
 
 
-class PackageByFileMD5:
-    DEBUG = settings.SQL_DEBUG
-
+class PackageByFileMD5(APIWorker):
     def __init__(self, connection, **kwargs) -> None:
-        self.conn = connection
-        self.sql = packagesql
-        self.args = kwargs
-        self.validation_results = None
-
-    def _log_error(self, severity):
-        if severity == ll.CRITICAL:
-            logger.critical(self.error)
-        elif severity == ll.ERROR:
-            logger.error(self.error)
-        elif severity == ll.WARNING:
-            logger.warning(self.error)
-        elif severity == ll.INFO:
-            logger.info(self.error)
-        else:
-            logger.debug(self.error)
-
-    def _store_sql_error(self, message, severity, http_code):
-        self.error = build_sql_error_response(message, self, http_code, self.DEBUG)
-        self._log_error(severity)
-
-    def _store_error(self, message, severity, http_code):
-        self.error = message, http_code
-        self._log_error(severity)
+        super().__init__(connection, packagesql, **kwargs)
 
     def check_params(self):
-        logger.debug(f"args : {self.args}")
+        self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
         if self.args['md5'] == '':
@@ -236,20 +183,20 @@ class PackageByFileMD5:
         )
         status, response = self.conn.send_request()
         if not status:
-            self._store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
 
         self.conn.request_line = self.sql.select_all_tmp_table.format(tmp_table='TmpFiles')
         status, response = self.conn.send_request()
         if not status:
-            self._store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
 
         if not response:
             self._store_error(
                 {"message": f"No data found in database for given parameters",
                 "args": self.args},
-                ll.INFO,
+                self.ll.INFO,
                 404
             )
             return self.error
@@ -267,14 +214,14 @@ class PackageByFileMD5:
         )
         status, response = self.conn.send_request()
         if not status:
-            self._store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
 
         if not response:
             self._store_error(
                 {"message": f"No data found in database for given parameters",
                 "args": self.args},
-                ll.INFO,
+                self.ll.INFO,
                 404
             )
             return self.error
@@ -295,7 +242,7 @@ class PackageByFileMD5:
         )
         status, response = self.conn.send_request()
         if not status:
-            self._store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
 
         output_values = []
