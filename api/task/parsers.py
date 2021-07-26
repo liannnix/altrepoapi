@@ -19,7 +19,7 @@ task_info_args.add_argument(
 task_repo_args = reqparse.RequestParser()
 task_repo_args.add_argument(
     'include_task_packages',
-    type=bool,
+    type=inputs.boolean,
     required=False,
     default=False,
     help='include task packages in repository state',

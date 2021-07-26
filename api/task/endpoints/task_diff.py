@@ -15,7 +15,6 @@ class TaskDiff(APIWorker):
         self.args = kwargs
         self.sql = tasksql
         self.task_id = id
-        self.tr = TaskRepo(self.conn, self.task_id, include_task_packages=False)
         super().__init__()
 
     def check_task_id(self):
@@ -30,6 +29,7 @@ class TaskDiff(APIWorker):
         return True
 
     def get(self):
+        self.tr = TaskRepo(self.conn, self.task_id)
         self.tr.build_task_repo()
         if not self.tr.status:
             return self.tr.error

@@ -7,12 +7,11 @@ from database.task_sql import tasksql
 
 
 class TaskRepo(APIWorker):
-    def __init__(self, connection, id, include_task_packages, **kwargs):
+    def __init__(self, connection, id, **kwargs):
         self.conn = connection
         self.args = kwargs
         self.sql = tasksql
         self.task_id = id
-        self.include_task_packages = include_task_packages
         self.repo = {}
         super().__init__()
 
@@ -27,13 +26,27 @@ class TaskRepo(APIWorker):
             return False
         return True
 
+    def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        self.validation_results = []
+
+        if self.args['include_task_packages'] is not None and self.args['include_task_packages'] not in (True, False):
+            self.validation_results.append(
+                f"'include_task_packages' argument should be one of [0|1|true|false]"
+            )
+
+        if self.validation_results != []:
+            return False
+        else:
+            return True
+
     def build_task_repo(self):
         if not self.check_task_id():
             self._store_sql_error(
                 {"Error": f"Non-existent task {self.task_id}"},
                 self.ll.ERROR
             )
-            return self.repo
+            return None
 
         self.conn.request_line = self.sql.task_repo.format(id=self.task_id)
         status, response = self.conn.send_request()
@@ -45,7 +58,7 @@ class TaskRepo(APIWorker):
                 {"Error": f"Non-existent data for task {self.task_id}"},
                 self.ll.ERROR
             )
-            return self.repo
+            return None
 
         task_repo = response[0][0]
 
@@ -53,13 +66,13 @@ class TaskRepo(APIWorker):
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, self.ll.ERROR)
-            return self.repo
+            return None
         if not response:
             self._store_sql_error(
                 {"Error": f"Non-existent data for task {self.task_id}"},
                 self.ll.ERROR
             )
-            return self.repo
+            return None
 
         task_archs = set(('src', 'noarch', 'x86_64-i586'))
         task_try = 0
@@ -80,7 +93,7 @@ class TaskRepo(APIWorker):
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, self.ll.ERROR)
-            return self.repo
+            return None
         if response:
             task_add_pkgs = set(join_tuples(response))
         else:
@@ -92,7 +105,7 @@ class TaskRepo(APIWorker):
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, self.ll.ERROR)
-            return self.repo
+            return None
         if response:
             task_del_pkgs = set(join_tuples(response))
         else:
@@ -102,7 +115,7 @@ class TaskRepo(APIWorker):
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, self.ll.ERROR)
-            return self.repo
+            return None
 
         tasks_diff_list = []
         if response:
@@ -112,13 +125,13 @@ class TaskRepo(APIWorker):
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, self.ll.ERROR)
-            return self.repo
+            return None
         if not response:
             self._store_sql_error(
                 f"Failed to get last repo packages for task {self.task_id}",
                 self.ll.ERROR
             )
-            return self.repo
+            return None
 
         last_repo_pkgs = set(join_tuples(response))
 
@@ -126,13 +139,13 @@ class TaskRepo(APIWorker):
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, self.ll.ERROR)
-            return self.repo
+            return None
         if not response:
             self._store_sql_error(
                 f"Failed to get last repo contents for task {self.task_id}",
                 self.ll.ERROR
             )
-            return self.repo
+            return None
 
         last_repo_contents = response[0]
 
@@ -143,7 +156,7 @@ class TaskRepo(APIWorker):
             status, response = self.conn.send_request()
             if status is False:
                 self._store_sql_error(response, self.ll.ERROR)
-                return self.repo
+                return None
             if not response:
                 tasks_diff_add_hshs = set()
             else:
@@ -155,7 +168,7 @@ class TaskRepo(APIWorker):
             status, response = self.conn.send_request()
             if status is False:
                 self._store_sql_error(response, self.ll.ERROR)
-                return self.repo
+                return None
             if not response:
                 tasks_diff_del_hshs = set()
             else:
@@ -166,7 +179,7 @@ class TaskRepo(APIWorker):
                     f"Failed to get task plan hashes for tasks {tasks_diff_list}",
                     self.ll.ERROR
                 )
-                return self.repo
+                return None
         else:
             tasks_diff_add_hshs = set()
             tasks_diff_del_hshs = set()
@@ -186,8 +199,10 @@ class TaskRepo(APIWorker):
             # 'tasks_diff_del_hshs': tuple(tasks_diff_add_hshs)
         }
         self.status = True
+        return None
 
     def get(self):
+        self.include_task_packages = self.args['include_task_packages']
         self.build_task_repo()
 
         if not self.status:

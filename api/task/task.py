@@ -43,7 +43,7 @@ class routeTaskInfo(Resource):
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
         if not wrk.check_params():
             abort(
-                400, 
+                400,
                 message=f"Request parameters validation error",
                 args=args,
                 validation_message=wrk.validation_results
@@ -70,14 +70,20 @@ class routeTaskRepo(Resource):
     def get(self, id):
         args = task_repo_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = TaskRepo(g.connection, id, args['include_task_packages'])
+        wrk = TaskRepo(g.connection, id, **args)
         if not wrk.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
-        wrk.build_task_repo()
-        if wrk.status:
-            return wrk.get()
-        else:
-            return wrk.error
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results
+            )
+        result, code =  wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
 
 
 @ns.route('/task_diff/<int:id>',
@@ -121,7 +127,7 @@ class routeTaskBuildDependency(Resource):
         wrk = TaskBuildDependency(g.connection, id, **args)
         if not wrk.check_params():
             abort(
-                400, 
+                400,
                 message=f"Request parameters validation error",
                 args=args,
                 validation_message=wrk.validation_results
@@ -154,7 +160,7 @@ class routeTaskMisconflictPackages(Resource):
         wrk = TaskMisconflictPackages(g.connection, id, **args)
         if not wrk.check_params():
             abort(
-                400, 
+                400,
                 message=f"Request parameters validation error",
                 args=args,
                 validation_message=wrk.validation_results
@@ -187,7 +193,7 @@ class routeTaskFindPackageset(Resource):
         wrk = FindPackageset(g.connection, id,  **args)
         if not wrk.check_params():
             abort(
-                400, 
+                400,
                 message=f"Request parameters validation error",
                 args=args,
                 validation_message=wrk.validation_results
@@ -220,7 +226,7 @@ class routeTaskBuildDependencySet(Resource):
         wrk = TaskBuildDependencySet(g.connection, id,  **args)
         if not wrk.check_params():
             abort(
-                400, 
+                400,
                 message=f"Request parameters validation error",
                 args=args,
                 validation_message=wrk.validation_results
