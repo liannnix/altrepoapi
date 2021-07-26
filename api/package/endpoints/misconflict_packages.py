@@ -1,50 +1,22 @@
 from collections import defaultdict, namedtuple
 
-from settings import namespace as settings
-from utils import get_logger, build_sql_error_response, logger_level as ll
-from utils import tuplelist_to_dict, remove_duplicate
+from utils import get_logger, tuplelist_to_dict, remove_duplicate
 
+from api.base import APIWorker
 from api.misc import lut
 from database.package_sql import packagesql
 from libs.conflict_filter import ConflictFilter
 from libs.exceptions import SqlRequestError
 
-logger = get_logger(__name__)
 
-
-class MisconflictPackages:
-    def __init__(self, connection, packages, branch, archs, debug_):
-        self.conn = connection
-        self.sql = packagesql
-        self.DEBUG = debug_
+class MisconflictPackages(APIWorker):
+    def __init__(self, connection, packages, branch, archs, **kwargs) -> None:
         self.status = False
         self.packages = packages
         self.branch = branch
         self.archs = archs
         self.result = {}
-        self.error = None
-
-    def _log_error(self, severity):
-        if severity == ll.CRITICAL:
-            logger.critical(self.error)
-        elif severity == ll.ERROR:
-            logger.error(self.error)
-        elif severity == ll.WARNING:
-            logger.warning(self.error)
-        elif severity == ll.INFO:
-            logger.info(self.error)
-        else:
-            logger.debug(self.error)
-
-    def _store_sql_error(self, message, severity, http_code):
-        self.error = build_sql_error_response(message, self, http_code, self.DEBUG)
-        self.status = False
-        self._log_error(severity)
-
-    def _store_error(self, message, severity, http_code):
-        self.error = message, http_code
-        self.status = False
-        self._log_error(severity)
+        super().__init__(connection, packagesql, **kwargs)
 
     def build_dependencies(self):
         # do all kind of black magic here
@@ -62,7 +34,7 @@ class MisconflictPackages:
         })
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return
         if not response:
             self._store_error(
@@ -70,7 +42,7 @@ class MisconflictPackages:
                     f"Packages {list(self.packages)} not in package set '{self.branch}'"
                     f" for archs {list(self.archs)}"
                 )},
-                ll.INFO, 404
+                self.ll.INFO, 404
             )
             return
 
@@ -87,7 +59,7 @@ class MisconflictPackages:
                     f" package set '{self.branch}'"
                     f" for archs {list(self.archs)}"
                 )},
-                ll.INFO,
+                self.ll.INFO,
                 404
             )
             return
@@ -99,7 +71,7 @@ class MisconflictPackages:
         )
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return
         if not response:
             # no conflict found
@@ -118,12 +90,12 @@ class MisconflictPackages:
         )
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return self.result
         if not response:
             self._store_error(
                 {"message": f"Failed to get file names from database by hash"},
-                ll.INFO,
+                self.ll.INFO,
                 500
             )
             return
@@ -158,7 +130,7 @@ class MisconflictPackages:
                     'message': f"Error occured in ConflictFilter",
                     'error': e.dErrorArguments
                 },
-                ll.ERROR,
+                self.ll.ERROR,
                 500
             )
             return
@@ -192,7 +164,7 @@ class MisconflictPackages:
         )
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return
 
         pkg_archs_dict = tuplelist_to_dict(response, 1)
@@ -214,7 +186,7 @@ class MisconflictPackages:
         )
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return
 
         # form dict name - package info
@@ -247,16 +219,14 @@ class MisconflictPackages:
 
 
 class PackageMisconflictPackages:
-    DEBUG = settings.SQL_DEBUG
-
     def __init__(self, connection, **kwargs) -> None:
         self.conn = connection
-        self.sql = packagesql
         self.args = kwargs
         self.validation_results = None
+        self.logger = get_logger(__name__)
 
     def check_params(self):
-        logger.debug(f"args : {self.args}")
+        self.logger.debug(f"args : {self.args}")
         self.validation_results = []
         if self.args['branch'] not in lut.known_branches:
             self.validation_results.append(f"unknown package set name : {self.args['branch']}")
@@ -280,8 +250,8 @@ class PackageMisconflictPackages:
             self.conn,
             self.args['packages'],
             self.args['branch'].lower(),
-            self.args['archs'],
-            self.DEBUG)
+            self.args['archs']
+        )
         
         # build result
         self.mp.build_dependencies()
