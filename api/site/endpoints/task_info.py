@@ -1,46 +1,17 @@
 from collections import namedtuple
 
-from settings import namespace as settings
-from utils import get_logger, build_sql_error_response, logger_level as ll
 from utils import datetime_to_iso
 
-from api.misc import lut
+from api.base import APIWorker
 from database.site_sql import sitesql
 
-logger = get_logger(__name__)
 
-
-class TasksByPackage:
-    DEBUG = settings.SQL_DEBUG
-
+class TasksByPackage(APIWorker):
     def __init__(self, connection, **kwargs) -> None:
-        self.conn = connection
-        self.sql = sitesql
-        self.args = kwargs
-        self.validation_results = None
-
-    def _log_error(self, severity):
-        if severity == ll.CRITICAL:
-            logger.critical(self.error)
-        elif severity == ll.ERROR:
-            logger.error(self.error)
-        elif severity == ll.WARNING:
-            logger.warning(self.error)
-        elif severity == ll.INFO:
-            logger.info(self.error)
-        else:
-            logger.debug(self.error)
-
-    def _store_sql_error(self, message, severity, http_code):
-        self.error = build_sql_error_response(message, self, http_code, self.DEBUG)
-        self._log_error(severity)
-
-    def _store_error(self, message, severity, http_code):
-        self.error = message, http_code
-        self._log_error(severity)
+        super().__init__(connection, sitesql, **kwargs)
 
     def check_params(self):
-        logger.debug(f"args : {self.args}")
+        self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
         if self.args['name'] == '':
@@ -62,13 +33,13 @@ class TasksByPackage:
         
         status, response = self.conn.send_request()
         if not status:
-            self._store_sql_error(response, ll.ERROR, 500)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
 
         if not response:
             self._store_error(
                 {"message": f"No data found in database for package '{self.name}'"},
-                ll.INFO,
+                self.ll.INFO,
                 404
             )
             return self.error
