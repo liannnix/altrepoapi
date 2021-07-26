@@ -4,12 +4,13 @@ from utils import get_logger, build_sql_error_response, logger_level
 class APIWorker:
     DEBUG = settings.SQL_DEBUG
 
-    def __init__(self, connection, sql, **kwargs):
+    def __init__(self):
         self.logger = get_logger(__name__)
         self.ll = logger_level
-        self.conn = connection
-        self.args = kwargs
-        self.sql = sql
+        # self.conn = connection
+        # self.args = kwargs
+        # self.sql = sql
+        self.status = False
         self.error = None
         self.validation_results = None
 
@@ -37,4 +38,4 @@ class APIWorker:
         return True
 
     def get(self):
-        pass
+        return 'OK', 200

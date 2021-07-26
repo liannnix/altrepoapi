@@ -1,84 +1,64 @@
 from collections import defaultdict
 
-from settings import namespace as settings
-from utils import get_logger, build_sql_error_response, mmhash
-from utils import join_tuples, logger_level as ll
+from utils import join_tuples, mmhash
 
+from api.base import APIWorker
 from database.task_sql import tasksql
 
-logger = get_logger(__name__)
 
-class TaskRepo:
-    DEBUG = settings.SQL_DEBUG
-
-    def __init__(self, connection, id, include_task_packages):
+class TaskRepo(APIWorker):
+    def __init__(self, connection, id, include_task_packages, **kwargs):
         self.conn = connection
+        self.args = kwargs
+        self.sql = tasksql
         self.task_id = id
         self.include_task_packages = include_task_packages
-        self.status = False
-        self.error = None
         self.repo = {}
-        self.sql = tasksql
-
-    def _log_error(self, severity):
-        if severity == ll.CRITICAL:
-            logger.critical(self.error)
-        elif severity == ll.ERROR:
-            logger.error(self.error)
-        elif severity == ll.WARNING:
-            logger.warning(self.error)
-        elif severity == ll.INFO:
-            logger.info(self.error)
-        else:
-            logger.debug(self.error)
-
-    def _store_sql_error(self, message, severity):
-        self.error = build_sql_error_response(message, self, 500, self.DEBUG)
-        self.status = False
-        self._log_error(severity)
+        super().__init__()
 
     def check_task_id(self):
         self.conn.request_line = self.sql.check_task.format(id=self.task_id)
-
         status, response = self.conn.send_request()
         if not status:
-            self._store_sql_error(response, ll.INFO)
+            self._store_sql_error(response, self.ll.INFO, 500)
             return False
 
         if response[0][0] == 0:
             return False
         return True
 
-    def check_params(self, **kwargs):
-        pass
-
     def build_task_repo(self):
         if not self.check_task_id():
-            self._store_sql_error({"Error": f"Non-existent task {self.task_id}"}, ll.ERROR)
+            self._store_sql_error(
+                {"Error": f"Non-existent task {self.task_id}"},
+                self.ll.ERROR
+            )
             return self.repo
 
         self.conn.request_line = self.sql.task_repo.format(id=self.task_id)
-
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, ll.ERROR)
+            self._store_sql_error(response, self.ll.ERROR)
             return self.repo
-
         if not response:
-            self._store_sql_error({"Error": f"Non-existent data for task {self.task_id}"}, ll.ERROR)
+            self._store_sql_error(
+                {"Error": f"Non-existent data for task {self.task_id}"},
+                self.ll.ERROR
+            )
             return self.repo
 
         task_repo = response[0][0]
 
         self.conn.request_line = self.sql.repo_task_content.format(id=self.task_id)
-
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, ll.ERROR)
+            self._store_sql_error(response, self.ll.ERROR)
             return self.repo
-        
         if not response:
-            self._store_sql_error({"Error": f"Non-existent data for task {self.task_id}"}, ll.ERROR)
+            self._store_sql_error(
+                {"Error": f"Non-existent data for task {self.task_id}"},
+                self.ll.ERROR
+            )
             return self.repo
 
         task_archs = set(('src', 'noarch', 'x86_64-i586'))
@@ -97,12 +77,10 @@ class TaskRepo:
         self.conn.request_line = (
             self.sql.repo_single_task_plan_hshs, {'hshs': tuple(task_tplan_hashes), 'act': 'add'}
         )
-
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, ll.ERROR)
+            self._store_sql_error(response, self.ll.ERROR)
             return self.repo
-
         if response:
             task_add_pkgs = set(join_tuples(response))
         else:
@@ -111,22 +89,19 @@ class TaskRepo:
         self.conn.request_line = (
             self.sql.repo_single_task_plan_hshs, {'hshs': tuple(task_tplan_hashes), 'act': 'delete'}
         )
-
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, ll.ERROR)
+            self._store_sql_error(response, self.ll.ERROR)
             return self.repo
-
         if response:
             task_del_pkgs = set(join_tuples(response))
         else:
             task_del_pkgs = set()
 
         self.conn.request_line = self.sql.repo_tasks_diff_list.format(id=self.task_id, repo=task_repo)
-
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, ll.ERROR)
+            self._store_sql_error(response, self.ll.ERROR)
             return self.repo
 
         tasks_diff_list = []
@@ -134,27 +109,29 @@ class TaskRepo:
             tasks_diff_list += {_[0] for _ in response}
 
         self.conn.request_line = self.sql.repo_last_repo.format(id=self.task_id, repo=task_repo)
-
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, ll.ERROR)
+            self._store_sql_error(response, self.ll.ERROR)
             return self.repo
-
         if not response:
-            self._store_sql_error(f"Failed to get last repo packages for task {self.task_id}", ll.ERROR)
+            self._store_sql_error(
+                f"Failed to get last repo packages for task {self.task_id}",
+                self.ll.ERROR
+            )
             return self.repo
 
         last_repo_pkgs = set(join_tuples(response))
 
         self.conn.request_line = self.sql.repo_last_repo_content.format(id=self.task_id, repo=task_repo)
-
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, ll.ERROR)
+            self._store_sql_error(response, self.ll.ERROR)
             return self.repo
-
         if not response:
-            self._store_sql_error(f"Failed to get last repo contents for task {self.task_id}", ll.ERROR)
+            self._store_sql_error(
+                f"Failed to get last repo contents for task {self.task_id}",
+                self.ll.ERROR
+            )
             return self.repo
 
         last_repo_contents = response[0]
@@ -163,12 +140,10 @@ class TaskRepo:
             self.conn.request_line = (
                 self.sql.repo_tasks_plan_hshs, {'id': tuple(tasks_diff_list), 'act': 'add'}
             )
-
             status, response = self.conn.send_request()
             if status is False:
-                self._store_sql_error(response, ll.ERROR)
+                self._store_sql_error(response, self.ll.ERROR)
                 return self.repo
-
             if not response:
                 tasks_diff_add_hshs = set()
             else:
@@ -177,19 +152,20 @@ class TaskRepo:
             self.conn.request_line = (
                 self.sql.repo_tasks_plan_hshs, {'id': tuple(tasks_diff_list), 'act': 'delete'}
             )
-
             status, response = self.conn.send_request()
             if status is False:
-                self._store_sql_error(response, ll.ERROR)
+                self._store_sql_error(response, self.ll.ERROR)
                 return self.repo
-
             if not response:
                 tasks_diff_del_hshs = set()
             else:
                 tasks_diff_del_hshs = set(join_tuples(response))
 
             if not tasks_diff_add_hshs and not tasks_diff_del_hshs:
-                self._store_sql_error(f"Failed to get task plan hashes for tasks {tasks_diff_list}", ll.ERROR)
+                self._store_sql_error(
+                    f"Failed to get task plan hashes for tasks {tasks_diff_list}",
+                    self.ll.ERROR
+                )
                 return self.repo
         else:
             tasks_diff_add_hshs = set()
@@ -221,7 +197,7 @@ class TaskRepo:
         self.conn.request_line = self.sql.create_tmp_hshs_table.format(table='tmpPkgHshs')
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, ll.ERROR)
+            self._store_sql_error(response, self.ll.ERROR)
             return self.error
 
         # insert hashes for packages into temporary table
@@ -240,19 +216,20 @@ class TaskRepo:
         
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, ll.ERROR)
+            self._store_sql_error(response, self.ll.ERROR)
             return self.error
 
         self.conn.request_line = self.sql.repo_packages_by_hshs.format(table='tmpPkgHshs')
-
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, ll.ERROR)
+            self._store_sql_error(response, self.ll.ERROR)
             return self.error
-
         if not response:
             if not response:
-                self._store_sql_error({"Error": "Failed to get packages data from database"}, ll.ERROR)
+                self._store_sql_error(
+                    {"Error": "Failed to get packages data from database"},
+                    self.ll.ERROR
+                )
                 return self.error
         else:
             repo_pkgs = defaultdict(list)
