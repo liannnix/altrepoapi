@@ -35,15 +35,15 @@ class routePackagesetPackages(Resource):
     def get(self):
         args = pkgset_packages_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        pkg= PackagesetPackages(g.connection, **args)
-        if not pkg.check_params():
+        wrk= PackagesetPackages(g.connection, **args)
+        if not wrk.check_params():
             abort(
                 400, 
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=pkg.validation_results
+                validation_message=wrk.validation_results
                 )
-        result, code =  pkg.get()
+        result, code =  wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
@@ -66,15 +66,15 @@ class routePackageChangelog(Resource):
     def get(self, pkghash):
         args = package_chlog_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        pkg = PackageChangelog(g.connection, pkghash, **args)
-        if not pkg.check_params():
+        wrk = PackageChangelog(g.connection, pkghash, **args)
+        if not wrk.check_params():
             abort(
                 400, 
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=pkg.validation_results
+                validation_message=wrk.validation_results
                 )
-        result, code =  pkg.get()
+        result, code =  wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
@@ -97,15 +97,15 @@ class routePackageInfo(Resource):
     def get(self, pkghash):
         args = package_info_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        pkg = PackageInfo(g.connection, pkghash, **args)
-        if not pkg.check_params():
+        wrk = PackageInfo(g.connection, pkghash, **args)
+        if not wrk.check_params():
             abort(
                 400, 
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=pkg.validation_results
+                validation_message=wrk.validation_results
                 )
-        result, code =  pkg.get()
+        result, code =  wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
@@ -127,15 +127,15 @@ class routePackagesetPackageHash(Resource):
     def get(self):
         args = pkgset_pkghash_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        pkg= PackagesetPackageHash(g.connection, **args)
-        if not pkg.check_params():
+        wrk= PackagesetPackageHash(g.connection, **args)
+        if not wrk.check_params():
             abort(
                 400, 
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=pkg.validation_results
+                validation_message=wrk.validation_results
                 )
-        result, code =  pkg.get()
+        result, code =  wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
@@ -156,15 +156,15 @@ class routeTasksByPackage(Resource):
     def get(self):
         args = task_by_name_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        pkg= TasksByPackage(g.connection, **args)
-        if not pkg.check_params():
+        wrk= TasksByPackage(g.connection, **args)
+        if not wrk.check_params():
             abort(
                 400, 
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=pkg.validation_results
+                validation_message=wrk.validation_results
                 )
-        result, code =  pkg.get()
+        result, code =  wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
@@ -185,15 +185,15 @@ class routePackagesetFindPackages(Resource):
     def get(self):
         args = pkgs_by_name_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        pkg= PackagesetFindPackages(g.connection, **args)
-        if not pkg.check_params():
+        wrk= PackagesetFindPackages(g.connection, **args)
+        if not wrk.check_params():
             abort(
                 400, 
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=pkg.validation_results
+                validation_message=wrk.validation_results
                 )
-        result, code =  pkg.get()
+        result, code =  wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
@@ -208,20 +208,20 @@ class routePackagesetFindPackages(Resource):
     }
 )
 class routeAllPackagesets(Resource):
-    # @ns.expect(pkgs_by_name_args)
+    # @ns.expect()
     @ns.marshal_with(all_pkgsets_model)
     def get(self):
         args = {}
         url_logging(logger, g.url)
-        pkg= AllPackagesets(g.connection, **args)
-        if not pkg.check_params():
+        wrk= AllPackagesets(g.connection, **args)
+        if not wrk.check_params():
             abort(
                 400, 
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=pkg.validation_results
+                validation_message=wrk.validation_results
                 )
-        result, code =  pkg.get()
+        result, code =  wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
@@ -236,20 +236,20 @@ class routeAllPackagesets(Resource):
     }
 )
 class routeAllPackageArchs(Resource):
-    # @ns.expect(pkgs_by_name_args)
+    # @ns.expect()
     @ns.marshal_with(all_archs_model)
     def get(self):
         args = {}
         url_logging(logger, g.url)
-        pkg= AllPackageArchs(g.connection, **args)
-        if not pkg.check_params():
+        wrk= AllPackageArchs(g.connection, **args)
+        if not wrk.check_params():
             abort(
                 400, 
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=pkg.validation_results
+                validation_message=wrk.validation_results
                 )
-        result, code =  pkg.get()
+        result, code =  wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code

@@ -30,15 +30,15 @@ class routePackagesetPackages(Resource):
     def get(self):
         args = pkgset_packages_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        pkg= PackagesetPackages(g.connection, **args)
-        if not pkg.check_params():
+        wrk = PackagesetPackages(g.connection, **args)
+        if not wrk.check_params():
             abort(
                 400, 
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=pkg.validation_results
+                validation_message=wrk.validation_results
                 )
-        result, code =  pkg.get()
+        result, code =  wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
@@ -59,15 +59,15 @@ class routePackagesetCompare(Resource):
     def get(self):
         args = pkgset_compare_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        pkg= PackagesetCompare(g.connection, **args)
-        if not pkg.check_params():
+        wrk = PackagesetCompare(g.connection, **args)
+        if not wrk.check_params():
             abort(
                 400, 
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=pkg.validation_results
+                validation_message=wrk.validation_results
                 )
-        result, code =  pkg.get()
+        result, code =  wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code

@@ -2,6 +2,8 @@ from settings import namespace as settings
 from utils import get_logger, build_sql_error_response, logger_level
 
 class APIWorker:
+    """Base API endpoint worker class"""
+
     DEBUG = settings.SQL_DEBUG
 
     def __init__(self):
