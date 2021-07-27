@@ -207,5 +207,58 @@ FROM Packages
 WHERE pkg_sourcepackage = 0
 """
 
+    get_last_pkgs_from_tasks = """
+WITH
+(
+    SELECT (task_changed - {timedelta}) as t
+    FROM Tasks_buffer
+    WHERE task_repo = '{branch}'
+    ORDER BY task_changed DESC
+    LIMIT 1
+) as task_build_start
+SELECT DISTINCT
+    toString(pkg_hash),
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_buildtime,
+    pkg_summary,
+    pkg_packager_email,
+    pkg_group_,
+    CHLG.chlog_text
+FROM Packages_buffer
+LEFT JOIN 
+(
+    SELECT
+        chlog_hash,
+        chlog_text
+    FROM Changelog_buffer
+) AS CHLG ON CHLG.chlog_hash = (pkg_changelog.hash[1])
+WHERE
+    pkg_hash IN
+(
+    SELECT
+        argMax(titer_srcrpm_hash, task_changed)
+    FROM TaskIterations_buffer
+    WHERE (task_id IN 
+    (
+        SELECT task_id
+        FROM TaskStates_buffer
+        INNER JOIN 
+        (
+            SELECT DISTINCT task_id
+            FROM Tasks_buffer
+            WHERE task_repo = '{branch}'
+        ) AS T USING (task_id)
+        WHERE (task_state = 'DONE') AND (task_changed >= task_build_start)
+    )) AND (titer_srcrpm_hash != 0)
+    GROUP BY
+        task_id,
+        subtask_id
+)
+ORDER BY
+    pkg_buildtime DESC
+"""
+
 
 sitesql = SQL()

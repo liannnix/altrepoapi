@@ -108,3 +108,20 @@ pkgs_by_name_args.add_argument(
     help='arch of binary packages',
     location='args'
 )
+
+task_last_pkgs_args = reqparse.RequestParser()
+task_last_pkgs_args.add_argument(
+    'branch',
+    type=str,
+    required=True,
+    help='name of packageset',
+    location='args'
+)
+task_last_pkgs_args.add_argument(
+    'timedelta',
+    type=int,
+    default=864000,
+    required=True,
+    help='time range from newest task in seconds',
+    location='args'
+)
