@@ -213,6 +213,12 @@ WITH
     SELECT (task_changed - {timedelta}) as t
     FROM Tasks_buffer
     WHERE task_repo = '{branch}'
+        AND task_id IN
+        (
+            SELECT task_id
+            FROM TaskStates_buffer
+            WHERE (task_state = 'DONE')
+        )
     ORDER BY task_changed DESC
     LIMIT 1
 ) as task_build_start
