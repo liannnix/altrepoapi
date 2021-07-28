@@ -1,6 +1,6 @@
 from collections import namedtuple
 
-from utils import tuplelist_to_dict
+from utils import tuplelist_to_dict, sort_branches
 
 from api.base import APIWorker
 from api.misc import lut
@@ -270,12 +270,7 @@ class AllPackagesets(APIWorker):
             )
             return self.error
 
-        branches = response[0][0]
-        res = [_ for _ in branches if _.startswith('s')]
-        res += sorted([_ for _ in branches if _.startswith('p')], key=lambda k: int(k[1:]), reverse=True)
-        res += sorted([_ for _ in branches if _.startswith('c')], reverse=True)
-        res += sorted([_ for _ in branches if _.startswith('t')], reverse=True)
-        res += sorted([_ for _ in branches if _ not in res], reverse=True)
+        res = sort_branches(response[0][0])
 
         res = {
                 'length': len(res),

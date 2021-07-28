@@ -1,6 +1,6 @@
 from collections import namedtuple
 
-from utils import datetime_to_iso
+from utils import datetime_to_iso, tuplelist_to_dict, sort_branches
 
 from api.base import APIWorker
 from api.misc import lut
@@ -155,7 +155,10 @@ class PackageInfo(APIWorker):
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
         PkgVersions = namedtuple('PkgVersions', ['branch', 'version', 'release', 'pkghash'])
-        pkg_versions = [PkgVersions(*el)._asdict() for el in response]
+        # sort package versions by branch
+        pkg_branches = sort_branches([el[0] for el in response])
+        pkg_versions = tuplelist_to_dict(response, 3)
+        pkg_versions = [PkgVersions(*(b, *pkg_versions[b]))._asdict() for b in pkg_branches]
         # get provided binary packages
         bin_packages_list = []
         self.conn.request_line = self.sql.get_binary_pkgs.format(pkghash=self.pkghash)

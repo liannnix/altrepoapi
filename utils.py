@@ -165,3 +165,20 @@ def func_time(logger):
 
 def datetime_to_iso(dt):
     return dt.isoformat()
+
+def sort_branches(branches):
+    """Sort branch names by actuality
+
+    Args:
+        branches (list): list of branch names
+
+    Returns:
+        tuple: list of sorted branch names
+    """
+    res = [_ for _ in branches if _.startswith('s')]
+    res += sorted([_ for _ in branches if _.startswith('p')], key=lambda k: int(k[1:]), reverse=True)
+    res += sorted([_ for _ in branches if _.startswith('c')], reverse=True)
+    res += sorted([_ for _ in branches if _.startswith('t')], reverse=True)
+    res += sorted([_ for _ in branches if _ not in res], reverse=True)
+    
+    return tuple(res)
