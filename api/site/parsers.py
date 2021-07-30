@@ -125,3 +125,12 @@ task_last_pkgs_args.add_argument(
     help='time range from newest task in seconds',
     location='args'
 )
+
+pkgset_categories_args = reqparse.RequestParser()
+pkgset_categories_args.add_argument(
+    'branch',
+    type=str,
+    required=True,
+    help='name of packageset',
+    location='args'
+)

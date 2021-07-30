@@ -277,3 +277,60 @@ class AllPackagesets(APIWorker):
                 'branches': res
             }
         return res, 200
+
+
+class PkgsetCategoriesCount(APIWorker):
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sitesql
+        super().__init__()
+
+    def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        self.validation_results = []
+
+        if self.args['branch'] is not None:
+            if self.args['branch'] == '' or self.args['branch'] not in lut.known_branches:
+                self.validation_results.append(f"unknown package set name : {self.args['branch']}")
+                self.validation_results.append(f"allowed package set names are : {lut.known_branches}")
+
+        if self.validation_results != []:
+            return False
+        else:
+            return True
+
+    def get(self):
+        self.branch = self.args['branch']
+        self.conn.request_line = self.sql.get_pkgset_groups_count.format(
+            branch=self.branch
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {"message": f"No data not found in database",
+                "args": self.args},
+                self.ll.INFO,
+                404
+            )
+            return self.error
+
+        # res = tuplelist_to_dict(response, 1)
+        cat_raw = {el[0]: el[1] for el in response}
+        res = []
+        for cat in lut.pkg_groups:
+            cnt = sum([v for k,v in cat_raw.items() if k.startswith(cat)])
+            res.append({
+                'category': cat,
+                'count': cnt
+            })
+
+        res = {
+                'request_args' : self.args,
+                'length': len(res),
+                'categories': res
+            }
+        return res, 200

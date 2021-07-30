@@ -6,16 +6,17 @@ from utils import get_logger, url_logging, response_error_parser
 from .endpoints.package_info import PackageInfo, PackageChangelog, AllPackageArchs
 from .endpoints.pkgset_packages import PackagesetPackages, PackagesetPackageHash
 from .endpoints.pkgset_packages import PackagesetFindPackages, AllPackagesets
+from .endpoints.pkgset_packages import PkgsetCategoriesCount
 from .endpoints.task_info import TasksByPackage, LastTaskPackages
 
 ns = Namespace('site', description="web site API")
 
 from .parsers import pkgset_packages_args, package_chlog_args, package_info_args
 from .parsers import pkgset_pkghash_args, task_by_name_args, pkgs_by_name_args
-from .parsers import task_last_pkgs_args
+from .parsers import task_last_pkgs_args, pkgset_categories_args
 from .serializers import pkgset_packages_model, package_chlog_model, package_info_model
 from .serializers import pkgset_pkghash_model, task_by_name_model, fing_pkgs_by_name_model
-from .serializers import all_pkgsets_model, all_archs_model
+from .serializers import all_pkgsets_model, all_archs_model, pkgset_categories_model
 
 logger = get_logger(__name__)
 
@@ -272,6 +273,35 @@ class routeLastTaskPackages(Resource):
         args = task_last_pkgs_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk= LastTaskPackages(g.connection, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results
+                )
+        result, code =  wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+@ns.route('/pkgset_categories_count',
+    doc={
+        'description': ("Get list of package categories with count "
+            "for given package set"),
+        'responses': {
+            400: 'Request parameters validation error',
+            404: 'Package not found in database'
+        }
+    }
+)
+class routePkgsetCategoriesCount(Resource):
+    @ns.expect(pkgset_categories_args)
+    @ns.marshal_with(pkgset_categories_model)
+    def get(self):
+        args = pkgset_categories_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        wrk= PkgsetCategoriesCount(g.connection, **args)
         if not wrk.check_params():
             abort(
                 400,

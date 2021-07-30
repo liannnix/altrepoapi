@@ -266,5 +266,16 @@ ORDER BY
     pkg_buildtime DESC
 """
 
+    get_pkgset_groups_count = """
+SELECT
+    pkg_group_,
+    count(pkg_hash)
+FROM last_packages
+WHERE pkgset_name = '{branch}'
+    AND pkg_sourcepackage = 1
+GROUP BY pkg_group_
+ORDER BY pkg_group_ ASC
+"""
+
 
 sitesql = SQL()

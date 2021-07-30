@@ -153,3 +153,17 @@ all_archs_model =  ns.model('SiteAllArchsModel', {
     'length': fields.Integer(description='number of binary package archs found'),
     'archs': fields.List(fields.String, description='list of binary package archs')
 })
+
+pkgset_category_model = ns.model('SitePackagesetCategoryElementModel', {
+    'category': fields.String(description='package category'),
+    'count': fields.Integer(description='number of packages in category'),
+})
+pkgset_categories_model = ns.model('SitePackagesetCategoriesModel', {
+    'request_args': fields.Raw(description='request arguments'),
+    'length': fields.Integer(description='number of categories in list'),
+    'categories': fields.Nested(
+        pkgset_category_model,
+        description='found categories',
+        as_list=True
+    )
+})
