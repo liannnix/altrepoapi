@@ -295,6 +295,11 @@ class PkgsetCategoriesCount(APIWorker):
                 self.validation_results.append(f"unknown package set name : {self.args['branch']}")
                 self.validation_results.append(f"allowed package set names are : {lut.known_branches}")
 
+        if self.args['package_type'] not in ('source', 'binary', 'all'):
+            self.validation_results.append(
+                f"package type should be one of 'source', 'binary' or 'all' not '{self.args['package_type']}'"
+            )
+
         if self.validation_results != []:
             return False
         else:
@@ -302,8 +307,18 @@ class PkgsetCategoriesCount(APIWorker):
 
     def get(self):
         self.branch = self.args['branch']
+        self.pkg_type = self.args['package_type']
+
+        pkg_type_to_sql = {
+            'source': (1,),
+            'binary': (0,),
+            'all': (1, 0)
+        }
+        sourcef = pkg_type_to_sql[self.pkg_type]
+
         self.conn.request_line = self.sql.get_pkgset_groups_count.format(
-            branch=self.branch
+            branch=self.branch,
+            sourcef=sourcef
         )
         status, response = self.conn.send_request()
         if not status:

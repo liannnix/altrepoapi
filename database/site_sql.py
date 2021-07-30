@@ -272,7 +272,8 @@ SELECT
     count(pkg_hash)
 FROM last_packages
 WHERE pkgset_name = '{branch}'
-    AND pkg_sourcepackage = 1
+    AND pkg_sourcepackage IN {sourcef}
+    AND pkg_name NOT LIKE '%%-debuginfo'
 GROUP BY pkg_group_
 ORDER BY pkg_group_ ASC
 """

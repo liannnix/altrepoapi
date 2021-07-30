@@ -134,3 +134,12 @@ pkgset_categories_args.add_argument(
     help='name of packageset',
     location='args'
 )
+pkgset_categories_args.add_argument(
+    'package_type',
+    type=str,
+    choices=('all', 'source', 'binary'),
+    default='source',
+    required=False,
+    help='packages type [source|binary|all]',
+    location='args'
+)
