@@ -333,7 +333,6 @@ class PkgsetCategoriesCount(APIWorker):
             )
             return self.error
 
-        # res = tuplelist_to_dict(response, 1)
         cat_raw = {el[0]: el[1] for el in response}
         res = []
         for cat in lut.pkg_groups:

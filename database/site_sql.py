@@ -90,7 +90,7 @@ SELECT DISTINCT
     pkg_version,
     pkg_release,
     toString(pkg_hash)
-FROM last_packages
+FROM static_last_packages
 WHERE pkg_name = '{name}'
     AND pkg_sourcepackage = 1
 """
@@ -103,7 +103,7 @@ WHERE titer_srcrpm_hash = {pkghash}
 
     get_pkghash_by_name = """
 SELECT DISTINCT pkg_hash
-FROM last_packages
+FROM static_last_packages
 WHERE pkgset_name = '{branch}'
     AND pkg_name = '{name}'
     AND pkg_sourcepackage = 1
@@ -158,39 +158,63 @@ ORDER BY task_changed DESC
 """
 
     get_find_packages_by_name = """
+WITH
+lp_preselect AS
+(
+    SELECT
+        pkg_hash,
+        pkgset_name
+    FROM static_last_packages
+    WHERE pkg_name ILIKE '%{name}%'
+        AND pkg_sourcepackage = 1
+        {branch}
+),
+lp_preselect2 AS
+(
+    SELECT
+        pkg_hash,
+        pkgset_name
+    FROM static_last_packages
+    WHERE pkg_name NOT ILIKE '%{name}%'
+        AND pkg_sourcepackage = 1
+        {branch}
+)
 SELECT
     pkg_name,
-    groupUniqArray((pkgset_name, pkg_version, pkg_release, toString(pkg_hash))),
+    groupUniqArray((LP.pkgset_name, pkg_version, pkg_release, toString(pkg_hash))),
     max(pkg_buildtime),
     argMax(pkg_url, pkg_buildtime),
     argMax(pkg_summary, pkg_buildtime),
     any(pkg_group_)
-FROM last_packages
-WHERE pkg_name ILIKE '%{name}%'
-    AND pkg_sourcepackage = 1
-    {branch}
+FROM Packages_buffer
+INNER JOIN lp_preselect AS LP USING (pkg_hash)
+WHERE pkg_hash IN
+(
+    SELECT pkg_hash FROM lp_preselect
+)
 GROUP BY pkg_name
 ORDER BY pkg_name
 UNION ALL
 SELECT
     pkg_name,
-    groupUniqArray((pkgset_name, pkg_version, pkg_release, toString(pkg_hash))),
+    groupUniqArray((LP2.pkgset_name, pkg_version, pkg_release, toString(pkg_hash))),
     max(pkg_buildtime),
     argMax(pkg_url, pkg_buildtime),
     argMax(pkg_summary, pkg_buildtime),
     any(pkg_group_)
-FROM last_packages
+FROM Packages_buffer
+INNER JOIN lp_preselect2 AS LP2 USING (pkg_hash)
 WHERE pkg_name NOT ILIKE '%{name}%'
     AND pkg_sourcepackage = 1
-    {branch}
     AND pkg_sourcerpm IN 
-(
-    SELECT pkg_sourcerpm
-    FROM Packages_buffer
-    WHERE pkg_sourcepackage = 0
-        AND pkg_name ILIKE '%{name}%'
-        {arch}
-)
+    (
+        SELECT pkg_sourcerpm
+        FROM Packages_buffer
+        WHERE pkg_sourcepackage = 0
+            AND pkg_name ILIKE '%{name}%'
+            {arch}
+    )
+    {branch}
 GROUP BY pkg_name
 ORDER BY pkg_name
 """
@@ -270,10 +294,16 @@ ORDER BY
 SELECT
     pkg_group_,
     count(pkg_hash)
-FROM last_packages
-WHERE pkgset_name = '{branch}'
-    AND pkg_sourcepackage IN {sourcef}
-    AND pkg_name NOT LIKE '%%-debuginfo'
+FROM Packages_buffer
+WHERE pkg_hash IN
+(
+    SELECT pkg_hash
+    FROM static_last_packages
+    WHERE pkgset_name = '{branch}'
+        AND pkg_sourcepackage IN {sourcef}
+        AND pkg_name NOT LIKE '%%-debuginfo'
+    
+)
 GROUP BY pkg_group_
 ORDER BY pkg_group_ ASC
 """
