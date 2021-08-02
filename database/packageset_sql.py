@@ -53,7 +53,7 @@ FROM
         pkg_name,
         pkg_version,
         pkg_release
-    FROM last_packages
+    FROM static_last_packages
     WHERE pkgset_name = %(pkgset1)s
         AND pkg_sourcepackage = 1
         AND
@@ -67,14 +67,14 @@ FROM
                 pkg_name,
                 pkg_version,
                 pkg_release
-            FROM last_packages
+            FROM static_last_packages
             WHERE pkgset_name = %(pkgset2)s
                 AND pkg_sourcepackage = 1
         )
         AND pkg_name IN
         (
             SELECT pkg_name
-            FROM last_packages
+            FROM static_last_packages
             WHERE pkgset_name = %(pkgset2)s
                 AND pkg_sourcepackage = 1
         )
@@ -85,7 +85,7 @@ INNER JOIN
         pkg_name,
         pkg_version,
         pkg_release
-    FROM last_packages
+    FROM static_last_packages
     WHERE pkgset_name = %(pkgset2)s
         AND pkg_sourcepackage = 1
 ) AS Df USING pkg_name
@@ -97,13 +97,13 @@ SELECT
     '',
     '',
     ''
-FROM last_packages
+FROM static_last_packages
 WHERE pkgset_name = %(pkgset1)s
     AND pkg_sourcepackage = 1
     AND pkg_name NOT IN
     (
         SELECT pkg_name
-        FROM last_packages
+        FROM static_last_packages
         WHERE pkgset_name = %(pkgset2)s
             AND pkg_sourcepackage = 1
     )
