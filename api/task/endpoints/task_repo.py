@@ -44,19 +44,19 @@ class TaskRepo(APIWorker):
         if not self.check_task_id():
             self._store_sql_error(
                 {"Error": f"Non-existent task {self.task_id}"},
-                self.ll.ERROR
+                self.ll.ERROR, 404
             )
             return None
 
         self.conn.request_line = self.sql.task_repo.format(id=self.task_id)
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, self.ll.ERROR)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return self.repo
         if not response:
             self._store_sql_error(
                 {"Error": f"Non-existent data for task {self.task_id}"},
-                self.ll.ERROR
+                self.ll.ERROR, 500
             )
             return None
 
@@ -65,12 +65,12 @@ class TaskRepo(APIWorker):
         self.conn.request_line = self.sql.repo_task_content.format(id=self.task_id)
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, self.ll.ERROR)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return None
         if not response:
             self._store_sql_error(
                 {"Error": f"Non-existent data for task {self.task_id}"},
-                self.ll.ERROR
+                self.ll.ERROR, 500
             )
             return None
 
@@ -92,7 +92,7 @@ class TaskRepo(APIWorker):
         )
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, self.ll.ERROR)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return None
         if response:
             task_add_pkgs = set(join_tuples(response))
@@ -104,7 +104,7 @@ class TaskRepo(APIWorker):
         )
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, self.ll.ERROR)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return None
         if response:
             task_del_pkgs = set(join_tuples(response))
@@ -114,7 +114,7 @@ class TaskRepo(APIWorker):
         self.conn.request_line = self.sql.repo_tasks_diff_list.format(id=self.task_id, repo=task_repo)
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, self.ll.ERROR)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return None
 
         tasks_diff_list = []
@@ -124,12 +124,12 @@ class TaskRepo(APIWorker):
         self.conn.request_line = self.sql.repo_last_repo.format(id=self.task_id, repo=task_repo)
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, self.ll.ERROR)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return None
         if not response:
             self._store_sql_error(
                 f"Failed to get last repo packages for task {self.task_id}",
-                self.ll.ERROR
+                self.ll.ERROR, 500
             )
             return None
 
@@ -138,12 +138,12 @@ class TaskRepo(APIWorker):
         self.conn.request_line = self.sql.repo_last_repo_content.format(id=self.task_id, repo=task_repo)
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, self.ll.ERROR)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return None
         if not response:
             self._store_sql_error(
                 f"Failed to get last repo contents for task {self.task_id}",
-                self.ll.ERROR
+                self.ll.ERROR, 500
             )
             return None
 
@@ -155,7 +155,7 @@ class TaskRepo(APIWorker):
             )
             status, response = self.conn.send_request()
             if status is False:
-                self._store_sql_error(response, self.ll.ERROR)
+                self._store_sql_error(response, self.ll.ERROR, 500)
                 return None
             if not response:
                 tasks_diff_add_hshs = set()
@@ -167,7 +167,7 @@ class TaskRepo(APIWorker):
             )
             status, response = self.conn.send_request()
             if status is False:
-                self._store_sql_error(response, self.ll.ERROR)
+                self._store_sql_error(response, self.ll.ERROR, 500)
                 return None
             if not response:
                 tasks_diff_del_hshs = set()
@@ -177,7 +177,7 @@ class TaskRepo(APIWorker):
             if not tasks_diff_add_hshs and not tasks_diff_del_hshs:
                 self._store_sql_error(
                     f"Failed to get task plan hashes for tasks {tasks_diff_list}",
-                    self.ll.ERROR
+                    self.ll.ERROR, 500
                 )
                 return None
         else:
@@ -212,7 +212,7 @@ class TaskRepo(APIWorker):
         self.conn.request_line = self.sql.create_tmp_hshs_table.format(table='tmpPkgHshs')
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, self.ll.ERROR)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
 
         # insert hashes for packages into temporary table
@@ -231,19 +231,19 @@ class TaskRepo(APIWorker):
         
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, self.ll.ERROR)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
 
         self.conn.request_line = self.sql.repo_packages_by_hshs.format(table='tmpPkgHshs')
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, self.ll.ERROR)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
         if not response:
             if not response:
                 self._store_sql_error(
                     {"Error": "Failed to get packages data from database"},
-                    self.ll.ERROR
+                    self.ll.ERROR, 500
                 )
                 return self.error
         else:

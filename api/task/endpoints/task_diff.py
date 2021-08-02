@@ -41,7 +41,7 @@ class TaskDiff(APIWorker):
         self.conn.request_line = self.sql.create_tmp_hshs_table.format(table='tmpRepoHshs')
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, self.ll.ERROR)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
         
         self.conn.request_line = (
@@ -50,7 +50,7 @@ class TaskDiff(APIWorker):
         )
         status, response = self.conn.send_request()
         if status is False:
-            self._store_sql_error(response, self.ll.ERROR)
+            self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
 
         result_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
@@ -60,7 +60,7 @@ class TaskDiff(APIWorker):
             self.conn.request_line = self.sql.create_tmp_hshs_table.format(table='tmpTaskDelHshs')
             status, response = self.conn.send_request()
             if status is False:
-                self._store_sql_error(response, self.ll.ERROR)
+                self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
             
             self.conn.request_line = (
@@ -69,13 +69,13 @@ class TaskDiff(APIWorker):
             )
             status, response = self.conn.send_request()
             if status is False:
-                self._store_sql_error(response, self.ll.ERROR)
+                self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
 
             self.conn.request_line = self.sql.diff_packages_by_hshs.format(table='tmpTaskDelHshs')
             status, response = self.conn.send_request()
             if status is False:
-                self._store_sql_error(response, self.ll.ERROR)
+                self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
 
             if response:
@@ -91,7 +91,7 @@ class TaskDiff(APIWorker):
             self.conn.request_line = self.sql.create_tmp_hshs_table.format(table='tmpTaskAddHshs')
             status, response = self.conn.send_request()
             if status is False:
-                self._store_sql_error(response, self.ll.ERROR)
+                self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
             
             self.conn.request_line = (
@@ -100,13 +100,13 @@ class TaskDiff(APIWorker):
             )
             status, response = self.conn.send_request()
             if status is False:
-                self._store_sql_error(response, self.ll.ERROR)
+                self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
 
             self.conn.request_line = self.sql.diff_packages_by_hshs.format(table='tmpTaskAddHshs')
             status, response = self.conn.send_request()
             if status is False:
-                self._store_sql_error(response, self.ll.ERROR)
+                self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
 
             if response:
@@ -124,11 +124,14 @@ class TaskDiff(APIWorker):
             )
             status, response = self.conn.send_request()
             if status is False:
-                self._store_sql_error(response, self.ll.ERROR)
+                self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
 
             if not response:
-                self._store_sql_error(f"Failed to get packages add contents for task {self.task_id}", self.ll.ERROR)
+                self._store_sql_error(
+                    f"Failed to get packages add contents for task {self.task_id}",
+                    self.ll.ERROR, 500
+                )
                 return self.error
 
             repo_pkgs_filtered = join_tuples(response)
@@ -136,7 +139,7 @@ class TaskDiff(APIWorker):
             self.conn.request_line = self.sql.truncate_tmp_table.format(table='tmpRepoHshs')
             status, response = self.conn.send_request()
             if status is False:
-                self._store_sql_error(response, self.ll.ERROR)
+                self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
 
             self.conn.request_line = (
@@ -145,13 +148,13 @@ class TaskDiff(APIWorker):
             )
             status, response = self.conn.send_request()
             if status is False:
-                self._store_sql_error(response, self.ll.ERROR)
+                self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
 
             self.conn.request_line = self.sql.diff_depends_by_hshs.format(table='tmpRepoHshs')
             status, response = self.conn.send_request()
             if status is False:
-                self._store_sql_error(response, self.ll.ERROR)
+                self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
 
             repo_deps = response
@@ -159,7 +162,7 @@ class TaskDiff(APIWorker):
             self.conn.request_line = self.sql.diff_depends_by_hshs.format(table='tmpTaskAddHshs')
             status, response = self.conn.send_request()
             if status is False:
-                self._store_sql_error(response, self.ll.ERROR)
+                self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
 
             task_deps = response
