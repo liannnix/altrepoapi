@@ -225,6 +225,15 @@ FROM PackageSetName
 WHERE pkgset_depth = 0
 """
 
+    get_all_pkgset_names_with_pkg_count = """
+SELECT
+    pkgset_name,
+    count(pkg_hash)
+FROM static_last_packages
+WHERE pkg_sourcepackage = 1
+GROUP BY pkgset_name
+"""
+
     get_all_bin_pkg_archs = """
 SELECT groupUniqArray(pkg_arch)
 FROM Packages

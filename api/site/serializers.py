@@ -144,9 +144,17 @@ fing_pkgs_by_name_model = ns.model('SiteFingPackagesModel', {
     )
 })
 
+all_pkgsets_el_model = ns.model('SiteAllPackagasetsElementModel', {
+    'branch': fields.String(description='package set name'),
+    'count': fields.Integer(description='number of source packages')
+})
 all_pkgsets_model = ns.model('SiteAllPackagasetsModel', {
     'length': fields.Integer(description='number of package sets found'),
-    'branches': fields.List(fields.String, description='list of package sets')
+    'branches': fields.Nested(
+        all_pkgsets_el_model,
+        description='list of package sets with source package count',
+        as_list=True
+    )
 })
 
 all_archs_model =  ns.model('SiteAllArchsModel', {

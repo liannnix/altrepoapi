@@ -256,7 +256,7 @@ class AllPackagesets(APIWorker):
         super().__init__()
 
     def get(self):
-        self.conn.request_line = self.sql.get_all_pkgset_names
+        self.conn.request_line = self.sql.get_all_pkgset_names_with_pkg_count
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -270,7 +270,11 @@ class AllPackagesets(APIWorker):
             )
             return self.error
 
-        res = sort_branches(response[0][0])
+        PkgCount = namedtuple('PkgCount', ['branch', 'count'])
+        # sort package counts by branch
+        pkg_branches = sort_branches([el[0] for el in response])
+        pkg_counts = {el[0]: el[1] for el in response}
+        res = [PkgCount(*(b, pkg_counts[b]))._asdict() for b in pkg_branches]
 
         res = {
                 'length': len(res),
