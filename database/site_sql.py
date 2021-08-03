@@ -270,9 +270,11 @@ WHERE
     SELECT
         argMax(titer_srcrpm_hash, task_changed)
     FROM TaskIterations_buffer
-    WHERE (task_id IN 
+    WHERE ((task_id, task_changed) IN 
     (
-        SELECT task_id
+        SELECT
+            argMax(task_id, task_changed),
+            max(task_changed)
         FROM TaskStates_buffer
         INNER JOIN 
         (
@@ -281,6 +283,7 @@ WHERE
             WHERE task_repo = '{branch}'
         ) AS T USING (task_id)
         WHERE (task_state = 'DONE') AND (task_changed >= task_build_start)
+        GROUP BY task_id
     )) AND (titer_srcrpm_hash != 0)
     GROUP BY
         task_id,
