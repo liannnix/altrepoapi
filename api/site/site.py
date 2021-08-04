@@ -223,7 +223,36 @@ class routeAllPackagesets(Resource):
                 args=args,
                 validation_message=wrk.validation_results
                 )
-        result, code =  wrk.get()
+        result, code =  wrk.get_pkgsets()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route('/all_pkgsets_with_src_count',
+    doc={
+        'description': ("Get package sets list "
+            "with source packages count"),
+        'responses': {
+            404: 'Data not found in database'
+        }
+    }
+)
+class routeAllPackagesets(Resource):
+    # @ns.expect()
+    @ns.marshal_with(all_pkgsets_model)
+    def get(self):
+        args = {}
+        url_logging(logger, g.url)
+        wrk= AllPackagesets(g.connection, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results
+                )
+        result, code =  wrk.get_with_pkgs_count()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code

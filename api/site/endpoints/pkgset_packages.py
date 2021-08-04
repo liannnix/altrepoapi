@@ -255,7 +255,31 @@ class AllPackagesets(APIWorker):
         self.sql = sitesql
         super().__init__()
 
-    def get(self):
+    def get_pkgsets(self):
+        self.conn.request_line = self.sql.get_all_pkgset_names
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {"message": f"No data not found in database",
+                "args": self.args},
+                self.ll.INFO,
+                404
+            )
+            return self.error
+
+        pkg_branches = sort_branches(response[0][0])
+        res = [{'branch': b, 'count': 0} for b in pkg_branches]
+
+        res = {
+                'length': len(res),
+                'branches': res
+            }
+        return res, 200
+
+    def get_with_pkgs_count(self):
         self.conn.request_line = self.sql.get_all_pkgset_names_with_pkg_count
         status, response = self.conn.send_request()
         if not status:
