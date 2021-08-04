@@ -115,6 +115,7 @@ class PackageInfo(APIWorker):
         pkg_info = PkgMeta(*response[0])._asdict()
         # get package task
         pkg_task = 0
+        pkg_subtask = 0
         self.conn.request_line = self.sql.get_pkg_task_by_hash.format(pkghash=self.pkghash)
         status, response = self.conn.send_request()
         if not status:
