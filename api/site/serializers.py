@@ -158,9 +158,17 @@ all_pkgsets_model = ns.model('SiteAllPackagasetsModel', {
     )
 })
 
+all_archs_el_model =  ns.model('SiteAllArchsElementModel', {
+    'arch': fields.String(description='binary package arch'),
+    'count': fields.Integer(description='number of source packages'),
+})
 all_archs_model =  ns.model('SiteAllArchsModel', {
-    'length': fields.Integer(description='number of binary package archs found'),
-    'archs': fields.List(fields.String, description='list of binary package archs')
+    'length': fields.Integer(description='number of binary package archs and source packages count'),
+    'archs': fields.Nested(
+        all_archs_el_model,
+        description='binary package archs',
+        as_list=True
+    )
 })
 
 pkgset_category_model = ns.model('SitePackagesetCategoryElementModel', {

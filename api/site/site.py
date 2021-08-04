@@ -251,10 +251,40 @@ class routeAllPackageArchs(Resource):
                 args=args,
                 validation_message=wrk.validation_results
                 )
-        result, code =  wrk.get()
+        result, code =  wrk.get_archs()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
+
+
+@ns.route('/all_pkgs_archs_with_src_count',
+    doc={
+        'description': ("Get binary package archs list "
+            "with source packages count"),
+        'responses': {
+            404: 'Data not found in database'
+        }
+    }
+)
+class routeAllPackageArchs(Resource):
+    # @ns.expect()
+    @ns.marshal_with(all_archs_model)
+    def get(self):
+        args = {}
+        url_logging(logger, g.url)
+        wrk= AllPackageArchs(g.connection, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results
+                )
+        result, code =  wrk.get_archs_with_src_count()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
 
 @ns.route('/last_packages',
     doc={

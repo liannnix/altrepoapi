@@ -248,7 +248,7 @@ class AllPackageArchs(APIWorker):
         self.sql = sitesql
         super().__init__()
 
-    def get(self):
+    def get_archs(self):
         self.conn.request_line = self.sql.get_all_bin_pkg_archs
         status, response = self.conn.send_request()
         if not status:
@@ -268,6 +268,32 @@ class AllPackageArchs(APIWorker):
         res += [_ for _ in archs if _.startswith('i')]
         res += [_ for _ in archs if _.startswith('n')]
         res += sorted([_ for _ in archs if _ not in res])
+
+        res = [{'arch': _, 'count': 0} for _ in res]
+
+        res = {
+                'length': len(res),
+                'archs': res
+            }
+        return res, 200
+
+    def get_archs_with_src_count(self):
+        self.conn.request_line = self.sql.get_all_src_cnt_by_bin_archs
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {"message": f"No data not found in database",
+                "args": self.args},
+                self.ll.INFO,
+                404
+            )
+            return self.error
+
+        archs = sorted([(*el,) for el in response], key=lambda val: val[1], reverse=True)
+        res = [{'arch': _[0], 'count': _[1]} for _ in archs]
 
         res = {
                 'length': len(res),

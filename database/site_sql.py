@@ -250,6 +250,23 @@ FROM Packages
 WHERE pkg_sourcepackage = 0
 """
 
+    get_all_src_cnt_by_bin_archs = """
+SELECT
+    pkg_arch,
+    countDistinct(src_pkg_name)
+FROM last_packages
+LEFT JOIN 
+(
+    SELECT
+        pkg_hash,
+        pkg_name AS src_pkg_name
+    FROM Packages_buffer
+    WHERE pkg_sourcepackage = 1
+) AS P ON P.pkg_hash = last_packages.pkg_srcrpm_hash
+WHERE (pkg_sourcepackage = 0) AND (pkg_arch != 'x86_64-i586')
+GROUP BY pkg_arch
+"""
+
     get_last_pkgs_from_tasks = """
 WITH
 (
