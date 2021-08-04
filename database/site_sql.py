@@ -99,6 +99,7 @@ WHERE pkg_name = '{name}'
 SELECT DISTINCT task_id, subtask_id
 FROM TaskIterations_buffer
 WHERE titer_srcrpm_hash = {pkghash}
+ORDER BY task_changed DESC
 """
 
     get_task_gears_by_id = """
