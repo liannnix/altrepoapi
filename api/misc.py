@@ -32,4 +32,6 @@ class LookupTables:
         'Other', 'Publishing', 'Sciences', 'Security', 'Shells', 'Sound', 'System',
         'Terminals', 'Text tools', 'Toys', 'Video'
     ]
+    gitalt_base = 'http://git.altlinux.org'
+
 lut = LookupTables()

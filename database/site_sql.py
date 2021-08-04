@@ -96,9 +96,19 @@ WHERE pkg_name = '{name}'
 """
 
     get_pkg_task_by_hash = """
-SELECT DISTINCT task_id
+SELECT DISTINCT task_id, subtask_id
 FROM TaskIterations_buffer
 WHERE titer_srcrpm_hash = {pkghash}
+"""
+
+    get_task_gears_by_id = """
+SELECT DISTINCT
+    subtask_type,
+    subtask_dir,
+    subtask_srpm_name,
+    subtask_pkg_from
+FROM Tasks_buffer
+WHERE task_id = {task} AND subtask_id = {subtask}
 """
 
     get_pkghash_by_name = """

@@ -122,6 +122,36 @@ class PackageInfo(APIWorker):
             return self.error
         if response:
             pkg_task = response[0][0]
+            pkg_subtask = response[0][1]
+        # get package git
+        pkg_gear = ''
+        self.conn.request_line = self.sql.get_task_gears_by_id.format(
+            task=pkg_task,
+            subtask=pkg_subtask
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if response:
+            subtask = response[0]
+            if subtask[0] == 'gear':
+                pkg_gear = lut.gitalt_base + subtask[1]
+            elif subtask[0] in ('srpm', 'rebuild'):
+                pkg_gear = '/'.join(
+                    (lut.gitalt_base, 'srpms', subtask[2][:1], (subtask[2] + '.git'))
+                ) 
+            elif subtask[0] == 'copy':
+                pkg_gear = 'copy from ' + subtask[3]
+            elif subtask[0] == 'unknown':
+                if subtask[1] != '':
+                    pkg_gear = lut.gitalt_base + subtask[1]
+                elif subtask[2] != '':
+                    pkg_gear = '/'.join(
+                        (lut.gitalt_base, 'srpms', subtask[2][:1], (subtask[2] + '.git'))
+                    )
+            else:
+                pass
         # get package maintaners
         pkg_maintainers = []
         self.conn.request_line = self.sql.get_pkg_maintaners.format(
@@ -145,7 +175,6 @@ class PackageInfo(APIWorker):
         if response:
             pkg_acl = response[0][0]
         # get package versions
-        # FIXME: slow request :(
         pkg_versions = []
         self.conn.request_line = self.sql.get_pkg_versions.format(
             name=pkg_info['name']
@@ -201,6 +230,7 @@ class PackageInfo(APIWorker):
                 'request_args' : self.args,
                 **pkg_info,
                 'task': pkg_task,
+                'gear': pkg_gear,
                 'packages': bin_packages_list,
                 'changelog': changelog_list,
                 'maintainers': pkg_maintainers,
