@@ -116,7 +116,10 @@ class PackageInfo(APIWorker):
         # get package task
         pkg_task = 0
         pkg_subtask = 0
-        self.conn.request_line = self.sql.get_pkg_task_by_hash.format(pkghash=self.pkghash)
+        self.conn.request_line = self.sql.get_pkg_task_by_hash.format(
+            pkghash=self.pkghash,
+            branch=self.branch
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)

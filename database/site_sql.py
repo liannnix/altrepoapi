@@ -96,9 +96,17 @@ WHERE pkg_name = '{name}'
 """
 
     get_pkg_task_by_hash = """
-SELECT DISTINCT task_id, subtask_id
+SELECT DISTINCT
+    task_id,
+    subtask_id
 FROM TaskIterations_buffer
 WHERE titer_srcrpm_hash = {pkghash}
+    AND task_id IN 
+    (
+        SELECT task_id
+        FROM Tasks
+        WHERE task_repo = '{branch}'
+    )
 ORDER BY task_changed DESC
 """
 
