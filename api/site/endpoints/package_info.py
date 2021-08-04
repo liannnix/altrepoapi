@@ -128,7 +128,8 @@ class PackageInfo(APIWorker):
             pkg_task = response[0][0]
             pkg_subtask = response[0][1]
         # get package git
-        pkg_gear = ''
+        pkg_gear_link = ''
+        pkg_gear_type = ''
         self.conn.request_line = self.sql.get_task_gears_by_id.format(
             task=pkg_task,
             subtask=pkg_subtask
@@ -140,20 +141,25 @@ class PackageInfo(APIWorker):
         if response:
             subtask = response[0]
             if subtask[0] == 'gear':
-                pkg_gear = lut.gitalt_base + subtask[1]
+                pkg_gear_link = lut.gitalt_base + subtask[1]
+                pkg_gear_type = 'gear'
             elif subtask[0] in ('srpm', 'rebuild'):
-                pkg_gear = '/'.join(
+                pkg_gear_link = '/'.join(
                     (lut.gitalt_base, 'srpms', subtask[2][:1], (subtask[2] + '.git'))
-                ) 
+                )
+                pkg_gear_type = 'srpms'
             elif subtask[0] == 'copy':
-                pkg_gear = 'copy from ' + subtask[3]
+                pkg_gear_link = subtask[3]
+                pkg_gear_type = 'copy'
             elif subtask[0] == 'unknown':
                 if subtask[1] != '':
-                    pkg_gear = lut.gitalt_base + subtask[1]
+                    pkg_gear_link = lut.gitalt_base + subtask[1]
+                    pkg_gear_type = 'gear'
                 elif subtask[2] != '':
-                    pkg_gear = '/'.join(
+                    pkg_gear_link = '/'.join(
                         (lut.gitalt_base, 'srpms', subtask[2][:1], (subtask[2] + '.git'))
                     )
+                    pkg_gear_type = 'srpms'
             else:
                 pass
         # get package maintaners
@@ -234,7 +240,8 @@ class PackageInfo(APIWorker):
                 'request_args' : self.args,
                 **pkg_info,
                 'task': pkg_task,
-                'gear': pkg_gear,
+                'gear_link': pkg_gear_link,
+                'gear_type': pkg_gear_type,
                 'packages': bin_packages_list,
                 'changelog': changelog_list,
                 'maintainers': pkg_maintainers,
