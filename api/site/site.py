@@ -3,17 +3,17 @@ from flask_restx import Resource, abort, Namespace
 
 from utils import get_logger, url_logging, response_error_parser
 
-from .endpoints.package_info import PackageInfo, PackageChangelog, AllPackageArchs
+from .endpoints.package_info import PackageInfo, PackageChangelog
 from .endpoints.pkgset_packages import PackagesetPackages, PackagesetPackageHash
 from .endpoints.pkgset_packages import PackagesetFindPackages, AllPackagesets
-from .endpoints.pkgset_packages import PkgsetCategoriesCount
+from .endpoints.pkgset_packages import PkgsetCategoriesCount, AllPackagesetArchs
 from .endpoints.task_info import TasksByPackage, LastTaskPackages
 
 ns = Namespace('site', description="web site API")
 
 from .parsers import pkgset_packages_args, package_chlog_args, package_info_args
 from .parsers import pkgset_pkghash_args, task_by_name_args, pkgs_by_name_args
-from .parsers import task_last_pkgs_args, pkgset_categories_args
+from .parsers import task_last_pkgs_args, pkgset_categories_args, all_archs_args
 from .serializers import pkgset_packages_model, package_chlog_model, package_info_model
 from .serializers import pkgset_pkghash_model, task_by_name_model, fing_pkgs_by_name_model
 from .serializers import all_pkgsets_model, all_archs_model, pkgset_categories_model
@@ -229,7 +229,7 @@ class routeAllPackagesets(Resource):
         return result, code
 
 
-@ns.route('/all_pkgs_archs',
+@ns.route('/all_pkgset_archs',
     doc={
         'description': "Get binary package archs list",
         'responses': {
@@ -237,13 +237,13 @@ class routeAllPackagesets(Resource):
         }
     }
 )
-class routeAllPackageArchs(Resource):
-    # @ns.expect()
+class routeAllPackagesetArchs(Resource):
+    @ns.expect(all_archs_args)
     @ns.marshal_with(all_archs_model)
     def get(self):
-        args = {}
+        args = all_archs_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk= AllPackageArchs(g.connection, **args)
+        wrk= AllPackagesetArchs(g.connection, **args)
         if not wrk.check_params():
             abort(
                 400,
@@ -257,7 +257,7 @@ class routeAllPackageArchs(Resource):
         return result, code
 
 
-@ns.route('/all_pkgs_archs_with_src_count',
+@ns.route('/all_pkgset_archs_with_src_count',
     doc={
         'description': ("Get binary package archs list "
             "with source packages count"),
@@ -266,13 +266,13 @@ class routeAllPackageArchs(Resource):
         }
     }
 )
-class routeAllPackageArchs(Resource):
-    # @ns.expect()
+class routeAllPackagesetArchs(Resource):
+    @ns.expect(all_archs_args)
     @ns.marshal_with(all_archs_model)
     def get(self):
-        args = {}
+        args = all_archs_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk= AllPackageArchs(g.connection, **args)
+        wrk= AllPackagesetArchs(g.connection, **args)
         if not wrk.check_params():
             abort(
                 400,

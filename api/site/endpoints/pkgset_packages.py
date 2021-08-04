@@ -352,3 +352,112 @@ class PkgsetCategoriesCount(APIWorker):
                 'categories': res
             }
         return res, 200
+
+
+class AllPackagesetArchs(APIWorker):
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sitesql
+        super().__init__()
+
+    def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        self.validation_results = []
+
+        if self.args['branch'] == '' or self.args['branch'] not in lut.known_branches:
+            self.validation_results.append(f"unknown package set name : {self.args['branch']}")
+            self.validation_results.append(f"allowed package set names are : {lut.known_branches}")
+
+        if self.validation_results != []:
+            return False
+        else:
+            return True
+
+    def get_archs(self):
+        self.branch = self.args['branch']
+        self.conn.request_line = self.sql.get_all_bin_pkg_archs.format(branch=self.branch)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {"message": f"No data not found in database",
+                "args": self.args},
+                self.ll.INFO,
+                404
+            )
+            return self.error
+
+        archs = sorted([_ for _ in response[0][0] if _ not in ('x86_64-i586',)])
+        res = [_ for _ in archs if _.startswith('x')]
+        res += [_ for _ in archs if _.startswith('i')]
+        res += [_ for _ in archs if _.startswith('n')]
+        res += sorted([_ for _ in archs if _ not in res])
+
+        res = [{'arch': _, 'count': 0} for _ in res]
+
+        res = {
+                'length': len(res),
+                'archs': res
+            }
+        return res, 200
+
+    def get_archs_with_src_count(self):
+        self.branch = self.args['branch']
+        self.conn.request_line = self.sql.get_all_src_cnt_by_bin_archs.format(branch=self.branch)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {"message": f"No data not found in database",
+                "args": self.args},
+                self.ll.INFO,
+                404
+            )
+            return self.error
+
+        archs = sorted([(*el,) for el in response], key=lambda val: val[1], reverse=True)
+        res = [{'arch': _[0], 'count': _[1]} for _ in archs]
+
+        res = {
+                'length': len(res),
+                'archs': res
+            }
+        return res, 200
+
+
+class AllPackagesetsByHash(APIWorker):
+    def __init__(self, connection, pkghash, **kwargs):
+        self.pkghash = pkghash
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sitesql
+        super().__init__()
+
+    def get(self):
+        self.conn.request_line = self.sql.get_all_pkgsets_by_hash.format(pkghash=self.pkghash)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {"message": f"No data not found in database",
+                "args": self.args},
+                self.ll.INFO,
+                404
+            )
+            return self.error
+
+        res = [_[0] for _ in response]
+
+        res = {
+                'pkghash': str(self.pkghash),
+                'length': len(res),
+                'branches': res
+            }
+        return res, 200

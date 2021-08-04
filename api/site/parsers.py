@@ -143,3 +143,12 @@ pkgset_categories_args.add_argument(
     help='packages type [source|binary|all]',
     location='args'
 )
+
+all_archs_args = reqparse.RequestParser()
+all_archs_args.add_argument(
+    'branch',
+    type=str,
+    required=True,
+    help='name of packageset',
+    location='args'
+)

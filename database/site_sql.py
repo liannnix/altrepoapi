@@ -255,8 +255,15 @@ GROUP BY pkgset_name
 
     get_all_bin_pkg_archs = """
 SELECT groupUniqArray(pkg_arch)
-FROM Packages
+FROM Packages_buffer
 WHERE pkg_sourcepackage = 0
+    AND pkg_hash IN
+    (
+        SELECT pkg_hash
+        FROM static_last_packages
+        WHERE pkg_sourcepackage = 0
+            AND pkgset_name = '{branch}'
+    )
 """
 
     get_all_src_cnt_by_bin_archs = """
@@ -272,7 +279,9 @@ LEFT JOIN
     FROM Packages_buffer
     WHERE pkg_sourcepackage = 1
 ) AS P ON P.pkg_hash = last_packages.pkg_srcrpm_hash
-WHERE (pkg_sourcepackage = 0) AND (pkg_arch != 'x86_64-i586')
+WHERE pkg_sourcepackage = 0
+    AND pkg_arch != 'x86_64-i586'
+    AND pkgset_name = '{branch}'
 GROUP BY pkg_arch
 """
 
@@ -356,5 +365,20 @@ GROUP BY pkg_group_
 ORDER BY pkg_group_ ASC
 """
 
+    get_all_pkgsets_by_hash = """
+SELECT DISTINCT pkgset_nodename
+FROM PackageSetName
+WHERE (pkgset_ruuid IN 
+(
+    SELECT pkgset_ruuid
+    FROM PackageSetName
+    WHERE pkgset_uuid IN 
+    (
+        SELECT pkgset_uuid
+        FROM PackageSet
+        WHERE pkg_hash = {pkghash}
+    )
+)) AND (pkgset_depth = 0)
+"""
 
 sitesql = SQL()
