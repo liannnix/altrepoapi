@@ -115,53 +115,54 @@ class PackageInfo(APIWorker):
         pkg_info = PkgMeta(*response[0])._asdict()
         # get package task
         pkg_task = 0
-        pkg_subtask = 0
-        self.conn.request_line = self.sql.get_pkg_task_by_hash.format(
-            pkghash=self.pkghash,
-            branch=self.branch
-        )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
-        if response:
-            pkg_task = response[0][0]
-            pkg_subtask = response[0][1]
-        # get package git
+        pkg_tasks = []
         pkg_gear_link = ''
-        pkg_gear_type = ''
-        self.conn.request_line = self.sql.get_task_gears_by_id.format(
-            task=pkg_task,
-            subtask=pkg_subtask
-        )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
-        if response:
-            subtask = response[0]
-            if subtask[0] == 'gear':
-                pkg_gear_link = lut.gitalt_base + subtask[1]
-                pkg_gear_type = 'gear'
-            elif subtask[0] in ('srpm', 'rebuild'):
-                pkg_gear_link = '/'.join(
-                    (lut.gitalt_base, 'srpms', subtask[2][:1], (subtask[2] + '.git'))
+
+        def parse_task_gear(subtask_type, subtask):
+            gear_link = ''
+            if subtask_type == 'gear':
+                gear_link = lut.gitalt_base + subtask[0]
+            elif subtask_type in ('srpm', 'rebuild'):
+                gear_link = '/'.join(
+                    (lut.gitalt_base, 'srpms', subtask[1][:1], (subtask[1] + '.git'))
                 )
-                pkg_gear_type = 'srpms'
-            elif subtask[0] == 'copy':
-                pkg_gear_link = subtask[3]
-                pkg_gear_type = 'copy'
-            elif subtask[0] == 'unknown':
-                if subtask[1] != '':
-                    pkg_gear_link = lut.gitalt_base + subtask[1]
-                    pkg_gear_type = 'gear'
-                elif subtask[2] != '':
-                    pkg_gear_link = '/'.join(
-                        (lut.gitalt_base, 'srpms', subtask[2][:1], (subtask[2] + '.git'))
+            elif subtask_type == 'copy':
+                gear_link = subtask[2]
+            elif subtask_type == 'unknown':
+                if subtask[0] != '':
+                    gear_link = lut.gitalt_base + subtask[0]
+                elif subtask[1] != '':
+                    gear_link = '/'.join(
+                        (lut.gitalt_base, 'srpms', subtask[1][:1], (subtask[1] + '.git'))
                     )
-                    pkg_gear_type = 'srpms'
             else:
                 pass
+            return gear_link
+
+        self.conn.request_line = self.sql.get_task_gears_by_hash.format(
+            pkghash=self.pkghash
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if response:
+            tasks_list = [_ for _ in response]
+            for task in tasks_list:
+                if task[0] == self.branch:
+                    pkg_task = task[1]
+                    pkg_gear_link = parse_task_gear(task[3], task[4:7])
+                    if task[3] != 'copy':
+                        pkg_tasks.append({'type': 'build', 'id': pkg_task})
+                        break
+                    else:
+                        pkg_tasks.append({'type': 'copy','id': pkg_task})
+                else:
+                    if task[3] != 'copy':
+                        pkg_task = task[1]
+                        pkg_gear_link = parse_task_gear(task[3], task[4:7])
+                        pkg_tasks.append({'type': 'build', 'id': pkg_task})
+                        break
         # get package maintaners
         pkg_maintainers = []
         self.conn.request_line = self.sql.get_pkg_maintaners.format(
@@ -240,8 +241,8 @@ class PackageInfo(APIWorker):
                 'request_args' : self.args,
                 **pkg_info,
                 'task': pkg_task,
-                'gear_link': pkg_gear_link,
-                'gear_type': pkg_gear_type,
+                'gear': pkg_gear_link,
+                'tasks': pkg_tasks,
                 'packages': bin_packages_list,
                 'changelog': changelog_list,
                 'maintainers': pkg_maintainers,

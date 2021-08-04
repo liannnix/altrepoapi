@@ -12,11 +12,15 @@ package_maintaners_el_model = ns.model('SitePackageInfoMaintainersElementModel',
     'name': fields.String(description='maintainer name'),
     'email': fields.String(description='maintainer email')
 })
-package_versions_el_model= ns.model('SitePackageVersionsElementModel', {
+package_versions_el_model = ns.model('SitePackageVersionsElementModel', {
     'branch': fields.String(description='package set name'),
     'version': fields.String(description='package version'),
     'release': fields.String(description='package release'),
     'pkghash': fields.String(description='package hash UInt64 as string')
+})
+package_info_tasks_el_model = ns.model('SitePackageTasksElementModel', {
+    'type': fields.String(description='task type'),
+    'id': fields.String(description='task id')
 })
 package_info_model = ns.model('SitePackageInfoModel',{
     'pkghash': fields.String(description='package hash UInt64 as string'),
@@ -26,8 +30,7 @@ package_info_model = ns.model('SitePackageInfoModel',{
     'release': fields.String(description='package release'),
     'buildtime': fields.Integer(description='package build time'),
     'task': fields.Integer(description='package build task'),
-    'gear_type': fields.String(description='package task gear type'),
-    'gear_link': fields.String(description='package task gear link'),
+    'gear': fields.String(description='package task gear type'),
     'license': fields.String(description='package license'),
     'category': fields.String(description='package group'),
     'url': fields.String(description='package url'),
@@ -37,6 +40,11 @@ package_info_model = ns.model('SitePackageInfoModel',{
     'packager_email': fields.String(description='package packager email'),
     'packages': fields.List(fields.String, description='bunary packages'),
     'acl': fields.List(fields.String, description='bunary packages'),
+    'tasks': fields.Nested(
+        package_info_tasks_el_model,
+        as_list=True,
+        description='package tasks'
+    ),
     'changelog': fields.Nested(
         package_info_changelog_el_model,
         as_list=True,

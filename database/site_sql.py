@@ -120,6 +120,33 @@ FROM Tasks_buffer
 WHERE task_id = {task} AND subtask_id = {subtask}
 """
 
+    get_task_gears_by_hash = """
+SELECT DISTINCT
+    task_repo,
+    task_id,
+    subtask_id,
+    subtask_type,
+    subtask_dir,
+    subtask_srpm_name,
+    subtask_pkg_from
+FROM Tasks_buffer
+WHERE (task_id, subtask_id) IN
+(
+    SELECT
+        task_id,
+        subtask_id
+    FROM TaskIterations_buffer
+    WHERE titer_srcrpm_hash = {pkghash}
+)
+AND task_id IN
+(
+    SELECT task_id
+    FROM TaskStates_buffer
+    WHERE task_state = 'DONE'
+)
+ORDER BY task_changed DESC
+"""
+
     get_pkghash_by_name = """
 SELECT DISTINCT pkg_hash
 FROM static_last_packages
