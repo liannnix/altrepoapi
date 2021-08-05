@@ -10,6 +10,10 @@ CREATE TEMPORARY TABLE {tmp_table} {columns}
 SELECT * FROM {tmp_table}
 """
 
+    insert_into_tmp_table = """
+INSERT INTO {tmp_table} (*) VALUES
+"""
+
     get_repo_packages = """
 SELECT DISTINCT
     toString(pkg_hash),
@@ -187,20 +191,45 @@ LEFT JOIN
 (
     SELECT
         task_id,
+        subtask_id,
         task_repo,
         task_owner,
         subtask_type,
         subtask_dir,
+        subtask_tag_id,
         subtask_srpm_name,
-        subtask_package
+        subtask_srpm_evr,
+        subtask_package,
+        subtask_pkg_from,
+        task_changed
     FROM Tasks_buffer
     WHERE subtask_deleted = 0
-) AS T2 USING (task_id)
+) AS T2 USING (task_id, task_changed)
 GROUP BY
     task_id,
     task_state,
     task_changed
 ORDER BY task_changed DESC
+"""
+
+    get_pkg_names_by_task_ids = """
+SELECT DISTINCT
+    task_id,
+    subtask_id,
+    pkg_name
+FROM TaskIterations_buffer
+LEFT JOIN
+(
+    SELECT
+        pkg_hash,
+        pkg_name
+    FROM Packages_buffer
+    WHERE pkg_sourcepackage = 1
+) AS P ON (pkg_hash = titer_srcrpm_hash)
+WHERE (task_id, subtask_id) IN
+(
+    SELECT * FROM {tmp_table}
+)
 """
 
     get_find_packages_by_name = """

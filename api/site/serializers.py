@@ -107,8 +107,9 @@ pkgset_pkghash_model = ns.model('SitePackagesetPackageHashModel', {
 
 
 task_by_name_pkg_model = ns.model('SiteTaskByNamePackageModel', {
-    'type': fields.String(description='subtask type [gear|package]'),
-    'name': fields.String(description='package name or git link')
+    'type': fields.String(description='subtask type [gear|srpm|delete|search]'),
+    'name': fields.String(description='package name'),
+    'link': fields.String(description='package git link')
 })
 task_by_name_task_model = ns.model('SiteTaskByNameTaskModel', {
     'id': fields.Integer(description='task id'),
