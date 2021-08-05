@@ -477,7 +477,7 @@ class AllPackagesetsByHash(APIWorker):
             )
             return self.error
 
-        res = [_[0] for _ in response]
+        res = sort_branches([_[0] for _ in response])
 
         res = {
                 'pkghash': str(self.pkghash),

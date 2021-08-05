@@ -7,6 +7,7 @@ from .endpoints.package_info import PackageInfo, PackageChangelog
 from .endpoints.pkgset_packages import PackagesetPackages, PackagesetPackageHash
 from .endpoints.pkgset_packages import PackagesetFindPackages, AllPackagesets
 from .endpoints.pkgset_packages import PkgsetCategoriesCount, AllPackagesetArchs
+from .endpoints.pkgset_packages import AllPackagesetsByHash
 from .endpoints.task_info import TasksByPackage, LastTaskPackages
 
 ns = Namespace('site', description="web site API")
@@ -17,6 +18,7 @@ from .parsers import task_last_pkgs_args, pkgset_categories_args, all_archs_args
 from .serializers import pkgset_packages_model, package_chlog_model, package_info_model
 from .serializers import pkgset_pkghash_model, task_by_name_model, fing_pkgs_by_name_model
 from .serializers import all_pkgsets_model, all_archs_model, pkgset_categories_model
+from .serializers import pkgsets_by_hash_model
 
 logger = get_logger(__name__)
 
@@ -361,6 +363,36 @@ class routePkgsetCategoriesCount(Resource):
         args = pkgset_categories_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk= PkgsetCategoriesCount(g.connection, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results
+                )
+        result, code =  wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+@ns.route('/packagesets_by_hash/<int:pkghash>',
+    doc={
+        'params': {'pkghash': 'package hash'},
+        'description': "Get package set list by package hash",
+        'responses': {
+            400: 'Request parameters validation error',
+            404: 'Package not found in database'
+        }
+    }
+)
+class routePackagsetsByHash(Resource):
+    pass
+    @ns.expect()
+    @ns.marshal_with(pkgsets_by_hash_model)
+    def get(self, pkghash):
+        args = {}
+        url_logging(logger, g.url)
+        wrk = AllPackagesetsByHash(g.connection, pkghash, **args)
         if not wrk.check_params():
             abort(
                 400,

@@ -193,3 +193,9 @@ pkgset_categories_model = ns.model('SitePackagesetCategoriesModel', {
         as_list=True
     )
 })
+
+pkgsets_by_hash_model = ns.model('SitePackagesetsByHashModel', {
+    'pkghash': fields.String(description='package hash UInt64 as string'),
+    'length': fields.Integer(description='number of package sets found'),
+    'branches': fields.List(fields.String, description='package sets')
+})
