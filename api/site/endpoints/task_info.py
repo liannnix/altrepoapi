@@ -135,6 +135,7 @@ class TasksByPackage(APIWorker):
             pkg_ls = []
             pkg_type = ''
             pkg_link = ''
+            pkg_name = ''
             for p in task['packages']:
                 pkg = PkgMeta(*p)._asdict()
                 if pkg['package'] != '':
@@ -147,6 +148,8 @@ class TasksByPackage(APIWorker):
                         pkg['dir'] = f"/gears/{pkg_name[0]}/{pkg_name}.git"
                     except Exception as e:
                         pkg_name = pkg['dir'].split('/')[-1][:-4]
+                elif pkg['dir'].startswith('/gears/'):
+                    pkg_name = pkg['dir'].split('/')[-1][:-4]
                 pkg_type, pkg_link = build_gear_link(pkg)
                 pkg_ls.append({
                     'type': pkg_type,
