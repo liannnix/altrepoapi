@@ -99,7 +99,7 @@ class PackageInfo(APIWorker):
             link_ = pkgname
         elif subtask['type'] == 'delete' and subtask['srpm_name'] != '':
             # TODO: bug workaround for girar changes @ e74d8067009d
-            link_ = f"{git_base_url}/srpms/{pkgname[0]}/{pkgname}/.git"
+            link_ = f"{git_base_url}/srpms/{pkgname[0]}/{pkgname}.git"
             if subtask['srpm_evr'] != '':
                 link_ += f"?a=commit;hb={subtask['srpm_evr']}"
         elif subtask['type'] == 'delete':
@@ -112,7 +112,7 @@ class PackageInfo(APIWorker):
                 link_ += f"?a=commit;hb={subtask['tag_id']}"
         elif subtask['srpm_name'] != '' or subtask['type'] == 'srpm':
             # 'srpm' and 'rebuild' + 'unknown' with srpm
-            link_ = f"{git_base_url}/srpms/{pkgname[0]}/{pkgname}/.git"
+            link_ = f"{git_base_url}/srpms/{pkgname[0]}/{pkgname}.git"
             if subtask['srpm_evr'] != '':
                 link_ += f"?a=commit;hb={subtask['srpm_evr']}"
         return link_
