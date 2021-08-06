@@ -91,6 +91,32 @@ class PackageInfo(APIWorker):
         else:
             return True
 
+    @staticmethod
+    def _parse_task_gear(pkgname, subtask, git_base_url):
+        link_ = ''
+        if subtask['type'] == 'copy':
+            # 'copy' always has only 'subtask_package'
+            link_ = pkgname
+        elif subtask['type'] == 'delete' and subtask['srpm_name'] != '':
+            # TODO: bug workaround for girar changes @ e74d8067009d
+            link_ = f"{git_base_url}/srpms/{pkgname[0]}/{pkgname}/.git"
+            if subtask['srpm_evr'] != '':
+                link_ += f"?a=commit;hb={subtask['srpm_evr']}"
+        elif subtask['type'] == 'delete':
+            # 'delete' return only package name 
+            link_ = pkgname
+        elif subtask['dir'] != '' or subtask['type'] == 'gear':
+            # 'gear' and 'rebuild' + 'unknown' with gears
+            link_ = f"{git_base_url}/gears/{pkgname[0]}/{pkgname}.git"
+            if subtask['tag_id'] != '':
+                link_ += f"?a=commit;hb={subtask['tag_id']}"
+        elif subtask['srpm_name'] != '' or subtask['type'] == 'srpm':
+            # 'srpm' and 'rebuild' + 'unknown' with srpm
+            link_ = f"{git_base_url}/srpms/{pkgname[0]}/{pkgname}/.git"
+            if subtask['srpm_evr'] != '':
+                link_ += f"?a=commit;hb={subtask['srpm_evr']}"
+        return link_
+
     def get(self):
         self.branch = self.args['branch']
         self.chlog_length = self.args['changelog_last']
@@ -116,28 +142,11 @@ class PackageInfo(APIWorker):
         # get package task
         pkg_task = 0
         pkg_tasks = []
-        pkg_gear_link = ''
+        gear_link = ''
 
-        def parse_task_gear(subtask_type, subtask):
-            gear_link = ''
-            if subtask_type == 'gear':
-                gear_link = lut.gitalt_base + subtask[0]
-            elif subtask_type in ('srpm', 'rebuild'):
-                gear_link = '/'.join(
-                    (lut.gitalt_base, 'srpms', subtask[1][:1], (subtask[1] + '.git'))
-                )
-            elif subtask_type == 'copy':
-                gear_link = subtask[2]
-            elif subtask_type == 'unknown':
-                if subtask[0] != '':
-                    gear_link = lut.gitalt_base + subtask[0]
-                elif subtask[1] != '':
-                    gear_link = '/'.join(
-                        (lut.gitalt_base, 'srpms', subtask[1][:1], (subtask[1] + '.git'))
-                    )
-            else:
-                pass
-            return gear_link
+        SubtaskMeta = namedtuple('SubtaskMeta', [
+            'repo', 'id', 'sub_id', 'type', 'dir', 'tag_id', 'srpm_name', 'srpm_evr'
+        ])
 
         self.conn.request_line = self.sql.get_task_gears_by_hash.format(
             pkghash=self.pkghash
@@ -147,20 +156,20 @@ class PackageInfo(APIWorker):
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
         if response:
-            tasks_list = [_ for _ in response]
+            tasks_list = [SubtaskMeta(*el)._asdict() for el in response]
             for task in tasks_list:
-                if task[0] == self.branch:
-                    pkg_task = task[1]
-                    pkg_gear_link = parse_task_gear(task[3], task[4:7])
-                    if task[3] != 'copy':
+                if task['repo'] == self.branch:
+                    pkg_task = task['id']
+                    if task['type'] != 'copy':
                         pkg_tasks.append({'type': 'build', 'id': pkg_task})
+                        gear_link = self._parse_task_gear(pkg_info['name'], task, lut.gitalt_base)
                         break
                     else:
                         pkg_tasks.append({'type': 'copy','id': pkg_task})
                 else:
-                    if task[3] != 'copy':
-                        pkg_task = task[1]
-                        pkg_gear_link = parse_task_gear(task[3], task[4:7])
+                    if task['type'] != 'copy':
+                        pkg_task = task['id']
+                        gear_link = self._parse_task_gear(pkg_info['name'], task, lut.gitalt_base)
                         pkg_tasks.append({'type': 'build', 'id': pkg_task})
                         break
         # get package maintaners
@@ -241,7 +250,7 @@ class PackageInfo(APIWorker):
                 'request_args' : self.args,
                 **pkg_info,
                 'task': pkg_task,
-                'gear': pkg_gear_link,
+                'gear': gear_link,
                 'tasks': pkg_tasks,
                 'packages': bin_packages_list,
                 'changelog': changelog_list,

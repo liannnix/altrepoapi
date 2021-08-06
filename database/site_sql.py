@@ -131,8 +131,9 @@ SELECT DISTINCT
     subtask_id,
     subtask_type,
     subtask_dir,
+    subtask_tag_id,
     subtask_srpm_name,
-    subtask_pkg_from
+    subtask_srpm_evr
 FROM Tasks_buffer
 WHERE (task_id, subtask_id) IN
 (
