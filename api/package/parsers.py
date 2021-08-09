@@ -308,3 +308,13 @@ build_dep_set_args.add_argument(
     help='list of packages architectures',
     location='args'
 )
+
+pkg_repocop_args = reqparse.RequestParser()
+pkg_repocop_args.add_argument(
+    'rc_srcpkg_name',
+    type=str,
+    action='split',
+    required=True,
+    help='source package name',
+    location='args'
+)

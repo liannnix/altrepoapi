@@ -735,5 +735,23 @@ WHERE pkg_name IN ({pkgs})
     AND pkg_sourcepackage = 1
 """
 
+    insert_into_repocop = """
+INSERT INTO PackagesRepocop (*) VALUES
+"""
+
+    get_out_repocop = """
+SELECT
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_arch,
+    rc_test_name,
+    rc_test_status,
+    rc_test_message,
+    rc_test_date
+FROM PackagesRepocop
+WHERE rc_srcpkg_name in %(pkgs)s
+"""
+
 
 packagesql = SQL()
