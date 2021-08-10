@@ -750,7 +750,10 @@ SELECT
     rc_test_message,
     rc_test_date
 FROM PackagesRepocop
-WHERE rc_srcpkg_name in %(pkgs)s
+WHERE rc_srcpkg_name = '{pkgs}'
+    {srcpkg_version}
+    {srcpkg_release}
+ORDER BY rc_test_date DESC
 """
 
 
