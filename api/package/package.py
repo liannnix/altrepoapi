@@ -21,7 +21,7 @@ from .parsers import dependent_packages_args, unpackaged_dirs_args, build_dep_se
 from .serializers import package_info_model, pkg_build_dep_model, misconflict_pkgs_model
 from .serializers import pkg_find_pkgset_model, pkg_by_file_name_model
 from .serializers import dependent_packages_model, unpackaged_dirs_args_model
-from .serializers import build_dep_set_model, repocop_json_list_model
+from .serializers import build_dep_set_model, repocop_json_list_model, repocop_json_get_list_model
 
 logger = get_logger(__name__)
 
@@ -306,23 +306,6 @@ class routePackageBuildDependencySet(Resource):
           }
           )
 class routePackageRepocop(Resource):
-    # @ns.expect(build_dep_set_args)
-    # @ns.marshal_with(build_dep_set_model)
-    def get(self):
-        args = {}
-        url_logging(logger, g.url)
-        wrk = Repocop(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
 
     @ns.expect(repocop_json_list_model)
     def post(self):
@@ -342,18 +325,18 @@ class routePackageRepocop(Resource):
         return result, code
 
     @ns.expect(pkg_repocop_args)
-    @ns.marshal_with(repocop_json_list_model)
+    @ns.marshal_with(repocop_json_get_list_model)
     def get(self):
         args = pkg_repocop_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = Repocop(g.connection, **args)
-        # if not wrk.check_params():
-        #     abort(
-        #         400,
-        #         message=f"Request parameters validation error",
-        #         args=args,
-        #         validation_message=wrk.validation_results
-        #     )
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results
+            )
         result, code = wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))

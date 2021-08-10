@@ -235,6 +235,9 @@ repocop_json_model = ns.model('RepocopJsonModel', {
     'rc_test_date': fields.DateTime(description='repocop test message'),
 })
 repocop_json_list_model = ns.model('RepocopJsonListModel', {
+    'packages': fields.Nested(repocop_json_model, description='repocop packages info', as_list=True)
+})
+repocop_json_get_list_model = ns.model('RepocopJsonGetListModel', {
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
     'packages': fields.Nested(repocop_json_model, description='repocop packages info', as_list=True)

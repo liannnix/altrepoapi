@@ -746,14 +746,23 @@ SELECT
     pkg_release,
     pkg_arch,
     rc_test_name,
-    rc_test_status,
-    rc_test_message,
-    rc_test_date
+    argMax(rc_test_status, rc_test_date),
+    argMax(rc_test_message, rc_test_date),
+    max(rc_test_date)
 FROM PackagesRepocop
 WHERE rc_srcpkg_name = '{pkgs}'
     {srcpkg_version}
     {srcpkg_release}
-ORDER BY rc_test_date DESC
+GROUP BY
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_arch,
+    rc_test_name
+ORDER BY
+    rc_test_name ASC,
+    pkg_name ASC,
+    pkg_arch ASC
 """
 
 

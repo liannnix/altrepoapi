@@ -317,7 +317,6 @@ pkg_repocop_args.add_argument(
     help='source package name',
     location='args'
 )
-
 pkg_repocop_args.add_argument(
     'rc_srcpkg_version',
     type=str,
@@ -325,7 +324,6 @@ pkg_repocop_args.add_argument(
     help='source package version',
     location='args'
 )
-
 pkg_repocop_args.add_argument(
     'rc_srcpkg_release',
     type=str,

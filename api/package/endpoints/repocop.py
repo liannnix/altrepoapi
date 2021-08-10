@@ -31,6 +31,18 @@ class Repocop(APIWorker):
         else:
             return True
 
+    def check_params_get(self):
+        self.validation_results = []
+
+        if self.args['rc_srcpkg_version'] is not None and self.args['rc_srcpkg_version'] == '':
+            self.validation_results.append('rc_srcpkg_version cannot be empty')
+        if self.args['rc_srcpkg_release'] is not None and self.args['rc_srcpkg_release'] == '':
+            self.validation_results.append('rc_srcpkg_release cannot be empty')
+        if self.validation_results != []:
+            return False
+        else:
+            return True
+
     def post(self):
         json_ = self.args['json_data']['packages']
         for el in json_:
@@ -51,7 +63,7 @@ class Repocop(APIWorker):
             version_cond = f"AND rc_srcpkg_version = '{self.args['rc_srcpkg_version']}'"
         else:
             version_cond = ''
-        if self.args['rc_srcpkg_version'] is not None:
+        if self.args['rc_srcpkg_release'] is not None:
             release_cond = f"AND rc_srcpkg_release = '{self.args['rc_srcpkg_release']}'"
         else:
             release_cond = ''
