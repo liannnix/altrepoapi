@@ -102,7 +102,9 @@ package_chlog_model = ns.model('SiteChangelogModel', {
 
 pkgset_pkghash_model = ns.model('SitePackagesetPackageHashModel', {
     'request_args': fields.Raw(description='request arguments'),
-    'pkghash': fields.String(description='package hash UInt64 as string')
+    'pkghash': fields.String(description='package hash UInt64 as string'),
+    'version': fields.String(description='package version'),
+    'release': fields.String(description='package release')
 })
 
 

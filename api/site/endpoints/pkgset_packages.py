@@ -141,7 +141,9 @@ class PackagesetPackageHash(APIWorker):
 
         res = {
                 'request_args' : self.args,
-                'pkghash': str(response[0][0])
+                'pkghash': str(response[0][0]),
+                'version': response[0][1],
+                'release': response[0][2]
             }
         return res, 200
 

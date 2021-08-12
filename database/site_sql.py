@@ -153,7 +153,10 @@ ORDER BY task_changed DESC
 """
 
     get_pkghash_by_name = """
-SELECT DISTINCT pkg_hash
+SELECT DISTINCT
+    pkg_hash,
+    pkg_version,
+    pkg_release
 FROM static_last_packages
 WHERE pkgset_name = '{branch}'
     AND pkg_name = '{name}'
