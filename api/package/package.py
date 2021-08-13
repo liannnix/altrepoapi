@@ -300,6 +300,7 @@ class routePackageRepocop(Resource):
 
     @ns.doc(description='Load repocop data into database',
         responses={
+            201: 'Data loaded',
             400: 'Request parameters validation error',
             404: 'Requested data not found in database'
         }
@@ -323,7 +324,7 @@ class routePackageRepocop(Resource):
 
     @ns.doc(description='Get repocop data by name, version and release',
         responses={
-            201: 'Upload was successful',
+            200: 'Success',
             400: 'Request parameters validation error',
             404: 'Requested data not found in database'
         }
