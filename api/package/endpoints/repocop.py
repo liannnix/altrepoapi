@@ -34,10 +34,10 @@ class Repocop(APIWorker):
     def check_params_get(self):
         self.validation_results = []
 
-        if self.args['rc_srcpkg_version'] is not None and self.args['rc_srcpkg_version'] == '':
-            self.validation_results.append('rc_srcpkg_version cannot be empty')
-        if self.args['rc_srcpkg_release'] is not None and self.args['rc_srcpkg_release'] == '':
-            self.validation_results.append('rc_srcpkg_release cannot be empty')
+        if self.args['srcpkg_version'] is not None and self.args['srcpkg_version'] == '':
+            self.validation_results.append('srcpkg_version cannot be empty')
+        if self.args['srcpkg_release'] is not None and self.args['srcpkg_release'] == '':
+            self.validation_results.append('srcpkg_release cannot be empty')
         if self.validation_results != []:
             return False
         else:
@@ -55,16 +55,16 @@ class Repocop(APIWorker):
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
-        return "ok", 201
+        return "data loaded successfully", 201
 
     def get(self):
-        self.source_pakage = self.args['rc_srcpkg_name']
-        if self.args['rc_srcpkg_version'] is not None:
-            version_cond = f"AND rc_srcpkg_version = '{self.args['rc_srcpkg_version']}'"
+        self.source_pakage = self.args['srcpkg_name']
+        if self.args['srcpkg_version'] is not None:
+            version_cond = f"AND srcpkg_version = '{self.args['srcpkg_version']}'"
         else:
             version_cond = ''
-        if self.args['rc_srcpkg_release'] is not None:
-            release_cond = f"AND rc_srcpkg_release = '{self.args['rc_srcpkg_release']}'"
+        if self.args['srcpkg_release'] is not None:
+            release_cond = f"AND srcpkg_release = '{self.args['srcpkg_release']}'"
         else:
             release_cond = ''
         self.conn.request_line = self.sql.get_out_repocop.format(
@@ -80,7 +80,7 @@ class Repocop(APIWorker):
 
         if not response:
             self._store_error(
-                {"message": f"No results found in last package sets for given parameters",
+                {"message": f"No results found in database for given parameters",
                  "args": self.args},
                 self.ll.INFO,
                 404
@@ -89,7 +89,7 @@ class Repocop(APIWorker):
 
         RepocopInfo = namedtuple('RepocopJsonModel', [
             'pkg_name', 'pkg_version', 'pkg_release', 'pkg_arch',
-            'rc_test_name', 'rc_test_status', 'rc_test_message', 'rc_test_date'
+            'test_name', 'test_status', 'test_message', 'test_date'
         ])
 
         res = [RepocopInfo(*el)._asdict() for el in response]

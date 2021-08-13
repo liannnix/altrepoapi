@@ -73,9 +73,9 @@ package_info_model = ns.model('PackageInfoModel', {
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
     'packages': fields.Nested(package_info_package_model,
-                              description='packages info',
-                              as_list=True
-                              )
+        description='packages info',
+        as_list=True
+    )
 })
 
 pkg_build_dep_el_model = ns.model('PackageBuildDependencyElementModel', {
@@ -96,9 +96,9 @@ pkg_build_dep_model = ns.model('PackageBuildDependencyModel', {
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
     'dependencies': fields.Nested(pkg_build_dep_el_model,
-                                  description='build dependency results',
-                                  as_list=True
-                                  )
+        description='build dependency results',
+        as_list=True
+    )
 })
 
 misconflict_pkg_model = ns.model('PackageMisconflictPackageModel', {
@@ -114,9 +114,9 @@ misconflict_pkgs_model = ns.model('PackageMisconflictPackagesModel', {
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
     'conflicts': fields.Nested(misconflict_pkg_model,
-                               description='conflicts',
-                               as_list=True
-                               )
+        description='conflicts',
+        as_list=True
+    )
 })
 
 pkg_find_pkgset_el_model = ns.model('PackageFindPackagesetElementModel', {
@@ -135,9 +135,9 @@ pkg_find_pkgset_model = ns.model('PackageFindPackagesetModel', {
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
     'packages': fields.Nested(pkg_find_pkgset_el_model,
-                              description='package set packages information',
-                              as_list=True
-                              )
+        description='package set packages information',
+        as_list=True
+    )
 })
 
 pkg_by_file_name_el_model = ns.model('PackageByFileNameElementModel', {
@@ -154,9 +154,9 @@ pkg_by_file_name_model = ns.model('PackageByFileNameModel', {
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
     'packages': fields.Nested(pkg_by_file_name_el_model,
-                              description='package set packages information',
-                              as_list=True
-                              )
+        description='package set packages information',
+        as_list=True
+    )
 })
 
 dependent_packages_el_model = ns.model('DependentPackagesElementModel', {
@@ -173,9 +173,9 @@ dependent_packages_model = ns.model('DependentPackagesModel', {
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
     'packages': fields.Nested(dependent_packages_el_model,
-                              description='dependent packages information',
-                              as_list=True
-                              )
+        description='dependent packages information',
+        as_list=True
+    )
 })
 
 unpackaged_dirs_args_el_model = ns.model('UnpackagedDirsElementModel', {
@@ -192,9 +192,9 @@ unpackaged_dirs_args_model = ns.model('UnpackagedDirsModel', {
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
     'packages': fields.Nested(unpackaged_dirs_args_el_model,
-                              description='packages with unpackaged directories',
-                              as_list=True
-                              )
+        description='packages with unpackaged directories',
+        as_list=True
+    )
 })
 
 build_dep_set_pkg_model = ns.model('BuildDependencySetPackageModel', {
@@ -208,20 +208,20 @@ build_dep_set_pkgs_model = ns.model('BuildDependencySetPackagesModel', {
     'package': fields.String(description='source package name'),
     'length': fields.Integer(description='number of dependency packages found'),
     'depends': fields.Nested(build_dep_set_pkg_model,
-                             description='build requirements packages information',
-                             as_list=True
-                             )
+        description='build requirements packages information',
+        as_list=True
+    )
 })
 build_dep_set_model = ns.model('BuildDependencySetModel', {
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
     'packages': fields.Nested(build_dep_set_pkgs_model,
-                              description='build requirements packages information',
-                              as_list=True
-                              )
+        description='build requirements packages information',
+        as_list=True
+    )
 })
 
-repocop_json_model = ns.model('RepocopJsonModel', {
+repocop_json_post_model = ns.model('RepocopJsonPostModel', {
     'pkg_name': fields.String(description='package name'),
     'pkg_version': fields.String(description='package version'),
     'pkg_release': fields.String(description='package release'),
@@ -232,13 +232,25 @@ repocop_json_model = ns.model('RepocopJsonModel', {
     'rc_test_name': fields.String(description='repocop test name'),
     'rc_test_status': fields.String(description='repocop test status'),
     'rc_test_message': fields.String(description='repocop test message'),
-    'rc_test_date': fields.DateTime(description='repocop test message'),
+    'rc_test_date': fields.DateTime(description='repocop test date'),
 })
-repocop_json_list_model = ns.model('RepocopJsonListModel', {
-    'packages': fields.Nested(repocop_json_model, description='repocop packages info', as_list=True)
+repocop_json_list_model = ns.model('RepocopJsonPostListModel', {
+    'packages': fields.Nested(repocop_json_post_model, description='repocop packages info', as_list=True)
+})
+
+repocop_json_get_model = ns.model('RepocopJsonGetModel', {
+    'pkg_name': fields.String(description='package name'),
+    'pkg_version': fields.String(description='package version'),
+    'pkg_release': fields.String(description='package release'),
+    'pkg_arch': fields.String(description='package arch'),
+    'test_name': fields.String(description='repocop test name'),
+    'test_status': fields.String(description='repocop test status'),
+    'test_message': fields.String(description='repocop test message'),
+    'test_date': fields.DateTime(description='repocop test date'),
 })
 repocop_json_get_list_model = ns.model('RepocopJsonGetListModel', {
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of packages found'),
-    'packages': fields.Nested(repocop_json_model, description='repocop packages info', as_list=True)
+    'packages': fields.Nested(repocop_json_get_model, description='repocop packages info', as_list=True)
 })
+

@@ -311,21 +311,21 @@ build_dep_set_args.add_argument(
 
 pkg_repocop_args = reqparse.RequestParser()
 pkg_repocop_args.add_argument(
-    'rc_srcpkg_name',
+    'srcpkg_name',
     type=str,
     required=True,
     help='source package name',
     location='args'
 )
 pkg_repocop_args.add_argument(
-    'rc_srcpkg_version',
+    'srcpkg_version',
     type=str,
     required=False,
     help='source package version',
     location='args'
 )
 pkg_repocop_args.add_argument(
-    'rc_srcpkg_release',
+    'srcpkg_release',
     type=str,
     required=False,
     help='source package release',
