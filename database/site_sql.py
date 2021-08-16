@@ -441,4 +441,27 @@ WHERE (pkgset_ruuid IN
 )) AND (pkgset_depth = 0)
 """
 
+    get_all_maintainers = """
+SELECT
+    pkg_packager,
+    countDistinct(pkg_hash)
+FROM last_packages
+WHERE pkg_sourcepackage = 1
+    and pkgset_name = '{branch}'
+GROUP BY
+    pkg_packager
+"""
+
+    get_maintainer_info = """
+SELECT
+    any(pkg_packager),
+    argMax(pkg_packager_email, pkg_buildtime),
+    toDateTime(max(pkg_buildtime)),
+    countIf(pkg_sourcepackage, pkg_sourcepackage=1) as src,
+    countIf(pkg_sourcepackage, pkg_sourcepackage=0) as bin
+from last_packages
+where pkg_packager like '{pkg_packager}'
+and pkgset_name = '{branch}'
+"""
+
 sitesql = SQL()

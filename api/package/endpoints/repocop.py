@@ -60,11 +60,11 @@ class Repocop(APIWorker):
     def get(self):
         self.source_pakage = self.args['srcpkg_name']
         if self.args['srcpkg_version'] is not None:
-            version_cond = f"AND srcpkg_version = '{self.args['srcpkg_version']}'"
+            version_cond = f"AND rc_srcpkg_version = '{self.args['srcpkg_version']}'"
         else:
             version_cond = ''
         if self.args['srcpkg_release'] is not None:
-            release_cond = f"AND srcpkg_release = '{self.args['srcpkg_release']}'"
+            release_cond = f"AND rc_srcpkg_release = '{self.args['srcpkg_release']}'"
         else:
             release_cond = ''
         self.conn.request_line = self.sql.get_out_repocop.format(
