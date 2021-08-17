@@ -129,7 +129,7 @@ class TaskDiff(APIWorker):
 
             if not response:
                 self._store_sql_error(
-                    f"Failed to get packages add contents for task {self.task_id}",
+                    {"Error": f"Failed to get packages add contents for task {self.task_id}"},
                     self.ll.ERROR, 500
                 )
                 return self.error

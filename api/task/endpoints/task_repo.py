@@ -128,7 +128,7 @@ class TaskRepo(APIWorker):
             return None
         if not response:
             self._store_sql_error(
-                f"Failed to get last repo packages for task {self.task_id}",
+                {"Error": f"Failed to get last repo packages for task {self.task_id}"},
                 self.ll.ERROR, 500
             )
             return None
@@ -142,7 +142,7 @@ class TaskRepo(APIWorker):
             return None
         if not response:
             self._store_sql_error(
-                f"Failed to get last repo contents for task {self.task_id}",
+                {"Error": f"Failed to get last repo contents for task {self.task_id}"},
                 self.ll.ERROR, 500
             )
             return None
@@ -176,7 +176,7 @@ class TaskRepo(APIWorker):
 
             if not tasks_diff_add_hshs and not tasks_diff_del_hshs:
                 self._store_sql_error(
-                    f"Failed to get task plan hashes for tasks {tasks_diff_list}",
+                    {"Error": f"Failed to get task plan hashes for tasks {tasks_diff_list}"},
                     self.ll.ERROR, 500
                 )
                 return None
