@@ -163,7 +163,7 @@ all_maintainers_args.add_argument(
 )
 maintainer_info_args = reqparse.RequestParser()
 maintainer_info_args.add_argument(
-    'pkg_packager',
+    'maintainer_name',
     type=str,
     required=True,
     help='name of maintainer',

@@ -459,9 +459,20 @@ SELECT
     toDateTime(max(pkg_buildtime)),
     countIf(pkg_sourcepackage, pkg_sourcepackage=1) as src,
     countIf(pkg_sourcepackage, pkg_sourcepackage=0) as bin
-from last_packages
-where pkg_packager like '{pkg_packager}'
-and pkgset_name = '{branch}'
+FROM last_packages
+WHERE pkg_packager LIKE '{pkg_packager}'
+AND pkgset_name = '{branch}'
+"""
+
+    get_maintainer_branches = """
+SELECT
+    pkgset_name,
+    countDistinct(pkg_hash)
+FROM last_packages
+WHERE pkg_packager LIKE '{pkg_packager}'
+    AND pkg_sourcepackage = 1
+GROUP BY
+    pkgset_name    
 """
 
 sitesql = SQL()

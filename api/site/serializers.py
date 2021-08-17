@@ -214,15 +214,21 @@ all_maintainers_model = ns.model('AllMaintainersModel', {
     'maintainers': fields.Nested(all_maintainers_el_model, description='maintainers info', as_list=True)
 })
 
+# maintainer_branches_el_model = ns.model('MaintainerBranchesElementModel', {
+#     'branch': fields.String(description='package set name')
+# })
+
 maintainer_info_el_model = ns.model('MaintainerInfoElementModel', {
-    'pkg_packager': fields.String(description='Maintainer name'),
-    'pkg_packager_email': fields.String(description='Maintainer email'),
+    'maintainer_name': fields.String(description='Maintainer name'),
+    'maintainer_email': fields.String(description='Maintainer email'),
     'last_buildtime': fields.String(description='Last buildtime'),
     'count_source_pkg': fields.Integer(description='Number of source packages'),
-    'count_binary_pkg': fields.Integer(description='Number of binary packages')
+    'count_binary_pkg': fields.Integer(description='Number of binary packages'),
+
 })
 maintainer_info_model = ns.model('MaintainerInfoModel', {
     'request_args': fields.Raw(description='request arguments'),
-    'length': fields.Integer(description='number of maintainers found'),
-    'maintainers': fields.Nested(maintainer_info_el_model, description='maintainers info', as_list=True)
+    'information': fields.Nested(maintainer_info_el_model, description='maintainers info'),
+    'branches': fields.Nested(all_pkgsets_el_model, as_list=True,
+                              description='all branches of the maintainer')
 })

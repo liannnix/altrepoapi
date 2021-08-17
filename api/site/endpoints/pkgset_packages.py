@@ -1,6 +1,6 @@
 from collections import namedtuple
 
-from utils import tuplelist_to_dict, sort_branches
+from utils import tuplelist_to_dict, sort_branches, datetime_to_iso
 
 from api.base import APIWorker
 from api.misc import lut
@@ -558,16 +558,16 @@ class MaintainerInfo(APIWorker):
             return True
 
     def get_maintainer_info(self):
-        self.pkg_packager = self.args['pkg_packager']
+        self.pkg_packager = self.args['maintainer_name']
         self.branch = self.args['branch']
         self.conn.request_line = self.sql.get_maintainer_info.format(pkg_packager=self.pkg_packager, branch=self.branch)
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
-        if not response:
+        if not response or response[0][0] == '':
             self._store_error(
-                {"message": f"No data not found in database",
+                {"message": f"No data found in database for {self.pkg_packager} {self.branch}",
                  "args": self.args},
                 self.ll.INFO,
                 404
@@ -575,16 +575,31 @@ class MaintainerInfo(APIWorker):
             return self.error
 
         MaintainersInfo = namedtuple('MaintainersInfoModel', [
-            'pkg_packager', 'pkg_packager_email', 'last_buildtime', 'count_source_pkg',
+            'maintainer_name', 'maintainer_email', 'last_buildtime', 'count_source_pkg',
             'count_binary_pkg'
         ])
 
-        res = [MaintainersInfo(*el)._asdict() for el in response]
+        res = MaintainersInfo(*response[0])._asdict()
+        res['last_buildtime'] = datetime_to_iso(res['last_buildtime'])
+        self.conn.request_line = self.sql.get_maintainer_branches.format(
+            pkg_packager=self.pkg_packager
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
 
+        MaintainerBranches = namedtuple('MaintainerBranches', ['branch', 'count'])
+        branches = []
+        for branch in sort_branches([el[0] for el in response]):
+            for test in [MaintainerBranches(*b)._asdict() for b in response]:
+                if test['branch'] == branch:
+                    branches.append(test)
+                    break
         res = {
             'request_args': self.args,
-            'length': len(res),
-            'maintainers': res
+            'information': res,
+            'branches': branches
         }
 
         return res, 200
