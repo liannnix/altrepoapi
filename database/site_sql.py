@@ -444,24 +444,28 @@ WHERE (pkgset_ruuid IN
     get_all_maintainers = """
 SELECT
     pkg_packager,
-    countDistinct(pkg_hash)
+    pkg_packager_email,
+    countDistinct(pkg_hash) as cnt
 FROM last_packages
 WHERE pkg_sourcepackage = 1
-    and pkgset_name = '{branch}'
+    AND pkgset_name = '{branch}'
 GROUP BY
-    pkg_packager
+    pkg_packager,
+    pkg_packager_email
 """
 
     get_maintainer_info = """
 SELECT
-    any(pkg_packager),
-    argMax(pkg_packager_email, pkg_buildtime),
+    groupUniqArray(pkg_packager),
+    groupUniqArray(pkg_packager_email),
     toDateTime(max(pkg_buildtime)),
     countIf(pkg_sourcepackage, pkg_sourcepackage=1) as src,
     countIf(pkg_sourcepackage, pkg_sourcepackage=0) as bin
 FROM last_packages
-WHERE pkg_packager LIKE '{pkg_packager}'
-AND pkgset_name = '{branch}'
+WHERE (pkg_packager_email LIKE '{maintainer_nickname}@%'
+    OR pkg_packager_email LIKE '{maintainer_nickname} at%'
+    OR pkg_packager LIKE '%{maintainer_nickname}@%')
+    AND pkgset_name = '{branch}'
 """
 
     get_maintainer_branches = """
@@ -469,10 +473,36 @@ SELECT
     pkgset_name,
     countDistinct(pkg_hash)
 FROM last_packages
-WHERE pkg_packager LIKE '{pkg_packager}'
+WHERE (pkg_packager_email LIKE '{maintainer_nickname}@%' 
+    OR pkg_packager_email LIKE '{maintainer_nickname} at%'
+    OR pkg_packager LIKE '%{maintainer_nickname}@%')
     AND pkg_sourcepackage = 1
 GROUP BY
     pkgset_name    
+"""
+
+    get_maintainer_pkg = """
+SELECT
+    pkg_name,
+    pkg_buildtime,
+    pkg_url,
+    pkg_summary,
+    pkg_version,
+    pkg_release
+FROM last_packages
+WHERE (pkg_packager_email LIKE '{maintainer_nickname}@%' 
+    OR pkg_packager_email LIKE '{maintainer_nickname} at%'
+    OR pkg_packager LIKE '%{maintainer_nickname}@%')
+    and pkgset_name = '{branch}'
+    and pkg_sourcepackage = 1
+GROUP BY
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_buildtime,
+    pkg_url,
+    pkg_summary
+ORDER BY pkg_buildtime DESC
 """
 
 sitesql = SQL()

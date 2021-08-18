@@ -163,7 +163,7 @@ all_maintainers_args.add_argument(
 )
 maintainer_info_args = reqparse.RequestParser()
 maintainer_info_args.add_argument(
-    'maintainer_name',
+    'maintainer_nickname',
     type=str,
     required=True,
     help='name of maintainer',

@@ -4,7 +4,8 @@ from flask_restx import Resource, abort, Namespace
 from utils import get_logger, url_logging, response_error_parser
 
 from .endpoints.package_info import PackageInfo, PackageChangelog
-from .endpoints.pkgset_packages import PackagesetPackages, PackagesetPackageHash, AllMaintainers, MaintainerInfo
+from .endpoints.pkgset_packages import PackagesetPackages, PackagesetPackageHash, AllMaintainers, MaintainerInfo, \
+    MaintainerPackages
 from .endpoints.pkgset_packages import PackagesetFindPackages, AllPackagesets
 from .endpoints.pkgset_packages import PkgsetCategoriesCount, AllPackagesetArchs
 from .endpoints.pkgset_packages import AllPackagesetsByHash
@@ -17,7 +18,7 @@ from .parsers import pkgset_packages_args, package_chlog_args, package_info_args
 from .parsers import pkgset_pkghash_args, task_by_name_args, pkgs_by_name_args
 from .parsers import task_last_pkgs_args, pkgset_categories_args, all_archs_args
 from .serializers import pkgset_packages_model, package_chlog_model, package_info_model, all_maintainers_model, \
-    maintainer_info_model
+    maintainer_info_model, maintainer_pkgs_model
 from .serializers import pkgset_pkghash_model, task_by_name_model, fing_pkgs_by_name_model
 from .serializers import all_pkgsets_model, all_archs_model, pkgset_categories_model
 from .serializers import pkgsets_by_hash_model
@@ -461,6 +462,34 @@ class routeMaintainersInfo(Resource):
                 validation_message=wrk.validation_results
             )
         result, code = wrk.get_maintainer_info()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+@ns.route('/maintainer_packages',
+          doc={
+              'description': 'Packages collected by the specified maintainer',
+              'responses': {
+                  400: 'Request parameters validation error',
+                  404: 'Package not found in database'
+              }
+          }
+          )
+class routeMaintainerPackages(Resource):
+    @ns.expect(maintainer_info_args)
+    @ns.marshal_list_with(maintainer_pkgs_model)
+    def get(self):
+        args = maintainer_info_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        wrk = MaintainerPackages(g.connection, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results
+            )
+        result, code = wrk.get_maintainer_packages()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
