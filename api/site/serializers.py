@@ -214,10 +214,6 @@ all_maintainers_model = ns.model('AllMaintainersModel', {
     'maintainers': fields.Nested(all_maintainers_el_model, description='maintainers info', as_list=True)
 })
 
-# maintainer_branches_el_model = ns.model('MaintainerBranchesElementModel', {
-#     'branch': fields.String(description='package set name')
-# })
-
 maintainer_info_el_model = ns.model('MaintainerInfoElementModel', {
     'maintainer_name': fields.Raw(description='Maintainer nickname'),
     'maintainer_email': fields.Raw(description='Maintainer email'),
@@ -228,12 +224,10 @@ maintainer_info_el_model = ns.model('MaintainerInfoElementModel', {
 })
 maintainer_info_model = ns.model('MaintainerInfoModel', {
     'request_args': fields.Raw(description='request arguments'),
-    'information': fields.Nested(maintainer_info_el_model, description='maintainers info'),
-    'branches': fields.Nested(all_pkgsets_el_model, as_list=True,
-                              description='all branches of the maintainer')
+    'information': fields.Nested(maintainer_info_el_model, description='maintainers info')
 })
 
-maintainer_pkgs_el_model = ns.model('MaintainerInfoModel', {
+maintainer_pkgs_el_model = ns.model('MaintainerPackagesElementModel', {
     'name': fields.String(description='package name'),
     'buildtime': fields.Integer(description='package build time'),
     'url': fields.String(description='package url'),
@@ -241,8 +235,15 @@ maintainer_pkgs_el_model = ns.model('MaintainerInfoModel', {
     'version': fields.String(description='package version'),
     'release': fields.String(description='package release')
 })
-maintainer_pkgs_model = ns.model('MaintainerInfoModel', {
+maintainer_pkgs_model = ns.model('MaintainerPackagesModel', {
     'request_args': fields.Raw(description='request arguments'),
     'length': fields.Integer(description='number of maintainers found'),
     'packages': fields.Nested(maintainer_pkgs_el_model, description='found packages', as_list=True)
+})
+
+maintainer_branches_model = ns.model('MaintainerBranchesModel', {
+    'request_args': fields.Raw(description='request arguments'),
+    'length': fields.Integer(description='number of maintainers found'),
+    'branches': fields.Nested(all_pkgsets_el_model, as_list=True,
+                              description='all branches of the maintainer')
 })

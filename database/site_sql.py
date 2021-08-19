@@ -505,4 +505,51 @@ GROUP BY
 ORDER BY pkg_buildtime DESC
 """
 
+    get_tasks_by_maintainer = """
+SELECT
+    T1.*,
+    groupUniqArray(tuple(T2.*)) AS gears
+FROM
+(
+    SELECT DISTINCT
+        task_id,
+        TS.task_state,
+        TS.changed AS task_changed
+    FROM Tasks_buffer
+    LEFT JOIN
+    (
+        SELECT
+            task_id,
+            argMax(task_state, task_changed) AS task_state,
+            max(task_changed) AS changed
+        FROM TaskStates_buffer
+        GROUP BY task_id
+    ) AS TS USING (task_id)
+    WHERE task_owner = '{maintainer_nickname}'
+    AND task_repo = '{branch}'
+) AS T1
+LEFT JOIN
+(
+    SELECT
+        task_id,
+        subtask_id,
+        task_repo,
+        task_owner,
+        subtask_type,
+        subtask_dir,
+        subtask_tag_id,
+        subtask_srpm_name,
+        subtask_srpm_evr,
+        subtask_package,
+        subtask_pkg_from,
+        task_changed
+    FROM Tasks_buffer
+    WHERE subtask_deleted = 0
+) AS T2 USING (task_id, task_changed)
+GROUP BY
+    task_id,
+    task_state,
+    task_changed
+ORDER BY task_changed DESC
+"""
 sitesql = SQL()

@@ -182,7 +182,6 @@ class TasksByPackage(APIWorker):
             }
         return res, 200
 
-
 class LastTaskPackages(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
@@ -240,4 +239,131 @@ class LastTaskPackages(APIWorker):
                 'length': len(retval),
                 'packages': retval
             }
+        return res, 200
+
+
+class TasksByMaintainer(APIWorker):
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sitesql
+        super().__init__()
+
+    def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        self.validation_results = []
+
+        if self.args['branch'] == '' or self.args['branch'] not in lut.known_branches:
+            self.validation_results.append(f"unknown package set name : {self.args['branch']}")
+            self.validation_results.append(f"allowed package set names are : {lut.known_branches}")
+
+        if self.validation_results != []:
+            return False
+        else:
+            return True
+
+    def get_tasks(self):
+        maintainer_nickname = self.args['maintainer_nickname']
+        branch = self.args['branch']
+
+        self.conn.request_line = self.sql.get_tasks_by_maintainer.format(maintainer_nickname=maintainer_nickname,
+                                                                         branch=branch)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+
+        if not response:
+            self._store_error(
+                {"message": f"No data not found in database",
+                 "args": self.args},
+                self.ll.INFO,
+                404
+            )
+            return self.error
+
+        TaskMeta = namedtuple('TaskMeta', ['id', 'state', 'changed', 'packages'])
+        retval = [TaskMeta(*el)._asdict() for el in response]
+
+        tasks_for_pkg_names_search = []
+        pkg_names = {}
+
+        for task in retval:
+            for s in task['packages']:
+                if s[5] != '' and not s[5].startswith('/gears/'):
+                    tasks_for_pkg_names_search.append((s[0], s[1]))
+
+        if len(tasks_for_pkg_names_search) != 0:
+            # create temporary table with task_id, subtask_id
+            tmp_table = 'tmp_task_ids'
+            self.conn.request_line = self.sql.create_tmp_table.format(
+                tmp_table=tmp_table,
+                columns='(task_id UInt32, subtask_id UInt32)'
+            )
+            status, response = self.conn.send_request()
+            if not status:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return self.error
+            # insert task_id, subtask_id into temporary table
+            self.conn.request_line = (
+                self.sql.insert_into_tmp_table.format(tmp_table=tmp_table),
+                ({'task_id': int(el[0]), 'subtask_id': int(el[1])} for el in tasks_for_pkg_names_search)
+            )
+            status, response = self.conn.send_request()
+            if not status:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return self.error
+            # select package names by (task_id, subtask_id)
+            self.conn.request_line = self.sql.get_pkg_names_by_task_ids.format(tmp_table=tmp_table)
+            status, response = self.conn.send_request()
+            if not status:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return self.error
+            if response:
+                pkg_names = {(el[0], el[1]): el[2] for el in response if el[2] != ''}
+
+        res = []
+        SubtaskMeta = namedtuple('SubtaskMeta', [
+            'id', 'sub_id', 'repo', 'owner', 'type', 'dir', 'tag_id',
+            'srpm_name', 'srpm_evr', 'package', 'pkg_from', 'changed'
+        ])
+        for task in retval:
+            pkg_ls = []
+            pkg_name = ''
+            for s in task['packages']:
+                subtask = SubtaskMeta(*s)._asdict()
+                if subtask['package'] != '':
+                    pkg_name = subtask['package']
+                elif subtask['srpm_name'] != '':
+                    pkg_name = subtask['srpm_name']
+                if subtask['dir'] != '' and not subtask['dir'].startswith('/gears/'):
+                    try:
+                        pkg_name = pkg_names[(int(subtask['id']), int(subtask['sub_id']))]
+                        subtask['dir'] = f"/gears/{pkg_name[0]}/{pkg_name}.git"
+                    except Exception as e:
+                        pkg_name = subtask['dir'].split('/')[-1][:-4]
+                elif subtask['dir'].startswith('/gears/'):
+                    pkg_name = subtask['dir'].split('/')[-1][:-4]
+                pkg_type, pkg_link = TasksByPackage._build_gear_link(subtask, lut.gitalt_base)
+                pkg_ls.append({
+                    'type': pkg_type,
+                    'link': pkg_link,
+                    'name': pkg_name
+                })
+
+            res.append({
+                'id': task['id'],
+                'state': task['state'],
+                'changed': datetime_to_iso(task['changed']),
+                'branch': task['packages'][0][2],
+                'owner': task['packages'][0][3],
+                'packages': pkg_ls
+
+            })
+
+        res = {
+            'request_args': self.args,
+            'length': len(res),
+            'tasks': res
+        }
         return res, 200

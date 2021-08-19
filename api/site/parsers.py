@@ -166,7 +166,7 @@ maintainer_info_args.add_argument(
     'maintainer_nickname',
     type=str,
     required=True,
-    help='name of maintainer',
+    help='nickname of maintainer',
     location='args'
 )
 maintainer_info_args.add_argument(
@@ -174,5 +174,15 @@ maintainer_info_args.add_argument(
     type=str,
     required=True,
     help='name of packageset',
+    location='args'
+)
+
+
+maintainer_branches_args = reqparse.RequestParser()
+maintainer_branches_args.add_argument(
+    'maintainer_nickname',
+    type=str,
+    required=True,
+    help='nickname of maintainer',
     location='args'
 )
