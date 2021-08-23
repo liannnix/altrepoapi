@@ -77,12 +77,10 @@ class PackageInfo(APIWorker):
 
         # FIXME: deal with 'Out of memory' from SQL server with all_packages - last_packages is OK
         self.conn.request_line = (request_line, {'branch': self.args['branch']})
-        # print(f"DBG: request_line: {self.conn.request_line}")
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
-        # print(f"DBG: response : {response}")
         if not response:
             self._store_error(
                 {"message": f"No packages found in last packages for given parameters",
