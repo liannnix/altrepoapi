@@ -67,6 +67,7 @@ class Repocop(APIWorker):
 
     def get(self):
         self.source_pakage = self.args['srcpkg_name']
+        branch = self.args['branch']
         if self.args['srcpkg_version'] is not None:
             version_cond = f"AND rc_srcpkg_version = '{self.args['srcpkg_version']}'"
         else:
@@ -78,7 +79,8 @@ class Repocop(APIWorker):
         self.conn.request_line = self.sql.get_out_repocop.format(
             pkgs=self.source_pakage,
             srcpkg_version=version_cond,
-            srcpkg_release=release_cond
+            srcpkg_release=release_cond,
+            branch=branch
         )
 
         status, response = self.conn.send_request()
