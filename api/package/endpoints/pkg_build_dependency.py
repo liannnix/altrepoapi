@@ -140,7 +140,9 @@ class BuildDependency(APIWorker):
                 return
 
         # select all filtered package with dependencies
-        self.conn.request_line = self.sql.get_all_filtred_pkgs_with_deps
+        self.conn.request_line = self.sql.get_all_filtred_pkgs_with_deps.format(
+            tmp_table=tmp_table_pkg_dep
+        )
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, self.ll.ERROR, 500)

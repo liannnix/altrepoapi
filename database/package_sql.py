@@ -253,13 +253,13 @@ WHERE pkgset_name = %(branch)s
 SELECT DISTINCT
     pkgname,
     arrayFilter(x -> (x != pkgname AND notEmpty(x)), groupUniqArray(reqname)) AS arr
-FROM package_dependency
+FROM {tmp_table}
 WHERE reqname IN
 (
     SELECT ''
     UNION ALL
         SELECT pkgname
-        FROM package_dependency
+        FROM {tmp_table}
 )
 GROUP BY pkgname
 ORDER BY arr
