@@ -257,6 +257,11 @@ class TasksByMaintainer(APIWorker):
             self.validation_results.append(f"unknown package set name : {self.args['branch']}")
             self.validation_results.append(f"allowed package set names are : {lut.known_branches}")
 
+        if self.args['maintainer_nickname'] == '':
+            self.validation_results.append(
+                f"maintainer nickname should not be empty string"
+            )
+
         if self.validation_results != []:
             return False
         else:

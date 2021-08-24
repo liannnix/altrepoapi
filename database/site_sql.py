@@ -552,4 +552,53 @@ GROUP BY
     task_changed
 ORDER BY task_changed DESC
 """
+
+    get_src_pkg_ver_rel_maintainer = """
+SELECT
+    pkgset_name,
+    pkg_name,
+    pkg_version,
+    pkg_release
+FROM last_packages
+WHERE (pkg_packager_email LIKE '{maintainer_nickname}@%' 
+    OR pkg_packager_email LIKE '{maintainer_nickname} at%'
+    OR pkg_packager LIKE '%{maintainer_nickname}@%')
+    and pkgset_name = '{branch}'
+    and pkg_sourcepackage = 1
+GROUP BY
+    pkgset_name,
+    pkg_name,
+    pkg_version,
+    pkg_release
+"""
+
+    get_repocop_by_maintainer = """
+SELECT
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_arch,
+    rc_srcpkg_name,
+    pkgset_name,
+    rc_test_name,
+    argMax(rc_test_status, rc_test_date),
+    argMax(rc_test_message, rc_test_date),
+    max(rc_test_date)
+FROM PackagesRepocop
+WHERE rc_test_status NOT IN ('ok', 'skip')
+    AND (rc_srcpkg_name, rc_srcpkg_version, rc_srcpkg_release, pkgset_name) IN 
+(SELECT * FROM {tmp_table})
+GROUP BY
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_arch,
+    rc_srcpkg_name,
+    pkgset_name,
+    rc_test_name
+ORDER BY
+    pkg_name ASC,
+    pkg_arch ASC    
+"""
+
 sitesql = SQL()

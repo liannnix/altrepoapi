@@ -247,3 +247,21 @@ maintainer_branches_model = ns.model('MaintainerBranchesModel', {
     'branches': fields.Nested(all_pkgsets_el_model, as_list=True,
                               description='all branches of the maintainer')
 })
+
+repocop_by_maintainer_el_model = ns.model('RepocopByMaintainerElementModel', {
+    'pkg_name': fields.String(description='package name'),
+    'pkg_version': fields.String(description='package version'),
+    'pkg_release': fields.String(description='package release'),
+    'pkg_arch': fields.String(description='package arch'),
+    'srcpkg_name': fields.String(description='source package name'),
+    'branch': fields.String(description='repocop branch'),
+    'test_name': fields.String(description='repocop test name'),
+    'test_status': fields.String(description='repocop test status'),
+    'test_message': fields.String(description='repocop test message'),
+    'test_date': fields.DateTime(description='repocop test date'),
+})
+repocop_by_maintainer_model = ns.model('RepocopByMaintainerModel', {
+    'request_args': fields.Raw(description='request arguments'),
+    'length': fields.Integer(description='number of packages found'),
+    'packages': fields.Nested(repocop_by_maintainer_el_model, description='repocop packages info', as_list=True)
+})
