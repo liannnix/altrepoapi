@@ -152,3 +152,37 @@ all_archs_args.add_argument(
     help='name of packageset',
     location='args'
 )
+
+all_maintainers_args = reqparse.RequestParser()
+all_maintainers_args.add_argument(
+    'branch',
+    type=str,
+    required=True,
+    help='name of packageset',
+    location='args'
+)
+maintainer_info_args = reqparse.RequestParser()
+maintainer_info_args.add_argument(
+    'maintainer_nickname',
+    type=str,
+    required=True,
+    help='nickname of maintainer',
+    location='args'
+)
+maintainer_info_args.add_argument(
+    'branch',
+    type=str,
+    required=True,
+    help='name of packageset',
+    location='args'
+)
+
+
+maintainer_branches_args = reqparse.RequestParser()
+maintainer_branches_args.add_argument(
+    'maintainer_nickname',
+    type=str,
+    required=True,
+    help='nickname of maintainer',
+    location='args'
+)

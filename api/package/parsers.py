@@ -331,3 +331,10 @@ pkg_repocop_args.add_argument(
     help='source package release',
     location='args'
 )
+pkg_repocop_args.add_argument(
+    'branch',
+    type=str,
+    required=False,
+    help='package branch',
+    location='args'
+)

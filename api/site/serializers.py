@@ -202,3 +202,66 @@ pkgsets_by_hash_model = ns.model('SitePackagesetsByHashModel', {
     'length': fields.Integer(description='number of package sets found'),
     'branches': fields.List(fields.String, description='package sets')
 })
+
+all_maintainers_el_model = ns.model('AllMaintainersElementModel', {
+    'pkg_packager': fields.String(description='Name maintainers'),
+    'pkg_packager_email': fields.String(description='Email maintainers'),
+    'count_source_pkg': fields.Integer(description='Number of source packages')
+})
+all_maintainers_model = ns.model('AllMaintainersModel', {
+    'request_args': fields.Raw(description='request arguments'),
+    'length': fields.Integer(description='number of maintainers found'),
+    'maintainers': fields.Nested(all_maintainers_el_model, description='maintainers info', as_list=True)
+})
+
+maintainer_info_el_model = ns.model('MaintainerInfoElementModel', {
+    'maintainer_name': fields.Raw(description='Maintainer nickname'),
+    'maintainer_email': fields.Raw(description='Maintainer email'),
+    'last_buildtime': fields.String(description='Last buildtime'),
+    'count_source_pkg': fields.Integer(description='Number of source packages'),
+    'count_binary_pkg': fields.Integer(description='Number of binary packages'),
+
+})
+maintainer_info_model = ns.model('MaintainerInfoModel', {
+    'request_args': fields.Raw(description='request arguments'),
+    'information': fields.Nested(maintainer_info_el_model, description='maintainers info')
+})
+
+maintainer_pkgs_el_model = ns.model('MaintainerPackagesElementModel', {
+    'name': fields.String(description='package name'),
+    'buildtime': fields.Integer(description='package build time'),
+    'url': fields.String(description='package url'),
+    'summary': fields.String(description='package summary'),
+    'version': fields.String(description='package version'),
+    'release': fields.String(description='package release')
+})
+maintainer_pkgs_model = ns.model('MaintainerPackagesModel', {
+    'request_args': fields.Raw(description='request arguments'),
+    'length': fields.Integer(description='number of maintainers found'),
+    'packages': fields.Nested(maintainer_pkgs_el_model, description='found packages', as_list=True)
+})
+
+maintainer_branches_model = ns.model('MaintainerBranchesModel', {
+    'request_args': fields.Raw(description='request arguments'),
+    'length': fields.Integer(description='number of maintainers found'),
+    'branches': fields.Nested(all_pkgsets_el_model, as_list=True,
+                              description='all branches of the maintainer')
+})
+
+repocop_by_maintainer_el_model = ns.model('RepocopByMaintainerElementModel', {
+    'pkg_name': fields.String(description='package name'),
+    'pkg_version': fields.String(description='package version'),
+    'pkg_release': fields.String(description='package release'),
+    'pkg_arch': fields.String(description='package arch'),
+    'srcpkg_name': fields.String(description='source package name'),
+    'branch': fields.String(description='repocop branch'),
+    'test_name': fields.String(description='repocop test name'),
+    'test_status': fields.String(description='repocop test status'),
+    'test_message': fields.String(description='repocop test message'),
+    'test_date': fields.DateTime(description='repocop test date'),
+})
+repocop_by_maintainer_model = ns.model('RepocopByMaintainerModel', {
+    'request_args': fields.Raw(description='request arguments'),
+    'length': fields.Integer(description='number of packages found'),
+    'packages': fields.Nested(repocop_by_maintainer_el_model, description='repocop packages info', as_list=True)
+})
