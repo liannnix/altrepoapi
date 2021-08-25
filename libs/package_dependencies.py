@@ -82,6 +82,8 @@ GROUP BY
 
 class PackageDependencies:
     """
+    Retrieves package dependencies drom database.
+
     In this class, temporary tables are used to record the results of queries.
     This is necessary in order to avoid exceeding the limit count of input data
     in clickhouse database.
@@ -94,7 +96,7 @@ class PackageDependencies:
         self.branch = branch
         self.archs = archs
         self.dep_dict = {}
-        self._tmp_table = 'tmp_pkg_hshs'
+        self._tmp_table = "tmp_pkg_hshs"
         self.DEBUG = debug_
 
     def _log_error(self, severity):
@@ -111,30 +113,31 @@ class PackageDependencies:
 
     def _store_sql_error(self, message, severity):
         def build_sql_error(message):
-            response = {'message': message}
+            response = {"message": message}
             if self.DEBUG:
-                response['module'] = self.__class__.__name__
+                response["module"] = self.__class__.__name__
                 requestline = self.conn.request_line
                 if isinstance(requestline, tuple):
-                    response['sql_request'] = [_ for _ in requestline[0].split('\n') if len(_) > 0]
+                    response["sql_request"] = [
+                        line for line in requestline[0].split("\n") if len(line) > 0
+                    ]
                 else:
-                    response['sql_request'] = [_ for _ in requestline.split('\n')]
+                    response["sql_request"] = [line for line in requestline.split("\n")]
             return response
+
         self.error = build_sql_error(message)
         self.status = False
         self._log_error(severity)
 
     def _store_error(self, message, severity):
-        self.error = {'message': message}
+        self.error = {"message": message}
         self.status = False
         self._log_error(severity)
 
     def _get_package_dep_set(self, pkgs=None, first=False):
 
         self.conn.request_line = self.sql.get_srchsh_for_binary.format(
-            pkgs=pkgs,
-            branch=self.branch,
-            archs=tuple(self.archs)
+            pkgs=pkgs, branch=self.branch, archs=tuple(self.archs)
         )
         status, response = self.conn.send_request()
         if status is False:
@@ -154,13 +157,17 @@ class PackageDependencies:
                         self.dep_dict[pkg] += uniq_hshs
                         tmp_list += uniq_hshs
 
-        self.conn.request_line = self.sql.drop_tmp_table.format(tmp_table=self._tmp_table)
+        self.conn.request_line = self.sql.drop_tmp_table.format(
+            tmp_table=self._tmp_table
+        )
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, ll.ERROR)
             raise SqlRequestError(self.error)
 
-        self.conn.request_line = self.sql.create_tmp_table.format(tmp_table=self._tmp_table)
+        self.conn.request_line = self.sql.create_tmp_table.format(
+            tmp_table=self._tmp_table
+        )
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, ll.ERROR)
@@ -168,7 +175,7 @@ class PackageDependencies:
 
         self.conn.request_line = (
             self.sql.insert_to_tmp_table.format(tmp_tbl=self._tmp_table),
-            ((hsh,) for hsh in tmp_list)
+            ((hsh,) for hsh in tmp_list),
         )
         status, response = self.conn.send_request()
         if status is False:
@@ -184,29 +191,27 @@ class PackageDependencies:
 
     def build_result(self):
         hsh_dict = self._get_package_dep_set(self.packages, first=True)
-        tmp_table = 'all_hshs'
-        self.conn.request_line = self.sql.create_tmp_table.format(
-            tmp_table=tmp_table
-        )
+        tmp_table = "all_hshs"
+        self.conn.request_line = self.sql.create_tmp_table.format(tmp_table=tmp_table)
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, ll.ERROR)
             raise SqlRequestError(self.error)
 
-        hsh_list = tuple(hsh_dict.keys()) + tuple([hsh for val in hsh_dict.values() for hsh in val])
+        hsh_list = tuple(hsh_dict.keys()) + tuple(
+            [hsh for val in hsh_dict.values() for hsh in val]
+        )
 
         self.conn.request_line = (
             self.sql.insert_to_tmp_table.format(tmp_tbl=tmp_table),
-            ((hsh,) for hsh in hsh_list)
+            ((hsh,) for hsh in hsh_list),
         )
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, ll.ERROR)
             raise SqlRequestError(self.error)
-        # get information for all packages in hsh_dict (keys and values) 
-        self.conn.request_line = self.sql.get_meta_by_hshs.format(
-            tmp_table=tmp_table
-        )
+        # get information for all packages in hsh_dict (keys and values)
+        self.conn.request_line = self.sql.get_meta_by_hshs.format(tmp_table=tmp_table)
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, ll.ERROR)
@@ -214,7 +219,9 @@ class PackageDependencies:
 
         dict_info = dict([(tuple(r[0]), r[1:]) for r in response])
 
-        PkgInfo = namedtuple('PkgInfo', ['name', 'version', 'release', 'epoch', 'archs'])
+        PkgInfo = namedtuple(
+            "PkgInfo", ["name", "version", "release", "epoch", "archs"]
+        )
         result_list = []
 
         for pkg, hshs in hsh_dict.items():
@@ -231,12 +238,14 @@ class PackageDependencies:
                     control_list.add(control_list_el)
                     pkg_req_list.append(PkgInfo(*dict_info_val)._asdict())
                     counter += 1
-            
+
             pkg_key = [k for k in dict_info.keys() if pkg in k][0]
-            result_list.append({
-                'package': dict_info[pkg_key][0],
-                'length': counter,
-                'depends': sorted(pkg_req_list, key=lambda val: val['name'])
-            })
+            result_list.append(
+                {
+                    "package": dict_info[pkg_key][0],
+                    "length": counter,
+                    "depends": sorted(pkg_req_list, key=lambda val: val["name"]),
+                }
+            )
 
         return result_list

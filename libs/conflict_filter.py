@@ -71,21 +71,24 @@ class ConflictFilter:
 
     def _store_sql_error(self, message, severity):
         def build_sql_error(message):
-            response = {'message': message}
+            response = {"message": message}
             if self.DEBUG:
-                response['module'] = self.__class__.__name__
+                response["module"] = self.__class__.__name__
                 requestline = self.conn.request_line
                 if isinstance(requestline, tuple):
-                    response['sql_request'] = [_ for _ in requestline[0].split('\n') if len(_) > 0]
+                    response["sql_request"] = [
+                        line for line in requestline[0].split("\n") if len(line) > 0
+                    ]
                 else:
-                    response['sql_request'] = [_ for _ in requestline.split('\n')]
+                    response["sql_request"] = [line for line in requestline.split("\n")]
             return response
+
         self.error = build_sql_error(message)
         self.status = False
         self._log_error(severity)
 
     def _store_error(self, message, severity):
-        self.error = {'message': message}
+        self.error = {"message": message}
         self.status = False
         self._log_error(severity)
 
@@ -94,7 +97,7 @@ class ConflictFilter:
         # get conflicts and provides by hash
         self.conn.request_line = (
             self.sql.get_dependencies,
-            {'hshs': tuple(hshs), 'branch': self.pbranch, 'arch': self.parch}
+            {"hshs": tuple(hshs), "branch": self.pbranch, "arch": self.parch},
         )
         status, response = self.conn.send_request()
         if status is False:
@@ -103,10 +106,10 @@ class ConflictFilter:
 
         hsh_dpt_dict = defaultdict(lambda: defaultdict(list))
         for hsh, *args in response:
-            dptype = 'conflict' if args[0] == 'obsolete' else args[0]
+            dptype = "conflict" if args[0] == "obsolete" else args[0]
             hsh_dpt_dict[hsh][dptype] += [tuple(args[1:])]
 
-        self.conn.request_line = (self.sql.get_packages_info, {'hshs': tuple(hshs)})
+        self.conn.request_line = (self.sql.get_packages_info, {"hshs": tuple(hshs)})
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, ll.ERROR)
@@ -128,11 +131,11 @@ class ConflictFilter:
         :return: `list` of `tuple` (package hash, conflict hash) for package A
         """
         conflicts = []
-        for confl in dA['conflict']:
-            for provd in dB['provide']:
+        for confl in dA["conflict"]:
+            for provd in dB["provide"]:
                 if confl[0] == provd[0]:
                     # add conflict in list if conflict without version
-                    if confl[1] == '' or confl[2] == 0:
+                    if confl[1] == "" or confl[2] == 0:
                         conflicts.append((hshA, hshB))
                     else:
                         # version of provide
@@ -146,9 +149,11 @@ class ConflictFilter:
                         flag = confl[2]
 
                         # check conflict version flag (>, <, =, >=, <=)
-                        if (eq == -1 and flag & 1 << 1 != 0) or \
-                                (eq == 0 and flag & 1 << 3 != 0) or \
-                                (eq == 1 and flag & 1 << 2 != 0):
+                        if (
+                            (eq == -1 and flag & 1 << 1 != 0)
+                            or (eq == 0 and flag & 1 << 3 != 0)
+                            or (eq == 1 and flag & 1 << 2 != 0)
+                        ):
                             conflicts.append((hshA, hshB))
 
         return conflicts
@@ -199,12 +204,12 @@ class ConflictFilter:
         :return: `int`: epoch, `str`: version, `str`: release, `str`: disttag
         """
         # split for `-alt` and get epoch, version
-        epoch_vers = vers.split('-alt')[0]
-        vers = vers.replace(epoch_vers, '')
-        epoch_vers = epoch_vers.split(':')
+        epoch_vers = vers.split("-alt")[0]
+        vers = vers.replace(epoch_vers, "")
+        epoch_vers = epoch_vers.split(":")
         # get release, disttag
-        rel_dist = vers.split(':')
-        rel_dist[0] = rel_dist[0].replace('-', '')
+        rel_dist = vers.split(":")
+        rel_dist[0] = rel_dist[0].replace("-", "")
 
         # release check, if not, release is 0
         if len(epoch_vers) < 2:
@@ -217,7 +222,7 @@ class ConflictFilter:
         # disttag check, if not (disttag = ''), disttag is None
         dist = None
         if len(rel_dist) < 2:
-            if rel_dist[0] != '':
+            if rel_dist[0] != "":
                 rel = rel_dist[0]
             else:
                 rel = None
@@ -255,7 +260,7 @@ class ConflictFilter:
             v2[rpm.RPMTAG_RELEASE] = vv2[2]
 
         # check disttag, if true, add it
-        if vv1[3] != '' and vv2[3]:
+        if vv1[3] != "" and vv2[3]:
             v1[rpm.RPMTAG_DISTTAG] = vv1[3]
             v2[rpm.RPMTAG_DISTTAG] = vv2[3]
 
