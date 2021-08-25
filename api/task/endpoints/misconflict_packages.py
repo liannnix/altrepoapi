@@ -5,6 +5,8 @@ from api.package.endpoints.misconflict_packages import MisconflictPackages
 
 
 class TaskMisconflictPackages(APIWorker):
+    """Retrives packages with file conflicts."""
+
     def __init__(self, connection, id, **kwargs):
         self.conn = connection
         self.args = kwargs
@@ -27,8 +29,8 @@ class TaskMisconflictPackages(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args['archs']:
-            for arch in self.args['archs']:
+        if self.args["archs"]:
+            for arch in self.args["archs"]:
                 if arch not in lut.known_archs:
                     self.validation_results.append(f"unknown package arch : {arch}")
 
@@ -39,8 +41,8 @@ class TaskMisconflictPackages(APIWorker):
 
     def get(self):
         # arguments processing
-        self.args['packages'] = []
-        self.args['branch'] = None
+        self.args["packages"] = []
+        self.args["branch"] = None
         # get task source packages and branch
         # get task repo
         self.conn.request_line = self.sql.task_repo.format(id=self.task_id)
@@ -51,13 +53,16 @@ class TaskMisconflictPackages(APIWorker):
         if not response:
             self._store_error(
                 {"message": f"No data found in database for task '{self.task_id}'"},
-                self.ll.INFO, 404
+                self.ll.INFO,
+                404,
             )
             return self.error
 
-        self.args['branch'] = response[0][0]
+        self.args["branch"] = response[0][0]
         # get task source packages
-        self.conn.request_line = self.sql.misconflict_get_pkgs_of_task.format(id=self.task_id)
+        self.conn.request_line = self.sql.misconflict_get_pkgs_of_task.format(
+            id=self.task_id
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -65,18 +70,19 @@ class TaskMisconflictPackages(APIWorker):
         if not response:
             self._store_error(
                 {"message": f"No packages found in database for task '{self.task_id}'"},
-                self.ll.INFO, 404
+                self.ll.INFO,
+                404,
             )
             return self.error
-        self.args['packages'] = [pkg[0] for pkg in response]
+        self.args["packages"] = [pkg[0] for pkg in response]
         # init MisconflictPackages class with args
         self.mp = MisconflictPackages(
             self.conn,
-            self.args['packages'],
-            self.args['branch'].lower(),
-            self.args['archs'],
+            self.args["packages"],
+            self.args["branch"].lower(),
+            self.args["archs"],
         )
-        
+
         # build result
         self.mp.build_dependencies()
 
@@ -84,10 +90,10 @@ class TaskMisconflictPackages(APIWorker):
         if self.mp.status:
             # result processing
             res = {
-                'id': self.task_id,
-                'request_args' : self.args,
-                'length': len(self.mp.result),
-                'conflicts': self.mp.result
+                "id": self.task_id,
+                "request_args": self.args,
+                "length": len(self.mp.result),
+                "conflicts": self.mp.result,
             }
             return res, 200
         else:

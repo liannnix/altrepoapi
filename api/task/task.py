@@ -6,31 +6,41 @@ from utils import get_logger, url_logging, response_error_parser
 from .endpoints.task_diff import TaskDiff
 from .endpoints.task_info import TaskInfo
 from .endpoints.task_repo import TaskRepo
-from .endpoints.misconflict_packages import TaskMisconflictPackages
-from .endpoints.task_build_dependency import TaskBuildDependency
 from .endpoints.find_packageset import FindPackageset
+from .endpoints.misconflict_packages import TaskMisconflictPackages
 from .endpoints.build_dependency_set import TaskBuildDependencySet
+from .endpoints.task_build_dependency import TaskBuildDependency
 
-ns = Namespace('task', description="Task's information API")
+ns = Namespace("task", description="Task's information API")
 
 from .parsers import task_info_args, task_repo_args, task_misconflict_args
 from .parsers import task_build_dep_args, task_find_pkgset_args, task_buid_dep_set_args
-from .serializers import task_info_model, task_repo_model, task_diff_model, build_dep_set_model
-from .serializers import task_build_dep_model, misconflict_pkgs_model, task_find_pkgset_model
+from .serializers import (
+    task_info_model,
+    task_repo_model,
+    task_diff_model,
+    build_dep_set_model,
+)
+from .serializers import (
+    task_build_dep_model,
+    misconflict_pkgs_model,
+    task_find_pkgset_model,
+)
 
 logger = get_logger(__name__)
 
 
-@ns.route('/task_info/<int:id>',
+@ns.route(
+    "/task_info/<int:id>",
     doc={
-        'params': {'id': 'task ID'},
-        'description': "Get information for task by ID",
-        'responses': {
-            200: 'Success',
-            400: 'Request parameters validation error',
-            404: 'Task ID not found in database'
-        }
-    }
+        "params": {"id": "task ID"},
+        "description": "Get information for task by ID",
+        "responses": {
+            200: "Success",
+            400: "Request parameters validation error",
+            404: "Task ID not found in database",
+        },
+    },
 )
 class routeTaskInfo(Resource):
     @ns.expect(task_info_args)
@@ -46,23 +56,24 @@ class routeTaskInfo(Resource):
                 400,
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=wrk.validation_results
+                validation_message=wrk.validation_results,
             )
-        result, code =  wrk.get()
+        result, code = wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
 
 
-@ns.route('/task_repo/<int:id>',
+@ns.route(
+    "/task_repo/<int:id>",
     doc={
-        'params': {'id': 'task ID'},
-        'description': "Get repository state by ID",
-        'responses': {
-            400: 'Request parameters validation error',
-            404: 'Task ID not found in database'
-        }
-    }
+        "params": {"id": "task ID"},
+        "description": "Get repository state by ID",
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Task ID not found in database",
+        },
+    },
 )
 class routeTaskRepo(Resource):
     @ns.expect(task_repo_args)
@@ -78,22 +89,21 @@ class routeTaskRepo(Resource):
                 400,
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=wrk.validation_results
+                validation_message=wrk.validation_results,
             )
-        result, code =  wrk.get()
+        result, code = wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
 
 
-@ns.route('/task_diff/<int:id>',
+@ns.route(
+    "/task_diff/<int:id>",
     doc={
-        'params': {'id': 'task ID'},
-        'description': "Get task difference by ID",
-        'responses': {
-            404: 'Task ID not found in database'
-        }
-    }
+        "params": {"id": "task ID"},
+        "description": "Get task difference by ID",
+        "responses": {404: "Task ID not found in database"},
+    },
 )
 class routeTaskDiff(Resource):
     @ns.marshal_with(task_diff_model)
@@ -108,15 +118,16 @@ class routeTaskDiff(Resource):
         return result, code
 
 
-@ns.route('/what_depends_src/<int:id>',
+@ns.route(
+    "/what_depends_src/<int:id>",
     doc={
-        'params': {'id': 'task ID'},
-        'description': "Get packages build dependencies",
-        'responses': {
-            400: 'Request parameters validation error',
-            404: 'Requested data not found in database'
-        }
-    }
+        "params": {"id": "task ID"},
+        "description": "Get packages build dependencies",
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Requested data not found in database",
+        },
+    },
 )
 class routeTaskBuildDependency(Resource):
     @ns.expect(task_build_dep_args)
@@ -130,7 +141,7 @@ class routeTaskBuildDependency(Resource):
                 400,
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=wrk.validation_results
+                validation_message=wrk.validation_results,
             )
         if not wrk.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
@@ -140,16 +151,19 @@ class routeTaskBuildDependency(Resource):
         return result, code
 
 
-@ns.route('/misconflict/<int:id>',
+@ns.route(
+    "/misconflict/<int:id>",
     doc={
-        'params': {'id': 'task ID'},
-        'description': ("Get packages with conflicting files in packages "
-        "from task that do not have a conflict in dependencies"),
-        'responses': {
-            400: 'Request parameters validation error',
-            404: 'Requested data not found in database'
-        }
-    }
+        "params": {"id": "task ID"},
+        "description": (
+            "Get packages with conflicting files in packages "
+            "from task that do not have a conflict in dependencies"
+        ),
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Requested data not found in database",
+        },
+    },
 )
 class routeTaskMisconflictPackages(Resource):
     @ns.expect(task_misconflict_args)
@@ -163,7 +177,7 @@ class routeTaskMisconflictPackages(Resource):
                 400,
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=wrk.validation_results
+                validation_message=wrk.validation_results,
             )
         if not wrk.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
@@ -173,16 +187,19 @@ class routeTaskMisconflictPackages(Resource):
         return result, code
 
 
-@ns.route('/find_packageset/<int:id>',
+@ns.route(
+    "/find_packageset/<int:id>",
     doc={
-        'params': {'id': 'task ID'},
-        'description': ("Get information about packages from package sets "
-            "by list of source packages from task"),
-        'responses': {
-            400: 'Request parameters validation error',
-            404: 'Task ID not found in database'
-        }
-    }
+        "params": {"id": "task ID"},
+        "description": (
+            "Get information about packages from package sets "
+            "by list of source packages from task"
+        ),
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Task ID not found in database",
+        },
+    },
 )
 class routeTaskFindPackageset(Resource):
     @ns.expect(task_find_pkgset_args)
@@ -190,13 +207,13 @@ class routeTaskFindPackageset(Resource):
     def get(self, id):
         url_logging(logger, g.url)
         args = task_find_pkgset_args.parse_args(strict=True)
-        wrk = FindPackageset(g.connection, id,  **args)
+        wrk = FindPackageset(g.connection, id, **args)
         if not wrk.check_params():
             abort(
                 400,
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=wrk.validation_results
+                validation_message=wrk.validation_results,
             )
         if not wrk.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
@@ -206,16 +223,19 @@ class routeTaskFindPackageset(Resource):
         return result, code
 
 
-@ns.route('/build_dependency_set/<int:id>',
+@ns.route(
+    "/build_dependency_set/<int:id>",
     doc={
-        'params': {'id': 'task ID'},
-        'description': ("Get list of packages required for build by "
-            "source packages from task recursively"),
-        'responses': {
-            400: 'Request parameters validation error',
-            404: 'Task ID not found in database'
-        }
-    }
+        "params": {"id": "task ID"},
+        "description": (
+            "Get list of packages required for build by "
+            "source packages from task recursively"
+        ),
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Task ID not found in database",
+        },
+    },
 )
 class routeTaskBuildDependencySet(Resource):
     @ns.expect(task_buid_dep_set_args)
@@ -223,13 +243,13 @@ class routeTaskBuildDependencySet(Resource):
     def get(self, id):
         url_logging(logger, g.url)
         args = task_buid_dep_set_args.parse_args(strict=True)
-        wrk = TaskBuildDependencySet(g.connection, id,  **args)
+        wrk = TaskBuildDependencySet(g.connection, id, **args)
         if not wrk.check_params():
             abort(
                 400,
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=wrk.validation_results
+                validation_message=wrk.validation_results,
             )
         if not wrk.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
