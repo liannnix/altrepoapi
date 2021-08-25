@@ -1,8 +1,9 @@
 from settings import namespace as settings
-from utils import get_logger, build_sql_error_response, logger_level
+from utils import get_logger, logger_level
+
 
 class APIWorker:
-    """Base API endpoint worker class"""
+    """Base API endpoint worker class."""
 
     DEBUG = settings.SQL_DEBUG
 
@@ -25,8 +26,21 @@ class APIWorker:
         else:
             self.logger.debug(self.error)
 
+    def _build_sql_error_response(self, response: dict, code: int):
+        """Add SQL request details from class to response dictionary if debug is enabled."""
+        if self.DEBUG:
+            response["module"] = self.__class__.__name__
+            requestline = self.conn.request_line
+            if isinstance(requestline, tuple):
+                response["sql_request"] = [
+                    _ for _ in requestline[0].split("\n") if len(_) > 0
+                ]
+            else:
+                response["sql_request"] = [_ for _ in requestline.split("\n")]
+        return response, code
+
     def _store_sql_error(self, message, severity, http_code):
-        self.error = build_sql_error_response(message, self, http_code, self.DEBUG)
+        self.error = self._build_sql_error_response(message, http_code)
         self._log_error(severity)
         self.status = False
 
@@ -39,4 +53,4 @@ class APIWorker:
         return True
 
     def get(self):
-        return 'OK', 200
+        return "OK", 200

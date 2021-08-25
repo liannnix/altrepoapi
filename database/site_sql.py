@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class SQL:
     create_tmp_table = """
@@ -600,5 +601,6 @@ ORDER BY
     pkg_name ASC,
     pkg_arch ASC    
 """
+
 
 sitesql = SQL()

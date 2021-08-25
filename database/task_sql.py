@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class SQL:
     check_task = """
@@ -68,20 +69,20 @@ ORDER BY
 """
 
     task_iterations_keys = [
-        'task_id',
-        'task_changed',
-        'subtask_id',
-        'subtask_arch',
-        'titer_ts',
-        'titer_status',
-        'task_try',
-        'task_iter',
-        'titer_srcrpm_hash',
-        'titer_pkgs_hash',
-        'titer_chroot_base',
-        'titer_chroot_br',
-        'titer_buildlog_hash',
-        'titer_srpmlog_hash'
+        "task_id",
+        "task_changed",
+        "subtask_id",
+        "subtask_arch",
+        "titer_ts",
+        "titer_status",
+        "task_try",
+        "task_iter",
+        "titer_srcrpm_hash",
+        "titer_pkgs_hash",
+        "titer_chroot_base",
+        "titer_chroot_br",
+        "titer_buildlog_hash",
+        "titer_srpmlog_hash",
     ]
 
     task_subtasks_by_ti = """
@@ -110,25 +111,25 @@ ORDER BY subtask_id
 """
 
     task_subtasks_keys = [
-        'task_id',
-        'subtask_id',
-        'task_repo',
-        'task_owner',
-        'task_changed',
-        'subtask_changed',
-        'subtask_deleted',
-        'subtask_userid',
-        'subtask_dir',
-        'subtask_package',
-        'subtask_type',
-        'subtask_pkg_from',
-        'subtask_sid',
-        'subtask_tag_author',
-        'subtask_tag_id',
-        'subtask_tag_name',
-        'subtask_srpm',
-        'subtask_srpm_name',
-        'subtask_srpm_evr'
+        "task_id",
+        "subtask_id",
+        "task_repo",
+        "task_owner",
+        "task_changed",
+        "subtask_changed",
+        "subtask_deleted",
+        "subtask_userid",
+        "subtask_dir",
+        "subtask_package",
+        "subtask_type",
+        "subtask_pkg_from",
+        "subtask_sid",
+        "subtask_tag_author",
+        "subtask_tag_id",
+        "subtask_tag_name",
+        "subtask_srpm",
+        "subtask_srpm_name",
+        "subtask_srpm_evr",
     ]
 
     task_state_by_ti = """
@@ -153,19 +154,19 @@ WHERE task_id = {id}
 """
 
     task_state_keys = [
-        'task_changed',
-        'task_id',
-        'task_state',
-        'task_runby',
-        'task_depends',
-        'task_try',
-        'task_testonly',
-        'task_failearly',
-        'task_shared',
-        'task_message',
-        'task_version',
-        'task_prev',
-        'task_eventlog_hash'
+        "task_changed",
+        "task_id",
+        "task_state",
+        "task_runby",
+        "task_depends",
+        "task_try",
+        "task_testonly",
+        "task_failearly",
+        "task_shared",
+        "task_message",
+        "task_version",
+        "task_prev",
+        "task_eventlog_hash",
     ]
 
     task_plan_packages = """
