@@ -8,6 +8,8 @@ from database.site_sql import sitesql
 
 
 class PackagesetPackages(APIWorker):
+    """Retrieves packages information in given package set."""
+
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
@@ -18,22 +20,32 @@ class PackagesetPackages(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args['branch'] == '' or self.args['branch'] not in lut.known_branches:
-            self.validation_results.append(f"unknown package set name : {self.args['branch']}")
-            self.validation_results.append(f"allowed package set names are : {lut.known_branches}")
+        if self.args["branch"] == "" or self.args["branch"] not in lut.known_branches:
+            self.validation_results.append(
+                f"unknown package set name : {self.args['branch']}"
+            )
+            self.validation_results.append(
+                f"allowed package set names are : {lut.known_branches}"
+            )
 
-        if self.args['package_type'] not in ('source', 'binary', 'all'):
+        if self.args["package_type"] not in ("source", "binary", "all"):
             self.validation_results.append(
                 f"package type should be one of 'source', 'binary' or 'all' not '{self.args['package_type']}'"
             )
 
-        if self.args['group']:
-            if self.args['group'] not in lut.pkg_groups:
-                self.validation_results.append(f"unknown package category : {self.args['group']}")
-                self.validation_results.append(f"allowed package categories : {lut.pkg_groups}")
+        if self.args["group"]:
+            if self.args["group"] not in lut.pkg_groups:
+                self.validation_results.append(
+                    f"unknown package category : {self.args['group']}"
+                )
+                self.validation_results.append(
+                    f"allowed package categories : {lut.pkg_groups}"
+                )
 
-        if self.args['buildtime'] and self.args['buildtime'] < 0:
-            self.validation_results.append(f"package build time should be integer UNIX time representation")
+        if self.args["buildtime"] and self.args["buildtime"] < 0:
+            self.validation_results.append(
+                f"package build time should be integer UNIX time representation"
+            )
 
         if self.validation_results != []:
             return False
@@ -41,28 +53,21 @@ class PackagesetPackages(APIWorker):
             return True
 
     def get(self):
-        self.pkg_type = self.args['package_type']
-        self.branch = self.args['branch']
-        self.group = self.args['group']
-        self.buildtime = self.args['buildtime']
+        self.pkg_type = self.args["package_type"]
+        self.branch = self.args["branch"]
+        self.group = self.args["group"]
+        self.buildtime = self.args["buildtime"]
 
         if self.group is not None:
             self.group = f"AND pkg_group_ like '{self.group}%'"
         else:
-            self.group = ''
+            self.group = ""
 
-        pkg_type_to_sql = {
-            'source': (1,),
-            'binary': (0,),
-            'all': (1, 0)
-        }
+        pkg_type_to_sql = {"source": (1,), "binary": (0,), "all": (1, 0)}
         sourcef = pkg_type_to_sql[self.pkg_type]
 
         self.conn.request_line = self.sql.get_repo_packages.format(
-            buildtime=self.buildtime,
-            branch=self.branch,
-            group=self.group,
-            src=sourcef
+            buildtime=self.buildtime, branch=self.branch, group=self.group, src=sourcef
         )
         status, response = self.conn.send_request()
         if not status:
@@ -70,30 +75,39 @@ class PackagesetPackages(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data found in database for given parameters",
-                "args": self.args},
+                {
+                    "message": f"No data found in database for given parameters",
+                    "args": self.args,
+                },
                 self.ll.INFO,
-                404
+                404,
             )
             return self.error
-        
-        
-        PkgMeta = namedtuple('PkgMeta', [
-            'hash', 'name', 'version', 'release', 'buildtime', 'summary', 'maintainer',
-            'category', 'changelog'
-        ])
+
+        PkgMeta = namedtuple(
+            "PkgMeta",
+            [
+                "hash",
+                "name",
+                "version",
+                "release",
+                "buildtime",
+                "summary",
+                "maintainer",
+                "category",
+                "changelog",
+            ],
+        )
 
         retval = [PkgMeta(*el)._asdict() for el in response]
 
-        res = {
-                'request_args' : self.args,
-                'length': len(retval),
-                'packages': retval
-            }
+        res = {"request_args": self.args, "length": len(retval), "packages": retval}
         return res, 200
 
 
 class PackagesetPackageHash(APIWorker):
+    """Retrieves package hash by package name in package set."""
+
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
@@ -104,14 +118,16 @@ class PackagesetPackageHash(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args['branch'] == '' or self.args['branch'] not in lut.known_branches:
-            self.validation_results.append(f"unknown package set name : {self.args['branch']}")
-            self.validation_results.append(f"allowed package set names are : {lut.known_branches}")
-
-        if self.args['name'] == '':
+        if self.args["branch"] == "" or self.args["branch"] not in lut.known_branches:
             self.validation_results.append(
-                f"package name should not be empty string"
+                f"unknown package set name : {self.args['branch']}"
             )
+            self.validation_results.append(
+                f"allowed package set names are : {lut.known_branches}"
+            )
+
+        if self.args["name"] == "":
+            self.validation_results.append(f"package name should not be empty string")
 
         if self.validation_results != []:
             return False
@@ -119,12 +135,11 @@ class PackagesetPackageHash(APIWorker):
             return True
 
     def get(self):
-        self.branch = self.args['branch']
-        self.name = self.args['name']
+        self.branch = self.args["branch"]
+        self.name = self.args["name"]
 
         self.conn.request_line = self.sql.get_pkghash_by_name.format(
-            branch=self.branch,
-            name=self.name
+            branch=self.branch, name=self.name
         )
         status, response = self.conn.send_request()
         if not status:
@@ -132,23 +147,27 @@ class PackagesetPackageHash(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"Package '{self.name}' not found in package set '{self.branch}'",
-                "args": self.args},
+                {
+                    "message": f"Package '{self.name}' not found in package set '{self.branch}'",
+                    "args": self.args,
+                },
                 self.ll.INFO,
-                404
+                404,
             )
             return self.error
 
         res = {
-                'request_args' : self.args,
-                'pkghash': str(response[0][0]),
-                'version': response[0][1],
-                'release': response[0][2]
-            }
+            "request_args": self.args,
+            "pkghash": str(response[0][0]),
+            "version": response[0][1],
+            "release": response[0][2],
+        }
         return res, 200
 
 
 class PackagesetFindPackages(APIWorker):
+    """Finds packages in given package set by name relevance."""
+
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
@@ -159,21 +178,28 @@ class PackagesetFindPackages(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args['branch'] is not None:
-            if self.args['branch'] == '' or self.args['branch'] not in lut.known_branches:
-                self.validation_results.append(f"unknown package set name : {self.args['branch']}")
-                self.validation_results.append(f"allowed package set names are : {lut.known_branches}")
+        if self.args["branch"] is not None:
+            if (
+                self.args["branch"] == ""
+                or self.args["branch"] not in lut.known_branches
+            ):
+                self.validation_results.append(
+                    f"unknown package set name : {self.args['branch']}"
+                )
+                self.validation_results.append(
+                    f"allowed package set names are : {lut.known_branches}"
+                )
 
-        if self.args['arch'] is not None:
-            if self.args['arch'] not in lut.known_archs:
-                self.validation_results.append(f"unknown package arch : {self.args['arch']}")
+        if self.args["arch"] is not None:
+            if self.args["arch"] not in lut.known_archs:
+                self.validation_results.append(
+                    f"unknown package arch : {self.args['arch']}"
+                )
                 self.validation_results.append(f"allowed archs are : {lut.known_archs}")
 
-        if self.args['name'] is None or self.args['name'] == '':
-            self.validation_results.append(
-                f"package name should not be empty string"
-            )
-        elif len(self.args['name']) < 2:
+        if self.args["name"] is None or self.args["name"] == "":
+            self.validation_results.append(f"package name should not be empty string")
+        elif len(self.args["name"]) < 2:
             self.validation_results.append(
                 f"package name should be 2 characters at least"
             )
@@ -185,9 +211,11 @@ class PackagesetFindPackages(APIWorker):
 
     @staticmethod
     def _relevance_sort(pkgs_dict, pkg_name):
-        """Dumb sorting for package names by relevance"""
+        """Dumb sorting for package names by relevance."""
+
         def relevance_weight(instr, substr):
-            return (len(instr) + 100*instr.find(substr))
+            return len(instr) + 100 * instr.find(substr)
+
         l_in = []
         l_out = []
         for k in pkgs_dict.keys():
@@ -197,23 +225,21 @@ class PackagesetFindPackages(APIWorker):
                 l_in.append(k)
         l_in.sort(key=lambda x: relevance_weight(x.lower(), pkg_name.lower()))
         l_out.sort()
-        return [(_, *pkgs_dict[_]) for _ in (l_in + l_out)]
+        return [(name, *pkgs_dict[name]) for name in (l_in + l_out)]
 
     def get(self):
-        self.name = self.args['name']
-        self.arch = ''
-        self.branch = ''
-        if self.args['branch'] is not None:
+        self.name = self.args["name"]
+        self.arch = ""
+        self.branch = ""
+        if self.args["branch"] is not None:
             self.branch = f"AND pkgset_name = '{self.args['branch']}'"
-        if self.args['arch'] is not None:
+        if self.args["arch"] is not None:
             self.arch = f"AND pkg_arch IN {(self.args['arch'],)}"
         else:
             self.arch = f"AND pkg_arch IN {(*lut.default_archs,)}"
 
         self.conn.request_line = self.sql.get_find_packages_by_name.format(
-            branch=self.branch,
-            name=self.name,
-            arch=self.arch
+            branch=self.branch, name=self.name, arch=self.arch
         )
         status, response = self.conn.send_request()
         if not status:
@@ -221,43 +247,45 @@ class PackagesetFindPackages(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"Packages like '{self.name}' not found in database",
-                "args": self.args},
+                {
+                    "message": f"Packages like '{self.name}' not found in database",
+                    "args": self.args,
+                },
                 self.ll.INFO,
-                404
+                404,
             )
             return self.error
-        
+
         pkgs_sorted = self._relevance_sort(tuplelist_to_dict(response, 5), self.name)
 
         res = []
-        PkgMeta = namedtuple('PkgMeta', ['branch', 'version', 'release', 'pkghash'])
+        PkgMeta = namedtuple("PkgMeta", ["branch", "version", "release", "pkghash"])
         for pkg in pkgs_sorted:
-            res.append({
-                'name': pkg[0],
-                'buildtime': pkg[2],
-                'url': pkg[3],
-                'summary': pkg[4],
-                'category': pkg[5],
-                'versions': [PkgMeta(*el)._asdict() for el in pkg[1]]
-            })
+            res.append(
+                {
+                    "name": pkg[0],
+                    "buildtime": pkg[2],
+                    "url": pkg[3],
+                    "summary": pkg[4],
+                    "category": pkg[5],
+                    "versions": [PkgMeta(*el)._asdict() for el in pkg[1]],
+                }
+            )
 
-        res = {
-                'request_args' : self.args,
-                'length': len(res),
-                'packages': res
-            }
+        res = {"request_args": self.args, "length": len(res), "packages": res}
         return res, 200
 
 
 class AllPackagesets(APIWorker):
+    """Retrieves package sets names and source packages count."""
+
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
         self.sql = sitesql
         super().__init__()
 
-    def get_pkgsets(self):
+    def get(self):
         self.conn.request_line = self.sql.get_all_pkgset_names
         status, response = self.conn.send_request()
         if not status:
@@ -265,20 +293,16 @@ class AllPackagesets(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database",
-                "args": self.args},
+                {"message": f"No data not found in database", "args": self.args},
                 self.ll.INFO,
-                404
+                404,
             )
             return self.error
 
         pkg_branches = sort_branches(response[0][0])
-        res = [{'branch': b, 'count': 0} for b in pkg_branches]
+        res = [{"branch": b, "count": 0} for b in pkg_branches]
 
-        res = {
-                'length': len(res),
-                'branches': res
-            }
+        res = {"length": len(res), "branches": res}
         return res, 200
 
     def get_with_pkgs_count(self):
@@ -289,27 +313,25 @@ class AllPackagesets(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database",
-                "args": self.args},
+                {"message": f"No data not found in database", "args": self.args},
                 self.ll.INFO,
-                404
+                404,
             )
             return self.error
 
-        PkgCount = namedtuple('PkgCount', ['branch', 'count'])
+        PkgCount = namedtuple("PkgCount", ["branch", "count"])
         # sort package counts by branch
         pkg_branches = sort_branches([el[0] for el in response])
         pkg_counts = {el[0]: el[1] for el in response}
         res = [PkgCount(*(b, pkg_counts[b]))._asdict() for b in pkg_branches]
 
-        res = {
-                'length': len(res),
-                'branches': res
-            }
+        res = {"length": len(res), "branches": res}
         return res, 200
 
 
 class PkgsetCategoriesCount(APIWorker):
+    """Retrieves package sets categories and packages count."""
+
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
@@ -320,12 +342,19 @@ class PkgsetCategoriesCount(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args['branch'] is not None:
-            if self.args['branch'] == '' or self.args['branch'] not in lut.known_branches:
-                self.validation_results.append(f"unknown package set name : {self.args['branch']}")
-                self.validation_results.append(f"allowed package set names are : {lut.known_branches}")
+        if self.args["branch"] is not None:
+            if (
+                self.args["branch"] == ""
+                or self.args["branch"] not in lut.known_branches
+            ):
+                self.validation_results.append(
+                    f"unknown package set name : {self.args['branch']}"
+                )
+                self.validation_results.append(
+                    f"allowed package set names are : {lut.known_branches}"
+                )
 
-        if self.args['package_type'] not in ('source', 'binary', 'all'):
+        if self.args["package_type"] not in ("source", "binary", "all"):
             self.validation_results.append(
                 f"package type should be one of 'source', 'binary' or 'all' not '{self.args['package_type']}'"
             )
@@ -336,19 +365,14 @@ class PkgsetCategoriesCount(APIWorker):
             return True
 
     def get(self):
-        self.branch = self.args['branch']
-        self.pkg_type = self.args['package_type']
+        self.branch = self.args["branch"]
+        self.pkg_type = self.args["package_type"]
 
-        pkg_type_to_sql = {
-            'source': (1,),
-            'binary': (0,),
-            'all': (1, 0)
-        }
+        pkg_type_to_sql = {"source": (1,), "binary": (0,), "all": (1, 0)}
         sourcef = pkg_type_to_sql[self.pkg_type]
 
         self.conn.request_line = self.sql.get_pkgset_groups_count.format(
-            branch=self.branch,
-            sourcef=sourcef
+            branch=self.branch, sourcef=sourcef
         )
         status, response = self.conn.send_request()
         if not status:
@@ -356,31 +380,25 @@ class PkgsetCategoriesCount(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database",
-                "args": self.args},
+                {"message": f"No data not found in database", "args": self.args},
                 self.ll.INFO,
-                404
+                404,
             )
             return self.error
 
         cat_raw = {el[0]: el[1] for el in response}
         res = []
         for cat in lut.pkg_groups:
-            cnt = sum([v for k,v in cat_raw.items() if k.startswith(cat)])
-            res.append({
-                'category': cat,
-                'count': cnt
-            })
+            cnt = sum([v for k, v in cat_raw.items() if k.startswith(cat)])
+            res.append({"category": cat, "count": cnt})
 
-        res = {
-                'request_args' : self.args,
-                'length': len(res),
-                'categories': res
-            }
+        res = {"request_args": self.args, "length": len(res), "categories": res}
         return res, 200
 
 
 class AllPackagesetArchs(APIWorker):
+    """Retrieves package sets architectures and source packages count by binary packages architecture."""
+
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
@@ -391,72 +409,76 @@ class AllPackagesetArchs(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args['branch'] == '' or self.args['branch'] not in lut.known_branches:
-            self.validation_results.append(f"unknown package set name : {self.args['branch']}")
-            self.validation_results.append(f"allowed package set names are : {lut.known_branches}")
+        if self.args["branch"] == "" or self.args["branch"] not in lut.known_branches:
+            self.validation_results.append(
+                f"unknown package set name : {self.args['branch']}"
+            )
+            self.validation_results.append(
+                f"allowed package set names are : {lut.known_branches}"
+            )
 
         if self.validation_results != []:
             return False
         else:
             return True
 
-    def get_archs(self):
-        self.branch = self.args['branch']
-        self.conn.request_line = self.sql.get_all_bin_pkg_archs.format(branch=self.branch)
+    def get(self):
+        self.branch = self.args["branch"]
+        self.conn.request_line = self.sql.get_all_bin_pkg_archs.format(
+            branch=self.branch
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database",
-                "args": self.args},
+                {"message": f"No data not found in database", "args": self.args},
                 self.ll.INFO,
-                404
+                404,
             )
             return self.error
 
-        archs = sorted([_ for _ in response[0][0] if _ not in ('x86_64-i586',)])
-        res = [_ for _ in archs if _.startswith('x')]
-        res += [_ for _ in archs if _.startswith('i')]
-        res += [_ for _ in archs if _.startswith('n')]
-        res += sorted([_ for _ in archs if _ not in res])
+        archs = sorted([x for x in response[0][0] if x not in ("x86_64-i586",)])
+        res = [x for x in archs if x.startswith("x")]
+        res += [x for x in archs if x.startswith("i")]
+        res += [x for x in archs if x.startswith("n")]
+        res += sorted([x for x in archs if x not in res])
 
-        res = [{'arch': _, 'count': 0} for _ in res]
+        res = [{"arch": x, "count": 0} for x in res]
 
-        res = {
-                'length': len(res),
-                'archs': res
-            }
+        res = {"length": len(res), "archs": res}
         return res, 200
 
-    def get_archs_with_src_count(self):
-        self.branch = self.args['branch']
-        self.conn.request_line = self.sql.get_all_src_cnt_by_bin_archs.format(branch=self.branch)
+    def get_with_src_count(self):
+        self.branch = self.args["branch"]
+        self.conn.request_line = self.sql.get_all_src_cnt_by_bin_archs.format(
+            branch=self.branch
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database",
-                "args": self.args},
+                {"message": f"No data not found in database", "args": self.args},
                 self.ll.INFO,
-                404
+                404,
             )
             return self.error
 
-        archs = sorted([(*el,) for el in response], key=lambda val: val[1], reverse=True)
-        res = [{'arch': _[0], 'count': _[1]} for _ in archs]
+        archs = sorted(
+            [(*el,) for el in response], key=lambda val: val[1], reverse=True
+        )
+        res = [{"arch": x[0], "count": x[1]} for x in archs]
 
-        res = {
-                'length': len(res),
-                'archs': res
-            }
+        res = {"length": len(res), "archs": res}
         return res, 200
 
 
 class AllPackagesetsByHash(APIWorker):
+    """Gets all package sets information which include given package hash."""
+
     def __init__(self, connection, pkghash, **kwargs):
         self.pkghash = pkghash
         self.conn = connection
@@ -465,25 +487,22 @@ class AllPackagesetsByHash(APIWorker):
         super().__init__()
 
     def get(self):
-        self.conn.request_line = self.sql.get_all_pkgsets_by_hash.format(pkghash=self.pkghash)
+        self.conn.request_line = self.sql.get_all_pkgsets_by_hash.format(
+            pkghash=self.pkghash
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database",
-                "args": self.args},
+                {"message": f"No data not found in database", "args": self.args},
                 self.ll.INFO,
-                404
+                404,
             )
             return self.error
 
-        res = sort_branches([_[0] for _ in response])
+        res = sort_branches([el[0] for el in response])
 
-        res = {
-                'pkghash': str(self.pkghash),
-                'length': len(res),
-                'branches': res
-            }
+        res = {"pkghash": str(self.pkghash), "length": len(res), "branches": res}
         return res, 200

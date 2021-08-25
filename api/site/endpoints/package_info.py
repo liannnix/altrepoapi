@@ -8,6 +8,8 @@ from database.site_sql import sitesql
 
 
 class PackageChangelog(APIWorker):
+    """Retrieves package changelog from DB."""
+
     def __init__(self, connection, pkghash, **kwargs):
         self.pkghash = pkghash
         self.conn = connection
@@ -19,8 +21,10 @@ class PackageChangelog(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args['changelog_last'] < 1:
-            self.validation_results.append(f"changelog history length should be not less than 1")
+        if self.args["changelog_last"] < 1:
+            self.validation_results.append(
+                f"changelog history length should be not less than 1"
+            )
 
         if self.validation_results != []:
             return False
@@ -28,7 +32,7 @@ class PackageChangelog(APIWorker):
             return True
 
     def get(self):
-        self.chlog_length = self.args['changelog_last']
+        self.chlog_length = self.args["changelog_last"]
         self.conn.request_line = self.sql.get_pkg_changelog.format(pkghash=self.pkghash)
         status, response = self.conn.send_request()
         if not status:
@@ -36,10 +40,12 @@ class PackageChangelog(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No packages found in last packages with hash {self.pkghash}",
-                "args": self.args},
+                {
+                    "message": f"No packages found in last packages with hash {self.pkghash}",
+                    "args": self.args,
+                },
                 self.ll.INFO,
-                404
+                404,
             )
             return self.error
 
@@ -48,26 +54,28 @@ class PackageChangelog(APIWorker):
             i = 0
             for v in changelog:
                 changelog_dict = {}
-                changelog_dict['date']    = datetime_to_iso(v[0])
-                changelog_dict['name']    = v[1]
-                changelog_dict['evr']     = v[2]
-                changelog_dict['message'] = v[3]
+                changelog_dict["date"] = datetime_to_iso(v[0])
+                changelog_dict["name"] = v[1]
+                changelog_dict["evr"] = v[2]
+                changelog_dict["message"] = v[3]
                 changelog_list.append(changelog_dict)
                 i += 1
                 if i >= self.chlog_length:
                     break
 
         res = {
-                'pkghash': str(self.pkghash),
-                'request_args' : self.args,
-                'length': len(changelog_list),
-                'changelog': changelog_list
-            }
+            "pkghash": str(self.pkghash),
+            "request_args": self.args,
+            "length": len(changelog_list),
+            "changelog": changelog_list,
+        }
 
         return res, 200
 
 
 class PackageInfo(APIWorker):
+    """Retrieves package info from DB."""
+
     def __init__(self, connection, pkghash, **kwargs):
         self.pkghash = pkghash
         self.conn = connection
@@ -79,12 +87,18 @@ class PackageInfo(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args['branch'] == '' or self.args['branch'] not in lut.known_branches:
-            self.validation_results.append(f"unknown package set name : {self.args['branch']}")
-            self.validation_results.append(f"allowed package set names are : {lut.known_branches}")
+        if self.args["branch"] == "" or self.args["branch"] not in lut.known_branches:
+            self.validation_results.append(
+                f"unknown package set name : {self.args['branch']}"
+            )
+            self.validation_results.append(
+                f"allowed package set names are : {lut.known_branches}"
+            )
 
-        if self.args['changelog_last'] < 1:
-            self.validation_results.append(f"changelog history length should be not less than 1")
+        if self.args["changelog_last"] < 1:
+            self.validation_results.append(
+                f"changelog history length should be not less than 1"
+            )
 
         if self.validation_results != []:
             return False
@@ -93,37 +107,59 @@ class PackageInfo(APIWorker):
 
     @staticmethod
     def _parse_task_gear(pkgname, subtask, git_base_url):
-        link_ = ''
-        if subtask['type'] == 'copy':
+        """Builds link to Git repository based on information from subtask.
+
+        Args:
+            pkgname (str): source package name
+            subtask (dict): subtask information
+            git_base_url (str): Git repository base URL
+
+        Returns:
+            str: link to Git repositroy
+        """
+        link_ = ""
+        if subtask["type"] == "copy":
             # 'copy' always has only 'subtask_package'
             link_ = pkgname
-        elif subtask['type'] == 'delete' and subtask['srpm_name'] != '':
+        elif subtask["type"] == "delete" and subtask["srpm_name"] != "":
             # TODO: bug workaround for girar changes @ e74d8067009d
             link_ = f"{git_base_url}/srpms/{pkgname[0]}/{pkgname}.git"
-            if subtask['srpm_evr'] != '':
+            if subtask["srpm_evr"] != "":
                 link_ += f"?a=commit;hb={subtask['srpm_evr']}"
-        elif subtask['type'] == 'delete':
-            # 'delete' return only package name 
+        elif subtask["type"] == "delete":
+            # 'delete' return only package name
             link_ = pkgname
-        elif subtask['dir'] != '' or subtask['type'] == 'gear':
+        elif subtask["dir"] != "" or subtask["type"] == "gear":
             # 'gear' and 'rebuild' + 'unknown' with gears
             link_ = f"{git_base_url}/gears/{pkgname[0]}/{pkgname}.git"
-            if subtask['tag_id'] != '':
+            if subtask["tag_id"] != "":
                 link_ += f"?a=commit;hb={subtask['tag_id']}"
-        elif subtask['srpm_name'] != '' or subtask['type'] == 'srpm':
+        elif subtask["srpm_name"] != "" or subtask["type"] == "srpm":
             # 'srpm' and 'rebuild' + 'unknown' with srpm
             link_ = f"{git_base_url}/srpms/{pkgname[0]}/{pkgname}.git"
-            if subtask['srpm_evr'] != '':
+            if subtask["srpm_evr"] != "":
                 link_ += f"?a=commit;hb={subtask['srpm_evr']}"
         return link_
 
     def get(self):
-        self.branch = self.args['branch']
-        self.chlog_length = self.args['changelog_last']
-        PkgMeta = namedtuple('PkgMeta', [
-            'name', 'version', 'release', 'buildtime', 'url', 'license', 
-            'summary', 'description', 'packager', 'packager_email', 'category'
-        ])
+        self.branch = self.args["branch"]
+        self.chlog_length = self.args["changelog_last"]
+        PkgMeta = namedtuple(
+            "PkgMeta",
+            [
+                "name",
+                "version",
+                "release",
+                "buildtime",
+                "url",
+                "license",
+                "summary",
+                "description",
+                "packager",
+                "packager_email",
+                "category",
+            ],
+        )
         # get package info
         self.conn.request_line = self.sql.get_pkg_info.format(pkghash=self.pkghash)
         status, response = self.conn.send_request()
@@ -132,21 +168,24 @@ class PackageInfo(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No packages found in last packages with hash {self.pkghash}",
-                "args": self.args},
+                {
+                    "message": f"No packages found in last packages with hash {self.pkghash}",
+                    "args": self.args,
+                },
                 self.ll.INFO,
-                404
+                404,
             )
             return self.error
         pkg_info = PkgMeta(*response[0])._asdict()
         # get package task
         pkg_task = 0
         pkg_tasks = []
-        gear_link = ''
+        gear_link = ""
 
-        SubtaskMeta = namedtuple('SubtaskMeta', [
-            'repo', 'id', 'sub_id', 'type', 'dir', 'tag_id', 'srpm_name', 'srpm_evr'
-        ])
+        SubtaskMeta = namedtuple(
+            "SubtaskMeta",
+            ["repo", "id", "sub_id", "type", "dir", "tag_id", "srpm_name", "srpm_evr"],
+        )
 
         self.conn.request_line = self.sql.get_task_gears_by_hash.format(
             pkghash=self.pkghash
@@ -158,35 +197,38 @@ class PackageInfo(APIWorker):
         if response:
             tasks_list = [SubtaskMeta(*el)._asdict() for el in response]
             for task in tasks_list:
-                if task['repo'] == self.branch:
-                    pkg_task = task['id']
-                    if task['type'] != 'copy':
-                        pkg_tasks.append({'type': 'build', 'id': pkg_task})
-                        gear_link = self._parse_task_gear(pkg_info['name'], task, lut.gitalt_base)
+                if task["repo"] == self.branch:
+                    pkg_task = task["id"]
+                    if task["type"] != "copy":
+                        pkg_tasks.append({"type": "build", "id": pkg_task})
+                        gear_link = self._parse_task_gear(
+                            pkg_info["name"], task, lut.gitalt_base
+                        )
                         break
                     else:
-                        pkg_tasks.append({'type': 'copy','id': pkg_task})
+                        pkg_tasks.append({"type": "copy", "id": pkg_task})
                 else:
-                    if task['type'] != 'copy':
-                        pkg_task = task['id']
-                        gear_link = self._parse_task_gear(pkg_info['name'], task, lut.gitalt_base)
-                        pkg_tasks.append({'type': 'build', 'id': pkg_task})
+                    if task["type"] != "copy":
+                        pkg_task = task["id"]
+                        gear_link = self._parse_task_gear(
+                            pkg_info["name"], task, lut.gitalt_base
+                        )
+                        pkg_tasks.append({"type": "build", "id": pkg_task})
                         break
         # get package maintaners
         pkg_maintainers = []
         self.conn.request_line = self.sql.get_pkg_maintaners.format(
-            name=pkg_info['name']
+            name=pkg_info["name"]
         )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
-        pkg_maintainers = [{'name': _[0], 'email': _[1]} for _ in response]
+        pkg_maintainers = [{"name": el[0], "email": el[1]} for el in response]
         # get package ACLs
         pkg_acl = []
         self.conn.request_line = self.sql.get_pkg_acl.format(
-            name=pkg_info['name'],
-            branch=self.branch
+            name=pkg_info["name"], branch=self.branch
         )
         status, response = self.conn.send_request()
         if not status:
@@ -196,18 +238,20 @@ class PackageInfo(APIWorker):
             pkg_acl = response[0][0]
         # get package versions
         pkg_versions = []
-        self.conn.request_line = self.sql.get_pkg_versions.format(
-            name=pkg_info['name']
-        )
+        self.conn.request_line = self.sql.get_pkg_versions.format(name=pkg_info["name"])
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
-        PkgVersions = namedtuple('PkgVersions', ['branch', 'version', 'release', 'pkghash'])
+        PkgVersions = namedtuple(
+            "PkgVersions", ["branch", "version", "release", "pkghash"]
+        )
         # sort package versions by branch
         pkg_branches = sort_branches([el[0] for el in response])
         pkg_versions = tuplelist_to_dict(response, 3)
-        pkg_versions = [PkgVersions(*(b, *pkg_versions[b]))._asdict() for b in pkg_branches]
+        pkg_versions = [
+            PkgVersions(*(b, *pkg_versions[b]))._asdict() for b in pkg_branches
+        ]
         # get provided binary packages
         bin_packages_list = []
         self.conn.request_line = self.sql.get_binary_pkgs.format(pkghash=self.pkghash)
@@ -215,7 +259,7 @@ class PackageInfo(APIWorker):
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
-        bin_packages_list = [_[0] for _ in response]
+        bin_packages_list = [el[0] for el in response]
         # get package changelog
         self.conn.request_line = self.sql.get_pkg_changelog.format(pkghash=self.pkghash)
         status, response = self.conn.send_request()
@@ -224,10 +268,12 @@ class PackageInfo(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No packages found in last packages with hash {self.pkghash}",
-                "args": self.args},
+                {
+                    "message": f"No packages found in last packages with hash {self.pkghash}",
+                    "args": self.args,
+                },
                 self.ll.INFO,
-                404
+                404,
             )
             return self.error
 
@@ -236,27 +282,27 @@ class PackageInfo(APIWorker):
             i = 0
             for v in changelog:
                 changelog_dict = {}
-                changelog_dict['date']    = datetime_to_iso(v[0])
-                changelog_dict['name']    = v[1]
-                changelog_dict['evr']     = v[2]
-                changelog_dict['message'] = v[3]
+                changelog_dict["date"] = datetime_to_iso(v[0])
+                changelog_dict["name"] = v[1]
+                changelog_dict["evr"] = v[2]
+                changelog_dict["message"] = v[3]
                 changelog_list.append(changelog_dict)
                 i += 1
                 if i >= self.chlog_length:
                     break
 
         res = {
-                'pkghash': str(self.pkghash),
-                'request_args' : self.args,
-                **pkg_info,
-                'task': pkg_task,
-                'gear': gear_link,
-                'tasks': pkg_tasks,
-                'packages': bin_packages_list,
-                'changelog': changelog_list,
-                'maintainers': pkg_maintainers,
-                'acl': pkg_acl,
-                'versions': pkg_versions
-            }
+            "pkghash": str(self.pkghash),
+            "request_args": self.args,
+            **pkg_info,
+            "task": pkg_task,
+            "gear": gear_link,
+            "tasks": pkg_tasks,
+            "packages": bin_packages_list,
+            "changelog": changelog_list,
+            "maintainers": pkg_maintainers,
+            "acl": pkg_acl,
+            "versions": pkg_versions,
+        }
 
         return res, 200
