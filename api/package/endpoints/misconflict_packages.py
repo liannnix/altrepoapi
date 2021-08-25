@@ -10,6 +10,8 @@ from libs.exceptions import SqlRequestError
 
 
 class MisconflictPackages(APIWorker):
+    """Retrieves packages file conflicts."""
+
     def __init__(self, connection, packages, branch, archs, **kwargs) -> None:
         self.conn = connection
         self.args = kwargs
@@ -24,27 +26,31 @@ class MisconflictPackages(APIWorker):
         # do all kind of black magic here
         self.packages = tuple(self.packages)
         if self.archs:
-            if 'noarch' not in self.archs:
-                self.archs.append('noarch')
+            if "noarch" not in self.archs:
+                self.archs.append("noarch")
         else:
             self.archs = lut.default_archs
         self.archs = tuple(self.archs)
 
         # get hash for package names
-        self.conn.request_line = (self.sql.misconflict_get_hshs_by_pkgs, {
-            'pkgs': self.packages, 'branch': self.branch, 'arch': self.archs
-        })
+        self.conn.request_line = (
+            self.sql.misconflict_get_hshs_by_pkgs,
+            {"pkgs": self.packages, "branch": self.branch, "arch": self.archs},
+        )
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return
         if not response:
             self._store_error(
-                {"message": (
-                    f"Packages {list(self.packages)} not in package set '{self.branch}'"
-                    f" for archs {list(self.archs)}"
-                )},
-                self.ll.INFO, 404
+                {
+                    "message": (
+                        f"Packages {list(self.packages)} not in package set '{self.branch}'"
+                        f" for archs {list(self.archs)}"
+                    )
+                },
+                self.ll.INFO,
+                404,
             )
             return
 
@@ -56,20 +62,22 @@ class MisconflictPackages(APIWorker):
         if len(input_pkgs_names) != len(self.packages):
             # return utils.json_str_error("Error of input data.")
             self._store_error(
-                {"message": (
-                    f"Packages ({set(self.packages) - input_pkgs_names}) not in"
-                    f" package set '{self.branch}'"
-                    f" for archs {list(self.archs)}"
-                )},
+                {
+                    "message": (
+                        f"Packages ({set(self.packages) - input_pkgs_names}) not in"
+                        f" package set '{self.branch}'"
+                        f" for archs {list(self.archs)}"
+                    )
+                },
                 self.ll.INFO,
-                404
+                404,
             )
             return
 
         # get list of (input package | conflict package | conflict files)
         self.conn.request_line = (
             self.sql.misconflict_get_pkgs_with_conflict,
-            {'hshs': input_pkg_hshs, 'branch': self.branch, 'arch': self.archs}
+            {"hshs": input_pkg_hshs, "branch": self.branch, "arch": self.archs},
         )
         status, response = self.conn.send_request()
         if status is False:
@@ -84,11 +92,11 @@ class MisconflictPackages(APIWorker):
         # 1. collect all files_hashnames
         f_hashnames = set()
         for el in hshs_files:
-            [f_hashnames.add(_) for _ in el[2]]
+            [f_hashnames.add(x) for x in el[2]]
         # 2. select real file names from DB
         self.conn.request_line = (
             self.sql.misconflict_get_fnames_by_fnhashs,
-            {'hshs': tuple(f_hashnames)}
+            {"hshs": tuple(f_hashnames)},
         )
         status, response = self.conn.send_request()
         if status is False:
@@ -98,7 +106,7 @@ class MisconflictPackages(APIWorker):
             self._store_error(
                 {"message": f"Failed to get file names from database by hash"},
                 self.ll.INFO,
-                500
+                500,
             )
             return
 
@@ -108,11 +116,7 @@ class MisconflictPackages(APIWorker):
         # 3. replase hashes by names in result
         new_hshs_files = []
         for el in hshs_files:
-            new_hshs_files.append((
-                *el[:2],
-                [f_hashnames[_] for _ in el[2]],
-                *el[3:]
-            ))
+            new_hshs_files.append((*el[:2], [f_hashnames[x] for x in el[2]], *el[3:]))
         hshs_files = new_hshs_files
 
         # list of conflicting package pairs
@@ -129,11 +133,11 @@ class MisconflictPackages(APIWorker):
         except SqlRequestError as e:
             self._store_error(
                 {
-                    'message': f"Error occured in ConflictFilter",
-                    'error': e.dErrorArguments
+                    "message": f"Error occured in ConflictFilter",
+                    "error": e.error_details,
                 },
                 self.ll.ERROR,
-                500
+                500,
             )
             return
 
@@ -177,14 +181,12 @@ class MisconflictPackages(APIWorker):
         for pkg in result_list:
             result_dict_cleanup[(pkg[0], pkg[1])] += pkg[2]
 
-        confl_pkgs = remove_duplicate(
-            [pkg[1] for pkg in result_dict_cleanup.keys()]
-        )
+        confl_pkgs = remove_duplicate([pkg[1] for pkg in result_dict_cleanup.keys()])
 
         # get main information of packages by package hashes
         self.conn.request_line = (
             self.sql.misconflict_get_meta_by_hshs,
-            {'pkgs': tuple(confl_pkgs),'branch': self.branch, 'arch': self.archs}
+            {"pkgs": tuple(confl_pkgs), "branch": self.branch, "arch": self.archs},
         )
         status, response = self.conn.send_request()
         if status is False:
@@ -205,22 +207,35 @@ class MisconflictPackages(APIWorker):
             intersect_pkg_archs = inp_pkg_archs.intersection(found_pkg_archs)
 
             if (pkg[0], pkg[1]) not in filter_ls_names and intersect_pkg_archs:
-                pkg = (pkg[0], pkg[1]) + \
-                    name_info_dict[pkg[1]][:-1] + \
-                    (list(intersect_pkg_archs),) + (files,)
+                pkg = (
+                    (pkg[0], pkg[1])
+                    + name_info_dict[pkg[1]][:-1]
+                    + (list(intersect_pkg_archs),)
+                    + (files,)
+                )
                 result_list_info.append(pkg)
 
         # magic ends here
-        ConflictPackages = namedtuple('ConflictPackages', [
-            'input_package', 'conflict_package', 'version', 'release',
-            'epoch', 'archs', 'files_with_conflict'
-        ])
+        ConflictPackages = namedtuple(
+            "ConflictPackages",
+            [
+                "input_package",
+                "conflict_package",
+                "version",
+                "release",
+                "epoch",
+                "archs",
+                "files_with_conflict",
+            ],
+        )
 
         self.result = [ConflictPackages(*el)._asdict() for el in result_list_info]
         self.status = True
 
 
 class PackageMisconflictPackages:
+    """Retrieves file conflicts by packages."""
+
     def __init__(self, connection, **kwargs) -> None:
         self.conn = connection
         self.args = kwargs
@@ -230,12 +245,16 @@ class PackageMisconflictPackages:
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
-        if self.args['branch'] not in lut.known_branches:
-            self.validation_results.append(f"unknown package set name : {self.args['branch']}")
-            self.validation_results.append(f"allowed package set names are : {lut.known_branches}")
+        if self.args["branch"] not in lut.known_branches:
+            self.validation_results.append(
+                f"unknown package set name : {self.args['branch']}"
+            )
+            self.validation_results.append(
+                f"allowed package set names are : {lut.known_branches}"
+            )
 
-        if self.args['archs']:
-            for arch in self.args['archs']:
+        if self.args["archs"]:
+            for arch in self.args["archs"]:
                 if arch not in lut.known_archs:
                     self.validation_results.append(f"unknown package arch : {arch}")
 
@@ -250,11 +269,11 @@ class PackageMisconflictPackages:
         # init BuildDependency class with args
         self.mp = MisconflictPackages(
             self.conn,
-            self.args['packages'],
-            self.args['branch'].lower(),
-            self.args['archs']
+            self.args["packages"],
+            self.args["branch"].lower(),
+            self.args["archs"],
         )
-        
+
         # build result
         self.mp.build_dependencies()
 
@@ -262,9 +281,9 @@ class PackageMisconflictPackages:
         if self.mp.status:
             # result processing
             res = {
-                'request_args' : self.args,
-                'length': len(self.mp.result),
-                'conflicts': self.mp.result
+                "request_args": self.args,
+                "length": len(self.mp.result),
+                "conflicts": self.mp.result,
             }
             return res, 200
         else:

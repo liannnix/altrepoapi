@@ -3,37 +3,47 @@ from flask_restx import Resource, abort, Namespace
 
 from utils import get_logger, url_logging, response_error_parser
 
+from .endpoints.repocop import Repocop
 from .endpoints.package_info import PackageInfo
-from .endpoints.pkg_build_dependency import PackageBuildDependency
-from .endpoints.misconflict_packages import PackageMisconflictPackages
 from .endpoints.find_packageset import FindPackageset
+from .endpoints.unpackaged_dirs import UnpackagedDirs
 from .endpoints.package_by_file import PackageByFileName, PackageByFileMD5
 from .endpoints.dependent_packages import DependentPackages
-from .endpoints.repocop import Repocop
-from .endpoints.unpackaged_dirs import UnpackagedDirs
+from .endpoints.pkg_build_dependency import PackageBuildDependency
+from .endpoints.misconflict_packages import PackageMisconflictPackages
 from .endpoints.build_dependency_set import PackageBuildDependencySet
 
-ns = Namespace('package', description="Packages information API")
+ns = Namespace("package", description="Packages information API")
 
-from .parsers import package_info_args, pkg_build_dep_args, misconflict_pkg_args, pkg_repocop_args
+from .parsers import (
+    package_info_args,
+    pkg_build_dep_args,
+    misconflict_pkg_args,
+    pkg_repocop_args,
+)
 from .parsers import pkg_find_pkgset_args, pkg_by_file_name_args, pkg_by_file_md5_args
 from .parsers import dependent_packages_args, unpackaged_dirs_args, build_dep_set_args
 from .serializers import package_info_model, pkg_build_dep_model, misconflict_pkgs_model
 from .serializers import pkg_find_pkgset_model, pkg_by_file_name_model
 from .serializers import dependent_packages_model, unpackaged_dirs_args_model
-from .serializers import build_dep_set_model, repocop_json_list_model, repocop_json_get_list_model
+from .serializers import (
+    build_dep_set_model,
+    repocop_json_list_model,
+    repocop_json_get_list_model,
+)
 
 logger = get_logger(__name__)
 
 
-@ns.route('/package_info',
+@ns.route(
+    "/package_info",
     doc={
-        'description': "Get information for package by parameters from last packages",
-        'responses': {
-            400: 'Request parameters validation error',
-            404: 'Package not found in database'
-        }
-    }
+        "description": "Get information for package by parameters from last packages",
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package not found in database",
+        },
+    },
 )
 class routePackageInfo(Resource):
     @ns.expect(package_info_args)
@@ -47,7 +57,7 @@ class routePackageInfo(Resource):
                 400,
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=wrk.validation_results
+                validation_message=wrk.validation_results,
             )
         result, code = wrk.get()
         if code != 200:
@@ -55,14 +65,15 @@ class routePackageInfo(Resource):
         return result, code
 
 
-@ns.route('/what_depends_src',
+@ns.route(
+    "/what_depends_src",
     doc={
-        'description': "Get packages build dependencies by set of parameters",
-        'responses': {
-            400: 'Request parameters validation error',
-            404: 'Requested data not found in database'
-        }
-    }
+        "description": "Get packages build dependencies by set of parameters",
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Requested data not found in database",
+        },
+    },
 )
 class routePackageBuildDependency(Resource):
     @ns.expect(pkg_build_dep_args)
@@ -76,23 +87,26 @@ class routePackageBuildDependency(Resource):
                 400,
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=wrk.validation_results
-                )
+                validation_message=wrk.validation_results,
+            )
         result, code = wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
 
 
-@ns.route('/misconflict',
+@ns.route(
+    "/misconflict",
     doc={
-        'description': ("Get packages with conflicting files in packages "
-            "that don't have a conflict in dependencies"),
-        'responses': {
-            400: 'Request parameters validation error',
-            404: 'Requested data not found in database'
-        }
-    }
+        "description": (
+            "Get packages with conflicting files in packages "
+            "that don't have a conflict in dependencies"
+        ),
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Requested data not found in database",
+        },
+    },
 )
 class routePackageMisconflictPackages(Resource):
     @ns.expect(misconflict_pkg_args)
@@ -106,7 +120,7 @@ class routePackageMisconflictPackages(Resource):
                 400,
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=wrk.validation_results
+                validation_message=wrk.validation_results,
             )
         result, code = wrk.get()
         if code != 200:
@@ -114,15 +128,18 @@ class routePackageMisconflictPackages(Resource):
         return result, code
 
 
-@ns.route('/find_packageset',
+@ns.route(
+    "/find_packageset",
     doc={
-        'description': ("Get information about packages from package sets "
-            "by given source packages list"),
-        'responses': {
-            400: 'Request parameters validation error',
-            404: 'Package not found in database'
-        }
-    }
+        "description": (
+            "Get information about packages from package sets "
+            "by given source packages list"
+        ),
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package not found in database",
+        },
+    },
 )
 class routeFindPackageset(Resource):
     @ns.expect(pkg_find_pkgset_args)
@@ -136,7 +153,7 @@ class routeFindPackageset(Resource):
                 400,
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=wrk.validation_results
+                validation_message=wrk.validation_results,
             )
         result, code = wrk.get()
         if code != 200:
@@ -144,16 +161,19 @@ class routeFindPackageset(Resource):
         return result, code
 
 
-@ns.route('/package_by_file_name',
+@ns.route(
+    "/package_by_file_name",
     doc={
-        'description': ("Get information about packages from  last package sets "
-                        "by given file name and package set name."
-                        "\nFile name wildcars '*' is allowed."),
-        'responses': {
-            400: 'Request parameters validation error',
-            404: 'Package not found in database'
-        }
-    }
+        "description": (
+            "Get information about packages from  last package sets "
+            "by given file name and package set name."
+            "\nFile name wildcars '*' is allowed."
+        ),
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package not found in database",
+        },
+    },
 )
 class routePackageByFileName(Resource):
     @ns.expect(pkg_by_file_name_args)
@@ -167,7 +187,7 @@ class routePackageByFileName(Resource):
                 400,
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=wrk.validation_results
+                validation_message=wrk.validation_results,
             )
         result, code = wrk.get()
         if code != 200:
@@ -175,15 +195,18 @@ class routePackageByFileName(Resource):
         return result, code
 
 
-@ns.route('/package_by_file_md5',
+@ns.route(
+    "/package_by_file_md5",
     doc={
-        'description': ("Get information about packages from  last package sets "
-                        "by given file MD5 checksum and package set name"),
-        'responses': {
-            400: 'Request parameters validation error',
-            404: 'Package not found in database'
-        }
-    }
+        "description": (
+            "Get information about packages from  last package sets "
+            "by given file MD5 checksum and package set name"
+        ),
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package not found in database",
+        },
+    },
 )
 class routePackageByFileMD5(Resource):
     @ns.expect(pkg_by_file_md5_args)
@@ -197,7 +220,7 @@ class routePackageByFileMD5(Resource):
                 400,
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=wrk.validation_results
+                validation_message=wrk.validation_results,
             )
         result, code = wrk.get()
         if code != 200:
@@ -205,15 +228,18 @@ class routePackageByFileMD5(Resource):
         return result, code
 
 
-@ns.route('/dependent_packages',
+@ns.route(
+    "/dependent_packages",
     doc={
-        'description': ("Get information about packages whose binary packages "
-                        "depends on given package"),
-        'responses': {
-            400: 'Request parameters validation error',
-            404: 'Package not found in database'
-        }
-    }
+        "description": (
+            "Get information about packages whose binary packages "
+            "depends on given package"
+        ),
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package not found in database",
+        },
+    },
 )
 class routeDependentPackages(Resource):
     @ns.expect(dependent_packages_args)
@@ -227,7 +253,7 @@ class routeDependentPackages(Resource):
                 400,
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=wrk.validation_results
+                validation_message=wrk.validation_results,
             )
         result, code = wrk.get()
         if code != 200:
@@ -235,15 +261,17 @@ class routeDependentPackages(Resource):
         return result, code
 
 
-@ns.route('/unpackaged_dirs',
+@ns.route(
+    "/unpackaged_dirs",
     doc={
-        'description': ("Get information about unpackaged directories "
-            "by maintainer nickname"),
-        'responses': {
-            400: 'Request parameters validation error',
-            404: 'Package not found in database'
-        }
-    }
+        "description": (
+            "Get information about unpackaged directories " "by maintainer nickname"
+        ),
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package not found in database",
+        },
+    },
 )
 class routeUnpackagedDirs(Resource):
     @ns.expect(unpackaged_dirs_args)
@@ -257,23 +285,26 @@ class routeUnpackagedDirs(Resource):
                 400,
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=wrk.validation_results
-                )
-        result, code =  wrk.get()
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
 
 
-@ns.route('/build_dependency_set',
+@ns.route(
+    "/build_dependency_set",
     doc={
-        'description': ("Get list of packages required for build by given "
-            "packages list recursively"),
-        'responses': {
-            400: 'Request parameters validation error',
-            404: 'Requested data not found in database'
-        }
-    }
+        "description": (
+            "Get list of packages required for build by given "
+            "packages list recursively"
+        ),
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Requested data not found in database",
+        },
+    },
 )
 class routePackageBuildDependencySet(Resource):
     @ns.expect(build_dep_set_args)
@@ -287,7 +318,7 @@ class routePackageBuildDependencySet(Resource):
                 400,
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=wrk.validation_results
+                validation_message=wrk.validation_results,
             )
         result, code = wrk.get()
         if code != 200:
@@ -295,15 +326,15 @@ class routePackageBuildDependencySet(Resource):
         return result, code
 
 
-@ns.route('/repocop')
+@ns.route("/repocop")
 class routePackageRepocop(Resource):
-
-    @ns.doc(description='Load repocop data into database',
+    @ns.doc(
+        description="Load repocop data into database",
         responses={
-            201: 'Data loaded',
-            400: 'Request parameters validation error',
-            404: 'Requested data not found in database'
-        }
+            201: "Data loaded",
+            400: "Request parameters validation error",
+            404: "Requested data not found in database",
+        },
     )
     @ns.expect(repocop_json_list_model)
     def post(self):
@@ -315,19 +346,20 @@ class routePackageRepocop(Resource):
                 400,
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=wrk.validation_results
+                validation_message=wrk.validation_results,
             )
         result, code = wrk.post()
         if code != 201:
             abort(code, **response_error_parser(result))
         return result, code
 
-    @ns.doc(description='Get repocop data by name, version and release',
+    @ns.doc(
+        description="Get repocop data by name, version and release",
         responses={
-            200: 'Success',
-            400: 'Request parameters validation error',
-            404: 'Requested data not found in database'
-        }
+            200: "Success",
+            400: "Request parameters validation error",
+            404: "Requested data not found in database",
+        },
     )
     @ns.expect(pkg_repocop_args)
     @ns.marshal_with(repocop_json_get_list_model)
@@ -340,7 +372,7 @@ class routePackageRepocop(Resource):
                 400,
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=wrk.validation_results
+                validation_message=wrk.validation_results,
             )
         result, code = wrk.get()
         if code != 200:
