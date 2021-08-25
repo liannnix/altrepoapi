@@ -6,7 +6,7 @@ from utils import get_logger, url_logging, response_error_parser
 from .endpoints.pkgset_compare import PackagesetCompare
 from .endpoints.pkgset_packages import PackagesetPackages
 
-ns = Namespace('packageset', description="Packageset information API")
+ns = Namespace("packageset", description="Packageset information API")
 
 from .parsers import pkgset_compare_args, pkgset_packages_args
 from .serializers import pkgset_compare_model, pkgset_packages_model
@@ -14,15 +14,17 @@ from .serializers import pkgset_compare_model, pkgset_packages_model
 logger = get_logger(__name__)
 
 
-@ns.route('/repository_packages',
+@ns.route(
+    "/repository_packages",
     doc={
-        'description': ("Get list of packageset packages in accordance "
-            "to given parameters"),
-        'responses': {
-            400: 'Request parameters validation error',
-            404: 'Package not found in database'
-        }
-    }
+        "description": (
+            "Get list of packageset packages in accordance " "to given parameters"
+        ),
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package not found in database",
+        },
+    },
 )
 class routePackagesetPackages(Resource):
     @ns.expect(pkgset_packages_args)
@@ -33,25 +35,26 @@ class routePackagesetPackages(Resource):
         wrk = PackagesetPackages(g.connection, **args)
         if not wrk.check_params():
             abort(
-                400, 
+                400,
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=wrk.validation_results
-                )
-        result, code =  wrk.get()
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
 
 
-@ns.route('/compare_packagesets',
+@ns.route(
+    "/compare_packagesets",
     doc={
-        'description': "Get difference list of packages from two package sets",
-        'responses': {
-            400: 'Request parameters validation error',
-            404: 'Package not found in database'
-        }
-    }
+        "description": "Get difference list of packages from two package sets",
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package not found in database",
+        },
+    },
 )
 class routePackagesetCompare(Resource):
     @ns.expect(pkgset_compare_args)
@@ -62,12 +65,12 @@ class routePackagesetCompare(Resource):
         wrk = PackagesetCompare(g.connection, **args)
         if not wrk.check_params():
             abort(
-                400, 
+                400,
                 message=f"Request parameters validation error",
                 args=args,
-                validation_message=wrk.validation_results
-                )
-        result, code =  wrk.get()
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
