@@ -309,9 +309,6 @@ class RepocopByMaintainer(APIWorker):
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
 
-        self.conn.request_line = self.sql.get_repocop_by_maintainer.format(
-            tmp_table=tmp_table
-        )
         MaintainerRepocop = namedtuple(
             "MaintainerRepocop",
             [
@@ -326,6 +323,10 @@ class RepocopByMaintainer(APIWorker):
                 "test_message",
                 "test_date",
             ],
+        )
+
+        self.conn.request_line = self.sql.get_repocop_by_maintainer.format(
+            tmp_table=tmp_table
         )
         status, response = self.conn.send_request()
         if not status:

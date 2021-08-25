@@ -753,7 +753,7 @@ SELECT
     max(rc_test_date)
 FROM PackagesRepocop
 WHERE rc_srcpkg_name = '{pkgs}'
-    and pkgset_name = '{branch}'
+    AND pkgset_name = '{branch}'
     {srcpkg_version}
     {srcpkg_release}
 GROUP BY
