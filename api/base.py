@@ -3,7 +3,7 @@ from utils import get_logger, logger_level
 
 
 class APIWorker:
-    """Base API endpoint worker class"""
+    """Base API endpoint worker class."""
 
     DEBUG = settings.SQL_DEBUG
 

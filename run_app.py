@@ -10,23 +10,28 @@ def start():
     assert sys.version_info >= (3, 7), "Pyhton version 3.8 or newer is required!"
 
     launch_props = [
-        ('DATABASE_HOST', str), ('DATABASE_NAME', str),
-        ('TRY_CONNECTION_NUMBER', int), ('TRY_TIMEOUT', int),
-        ('DATABASE_USER', str), ('DATABASE_PASS', str),
-        ('DEFAULT_HOST', str), ('DEFAULT_PORT', int),
-        ('WORKER_PROCESSES', str), ('LOG_FILE', str)
+        ("DATABASE_HOST", str),
+        ("DATABASE_NAME", str),
+        ("TRY_CONNECTION_NUMBER", int),
+        ("TRY_TIMEOUT", int),
+        ("DATABASE_USER", str),
+        ("DATABASE_PASS", str),
+        ("DEFAULT_HOST", str),
+        ("DEFAULT_PORT", int),
+        ("WORKER_PROCESSES", str),
+        ("LOG_FILE", str),
     ]
 
     pars_args = [
-        ('--host', str, None, 'host to start application'),
-        ('--port', int, None, 'port to start application'),
-        ('--dbhost', str, None, 'database host'),
-        ('--dbname', str, None, 'database name'),
-        ('--dbuser', str, None, 'database user'),
-        ('--dbpassword', str, None, 'database password'),
-        ('--config', str, settings.CONFIG_FILE, 'path to db config file'),
-        ('--prcs', str, None, 'number of worker processes'),
-        ('--logs', str, None, 'path to log files'),
+        ("--host", str, None, "host to start application"),
+        ("--port", int, None, "port to start application"),
+        ("--dbhost", str, None, "database host"),
+        ("--dbname", str, None, "database name"),
+        ("--dbuser", str, None, "database user"),
+        ("--dbpassword", str, None, "database password"),
+        ("--config", str, settings.CONFIG_FILE, "path to db config file"),
+        ("--prcs", str, None, "number of worker processes"),
+        ("--logs", str, None, "path to log files"),
     ]
 
     parser = utils.make_argument_parser(pars_args)
@@ -41,20 +46,20 @@ def start():
                 args_dict[section.lower()][option] = config.get(section, option)
 
         params = {
-            'database': [
-                ('host', settings.DATABASE_HOST),
-                ('name', settings.DATABASE_NAME),
-                ('try_numbers', settings.TRY_CONNECTION_NUMBER),
-                ('try_timeout', settings.TRY_TIMEOUT),
-                ('user', settings.DATABASE_USER),
-                ('password', settings.DATABASE_PASS)
+            "database": [
+                ("host", settings.DATABASE_HOST),
+                ("name", settings.DATABASE_NAME),
+                ("try_numbers", settings.TRY_CONNECTION_NUMBER),
+                ("try_timeout", settings.TRY_TIMEOUT),
+                ("user", settings.DATABASE_USER),
+                ("password", settings.DATABASE_PASS),
             ],
-            'application': [
-                ('host', settings.DEFAULT_HOST),
-                ('port', settings.DEFAULT_PORT),
-                ('processes', settings.WORKER_PROCESSES)
+            "application": [
+                ("host", settings.DEFAULT_HOST),
+                ("port", settings.DEFAULT_PORT),
+                ("processes", settings.WORKER_PROCESSES),
             ],
-            'other': [('logfiles', settings.LOG_FILE)]
+            "other": [("logfiles", settings.LOG_FILE)],
         }
 
         val_list = []
@@ -70,7 +75,16 @@ def start():
                 )
 
     parser_keys = [
-        'dbhost', 'dbname', '', '', 'dbuser', 'dbpassword', 'host', 'port', 'prcs', 'logs'
+        "dbhost",
+        "dbname",
+        "",
+        "",
+        "dbuser",
+        "dbpassword",
+        "host",
+        "port",
+        "prcs",
+        "logs",
     ]
 
     for i in range(len(parser_keys)):
@@ -78,14 +92,17 @@ def start():
             pars_val = parser.__getattribute__(parser_keys[i])
 
             if pars_val:
-                settings.__setattr__(
-                    launch_props[i][0], launch_props[i][1](pars_val)
-                )
+                settings.__setattr__(launch_props[i][0], launch_props[i][1](pars_val))
 
     sys.argv = [
-        sys.argv[0], '-b', '{}:{:d}'.format(settings.DEFAULT_HOST,
-                                            settings.DEFAULT_PORT),
-        '-w', settings.WORKER_PROCESSES, 'app:app', '--timeout', '120'
+        sys.argv[0],
+        "-b",
+        "{}:{:d}".format(settings.DEFAULT_HOST, settings.DEFAULT_PORT),
+        "-w",
+        settings.WORKER_PROCESSES,
+        "app:app",
+        "--timeout",
+        "120",
     ]
 
     run()
