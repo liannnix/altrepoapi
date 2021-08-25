@@ -309,9 +309,6 @@ class RepocopByMaintainer(APIWorker):
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
 
-        self.conn.request_line = self.sql.get_repocop_by_maintainer.format(
-            tmp_table=tmp_table
-        )
         MaintainerRepocop = namedtuple(
             "MaintainerRepocop",
             [
@@ -327,9 +324,21 @@ class RepocopByMaintainer(APIWorker):
                 "test_date",
             ],
         )
+
+        self.conn.request_line = self.sql.get_repocop_by_maintainer.format(
+            tmp_table=tmp_table
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {"message": f"No data not found in database",
+                 "args": self.args},
+                self.ll.INFO,
+                404
+            )
             return self.error
         res = [MaintainerRepocop(*el)._asdict() for el in response]
 
