@@ -6,6 +6,7 @@ from utils import tuplelist_to_dict
 
 
 class Bugzilla(APIWorker):
+    """Retrieves information about Bugzilla registered bugs from database."""
 
     def __init__(self, connection, **kwargs):
         self.conn = connection
@@ -27,13 +28,13 @@ class Bugzilla(APIWorker):
         else:
             return True
 
-    def check_params(self):
+    def check_params_srcpkg(self):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
         if self.args["srcpkg_name"] == "":
             self.validation_results.append(
-                f"Name source package should not be empty string"
+                f"Source package name should not be empty string"
             )
 
         if self.validation_results != []:
@@ -43,7 +44,9 @@ class Bugzilla(APIWorker):
 
     def get_bug_by_package(self):
         srcpkg_name = self.args["srcpkg_name"]
-        self.conn.request_line = self.sql.get_pkg_name_by_srcpkg.format(srcpkg_name=srcpkg_name)
+        self.conn.request_line = self.sql.get_pkg_name_by_srcpkg.format(
+            srcpkg_name=srcpkg_name
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -51,7 +54,7 @@ class Bugzilla(APIWorker):
         if not response or response[0][0] == []:
             self._store_error(
                 {
-                    "message": f"No data found in database for {srcpkg_name}",
+                    "message": f"No data found in database for {srcpkg_name} source package",
                     "args": self.args,
                 },
                 self.ll.INFO,
@@ -61,7 +64,9 @@ class Bugzilla(APIWorker):
         packages = [el[0] for el in response]
         packages.append(srcpkg_name)
         packages_regex = [f"^{el}$" for el in packages]
-        self.conn.request_line = self.sql.get_bugzilla_info_by_srcpkg.format(packages=packages_regex)
+        self.conn.request_line = self.sql.get_bugzilla_info_by_srcpkg.format(
+            packages=packages_regex
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -69,7 +74,7 @@ class Bugzilla(APIWorker):
         if not response or response[0][0] == []:
             self._store_error(
                 {
-                    "message": f"No data found in database for {srcpkg_name}",
+                    "message": f"No data found in database for packages: {packages}",
                     "args": self.args,
                 },
                 self.ll.INFO,
@@ -99,7 +104,9 @@ class Bugzilla(APIWorker):
 
     def get_bug_by_maintainer(self):
         maintainer_nickname = self.args["maintainer_nickname"]
-        self.conn.request_line = self.sql.get_bugzilla_info_by_maintainer.format(maintainer_nickname=maintainer_nickname)
+        self.conn.request_line = self.sql.get_bugzilla_info_by_maintainer.format(
+            maintainer_nickname=maintainer_nickname
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)

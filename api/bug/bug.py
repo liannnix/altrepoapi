@@ -13,7 +13,7 @@ logger = get_logger(__name__)
 @ns.route(
     "/bugzilla_by_package",
     doc={
-        "description": "Get information from bugzilla by the name source package",
+        "description": "Get information from bugzilla by the source package name",
         "responses": {
             400: "Request parameters validation error",
             404: "Package not found in database",
@@ -27,7 +27,7 @@ class routeBugzillaByPackage(Resource):
         args = package_bugzilla_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = Bugzilla(g.connection, **args)
-        if not wrk.check_params():
+        if not wrk.check_params_srcpkg():
             abort(
                 400,
                 message=f"Request parameters validation error",

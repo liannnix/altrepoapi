@@ -7,11 +7,14 @@ class SQL:
     get_pkg_name_by_srcpkg = """
 SELECT DISTINCT pkg_name
 FROM Packages_buffer
-WHERE (pkg_srcrpm_hash IN (
+WHERE pkg_srcrpm_hash IN
+(
     SELECT DISTINCT pkg_hash
     FROM Packages_buffer
-    WHERE (pkg_name = '{srcpkg_name}') AND (pkg_sourcepackage = 1)
-)) AND (pkg_sourcepackage = 0)
+    WHERE pkg_name = '{srcpkg_name}'
+        AND pkg_sourcepackage = 1
+)
+    AND pkg_sourcepackage = 0
 """
 
     get_bugzilla_info_by_srcpkg = """
