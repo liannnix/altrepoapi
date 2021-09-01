@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 
 from utils import datetime_to_iso, mmhash
 
@@ -208,26 +208,16 @@ class TaskInfo(APIWorker):
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return None
-        if not response:
-            pass
+
+        PkgInfo = namedtuple(
+            "PkgInfo", ("name", "version", "release", "filename", "arch")
+        )
 
         for el in response:
             if el[6] == 1:
-                self.task["plan"]["add"]["src"][el[0]] = {
-                    "name": el[1],
-                    "version": el[2],
-                    "release": el[3],
-                    "filename": el[4],
-                    "arch": el[5],
-                }
+                self.task["plan"]["add"]["src"][el[0]] = PkgInfo(*el[1:6])._asdict()
             else:
-                self.task["plan"]["add"]["bin"][el[0]] = {
-                    "name": el[1],
-                    "version": el[2],
-                    "release": el[3],
-                    "filename": el[4],
-                    "arch": el[5],
-                }
+                self.task["plan"]["add"]["bin"][el[0]] = PkgInfo(*el[1:6])._asdict()
 
         self.conn.request_line = self.sql.task_plan_packages.format(
             action="delete", hshs=tuple([x for x in self.task["tplan_hashes"].values()])
@@ -236,26 +226,28 @@ class TaskInfo(APIWorker):
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return None
-        if not response:
-            pass
 
         for el in response:
             if el[6] == 1:
-                self.task["plan"]["del"]["src"][el[0]] = {
-                    "name": el[1],
-                    "version": el[2],
-                    "release": el[3],
-                    "filename": el[4],
-                    "arch": el[5],
-                }
+                self.task["plan"]["del"]["src"][el[0]] = PkgInfo(*el[1:6])._asdict()
             else:
-                self.task["plan"]["del"]["bin"][el[0]] = {
-                    "name": el[1],
-                    "version": el[2],
-                    "release": el[3],
-                    "filename": el[4],
-                    "arch": el[5],
-                }
+                self.task["plan"]["del"]["bin"][el[0]] = PkgInfo(*el[1:6])._asdict()
+
+        # FIXME: Add warning message for tasks with inconsistent plan
+        src_pkg_hashes_not_in_plan = [
+            hsh
+            for hsh in {
+                el["titer_srcrpm_hash"]
+                for el in self.task["iterations_raw"]
+                if el["titer_srcrpm_hash"] != 0
+            }
+            if hsh not in self.task["plan"]["add"]["src"].keys()
+        ]
+
+        if src_pkg_hashes_not_in_plan:
+            self.logger.warning(
+                f"Found source packages missing from plan!\nTask: {self.task_id}, hashes: {src_pkg_hashes_not_in_plan}"
+            )
 
         self.conn.request_line = self.sql.task_approvals.format(id=self.task_id)
         status, response = self.conn.send_request()
