@@ -90,10 +90,10 @@ class BuildDependency(APIWorker):
                     ),
                     {"sfilter": sourcef, "branch": self.branch},
                 )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
-                return
+                status, response = self.conn.send_request()
+                if status is False:
+                    self._store_sql_error(response, self.ll.ERROR, 500)
+                    return
 
         self.conn.request_line = (
             self.sql.get_acl.format(tmp_table=tmp_table_name),
