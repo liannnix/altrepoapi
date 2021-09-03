@@ -118,6 +118,14 @@ pkg_build_dep_args.add_argument(
     help="topological tree leaves packages",
     location="args",
 )
+pkg_build_dep_args.add_argument(
+    "oneandhalf",
+    type=inputs.boolean,
+    default=False,
+    required=False,
+    help="use dependency depth 1.5",
+    location="args",
+)
 
 misconflict_pkg_args = reqparse.RequestParser()
 misconflict_pkg_args.add_argument(
