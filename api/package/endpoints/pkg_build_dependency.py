@@ -8,6 +8,8 @@ from api.misc import lut
 from database.package_sql import packagesql
 from libs.dependency_sorting import SortList
 
+# from debug import dump_to_json
+
 
 class BuildDependency(APIWorker):
     """Retrieves packages build dependencies."""
@@ -53,6 +55,25 @@ class BuildDependency(APIWorker):
         else:
             self.arch = ["x86_64", "noarch"]
 
+        # store source packages by level
+        # store source packages level 0
+        src_pkgs_by_level = {0: tuple(input_pkgs)}
+
+        def get_src_pkgs_levels(levels_dict: dict):
+            self.conn.request_line = self.sql.select_all_tmp_table.format(
+                tmp_table="tmp_pkg_ls"
+            )
+            status, response = self.conn.send_request()
+            if not status:
+                raise RuntimeError("SQL request error")
+            pkgs = [el[0] for el in response]
+            pkgs_prev_level = []
+            for p in levels_dict.values():
+                pkgs_prev_level += p
+            levels_dict[max(levels_dict.keys()) + 1] = tuple(
+                [pkg for pkg in pkgs if pkg not in pkgs_prev_level]
+            )
+
         # create tmp table with list of packages
         tmp_table_name = "tmp_pkg_ls"
         self.conn.request_line = self.sql.create_tmp_table.format(
@@ -77,6 +98,8 @@ class BuildDependency(APIWorker):
         if status is False:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return
+        # store source packages level 1
+        get_src_pkgs_levels(src_pkgs_by_level)
 
         if self.depth > 1:
             # sql wrapper for increase depth
@@ -90,10 +113,13 @@ class BuildDependency(APIWorker):
                     ),
                     {"sfilter": sourcef, "branch": self.branch},
                 )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
-                return
+                status, response = self.conn.send_request()
+                if status is False:
+                    self._store_sql_error(response, self.ll.ERROR, 500)
+                    return
+                # store source packages level 2..n
+                get_src_pkgs_levels(src_pkgs_by_level)
+        # dump_to_json("src_pkgs_by_level", 999, src_pkgs_by_level)
 
         self.conn.request_line = (
             self.sql.get_acl.format(tmp_table=tmp_table_name),
@@ -314,10 +340,22 @@ class BuildDependency(APIWorker):
             if (filter_pkgs and pkg[0] in filter_pkgs) or not filter_pkgs:
                 sorted_dict[sorted_pkgs.index(pkg[0])] = pkg
 
-        sorted_dict = list(dict(sorted(sorted_dict.items())).values())
+        # dump_to_json("sorted_dict", 4, sorted_dict)
+
+        # add source package depth level
+        result = []
+        for el in dict(sorted(sorted_dict.items())).values():
+            pkg_name = el[0]
+            for k, v in src_pkgs_by_level.items():
+                if pkg_name in v:
+                    new_el = (*el, k)
+                    break
+            result.append(new_el)
+
+        # dump_to_json("result", 5, result)
 
         if self.finitepkg:
-            sorted_dict = [pkg for pkg in sorted_dict if pkg[0] in filter_by_tops]
+            result = [pkg for pkg in result if pkg[0] in filter_by_tops]
         # magic ends here
         PackageDependencies = namedtuple(
             "PackageDependencies",
@@ -334,10 +372,11 @@ class BuildDependency(APIWorker):
                 "cycle",
                 "requires",
                 "acl",
+                "depth",
             ],
         )
 
-        self.result = [PackageDependencies(*el)._asdict() for el in sorted_dict]
+        self.result = [PackageDependencies(*el)._asdict() for el in result]
         self.status = True
 
 
