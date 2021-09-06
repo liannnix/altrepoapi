@@ -360,31 +360,22 @@ WITH
         )
     ORDER BY task_changed DESC
     LIMIT 1
-) as task_build_start
-SELECT DISTINCT
-    toString(pkg_hash),
-    pkg_name,
-    pkg_version,
-    pkg_release,
-    pkg_buildtime,
-    pkg_summary,
-    pkg_packager_email,
-    pkg_group_,
-    CHLG.chlog_text
-FROM Packages_buffer
-LEFT JOIN 
+) as task_build_start,
+last_packages_info AS
 (
     SELECT
-        chlog_hash,
-        chlog_text
-    FROM Changelog_buffer
-) AS CHLG ON CHLG.chlog_hash = (pkg_changelog.hash[1])
-WHERE
-    pkg_hash IN
-(
-    SELECT
-        argMax(titer_srcrpm_hash, task_changed)
+        argMax(titer_srcrpm_hash, task_changed) AS pkghash,
+        argMax(tuple(task_id, subtask_id, TT.task_owner), task_changed) AS ids 
     FROM TaskIterations_buffer
+    LEFT JOIN
+    (
+        SELECT
+            task_id,
+            subtask_id,
+            task_owner,
+            task_changed
+        FROM Tasks_buffer
+    ) AS TT USING (task_id, subtask_id, task_changed)
     WHERE ((task_id, task_changed) IN 
     (
         SELECT
@@ -404,8 +395,45 @@ WHERE
         task_id,
         subtask_id
 )
-ORDER BY
-    pkg_buildtime DESC
+SELECT
+    P.*,
+    untuple(T.ids)
+FROM
+(
+    SELECT DISTINCT
+        toString(pkg_hash) as phash,
+        pkg_name,
+        pkg_version,
+        pkg_release,
+        pkg_buildtime,
+        pkg_summary,
+        pkg_packager_email,
+        pkg_group_,
+        CHLG.chlog_text
+    FROM Packages_buffer
+    LEFT JOIN 
+    (
+        SELECT
+            chlog_hash,
+            chlog_text
+        FROM Changelog_buffer
+    ) AS CHLG ON CHLG.chlog_hash = (pkg_changelog.hash[1])
+    WHERE
+        pkg_hash IN
+    (
+        SELECT pkghash
+        FROM last_packages_info
+    )
+    ORDER BY
+        pkg_buildtime DESC
+) AS P
+LEFT JOIN
+(
+    SELECT
+        pkghash,
+        ids
+    FROM last_packages_info
+) AS T ON (T.pkghash = toUInt64(phash))
 """
 
     get_pkgset_groups_count = """
