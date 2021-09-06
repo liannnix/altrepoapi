@@ -191,6 +191,7 @@ task_info_model = ns.model(
 task_build_dep_el_model = ns.model(
     "TaskBuildDependencyElementModel",
     {
+        "depth": fields.Integer(description="package dependenyc depth"),
         "name": fields.String(description="package name"),
         "version": fields.String(description="package version"),
         "release": fields.String(description="package release"),

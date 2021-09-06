@@ -104,6 +104,7 @@ class TaskBuildDependency(APIWorker):
             self.args["filter_by_package"],
             self.args["filter_by_source"],
             self.args["finite_package"],
+            self.args["oneandhalf"],
         )
 
         # build result

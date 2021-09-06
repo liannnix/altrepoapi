@@ -11,6 +11,14 @@ CREATE TEMPORARY TABLE {tmp_table} {columns}
 SELECT * FROM {tmp_table}
 """
 
+    truncate_tmp_table = """
+TRUNCATE TABLE {tmp_table}
+"""
+
+    insert_into_tmp_table = """
+INSERT INTO {tmp_table} (*) VALUES
+"""
+
     insert_build_req_deep_1 = """
 INSERT INTO {tmp_table}
 SELECT DISTINCT pkg_name
@@ -114,6 +122,57 @@ WHERE acl_for IN
 )
     AND acl_branch = %(branch)s
 GROUP BY acl_for
+"""
+
+    filter_l2_src_pkgs = """
+SELECT DISTINCT
+    BinDeps.pkg_name,
+    sourcepkgname
+FROM
+(
+    SELECT DISTINCT
+        BinDeps.pkg_name,
+        pkg_name,
+        sourcepkgname
+   FROM last_packages_with_source
+   INNER JOIN
+    (
+        SELECT DISTINCT 
+            BinDeps.pkg_name,
+            pkg_name
+        FROM
+        (
+            SELECT DISTINCT
+                BinDeps.pkg_name,
+                pkg_name,
+                dp_name
+            FROM last_depends
+            INNER JOIN
+            (
+                SELECT DISTINCT
+                    pkg_name,
+                    dp_name
+                FROM last_depends
+                WHERE pkg_name IN
+                (
+                    SELECT * FROM {tmp_table1}
+                )
+                    AND pkgset_name = %(branch)s
+                    AND dp_type = 'require'
+                    AND pkg_sourcepackage = 1
+            ) AS BinDeps USING dp_name
+            WHERE pkgset_name = %(branch)s
+                AND dp_type = 'provide'
+                AND pkg_sourcepackage = 0
+                AND pkg_arch IN ('x86_64', 'noarch')
+        )
+    ) AS pkgs USING pkg_name
+WHERE pkgset_name = %(branch)s
+)
+WHERE sourcepkgname IN
+(
+    SELECT * FROM {tmp_table2}
+)
 """
 
     insert_src_deps = """

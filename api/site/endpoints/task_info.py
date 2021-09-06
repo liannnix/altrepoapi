@@ -255,6 +255,9 @@ class LastTaskPackages(APIWorker):
                 "maintainer",
                 "category",
                 "changelog",
+                "task_id",
+                "subtask_id",
+                "task_owner",
             ],
         )
 
