@@ -32,7 +32,7 @@ LEFT JOIN
     SELECT
         chlog_hash,
         chlog_text
-    FROM Changelog_buffer
+    FROM Changelog
 ) AS CHLG ON CHLG.chlog_hash = (pkg_changelog.hash[1])
 WHERE pkgset_name = '{branch}'
     AND pkg_sourcepackage IN {src}
@@ -61,7 +61,7 @@ SELECT
     pkg_packager,
     pkg_packager_email,
     pkg_group_
-FROM Packages_buffer
+FROM Packages
 WHERE pkg_hash = {pkghash}
 """
 
@@ -69,14 +69,14 @@ WHERE pkg_hash = {pkghash}
 SELECT DISTINCT
     pkg_packager,
     pkg_packager_email
-FROM Packages_buffer
+FROM Packages
 WHERE pkg_name = '{name}'
     AND pkg_sourcepackage = 1
 """
 
     get_binary_pkgs = """
 SELECT DISTINCT pkg_name
-FROM Packages_buffer
+FROM Packages
 WHERE pkg_srcrpm_hash = {pkghash}
     AND pkg_sourcepackage = 0
 ORDER BY pkg_name ASC
@@ -104,7 +104,7 @@ WHERE pkg_name = '{name}'
 SELECT DISTINCT
     task_id,
     subtask_id
-FROM TaskIterations_buffer
+FROM TaskIterations
 WHERE titer_srcrpm_hash = {pkghash}
     AND task_id IN 
     (
@@ -121,7 +121,7 @@ SELECT DISTINCT
     subtask_dir,
     subtask_srpm_name,
     subtask_pkg_from
-FROM Tasks_buffer
+FROM Tasks
 WHERE task_id = {task} AND subtask_id = {subtask}
 """
 
@@ -135,19 +135,19 @@ SELECT DISTINCT
     subtask_tag_id,
     subtask_srpm_name,
     subtask_srpm_evr
-FROM Tasks_buffer
+FROM Tasks
 WHERE (task_id, subtask_id) IN
 (
     SELECT
         task_id,
         subtask_id
-    FROM TaskIterations_buffer
+    FROM TaskIterations
     WHERE titer_srcrpm_hash = {pkghash}
 )
 AND task_id IN
 (
     SELECT task_id
-    FROM TaskStates_buffer
+    FROM TaskStates
     WHERE task_state = 'DONE'
 )
 ORDER BY task_changed DESC
@@ -181,13 +181,13 @@ FROM
             task_id,
             argMax(task_state, task_changed) AS task_state,
             max(task_changed) AS changed
-        FROM TaskStates_buffer
+        FROM TaskStates
         GROUP BY task_id
     ) AS TS USING (task_id)
     WHERE titer_srcrpm_hash IN 
     (
         SELECT pkg_hash
-        FROM Packages_buffer
+        FROM Packages
         WHERE pkg_name LIKE '{name}'
             AND pkg_sourcepackage = 1
     )
@@ -207,7 +207,7 @@ LEFT JOIN
         subtask_package,
         subtask_pkg_from,
         task_changed
-    FROM Tasks_buffer
+    FROM Tasks
     WHERE subtask_deleted = 0
 ) AS T2 USING (task_id, task_changed)
 GROUP BY
@@ -222,13 +222,13 @@ SELECT DISTINCT
     task_id,
     subtask_id,
     pkg_name
-FROM TaskIterations_buffer
+FROM TaskIterations
 LEFT JOIN
 (
     SELECT
         pkg_hash,
         pkg_name
-    FROM Packages_buffer
+    FROM Packages
     WHERE pkg_sourcepackage = 1
 ) AS P ON (pkg_hash = titer_srcrpm_hash)
 WHERE (task_id, subtask_id) IN
@@ -266,7 +266,7 @@ SELECT
     argMax(pkg_url, pkg_buildtime),
     argMax(pkg_summary, pkg_buildtime),
     any(pkg_group_)
-FROM Packages_buffer
+FROM Packages
 INNER JOIN lp_preselect AS LP USING (pkg_hash)
 WHERE pkg_hash IN
 (
@@ -282,14 +282,14 @@ SELECT
     argMax(pkg_url, pkg_buildtime),
     argMax(pkg_summary, pkg_buildtime),
     any(pkg_group_)
-FROM Packages_buffer
+FROM Packages
 INNER JOIN lp_preselect2 AS LP2 USING (pkg_hash)
 WHERE pkg_name NOT ILIKE '%{name}%'
     AND pkg_sourcepackage = 1
     AND pkg_sourcerpm IN 
     (
         SELECT pkg_sourcerpm
-        FROM Packages_buffer
+        FROM Packages
         WHERE pkg_sourcepackage = 0
             AND pkg_name ILIKE '%{name}%'
             {arch}
@@ -316,7 +316,7 @@ GROUP BY pkgset_name
 
     get_all_bin_pkg_archs = """
 SELECT groupUniqArray(pkg_arch)
-FROM Packages_buffer
+FROM Packages
 WHERE pkg_sourcepackage = 0
     AND pkg_hash IN
     (
@@ -337,7 +337,7 @@ LEFT JOIN
     SELECT
         pkg_hash,
         pkg_name AS src_pkg_name
-    FROM Packages_buffer
+    FROM Packages
     WHERE pkg_sourcepackage = 1
 ) AS P ON P.pkg_hash = last_packages.pkg_srcrpm_hash
 WHERE pkg_sourcepackage = 0
@@ -431,7 +431,7 @@ LEFT JOIN
 SELECT
     pkg_group_,
     count(pkg_hash)
-FROM Packages_buffer
+FROM Packages
 WHERE pkg_hash IN
 (
     SELECT pkg_hash
@@ -535,14 +535,14 @@ FROM
         task_id,
         TS.task_state,
         TS.changed AS task_changed
-    FROM Tasks_buffer
+    FROM Tasks
     LEFT JOIN
     (
         SELECT
             task_id,
             argMax(task_state, task_changed) AS task_state,
             max(task_changed) AS changed
-        FROM TaskStates_buffer
+        FROM TaskStates
         GROUP BY task_id
     ) AS TS USING (task_id)
     WHERE task_owner = '{maintainer_nickname}'
@@ -563,7 +563,7 @@ LEFT JOIN
         subtask_package,
         subtask_pkg_from,
         task_changed
-    FROM Tasks_buffer
+    FROM Tasks
     WHERE subtask_deleted = 0
 ) AS T2 USING (task_id, task_changed)
 GROUP BY
