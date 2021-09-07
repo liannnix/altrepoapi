@@ -78,11 +78,11 @@ task_last_pkgs_args.add_argument(
     "branch", type=str, required=True, help="name of packageset", location="args"
 )
 task_last_pkgs_args.add_argument(
-    "timedelta",
+    "packages_limit",
     type=int,
-    default=864000,
+    default=100,
     required=True,
-    help="time range from newest task in seconds",
+    help="number of last packages to get",
     location="args",
 )
 

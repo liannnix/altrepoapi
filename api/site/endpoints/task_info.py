@@ -213,8 +213,8 @@ class LastTaskPackages(APIWorker):
                 f"allowed package set names are : {lut.known_branches}"
             )
 
-        if self.args["timedelta"] and self.args["timedelta"] < 0:
-            self.validation_results.append(f"timedelta should be greater than 0")
+        if self.args["packages_limit"] and self.args["packages_limit"] < 1:
+            self.validation_results.append(f"packages limit should be greater or equal to 1")
 
         if self.validation_results != []:
             return False
@@ -223,10 +223,10 @@ class LastTaskPackages(APIWorker):
 
     def get(self):
         self.branch = self.args["branch"]
-        self.timedelta = self.args["timedelta"]
+        self.pkg_limit = self.args["packages_limit"]
 
         self.conn.request_line = self.sql.get_last_pkgs_from_tasks.format(
-            branch=self.branch, timedelta=self.timedelta
+            branch=self.branch, limit=self.pkg_limit
         )
         status, response = self.conn.send_request()
         if not status:

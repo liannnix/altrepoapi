@@ -348,25 +348,13 @@ GROUP BY pkg_arch
 
     get_last_pkgs_from_tasks = """
 WITH
-(
-    SELECT (task_changed - {timedelta}) as t
-    FROM Tasks_buffer
-    WHERE task_repo = '{branch}'
-        AND task_id IN
-        (
-            SELECT task_id
-            FROM TaskStates_buffer
-            WHERE (task_state = 'DONE')
-        )
-    ORDER BY task_changed DESC
-    LIMIT 1
-) as task_build_start,
 last_packages_info AS
 (
     SELECT
         argMax(titer_srcrpm_hash, task_changed) AS pkghash,
-        argMax(tuple(task_id, subtask_id, TT.task_owner), task_changed) AS ids 
-    FROM TaskIterations_buffer
+        argMax(tuple(task_id, subtask_id, TT.task_owner), task_changed) AS ids,
+        max(task_changed) AS t_changed
+    FROM TaskIterations
     LEFT JOIN
     (
         SELECT
@@ -374,26 +362,29 @@ last_packages_info AS
             subtask_id,
             task_owner,
             task_changed
-        FROM Tasks_buffer
+        FROM Tasks
     ) AS TT USING (task_id, subtask_id, task_changed)
     WHERE ((task_id, task_changed) IN 
     (
         SELECT
             argMax(task_id, task_changed),
-            max(task_changed)
-        FROM TaskStates_buffer
+            max(task_changed) AS changed
+        FROM TaskStates
         INNER JOIN 
         (
             SELECT DISTINCT task_id
-            FROM Tasks_buffer
+            FROM Tasks
             WHERE task_repo = '{branch}'
         ) AS T USING (task_id)
-        WHERE (task_state = 'DONE') AND (task_changed >= task_build_start)
+        WHERE (task_state = 'DONE')
         GROUP BY task_id
+        ORDER BY changed DESC
     )) AND (titer_srcrpm_hash != 0)
     GROUP BY
         task_id,
         subtask_id
+    ORDER BY t_changed DESC
+    LIMIT {limit}
 )
 SELECT
     P.*,
@@ -410,13 +401,13 @@ FROM
         pkg_packager_email,
         pkg_group_,
         CHLG.chlog_text
-    FROM Packages_buffer
+    FROM Packages
     LEFT JOIN 
     (
         SELECT
             chlog_hash,
             chlog_text
-        FROM Changelog_buffer
+        FROM Changelog
     ) AS CHLG ON CHLG.chlog_hash = (pkg_changelog.hash[1])
     WHERE
         pkg_hash IN
