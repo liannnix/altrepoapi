@@ -3,7 +3,7 @@ from flask_restx import Resource, abort, Namespace
 
 from utils import get_logger, url_logging, response_error_parser
 
-from .endpoints.package_info import PackageInfo, PackageChangelog
+from .endpoints.package_info import PackageInfo, PackageChangelog, DeletedPackageInfo
 from .endpoints.pkgset_packages import PackagesetPackages, PackagesetPackageHash
 from .endpoints.packager_info import AllMaintainers, MaintainerInfo, MaintainerPackages
 from .endpoints.packager_info import MaintainerBranches, RepocopByMaintainer
@@ -45,6 +45,7 @@ from .serializers import (
     fing_pkgs_by_name_model,
     pkgsets_by_hash_model,
     last_packages_model,
+    deleted_package_model
 )
 
 logger = get_logger(__name__)
@@ -610,6 +611,36 @@ class routeRepocopByMaintainer(Resource):
         args = maintainer_info_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = RepocopByMaintainer(g.connection, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route(
+    "/deleted_package_info",
+    doc={
+        "description": ("Get information about package deleted from branch"),
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package deletion info not found in database",
+        },
+    },
+)
+class routeDeletedPackageInfo(Resource):
+    @ns.expect(pkgset_pkghash_args)
+    @ns.marshal_with(deleted_package_model)
+    def get(self):
+        args = pkgset_pkghash_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        wrk = DeletedPackageInfo(g.connection, **args)
         if not wrk.check_params():
             abort(
                 400,

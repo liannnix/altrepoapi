@@ -306,3 +306,90 @@ class PackageInfo(APIWorker):
         }
 
         return res, 200
+
+
+class DeletedPackageInfo(APIWorker):
+    """Retrieves information about deleted package."""
+
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sitesql
+        super().__init__()
+
+    def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        self.validation_results = []
+
+        if self.args["branch"] == "" or self.args["branch"] not in lut.known_branches:
+            self.validation_results.append(
+                f"unknown package set name : {self.args['branch']}"
+            )
+            self.validation_results.append(
+                f"allowed package set names are : {lut.known_branches}"
+            )
+
+        if self.args["name"] == "":
+            self.validation_results.append(f"package name should not be empty string")
+
+        if self.validation_results != []:
+            return False
+        else:
+            return True
+
+    def get(self):
+        self.branch = self.args["branch"]
+        self.name = self.args["name"]
+
+        self.conn.request_line = self.sql.get_deleted_package_task.format(
+            name=self.name, branch=self.branch
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {
+                    "message": f"No information about deleting package {self.name} from {self.branch} found",
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        TaskMeta = namedtuple(
+            "TaskMeta",
+            ["task_id", "subtask_id", "task_changed", "task_owner", "subtask_userid"],
+        )
+        delete_task_info = TaskMeta(*response[0])._asdict()
+        delete_task_info["task_changed"] = datetime_to_iso(
+            delete_task_info["task_changed"]
+        )
+
+        # get package versions
+        pkg_versions = []
+        self.conn.request_line = self.sql.get_pkg_versions.format(name=self.name)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        PkgVersions = namedtuple(
+            "PkgVersions", ["branch", "version", "release", "pkghash"]
+        )
+        # sort package versions by branch
+        pkg_branches = sort_branches([el[0] for el in response])
+        pkg_versions = tuplelist_to_dict(response, 3)
+        pkg_versions = [
+            PkgVersions(*(b, *pkg_versions[b]))._asdict() for b in pkg_branches
+        ]
+
+        res = {
+            "package": self.name,
+            "branch": self.branch,
+            "task_info": delete_task_info,
+            "versions": pkg_versions,
+        }
+
+        return res, 200

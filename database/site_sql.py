@@ -607,5 +607,25 @@ ORDER BY
     pkg_arch ASC    
 """
 
+    get_deleted_package_task = """
+SELECT
+    task_id,
+    subtask_id,
+    task_changed,
+    task_owner,
+    subtask_userid
+FROM Tasks
+WHERE subtask_deleted = 0
+    AND subtask_type = 'delete'
+    AND subtask_package = '{name}'
+    AND task_repo = '{branch}'
+    AND task_id IN
+    (
+        SELECT task_id
+        FROM TaskStates
+        WHERE task_state = 'DONE'
+    )    
+"""
+
 
 sitesql = SQL()
