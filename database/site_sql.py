@@ -347,84 +347,70 @@ GROUP BY pkg_arch
 """
 
     get_last_pkgs_from_tasks = """
-WITH
-last_packages_info AS
-(
-    SELECT
-        argMax(titer_srcrpm_hash, task_changed) AS pkghash,
-        argMax(tuple(task_id, subtask_id, TT.task_owner), task_changed) AS ids,
-        max(task_changed) AS t_changed
-    FROM TaskIterations
-    LEFT JOIN
-    (
-        SELECT
-            task_id,
-            subtask_id,
-            task_owner,
-            task_changed
-        FROM Tasks
-    ) AS TT USING (task_id, subtask_id, task_changed)
-    WHERE ((task_id, task_changed) IN 
-    (
-        SELECT
-            argMax(task_id, task_changed),
-            max(task_changed) AS changed
-        FROM TaskStates
-        INNER JOIN 
-        (
-            SELECT DISTINCT task_id
-            FROM Tasks
-            WHERE task_repo = '{branch}'
-        ) AS T USING (task_id)
-        WHERE (task_state = 'DONE')
-        GROUP BY task_id
-        ORDER BY changed DESC
-    )) AND (titer_srcrpm_hash != 0)
-    GROUP BY
-        task_id,
-        subtask_id
-    ORDER BY t_changed DESC
-    LIMIT {limit}
-)
 SELECT
-    P.*,
-    untuple(T.ids)
-FROM
-(
-    SELECT DISTINCT
-        toString(pkg_hash) as phash,
-        pkg_name,
-        pkg_version,
-        pkg_release,
-        pkg_buildtime,
-        pkg_summary,
-        pkg_packager_email,
-        pkg_group_,
-        CHLG.chlog_text
-    FROM Packages
-    LEFT JOIN 
-    (
-        SELECT
-            chlog_hash,
-            chlog_text
-        FROM Changelog
-    ) AS CHLG ON CHLG.chlog_hash = (pkg_changelog.hash[1])
-    WHERE
-        pkg_hash IN
-    (
-        SELECT pkghash
-        FROM last_packages_info
-    )
-    ORDER BY
-        pkg_buildtime DESC
-) AS P
+    task_id,
+    subtask_id,
+    task_owner,
+    task_changed,
+    subtask_userid,
+    subtask_type,
+    subtask_package,
+    subtask_srpm_name,
+    TI.titer_srcrpm_hash
+FROM Tasks_buffer
 LEFT JOIN
 (
+    SELECT DISTINCT
+        task_id,
+        subtask_id,
+        task_changed,
+        titer_srcrpm_hash
+    FROM TaskIterations_buffer
+    WHERE titer_srcrpm_hash != 0 
+) AS TI USING (task_id, subtask_id, task_changed)
+WHERE subtask_deleted = 0
+    AND (task_id, task_changed) IN
+    (
+        SELECT DISTINCT
+            task_id AS id,
+            task_changed AS changed
+        FROM TaskStates_buffer
+        WHERE task_id IN
+        (
+            SELECT DISTINCT task_id
+            FROM Tasks_buffer
+            WHERE task_repo = '{branch}'
+        )
+            AND task_state = 'DONE'
+        ORDER BY task_changed DESC
+        LIMIT {limit}
+    )
+ORDER BY task_changed DESC, subtask_id ASC
+"""
+
+    get_last_pkgs_info = """
+SELECT DISTINCT
+    pkg_hash,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_buildtime,
+    pkg_summary,
+    pkg_changelog.date[1],
+    CHLG.chlog_text
+FROM Packages
+LEFT JOIN 
+(
     SELECT
-        pkghash,
-        ids
-    FROM last_packages_info
-) AS T ON (T.pkghash = toUInt64(phash))
+        chlog_hash,
+        chlog_text
+    FROM Changelog
+) AS CHLG ON CHLG.chlog_hash = (pkg_changelog.hash[1])
+WHERE
+    pkg_hash IN
+    (
+        SELECT * FROM {tmp_table}
+    )
 """
 
     get_pkgset_groups_count = """

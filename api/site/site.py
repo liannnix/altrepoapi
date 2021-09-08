@@ -21,9 +21,13 @@ from .parsers import (
     all_maintainers_args,
     maintainer_info_args,
     maintainer_branches_args,
+    pkgset_pkghash_args,
+    task_by_name_args,
+    pkgs_by_name_args,
+    last_pkgs_args,
+    pkgset_categories_args,
+    all_archs_args,
 )
-from .parsers import pkgset_pkghash_args, task_by_name_args, pkgs_by_name_args
-from .parsers import task_last_pkgs_args, pkgset_categories_args, all_archs_args
 from .serializers import (
     pkgset_packages_model,
     package_chlog_model,
@@ -33,14 +37,15 @@ from .serializers import (
     maintainer_pkgs_model,
     maintainer_branches_model,
     repocop_by_maintainer_model,
-)
-from .serializers import (
+    all_pkgsets_model,
+    all_archs_model,
+    pkgset_categories_model,
     pkgset_pkghash_model,
     task_by_name_model,
     fing_pkgs_by_name_model,
+    pkgsets_by_hash_model,
+    last_packages_model,
 )
-from .serializers import all_pkgsets_model, all_archs_model, pkgset_categories_model
-from .serializers import pkgsets_by_hash_model
 
 logger = get_logger(__name__)
 
@@ -354,10 +359,10 @@ class routeAllPackagesetArchs(Resource):
     },
 )
 class routeLastTaskPackages(Resource):
-    @ns.expect(task_last_pkgs_args)
-    @ns.marshal_with(pkgset_packages_model)
+    @ns.expect(last_pkgs_args)
+    @ns.marshal_with(last_packages_model)
     def get(self):
-        args = task_last_pkgs_args.parse_args(strict=True)
+        args = last_pkgs_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = LastTaskPackages(g.connection, **args)
         if not wrk.check_params():
