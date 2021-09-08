@@ -10,7 +10,12 @@ from .endpoints.pkgset_status import RepositoryStatus
 ns = Namespace("packageset", description="Packageset information API")
 
 from .parsers import pkgset_compare_args, pkgset_packages_args
-from .serializers import pkgset_compare_model, pkgset_packages_model, pkgset_status_post_model, pkgset_status_get_model
+from .serializers import (
+    pkgset_compare_model,
+    pkgset_packages_model,
+    pkgset_status_post_model,
+    pkgset_status_get_model,
+)
 
 logger = get_logger(__name__)
 
