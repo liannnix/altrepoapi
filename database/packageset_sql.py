@@ -110,5 +110,25 @@ WHERE pkgset_name = %(pkgset1)s
     )
 """
 
+    insert_pkgset_status = """
+INSERT INTO RepositoryStatus (*) VALUES
+"""
+
+    get_pkgset_status = """
+SELECT *
+FROM
+(
+    SELECT
+        pkgset_name,
+        argMax(rs_start_date, ts) AS start_date,
+        argMax(rs_end_date, ts) AS end_date,
+        argMax(rs_show, ts) AS show,
+        argMax(rs_description_ru, ts) AS desc_ru,
+        argMax(rs_description_en, ts) AS desc_en
+    FROM RepositoryStatus
+    GROUP BY pkgset_name
+)
+WHERE show = 1
+"""
 
 pkgsetsql = SQL()

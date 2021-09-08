@@ -2,7 +2,6 @@ from collections import namedtuple
 
 from api.base import APIWorker
 from database.bug_sql import bugsql
-from utils import tuplelist_to_dict
 
 
 class Bugzilla(APIWorker):
