@@ -6,6 +6,8 @@ from collections import namedtuple
 
 from api.base import APIWorker
 from database.packageset_sql import pkgsetsql
+from api.misc import lut
+from utils import sort_branches
 
 
 class RepositoryStatus(APIWorker):
@@ -116,5 +118,33 @@ class RepositoryStatus(APIWorker):
         for el in res:
             el["mirrors_json"] = json.loads(el["mirrors_json"])
         res = {"branches": res}
+
+        return res, 200
+
+
+class ActivePackagesets(APIWorker):
+    """Retrieves list of active package sets."""
+
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = pkgsetsql
+        super().__init__()
+
+    def get(self):
+        self.conn.request_line = self.sql.get_active_pkgsets
+        status, response = self.conn.send_request()
+
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+
+        if not response:
+            self.logger.debug(f"No active package sets found in DB")
+            res = {"packagesets": sort_branches(lut.known_branches)}
+        else:
+            res = {"packagesets": sort_branches([el[0] for el in response])}
+
+        res["length"] = len(res["packagesets"])
 
         return res, 200

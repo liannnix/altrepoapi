@@ -5,7 +5,7 @@ from utils import get_logger, url_logging, response_error_parser
 
 from .endpoints.pkgset_compare import PackagesetCompare
 from .endpoints.pkgset_packages import PackagesetPackages
-from .endpoints.pkgset_status import RepositoryStatus
+from .endpoints.pkgset_status import RepositoryStatus, ActivePackagesets
 
 ns = Namespace("packageset", description="Packageset information API")
 
@@ -15,6 +15,7 @@ from .serializers import (
     pkgset_packages_model,
     pkgset_status_post_model,
     pkgset_status_get_model,
+    active_pkgsets_model
 )
 
 logger = get_logger(__name__)
@@ -121,6 +122,35 @@ class routeRepositoryStatus(Resource):
         args = {}
         url_logging(logger, g.url)
         wrk = RepositoryStatus(g.connection, json_data=request.json)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route(
+    "/active_packagesets",
+    doc={
+        "description": ("Get list of active package sets"),
+        "responses": {
+            404: "Package not found in database",
+        },
+    },
+)
+class routeActivePackagesets(Resource):
+    # @ns.expect()
+    @ns.marshal_with(active_pkgsets_model)
+    def get(self):
+        args = {}
+        url_logging(logger, g.url)
+        wrk = ActivePackagesets(g.connection, **args)
         if not wrk.check_params():
             abort(
                 400,

@@ -65,7 +65,7 @@ pkgset_packages_model = ns.model(
 )
 
 pkgset_status_post_el_model = ns.model(
-    "PackageSetPostElementModel",
+    "PackageSetStatusPostElementModel",
     {
         "pkgset_name": fields.String(description="package set name"),
         "rs_start_date": fields.DateTime(description="support start date"),
@@ -81,7 +81,7 @@ pkgset_status_post_el_model = ns.model(
     },
 )
 pkgset_status_post_model = ns.model(
-    "PackageSetPostModel",
+    "PackageSetStatusPostModel",
     {
         "branches": fields.Nested(
             pkgset_status_post_el_model, description="package set info", as_list=True
@@ -90,7 +90,7 @@ pkgset_status_post_model = ns.model(
 )
 
 pkgset_status_get_el_model = ns.model(
-    "PackageSetGetElementModel",
+    "PackageSetStatusGetElementModel",
     {
         "branch": fields.String(description="package set name"),
         "start_date": fields.DateTime(description="support start date"),
@@ -102,10 +102,19 @@ pkgset_status_get_el_model = ns.model(
     },
 )
 pkgset_status_get_model = ns.model(
-    "PackageSetGetModel",
+    "PackageSetStatusGetModel",
     {
         "branches": fields.Nested(
             pkgset_status_get_el_model, description="package set info", as_list=True
         )
     },
+)
+
+
+active_pkgsets_model = ns.model(
+    "PackageSetActivePackageSetsModel",
+    {
+        "length": fields.Integer(description="number of active package sets found"),
+        "packagesets": fields.List(fields.String, description="active package sets list"),
+    }
 )
