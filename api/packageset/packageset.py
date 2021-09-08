@@ -140,7 +140,7 @@ class routeRepositoryStatus(Resource):
     doc={
         "description": ("Get list of active package sets"),
         "responses": {
-            404: "Package not found in database",
+            404: "Package sets not found in database",
         },
     },
 )
