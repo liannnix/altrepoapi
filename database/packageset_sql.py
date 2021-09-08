@@ -124,7 +124,21 @@ FROM
         argMax(rs_end_date, ts) AS end_date,
         argMax(rs_show, ts) AS show,
         argMax(rs_description_ru, ts) AS desc_ru,
-        argMax(rs_description_en, ts) AS desc_en
+        argMax(rs_description_en, ts) AS desc_en,
+        argMax(rs_mirrors_json, ts) AS mirrors_json
+    FROM RepositoryStatus
+    GROUP BY pkgset_name
+)
+WHERE show = 1
+"""
+
+    get_active_pkgsets = """
+SELECT pkgset_name
+FROM
+(
+    SELECT
+        pkgset_name,
+        argMax(rs_show, ts) AS show
     FROM RepositoryStatus
     GROUP BY pkgset_name
 )

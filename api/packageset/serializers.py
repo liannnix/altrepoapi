@@ -30,7 +30,7 @@ pkgset_compare_model = ns.model(
         "length": fields.Integer(description="number of packages found"),
         "packages": fields.Nested(
             pkgset_compare_el_model,
-            description="unpackaged directories information",
+            description="packages information",
             as_list=True,
         ),
     },
@@ -58,7 +58,7 @@ pkgset_packages_model = ns.model(
         "length": fields.Integer(description="number of packages found"),
         "packages": fields.Nested(
             pkgset_packages_el_model,
-            description="unpackaged directories information",
+            description="packages information",
             as_list=True,
         ),
     },
@@ -71,9 +71,14 @@ pkgset_status_post_el_model = ns.model(
         "rs_start_date": fields.DateTime(description="support start date"),
         "rs_end_date": fields.DateTime(description="support end date"),
         "rs_show": fields.Integer(description="0 - hide branch, 1 - show branch"),
-        "rs_description_ru": fields.String(description="html description in Russian in Base64 format"),
-        "rs_description_en": fields.String(description="html description in English in Base64 format")
-    }
+        "rs_description_ru": fields.String(
+            description="html description in Russian in Base64 format"
+        ),
+        "rs_description_en": fields.String(
+            description="html description in English in Base64 format"
+        ),
+        "rs_mirrors_json": fields.Raw(description="packageset mirror's auxilary info as JSON substructure"),
+    },
 )
 pkgset_status_post_model = ns.model(
     "PackageSetPostModel",
@@ -92,8 +97,9 @@ pkgset_status_get_el_model = ns.model(
         "end_date": fields.DateTime(description="support end date"),
         "show": fields.Integer(description="0 - hide branch, 1 - show branch"),
         "description_ru": fields.String(description="html description in Russian"),
-        "description_en": fields.String(description="html description in English")
-    }
+        "description_en": fields.String(description="html description in English"),
+        "mirrors_json": fields.Raw(description="packageset mirror's auxilary info as JSON substructure"),
+    },
 )
 pkgset_status_get_model = ns.model(
     "PackageSetGetModel",
