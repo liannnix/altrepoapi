@@ -386,7 +386,7 @@ SELECT
     subtask_package,
     subtask_srpm_name,
     TI.titer_srcrpm_hash
-FROM Tasks_buffer
+FROM Tasks
 LEFT JOIN
 (
     SELECT DISTINCT
@@ -394,7 +394,7 @@ LEFT JOIN
         subtask_id,
         task_changed,
         titer_srcrpm_hash
-    FROM TaskIterations_buffer
+    FROM TaskIterations
     WHERE titer_srcrpm_hash != 0 
 ) AS TI USING (task_id, subtask_id, task_changed)
 WHERE subtask_deleted = 0
@@ -403,11 +403,11 @@ WHERE subtask_deleted = 0
         SELECT DISTINCT
             task_id AS id,
             task_changed AS changed
-        FROM TaskStates_buffer
+        FROM TaskStates
         WHERE task_id IN
         (
             SELECT DISTINCT task_id
-            FROM Tasks_buffer
+            FROM Tasks
             WHERE task_repo = '{branch}'
         )
             AND task_state = 'DONE'
