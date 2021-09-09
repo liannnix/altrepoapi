@@ -249,8 +249,9 @@ class PackageInfo(APIWorker):
         # sort package versions by branch
         pkg_branches = sort_branches([el[0] for el in response])
         pkg_versions = tuplelist_to_dict(response, 3)
+        # FIXME: workaround for multiple versions of returned for certain branch
         pkg_versions = [
-            PkgVersions(*(b, *pkg_versions[b]))._asdict() for b in pkg_branches
+            PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
         ]
         # get provided binary packages
         bin_packages_list = []
