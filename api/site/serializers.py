@@ -414,27 +414,16 @@ last_packages_model = ns.model(
     },
 )
 
-deleted_package_taskinfo_model = ns.model(
-    "SiteDeletedPackageTaskInfoModel",
+deleted_package_model = ns.model(
+    "SiteDeletedPackageModel",
     {
+        "branch": fields.String(description="package set name"),
+        "package": fields.String(description="package name"),
+        "hash": fields.String(description="package hash UInt64 as string"),
         "task_id": fields.Integer(description="task id"),
         "subtask_id": fields.Integer(description="subtask id"),
         "task_owner": fields.String(description="task created by"),
         "subtask_owner": fields.String(attribute="subtask_userid", description="subtask created by"),
         "task_changed": fields.String(description="task completed at"),
-    }
-)
-deleted_package_model = ns.model(
-    "SiteDeletedPackageModel",
-    {
-        "package": fields.String(description="package name"),
-        "branch": fields.String(description="package set name"),
-        "task_info": fields.Nested(
-            deleted_package_taskinfo_model,
-            description="package deleting task information"
-        ),
-        "versions": fields.Nested(
-            package_versions_el_model, as_list=True, description="all branches package versions"
-        ),
     }
 )

@@ -364,32 +364,38 @@ class DeletedPackageInfo(APIWorker):
             ["task_id", "subtask_id", "task_changed", "task_owner", "subtask_userid"],
         )
         delete_task_info = TaskMeta(*response[0])._asdict()
-        delete_task_info["task_changed"] = datetime_to_iso(
-            delete_task_info["task_changed"]
-        )
 
-        # get package versions
-        pkg_versions = []
-        self.conn.request_line = self.sql.get_pkg_versions.format(name=self.name)
+        self.conn.request_line = self.sql.get_srcpkg_hash_for_branch_on_date.format(
+            name=self.name,
+            branch=self.branch,
+            task_changed=delete_task_info["task_changed"]
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
-        PkgVersions = namedtuple(
-            "PkgVersions", ["branch", "version", "release", "pkghash"]
+        if not response:
+            self._store_error(
+                {
+                    "message": f"No information about deleting package {self.name} from {self.branch} found",
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        pkg_hash = str(response[0][0])
+
+        delete_task_info["task_changed"] = datetime_to_iso(
+            delete_task_info["task_changed"]
         )
-        # sort package versions by branch
-        pkg_branches = sort_branches([el[0] for el in response])
-        pkg_versions = tuplelist_to_dict(response, 3)
-        pkg_versions = [
-            PkgVersions(*(b, *pkg_versions[b]))._asdict() for b in pkg_branches
-        ]
 
         res = {
             "package": self.name,
             "branch": self.branch,
-            "task_info": delete_task_info,
-            "versions": pkg_versions,
+            "hash": pkg_hash,
+            **delete_task_info,
         }
 
         return res, 200

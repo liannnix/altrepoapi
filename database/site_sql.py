@@ -619,10 +619,10 @@ ORDER BY
     get_deleted_package_task = """
 SELECT
     task_id,
-    subtask_id,
-    task_changed,
-    task_owner,
-    subtask_userid
+    any(subtask_id),
+    max(task_changed),
+    any(task_owner),
+    any(subtask_userid)
 FROM Tasks
 WHERE subtask_deleted = 0
     AND subtask_type = 'delete'
@@ -633,7 +633,68 @@ WHERE subtask_deleted = 0
         SELECT task_id
         FROM TaskStates
         WHERE task_state = 'DONE'
-    )    
+    )
+GROUP BY task_id
+"""
+
+    get_srcpkg_hash_for_branch_on_date = """
+SELECT pkg_hash
+FROM PackageSet
+WHERE pkg_hash IN (
+    SELECT pkg_hash
+    FROM Packages
+    WHERE pkg_name = '{name}' AND pkg_sourcepackage = 1
+) AND pkgset_uuid IN (
+    SELECT pkgset_uuid
+    FROM PackageSetName
+    WHERE pkgset_nodename = 'srpm' AND pkgset_ruuid IN (
+        SELECT argMax(pkgset_uuid, pkgset_date)
+        FROM PackageSetName
+        WHERE pkgset_nodename = '{branch}'
+            AND toDate(pkgset_date) <= (toDate('{task_changed}') - 1)
+    )
+)
+"""
+
+    get_last_scrpkg_hash_in_branch = """
+WITH
+all_src_hashes AS
+(
+    SELECT pkg_hash
+    FROM Packages
+    WHERE pkg_name like '{name}'
+        AND pkg_sourcepackage = 1
+)
+SELECT DISTINCT pkg_hash
+FROM PackageSet
+WHERE pkgset_uuid IN
+(
+    SELECT pkgset_uuid
+    FROM PackageSetName
+    WHERE pkgset_nodename = 'srpm'
+        AND pkgset_puuid IN
+        (
+            SELECT p_uuid FROM
+            (
+                SELECT
+                    pkgset_nodename, max(pkgset_date) as p_date, argMax(pkgset_uuid, pkgset_date) as p_uuid
+                FROM PackageSetName
+                WHERE pkgset_uuid IN
+                (
+                    SELECT pkgset_ruuid
+                    FROM PackageSetName
+                    WHERE pkgset_uuid IN
+                    (
+                        SELECT pkgset_uuid
+                        FROM PackageSet
+                        WHERE pkg_hash IN all_src_hashes
+                    )
+                )
+                    AND pkgset_nodename = '{branch}'
+                GROUP BY pkgset_nodename
+            )
+        )
+) AND pkg_hash IN all_src_hashes
 """
 
 
