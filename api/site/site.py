@@ -3,7 +3,7 @@ from flask_restx import Resource, abort, Namespace
 
 from utils import get_logger, url_logging, response_error_parser
 
-from .endpoints.package_info import PackageInfo, PackageChangelog
+from .endpoints.package_info import PackageInfo, PackageChangelog, DeletedPackageInfo
 from .endpoints.pkgset_packages import PackagesetPackages, PackagesetPackageHash
 from .endpoints.packager_info import AllMaintainers, MaintainerInfo, MaintainerPackages
 from .endpoints.packager_info import MaintainerBranches, RepocopByMaintainer
@@ -21,9 +21,13 @@ from .parsers import (
     all_maintainers_args,
     maintainer_info_args,
     maintainer_branches_args,
+    pkgset_pkghash_args,
+    task_by_name_args,
+    pkgs_by_name_args,
+    last_pkgs_args,
+    pkgset_categories_args,
+    all_archs_args,
 )
-from .parsers import pkgset_pkghash_args, task_by_name_args, pkgs_by_name_args
-from .parsers import task_last_pkgs_args, pkgset_categories_args, all_archs_args
 from .serializers import (
     pkgset_packages_model,
     package_chlog_model,
@@ -33,14 +37,16 @@ from .serializers import (
     maintainer_pkgs_model,
     maintainer_branches_model,
     repocop_by_maintainer_model,
-)
-from .serializers import (
+    all_pkgsets_model,
+    all_archs_model,
+    pkgset_categories_model,
     pkgset_pkghash_model,
     task_by_name_model,
     fing_pkgs_by_name_model,
+    pkgsets_by_hash_model,
+    last_packages_model,
+    deleted_package_model
 )
-from .serializers import all_pkgsets_model, all_archs_model, pkgset_categories_model
-from .serializers import pkgsets_by_hash_model
 
 logger = get_logger(__name__)
 
@@ -354,10 +360,10 @@ class routeAllPackagesetArchs(Resource):
     },
 )
 class routeLastTaskPackages(Resource):
-    @ns.expect(task_last_pkgs_args)
-    @ns.marshal_with(pkgset_packages_model)
+    @ns.expect(last_pkgs_args)
+    @ns.marshal_with(last_packages_model)
     def get(self):
-        args = task_last_pkgs_args.parse_args(strict=True)
+        args = last_pkgs_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = LastTaskPackages(g.connection, **args)
         if not wrk.check_params():
@@ -605,6 +611,36 @@ class routeRepocopByMaintainer(Resource):
         args = maintainer_info_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = RepocopByMaintainer(g.connection, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route(
+    "/deleted_package_info",
+    doc={
+        "description": ("Get information about package deleted from branch"),
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package deletion info not found in database",
+        },
+    },
+)
+class routeDeletedPackageInfo(Resource):
+    @ns.expect(pkgset_pkghash_args)
+    @ns.marshal_with(deleted_package_model)
+    def get(self):
+        args = pkgset_pkghash_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        wrk = DeletedPackageInfo(g.connection, **args)
         if not wrk.check_params():
             abort(
                 400,

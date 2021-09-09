@@ -73,16 +73,16 @@ pkgs_by_name_args.add_argument(
     "arch", type=str, required=False, help="arch of binary packages", location="args"
 )
 
-task_last_pkgs_args = reqparse.RequestParser()
-task_last_pkgs_args.add_argument(
+last_pkgs_args = reqparse.RequestParser()
+last_pkgs_args.add_argument(
     "branch", type=str, required=True, help="name of packageset", location="args"
 )
-task_last_pkgs_args.add_argument(
-    "timedelta",
+last_pkgs_args.add_argument(
+    "tasks_limit",
     type=int,
-    default=864000,
+    default=10,
     required=True,
-    help="time range from newest task in seconds",
+    help="number of last packages to get",
     location="args",
 )
 

@@ -30,7 +30,7 @@ pkgset_compare_model = ns.model(
         "length": fields.Integer(description="number of packages found"),
         "packages": fields.Nested(
             pkgset_compare_el_model,
-            description="unpackaged directories information",
+            description="packages information",
             as_list=True,
         ),
     },
@@ -58,25 +58,30 @@ pkgset_packages_model = ns.model(
         "length": fields.Integer(description="number of packages found"),
         "packages": fields.Nested(
             pkgset_packages_el_model,
-            description="unpackaged directories information",
+            description="packages information",
             as_list=True,
         ),
     },
 )
 
 pkgset_status_post_el_model = ns.model(
-    "PackageSetPostElementModel",
+    "PackageSetStatusPostElementModel",
     {
         "pkgset_name": fields.String(description="package set name"),
         "rs_start_date": fields.DateTime(description="support start date"),
         "rs_end_date": fields.DateTime(description="support end date"),
         "rs_show": fields.Integer(description="0 - hide branch, 1 - show branch"),
-        "rs_description_ru": fields.String(description="html description in Russian in Base64 format"),
-        "rs_description_en": fields.String(description="html description in English in Base64 format")
-    }
+        "rs_description_ru": fields.String(
+            description="html description in Russian in Base64 format"
+        ),
+        "rs_description_en": fields.String(
+            description="html description in English in Base64 format"
+        ),
+        "rs_mirrors_json": fields.Raw(description="packageset mirror's auxilary info as JSON substructure"),
+    },
 )
 pkgset_status_post_model = ns.model(
-    "PackageSetPostModel",
+    "PackageSetStatusPostModel",
     {
         "branches": fields.Nested(
             pkgset_status_post_el_model, description="package set info", as_list=True
@@ -85,21 +90,31 @@ pkgset_status_post_model = ns.model(
 )
 
 pkgset_status_get_el_model = ns.model(
-    "PackageSetGetElementModel",
+    "PackageSetStatusGetElementModel",
     {
         "branch": fields.String(description="package set name"),
         "start_date": fields.DateTime(description="support start date"),
         "end_date": fields.DateTime(description="support end date"),
         "show": fields.Integer(description="0 - hide branch, 1 - show branch"),
         "description_ru": fields.String(description="html description in Russian"),
-        "description_en": fields.String(description="html description in English")
-    }
+        "description_en": fields.String(description="html description in English"),
+        "mirrors_json": fields.Raw(description="packageset mirror's auxilary info as JSON substructure"),
+    },
 )
 pkgset_status_get_model = ns.model(
-    "PackageSetGetModel",
+    "PackageSetStatusGetModel",
     {
         "branches": fields.Nested(
             pkgset_status_get_el_model, description="package set info", as_list=True
         )
     },
+)
+
+
+active_pkgsets_model = ns.model(
+    "PackageSetActivePackageSetsModel",
+    {
+        "length": fields.Integer(description="number of active package sets found"),
+        "packagesets": fields.List(fields.String, description="active package sets list"),
+    }
 )

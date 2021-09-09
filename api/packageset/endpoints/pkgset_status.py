@@ -6,12 +6,15 @@ from collections import namedtuple
 
 from api.base import APIWorker
 from database.packageset_sql import pkgsetsql
+from api.misc import lut
+from utils import sort_branches
 
 
 class RepositoryStatus(APIWorker):
     """
-    Download or get information on current repositories
+    Upload or get information on current repositories.
     """
+
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
@@ -29,23 +32,24 @@ class RepositoryStatus(APIWorker):
             "rs_show",
             "rs_description_ru",
             "rs_description_en",
+            "rs_mirrors_json",
         ]
 
         for elem in self.args["json_data"]["branches"]:
             # Convert string pkgset_name to lowercase
-            elem['pkgset_name'] = elem['pkgset_name'].lower()
+            elem["pkgset_name"] = elem["pkgset_name"].lower()
 
             # decode base64
             try:
-                elem['rs_description_ru'] = base64.b64decode(elem['rs_description_ru'])
-                elem['rs_description_en'] = base64.b64decode(elem['rs_description_en'])
+                elem["rs_description_ru"] = base64.b64decode(elem["rs_description_ru"])
+                elem["rs_description_en"] = base64.b64decode(elem["rs_description_en"])
             except binascii.Error:
                 self.validation_results.append("description must be in base64 format")
 
-            if elem['rs_description_ru'] == '' or elem['rs_description_en'] == '':
+            if elem["rs_description_ru"] == "" or elem["rs_description_en"] == "":
                 self.validation_results.append("description cannot be misleading")
 
-            if elem['rs_show'] > 1 or elem['rs_show'] < 0:
+            if elem["rs_show"] > 1 or elem["rs_show"] < 0:
                 self.validation_results.append("allowable values rs_show : 0 or 1")
 
             for key in elem.keys():
@@ -68,6 +72,7 @@ class RepositoryStatus(APIWorker):
         for el in json_:
             el["rs_start_date"] = dt.datetime.fromisoformat(el["rs_start_date"])
             el["rs_end_date"] = dt.datetime.fromisoformat(el["rs_end_date"])
+            el["rs_mirrors_json"] = json.dumps(el["rs_mirrors_json"], default=str)
 
         self.conn.request_line = (self.sql.insert_pkgset_status, json_)
         status, response = self.conn.send_request()
@@ -104,11 +109,42 @@ class RepositoryStatus(APIWorker):
                 "end_date",
                 "show",
                 "description_ru",
-                "description_en"
+                "description_en",
+                "mirrors_json"
             ],
         )
 
         res = [RepositoryStatusInfo(*el)._asdict() for el in response]
+        for el in res:
+            el["mirrors_json"] = json.loads(el["mirrors_json"])
         res = {"branches": res}
+
+        return res, 200
+
+
+class ActivePackagesets(APIWorker):
+    """Retrieves list of active package sets."""
+
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = pkgsetsql
+        super().__init__()
+
+    def get(self):
+        self.conn.request_line = self.sql.get_active_pkgsets
+        status, response = self.conn.send_request()
+
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+
+        if not response:
+            self.logger.debug(f"No active package sets found in DB")
+            res = {"packagesets": sort_branches(lut.known_branches)}
+        else:
+            res = {"packagesets": sort_branches([el[0] for el in response])}
+
+        res["length"] = len(res["packagesets"])
 
         return res, 200

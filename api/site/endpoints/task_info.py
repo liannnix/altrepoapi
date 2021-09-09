@@ -170,7 +170,7 @@ class TasksByPackage(APIWorker):
                             (int(subtask["id"]), int(subtask["sub_id"]))
                         ]
                         subtask["dir"] = f"/gears/{pkg_name[0]}/{pkg_name}.git"
-                    except Exception as e:
+                    except KeyError:
                         pkg_name = subtask["dir"].split("/")[-1][:-4]
                 elif subtask["dir"].startswith("/gears/"):
                     pkg_name = subtask["dir"].split("/")[-1][:-4]
@@ -213,8 +213,10 @@ class LastTaskPackages(APIWorker):
                 f"allowed package set names are : {lut.known_branches}"
             )
 
-        if self.args["timedelta"] and self.args["timedelta"] < 0:
-            self.validation_results.append(f"timedelta should be greater than 0")
+        if self.args["tasks_limit"] and self.args["tasks_limit"] < 1:
+            self.validation_results.append(
+                f"last tasks limit should be greater or equal to 1"
+            )
 
         if self.validation_results != []:
             return False
@@ -223,10 +225,10 @@ class LastTaskPackages(APIWorker):
 
     def get(self):
         self.branch = self.args["branch"]
-        self.timedelta = self.args["timedelta"]
+        self.tasks_limit = self.args["tasks_limit"]
 
         self.conn.request_line = self.sql.get_last_pkgs_from_tasks.format(
-            branch=self.branch, timedelta=self.timedelta
+            branch=self.branch, limit=self.tasks_limit
         )
         status, response = self.conn.send_request()
         if not status:
@@ -243,27 +245,113 @@ class LastTaskPackages(APIWorker):
             )
             return self.error
 
-        PkgMeta = namedtuple(
-            "PkgMeta",
+        TasksMeta = namedtuple(
+            "TasksMeta",
             [
-                "hash",
-                "name",
-                "version",
-                "release",
-                "buildtime",
-                "summary",
-                "maintainer",
-                "category",
-                "changelog",
                 "task_id",
                 "subtask_id",
                 "task_owner",
+                "task_changed",
+                "subtask_userid",
+                "subtask_type",
+                "subtask_package",
+                "subtask_srpm_name",
+                "titer_srcrpm_hash",
             ],
         )
 
-        retval = [PkgMeta(*el)._asdict() for el in response]
+        tasks = [TasksMeta(*el)._asdict() for el in response]
 
-        res = {"request_args": self.args, "length": len(retval), "packages": retval}
+        src_pkg_hashes = {t["titer_srcrpm_hash"] for t in tasks}
+
+        # create temporary table fro source package hashes
+        tmp_table = "tmp_srcpkg_hashes"
+        self.conn.request_line = self.sql.create_tmp_table.format(
+            tmp_table=tmp_table, columns="(pkg_hash UInt64)"
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        # insert package hashes into temporary table
+        self.conn.request_line = (
+            self.sql.insert_into_tmp_table.format(tmp_table=tmp_table),
+            ((x,) for x in src_pkg_hashes),
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        # select packages info by hashes
+        self.conn.request_line = self.sql.get_last_pkgs_info.format(tmp_table=tmp_table)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {
+                    "message": f"No data found in database for packages",
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        PkgMeta = namedtuple(
+            "PkgMeta",
+            [
+                "pkg_name",
+                "pkg_version",
+                "pkg_release",
+                "pkg_buildtime",
+                "pkg_summary",
+                "changelog_date",
+                "changelog_text",
+            ],
+        )
+
+        packages = {el[0]: PkgMeta(*el[1:])._asdict() for el in response}
+
+        retval = {}
+        for subtask in tasks:
+            task_id = subtask["task_id"]
+            if task_id not in retval:
+                retval[task_id] = {
+                    "task_owner": subtask["task_owner"],
+                    "task_changed": datetime_to_iso(subtask["task_changed"]),
+                    "packages": [],
+                }
+
+            pkg_info = {
+                "subtask_id": subtask["subtask_id"],
+                "subtask_userid": subtask["subtask_userid"],
+            }
+
+            if subtask["subtask_type"] in ("gear", "srpm"):
+                pkg_info["subtask_type"] = "build"
+            else:
+                pkg_info["subtask_type"] = subtask["subtask_type"]
+
+            if subtask["titer_srcrpm_hash"] != 0:
+                pkg_info["pkg_hash"] = str(subtask["titer_srcrpm_hash"])
+                pkg_info.update(
+                    {k: v for k, v in packages[subtask["titer_srcrpm_hash"]].items()}
+                )
+                pkg_info["changelog_date"] = datetime_to_iso(pkg_info["changelog_date"])
+            else:
+                pkg_info["pkg_hash"] = ""
+                for k in ("subtask_package", "subtask_srpm_name"):
+                    if subtask[k] != "":
+                        pkg_info["pkg_name"] = subtask[k]
+                        break
+
+            retval[task_id]["packages"].append(pkg_info)
+
+        retval = [{"task_id": k, **v} for k, v in retval.items()]
+
+        res = {"request_args": self.args, "length": len(retval), "tasks": retval}
         return res, 200
 
 

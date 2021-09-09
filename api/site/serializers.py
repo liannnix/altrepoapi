@@ -357,3 +357,75 @@ repocop_by_maintainer_model = ns.model(
         ),
     },
 )
+
+last_packages_el_model = ns.model(
+    "SiteLastPackagesElementModel",
+    {
+        "subtask_id": fields.Integer(description="subtask id"),
+        "subtask_userid": fields.String(description="subtask created by"),
+        "subtask_type": fields.String(
+            description="subtask type [build|rebuild|delete]"
+        ),
+        "hash": fields.String(
+            attribute="pkg_hash", description="package hash UInt64 as string"
+        ),
+        "name": fields.String(attribute="pkg_name", description="package name"),
+        "version": fields.String(
+            attribute="pkg_version", description="package version"
+        ),
+        "release": fields.String(
+            attribute="pkg_release", description="package release"
+        ),
+        "summary": fields.String(
+            attribute="pkg_summary", description="package summary"
+        ),
+        "buildtime": fields.Integer(
+            attribute="pkg_buildtime", description="package buildtime"
+        ),
+        "changelog_date": fields.String(
+            description="package last changelog message date"
+        ),
+        "changelog_text": fields.String(description="package last changelog message"),
+    },
+)
+last_packages_pkg_model = ns.model(
+    "SiteLastPackagesPackageModel",
+    {
+        "task_id": fields.Integer(description="task id"),
+        "task_owner": fields.String(description="task owner"),
+        "task_changed": fields.String(description="task completed at"),
+        "packages": fields.Nested(
+            last_packages_el_model,
+            description="task subtasks packages information",
+            as_list=True,
+        ),
+    },
+)
+last_packages_model = ns.model(
+    "SiteLastPackagesModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "tasks": fields.Nested(
+            last_packages_pkg_model,
+            description="last tasks packages information",
+            as_list=True,
+        ),
+    },
+)
+
+deleted_package_model = ns.model(
+    "SiteDeletedPackageModel",
+    {
+        "branch": fields.String(description="package set name"),
+        "package": fields.String(description="package name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "hash": fields.String(description="package hash UInt64 as string"),
+        "task_id": fields.Integer(description="task id"),
+        "subtask_id": fields.Integer(description="subtask id"),
+        "task_owner": fields.String(description="task created by"),
+        "subtask_owner": fields.String(attribute="subtask_userid", description="subtask created by"),
+        "task_changed": fields.String(description="task completed at"),
+    }
+)
