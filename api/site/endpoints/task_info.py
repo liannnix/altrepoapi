@@ -170,7 +170,7 @@ class TasksByPackage(APIWorker):
                             (int(subtask["id"]), int(subtask["sub_id"]))
                         ]
                         subtask["dir"] = f"/gears/{pkg_name[0]}/{pkg_name}.git"
-                    except Exception as e:
+                    except KeyError:
                         pkg_name = subtask["dir"].split("/")[-1][:-4]
                 elif subtask["dir"].startswith("/gears/"):
                     pkg_name = subtask["dir"].split("/")[-1][:-4]

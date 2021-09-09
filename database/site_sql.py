@@ -199,7 +199,27 @@ FROM
             task_id,
             changed
         FROM last_task_states
-)
+    )
+    UNION ALL
+    SELECT DISTINCT
+        task_id,
+        TS.task_state,
+        task_changed
+    FROM Tasks
+    INNER JOIN
+    (
+        SELECT task_id, task_state FROM last_task_states
+    ) AS TS USING (task_id)
+    WHERE subtask_deleted = 0
+        AND subtask_package = '{name}'
+        AND subtask_type = 'delete'
+        AND (task_id, task_changed) IN
+        (
+            SELECT
+                task_id,
+                changed
+            FROM last_task_states
+        )
 ) AS T1
 LEFT JOIN 
 (
