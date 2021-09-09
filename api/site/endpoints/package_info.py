@@ -386,6 +386,8 @@ class DeletedPackageInfo(APIWorker):
             return self.error
 
         pkg_hash = str(response[0][0])
+        pkg_version = str(response[0][1])
+        pkg_release = str(response[0][2])
 
         delete_task_info["task_changed"] = datetime_to_iso(
             delete_task_info["task_changed"]
@@ -395,6 +397,8 @@ class DeletedPackageInfo(APIWorker):
             "package": self.name,
             "branch": self.branch,
             "hash": pkg_hash,
+            "version": pkg_version,
+            "release": pkg_release,
             **delete_task_info,
         }
 

@@ -419,6 +419,8 @@ deleted_package_model = ns.model(
     {
         "branch": fields.String(description="package set name"),
         "package": fields.String(description="package name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
         "hash": fields.String(description="package hash UInt64 as string"),
         "task_id": fields.Integer(description="task id"),
         "subtask_id": fields.Integer(description="subtask id"),

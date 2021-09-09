@@ -658,20 +658,28 @@ GROUP BY task_id
 """
 
     get_srcpkg_hash_for_branch_on_date = """
-SELECT pkg_hash
-FROM PackageSet
-WHERE pkg_hash IN (
+SELECT
+    pkg_hash,
+    pkg_version,
+    pkg_release
+FROM Packages
+WHERE pkg_hash IN
+(
     SELECT pkg_hash
-    FROM Packages
-    WHERE pkg_name = '{name}' AND pkg_sourcepackage = 1
-) AND pkgset_uuid IN (
-    SELECT pkgset_uuid
-    FROM PackageSetName
-    WHERE pkgset_nodename = 'srpm' AND pkgset_ruuid IN (
-        SELECT argMax(pkgset_uuid, pkgset_date)
+    FROM PackageSet
+    WHERE pkg_hash IN (
+        SELECT pkg_hash
+        FROM Packages
+        WHERE pkg_name = '{name}' AND pkg_sourcepackage = 1
+    ) AND pkgset_uuid IN (
+        SELECT pkgset_uuid
         FROM PackageSetName
-        WHERE pkgset_nodename = '{branch}'
-            AND toDate(pkgset_date) <= (toDate('{task_changed}') - 1)
+        WHERE pkgset_nodename = 'srpm' AND pkgset_ruuid IN (
+            SELECT argMax(pkgset_uuid, pkgset_date)
+            FROM PackageSetName
+            WHERE pkgset_nodename = '{branch}'
+                AND toDate(pkgset_date) <= (toDate('{task_changed}') - 1)
+        )
     )
 )
 """
