@@ -165,6 +165,16 @@ WHERE pkgset_name = '{branch}'
 """
 
     get_tasks_by_pkg_name = """
+WITH
+last_task_states AS
+(
+    SELECT
+        task_id,
+        argMax(task_state, task_changed) AS task_state,
+        max(task_changed) AS changed
+    FROM TaskStates
+    GROUP BY task_id
+)
 SELECT
     T1.*,
     groupUniqArray(tuple(T2.*)) AS gears
@@ -173,24 +183,23 @@ FROM
     SELECT DISTINCT
         task_id,
         TS.task_state,
-        TS.changed AS task_changed
+        task_changed
     FROM TaskIterations
-    LEFT JOIN 
+    INNER JOIN
+    (
+        SELECT task_id, task_state FROM last_task_states
+    ) AS TS USING (task_id)
+    WHERE titer_srcrpm_hash IN (
+        SELECT pkg_hash
+        FROM Packages
+        WHERE (pkg_name LIKE '{name}') AND (pkg_sourcepackage = 1)
+    ) AND (task_id, task_changed) IN
     (
         SELECT
             task_id,
-            argMax(task_state, task_changed) AS task_state,
-            max(task_changed) AS changed
-        FROM TaskStates
-        GROUP BY task_id
-    ) AS TS USING (task_id)
-    WHERE titer_srcrpm_hash IN 
-    (
-        SELECT pkg_hash
-        FROM Packages
-        WHERE pkg_name LIKE '{name}'
-            AND pkg_sourcepackage = 1
-    )
+            changed
+        FROM last_task_states
+)
 ) AS T1
 LEFT JOIN 
 (
