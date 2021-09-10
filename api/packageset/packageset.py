@@ -82,7 +82,7 @@ class routePackagesetCompare(Resource):
             abort(code, **response_error_parser(result))
         return result, code
 
-
+@ns.hide
 @ns.route("/pkgset_status")
 class routeRepositoryStatus(Resource):
     @ns.doc(
