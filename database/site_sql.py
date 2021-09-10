@@ -409,6 +409,7 @@ WHERE subtask_deleted = 0
             SELECT DISTINCT task_id
             FROM Tasks
             WHERE task_repo = '{branch}'
+                {task_owner}
         )
             AND task_state = 'DONE'
         ORDER BY task_changed DESC

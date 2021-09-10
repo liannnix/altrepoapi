@@ -205,6 +205,11 @@ class LastTaskPackages(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
+        if self.args["task_owner"] == "":
+            self.validation_results.append(
+                self.validation_results.append(f"task owner's nickname should not be empty string")
+            )
+
         if self.args["branch"] == "" or self.args["branch"] not in lut.known_branches:
             self.validation_results.append(
                 f"unknown package set name : {self.args['branch']}"
@@ -226,9 +231,15 @@ class LastTaskPackages(APIWorker):
     def get(self):
         self.branch = self.args["branch"]
         self.tasks_limit = self.args["tasks_limit"]
+        self.task_owner = self.args["task_owner"]
+
+        if self.task_owner is not None:
+            self.task_owner = f"AND task_owner like '{self.task_owner}%'"
+        else:
+            self.task_owner = ""
 
         self.conn.request_line = self.sql.get_last_pkgs_from_tasks.format(
-            branch=self.branch, limit=self.tasks_limit
+            branch=self.branch, limit=self.tasks_limit, task_owner=self.task_owner
         )
         status, response = self.conn.send_request()
         if not status:
