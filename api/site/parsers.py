@@ -85,6 +85,9 @@ last_pkgs_args.add_argument(
     help="number of last packages to get",
     location="args",
 )
+last_pkgs_args.add_argument(
+    "task_owner", type=str, help="task owner's nickname", location="args"
+)
 
 pkgset_categories_args = reqparse.RequestParser()
 pkgset_categories_args.add_argument(
