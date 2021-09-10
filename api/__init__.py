@@ -7,12 +7,21 @@ from .site.site import ns as site_ns
 from .bug.bug import ns as bug_ns
 
 
+authorizations = {
+    'BasicAuth': {
+        'type': 'basic',
+        'in': 'header',
+        'name': 'Authorization'
+    }
+}
+
 api = Api(
     version="1.1",
     title="altrepodb",
     description="altrepodb API",
     default="api",
-    default_label="basic functions"
+    default_label="basic functions",
+    authorizations=authorizations
 )
 
 api.add_namespace(task_ns)
