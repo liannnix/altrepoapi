@@ -86,7 +86,7 @@ last_pkgs_args.add_argument(
     location="args",
 )
 last_pkgs_args.add_argument(
-    "task_owner", type=str, help="task owner's nickname", location="args"
+    "task_owner", type=str, required=False, help="task owner's nickname", location="args"
 )
 
 pkgset_categories_args = reqparse.RequestParser()

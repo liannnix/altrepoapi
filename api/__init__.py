@@ -6,21 +6,13 @@ from .packageset.packageset import ns as packageset_ns
 from .site.site import ns as site_ns
 from .bug.bug import ns as bug_ns
 
-authorizations = {
-    'Bearer': {
-        'type': 'apiKey',
-        'in': 'header',
-        'name': 'Authorization'
-    }
-}
 
 api = Api(
     version="1.1",
     title="altrepodb",
     description="altrepodb API",
     default="api",
-    default_label="basic functions",
-    authorizations=authorizations
+    default_label="basic functions"
 )
 
 api.add_namespace(task_ns)

@@ -91,8 +91,7 @@ class routeRepositoryStatus(Resource):
             201: "Data loaded",
             400: "Request parameters validation error",
             404: "Requested data not found in database",
-        },
-        security='apikey'
+        }
     )
     @ns.expect(pkgset_status_post_model)
     def post(self):
@@ -116,8 +115,7 @@ class routeRepositoryStatus(Resource):
         responses={
             400: "Request parameters validation error",
             404: "Requested data not found in database",
-        },
-        security='apikey'
+        }
     )
     @ns.marshal_with(pkgset_status_get_model)
     def get(self):
