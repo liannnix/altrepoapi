@@ -15,7 +15,7 @@ from .serializers import (
     pkgset_packages_model,
     pkgset_status_post_model,
     pkgset_status_get_model,
-    active_pkgsets_model
+    active_pkgsets_model,
 )
 
 logger = get_logger(__name__)
@@ -82,7 +82,7 @@ class routePackagesetCompare(Resource):
             abort(code, **response_error_parser(result))
         return result, code
 
-@ns.hide
+
 @ns.route("/pkgset_status")
 class routeRepositoryStatus(Resource):
     @ns.doc(
@@ -91,7 +91,7 @@ class routeRepositoryStatus(Resource):
             201: "Data loaded",
             400: "Request parameters validation error",
             404: "Requested data not found in database",
-        }
+        },
     )
     @ns.expect(pkgset_status_post_model)
     def post(self):
@@ -115,7 +115,7 @@ class routeRepositoryStatus(Resource):
         responses={
             400: "Request parameters validation error",
             404: "Requested data not found in database",
-        }
+        },
     )
     @ns.marshal_with(pkgset_status_get_model)
     def get(self):

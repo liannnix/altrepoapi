@@ -326,7 +326,6 @@ class routePackageBuildDependencySet(Resource):
         return result, code
 
 
-@ns.hide
 @ns.route("/repocop")
 class routePackageRepocop(Resource):
     @ns.doc(
