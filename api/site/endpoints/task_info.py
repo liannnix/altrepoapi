@@ -347,9 +347,13 @@ class LastTaskPackages(APIWorker):
 
             if subtask["titer_srcrpm_hash"] != 0:
                 pkg_info["pkg_hash"] = str(subtask["titer_srcrpm_hash"])
-                pkg_info.update(
-                    {k: v for k, v in packages[subtask["titer_srcrpm_hash"]].items()}
-                )
+                try:
+                    pkg_info.update(
+                        {k: v for k, v in packages[subtask["titer_srcrpm_hash"]].items()}
+                    )
+                except KeyError:
+                    # skip task with packages not inserted from table buffers
+                    continue
                 pkg_info["changelog_date"] = datetime_to_iso(pkg_info["changelog_date"])
             else:
                 pkg_info["pkg_hash"] = ""
