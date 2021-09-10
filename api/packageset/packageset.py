@@ -2,6 +2,7 @@ from flask import g, request
 from flask_restx import Resource, abort, Namespace
 
 from utils import get_logger, url_logging, response_error_parser
+from api.auth.decorators import auth_required
 
 from .endpoints.pkgset_compare import PackagesetCompare
 from .endpoints.pkgset_packages import PackagesetPackages
@@ -94,6 +95,8 @@ class routeRepositoryStatus(Resource):
         },
     )
     @ns.expect(pkgset_status_post_model)
+    @ns.doc(security="BasicAuth")
+    @auth_required
     def post(self):
         args = {}
         url_logging(logger, g.url)

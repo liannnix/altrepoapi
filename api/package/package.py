@@ -2,6 +2,7 @@ from flask import g, request
 from flask_restx import Resource, abort, Namespace
 
 from utils import get_logger, url_logging, response_error_parser
+from api.auth.decorators import auth_required
 
 from .endpoints.repocop import Repocop
 from .endpoints.package_info import PackageInfo
@@ -337,6 +338,8 @@ class routePackageRepocop(Resource):
         },
     )
     @ns.expect(repocop_json_list_model)
+    @ns.doc(security="BasicAuth")
+    @auth_required
     def post(self):
         args = {}
         url_logging(logger, g.url)
