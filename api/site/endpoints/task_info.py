@@ -342,6 +342,7 @@ class LastTaskPackages(APIWorker):
                     )
                 except KeyError:
                     # skip task with packages not inserted from table buffers
+                    self.logger.debug(f"skip task {task_id}")
                     continue
                 pkg_info["changelog_date"] = datetime_to_iso(pkg_info["changelog_date"])
             else:
