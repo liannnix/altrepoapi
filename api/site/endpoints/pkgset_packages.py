@@ -59,7 +59,7 @@ class PackagesetPackages(APIWorker):
         self.buildtime = self.args["buildtime"]
 
         if self.group is not None:
-            self.group = f"AND pkg_group_ like '{self.group}'"
+            self.group = f"AND pkg_group_ like '{self.group}%'"
         else:
             self.group = ""
 
