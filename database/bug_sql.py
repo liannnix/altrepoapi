@@ -18,23 +18,49 @@ WHERE pkg_srcrpm_hash IN
 """
 
     get_bugzilla_info_by_srcpkg = """
-SELECT
-    bz_id,
-    argMax((bz_status, bz_resolution, bz_severity, bz_product, bz_component, bz_assignee, bz_reporter, bz_summary), ts)
-FROM Bugzilla
+SELECT *
+FROM
+(
+
+    SELECT
+        bz_id,
+        argMax(bz_status, ts),
+        argMax(bz_resolution, ts),
+        argMax(bz_severity, ts),
+        argMax(bz_product, ts),
+        argMax(bz_component, ts) AS bz_component,
+        argMax(bz_assignee, ts) AS bz_assignee,
+        argMax(bz_reporter, ts),
+        argMax(bz_summary, ts),
+        max(ts)
+    FROM Bugzilla
+    GROUP BY bz_id
+)
 WHERE multiMatchAny(bz_component, {packages})
-GROUP BY bz_id
 ORDER BY bz_id DESC
 """
 
     get_bugzilla_info_by_maintainer = """
-SELECT
-    bz_id,
-    argMax((bz_status, bz_resolution, bz_severity, bz_product, bz_component, bz_assignee, bz_reporter, bz_summary), ts)
-FROM Bugzilla
+SELECT *
+FROM
+(
+
+    SELECT
+        bz_id,
+        argMax(bz_status, ts),
+        argMax(bz_resolution, ts),
+        argMax(bz_severity, ts),
+        argMax(bz_product, ts),
+        argMax(bz_component, ts) AS bz_component,
+        argMax(bz_assignee, ts) AS bz_assignee,
+        argMax(bz_reporter, ts),
+        argMax(bz_summary, ts),
+        max(ts)
+    FROM Bugzilla
+    GROUP BY bz_id
+)
 WHERE (bz_assignee LIKE '{maintainer_nickname}'
     OR bz_assignee LIKE '{maintainer_nickname}%')
-GROUP BY bz_id
 ORDER BY bz_id DESC
 """
 

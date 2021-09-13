@@ -60,8 +60,8 @@ class Bugzilla(APIWorker):
                 404,
             )
             return self.error
-        packages = [el[0] for el in response]
-        packages.append(srcpkg_name)
+        packages = {el[0] for el in response}
+        packages.add(srcpkg_name)
         packages_regex = [f"^{el}$" for el in packages]
         self.conn.request_line = self.sql.get_bugzilla_info_by_srcpkg.format(
             packages=packages_regex
@@ -93,10 +93,11 @@ class Bugzilla(APIWorker):
                 "assignee",
                 "reporter",
                 "summary",
+                "ts",
             ],
         )
 
-        res = [BugzillaInfo(el[0], *el[1])._asdict() for el in response]
+        res = [BugzillaInfo(*el)._asdict() for el in response]
         res = {"request_args": self.args, "length": len(res), "bugs": res}
 
         return res, 200
@@ -133,9 +134,10 @@ class Bugzilla(APIWorker):
                 "assignee",
                 "reporter",
                 "summary",
+                "ts",
             ],
         )
-        res = [BugzillaInfo(el[0], *el[1])._asdict() for el in response]
+        res = [BugzillaInfo(*el)._asdict() for el in response]
         res = {"request_args": self.args, "length": len(res), "bugs": res}
 
         return res, 200
