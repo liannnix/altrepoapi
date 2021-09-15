@@ -387,7 +387,7 @@ SELECT
     subtask_srpm_name,
     TI.titer_srcrpm_hash
 FROM Tasks
-LEFT JOIN
+INNER JOIN
 (
     SELECT DISTINCT
         task_id,

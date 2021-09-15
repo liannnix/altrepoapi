@@ -353,7 +353,7 @@ class LastTaskPackages(APIWorker):
                     )
                 except KeyError:
                     # skip task with packages not inserted from table buffers
-                    self.logger.debug(f"skip task {task_id}")
+                    self.logger.warning(f"No package info. Skip task {task_id}")
                     continue
                 pkg_info["changelog_date"] = datetime_to_iso(pkg_info["changelog_date"])
             else:
@@ -362,6 +362,10 @@ class LastTaskPackages(APIWorker):
                     if subtask[k] != "":
                         pkg_info["pkg_name"] = subtask[k]
                         break
+                # skip tasks with task iterations not inserted from table buffers
+                if "pkg_name" not in pkg_info:
+                    self.logger.warning(f"No task iteration info. Skip task {task_id}")
+                    continue
 
             retval[task_id]["packages"].append(pkg_info)
 
