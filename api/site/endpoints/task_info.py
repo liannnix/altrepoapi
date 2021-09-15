@@ -1,6 +1,6 @@
 from collections import namedtuple
 
-from utils import datetime_to_iso, logger_level
+from utils import datetime_to_iso
 
 from api.base import APIWorker
 from api.misc import lut
@@ -353,7 +353,7 @@ class LastTaskPackages(APIWorker):
                     )
                 except KeyError:
                     # skip task with packages not inserted from table buffers
-                    self.logger.warning(f"skip task {task_id}")
+                    self.logger.debug(f"skip task {task_id}")
                     continue
                 pkg_info["changelog_date"] = datetime_to_iso(pkg_info["changelog_date"])
             else:
@@ -370,9 +370,6 @@ class LastTaskPackages(APIWorker):
         # check return content
         for task_ in retval:
             for package_ in task_["packages"]:
-                if "pkg_name" not in package_:
-                    self.logger.error(f"Inconsistent subtask info!\n<<< DUMP BEGIN >>>\nTasks:\n{tasks}\nPackages:\n{packages}\nRetval:{retval}\n<<< DUMP END >>>")
-                    raise RuntimeError(f"Inconsistent subtask info")
                 if not package_["pkg_name"]:
                     self.logger.warning(f"No information found for package:\n{package_}")
 
