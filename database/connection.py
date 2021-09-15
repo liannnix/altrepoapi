@@ -27,7 +27,7 @@ class DBConnection:
 
         try_conn = self._connection_test()
         if try_conn:
-            raise try_conn
+            raise RuntimeError(try_conn)
 
         self.connection_status = False
 
