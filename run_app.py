@@ -21,6 +21,8 @@ def start():
         ("WORKER_PROCESSES", str),
         ("WORKER_TIMEOUT", str),
         ("LOG_FILE", str),
+        ("ADMIN_USER", str),
+        ("ADMIN_PASSWORD", str),
     ]
 
     pars_args = [
@@ -62,7 +64,11 @@ def start():
                 ("processes", settings.WORKER_PROCESSES),
                 ("timeout", settings.WORKER_TIMEOUT),
             ],
-            "other": [("logfiles", settings.LOG_FILE)],
+            "other": [
+                ("logfiles", settings.LOG_FILE),
+                ("admin_user", settings.ADMIN_USER),
+                ("admin_password", settings.ADMIN_PASSWORD),
+            ],
         }
 
         val_list = []

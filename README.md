@@ -99,6 +99,8 @@ Configuration file usually contains next sections
 
     [Other]
     LOGFILE = /home/`user`/altrepo_server.log   # path to logfile
+    ADMIN_USER = admin                      # API authorized user login
+    ADMIN_PASSWORD = admin_password_sha512  # API authorized user password SHA512 hash
 
 Also you can set launch options use keys. For more information use -h.
 
