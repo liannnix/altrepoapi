@@ -95,6 +95,7 @@ Configuration file usually contains next sections
     HOST = 127.0.0.1    # application host
     PORT = 5000         # port
     PROCESSES = 1       # number of worker processes
+    TIMEOUT = 30        # worker timeout in seconds
 
     [Other]
     LOGFILE = /home/`user`/altrepo_server.log   # path to logfile
