@@ -19,6 +19,7 @@ def start():
         ("DEFAULT_HOST", str),
         ("DEFAULT_PORT", int),
         ("WORKER_PROCESSES", str),
+        ("WORKER_TIMEOUT", str),
         ("LOG_FILE", str),
     ]
 
@@ -31,6 +32,7 @@ def start():
         ("--dbpassword", str, None, "database password"),
         ("--config", str, settings.CONFIG_FILE, "path to db config file"),
         ("--prcs", str, None, "number of worker processes"),
+        ("--timeout", str, None, "worker timeout"),
         ("--logs", str, None, "path to log files"),
     ]
 
@@ -58,6 +60,7 @@ def start():
                 ("host", settings.DEFAULT_HOST),
                 ("port", settings.DEFAULT_PORT),
                 ("processes", settings.WORKER_PROCESSES),
+                ("timeout", settings.WORKER_TIMEOUT),
             ],
             "other": [("logfiles", settings.LOG_FILE)],
         }
@@ -68,10 +71,10 @@ def start():
                 value = args_dict.get(section)
                 val_list.append(value.get(line[0]) if value else line[1])
 
-        for i in range(len(val_list)):
-            if val_list[i]:
+        for i, val in enumerate(val_list):
+            if val:
                 settings.__setattr__(
-                    launch_props[i][0], launch_props[i][1](val_list[i])
+                    launch_props[i][0], launch_props[i][1](val)
                 )
 
     parser_keys = [
@@ -84,12 +87,13 @@ def start():
         "host",
         "port",
         "prcs",
+        "timeout"
         "logs",
     ]
 
-    for i in range(len(parser_keys)):
-        if parser.__contains__(parser_keys[i]):
-            pars_val = parser.__getattribute__(parser_keys[i])
+    for i, parser_key in enumerate(parser_keys):
+        if parser.__contains__(parser_key):
+            pars_val = parser.__getattribute__(parser_key)
 
             if pars_val:
                 settings.__setattr__(launch_props[i][0], launch_props[i][1](pars_val))
@@ -102,7 +106,7 @@ def start():
         settings.WORKER_PROCESSES,
         "app:app",
         "--timeout",
-        "120",
+        settings.WORKER_TIMEOUT,
     ]
 
     run()
