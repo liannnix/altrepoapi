@@ -1,17 +1,18 @@
+import hashlib
 import base64
 from collections import namedtuple
 
-AuthCheckResult = namedtuple("AuthCheckResult", ["verified", "error", "value"])
+from settings import namespace
 
-ADMIN_USER = "admin"
-ADMIN_PASSWORD = "12qwaszx"
+AuthCheckResult = namedtuple("AuthCheckResult", ["verified", "error", "value"])
 
 def check_auth(token):
     try:
         token = token.split()[1].strip()
         user, password = base64.b64decode(token).decode("utf-8").split(':')
-
-        if (user, password) in ((ADMIN_USER, ADMIN_PASSWORD),):
+        passwd_hash = hashlib.sha512(password.encode("utf-8")).hexdigest()
+        
+        if user == namespace.ADMIN_USER and passwd_hash == namespace.ADMIN_PASSWORD:
             return AuthCheckResult(True, "OK", {"user": user})
         else:
             return AuthCheckResult(False, "authorization failed", {})
