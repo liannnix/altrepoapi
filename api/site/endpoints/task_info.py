@@ -370,7 +370,7 @@ class LastTaskPackages(APIWorker):
         # check return content
         for task_ in retval:
             for package_ in task_["packages"]:
-                if not package_["pkg_name"]:
+                if not package_["name"]:
                     self.logger.warning(f"No information found for package:\n{package_}")
 
         res = {"request_args": self.args, "length": len(retval), "tasks": retval}
