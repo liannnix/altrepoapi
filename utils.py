@@ -38,7 +38,6 @@ def get_logger(name):
 
 
 def exception_to_logger(exception):
-    # return exception.args[0].split('\n')[0]
     return exception.args[0].split("\n")[0]
 
 
