@@ -6,6 +6,7 @@ from settings import namespace as settings
 
 from database.connection import Connection
 from api import api
+from api.auth.decorators import auth_required
 
 app = Flask(__name__)
 logger = get_logger(__name__)
@@ -26,6 +27,15 @@ class ApiVersion(Resource):
     @api.marshal_with(version_fields)
     def get(self):
         return api, 200
+
+
+@api.route("/ping")
+class ApiVersion(Resource):
+    @api.doc("API ping")
+    @api.doc(security="BasicAuth")
+    @auth_required
+    def get(self):
+        return {"message": "pong"}, 200
 
 
 @app.route("/")
@@ -70,6 +80,8 @@ def configure_app(flask_app):
 
 
 def initialize_app(flask_app):
+    if not settings.ADMIN_PASSWORD:
+        raise RuntimeError("API administration password should be specified")
     configure_app(flask_app)
     api_bp = Blueprint("api", __name__, url_prefix="/api")
     api.init_app(api_bp)
