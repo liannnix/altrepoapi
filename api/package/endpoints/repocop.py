@@ -46,6 +46,7 @@ class Repocop(APIWorker):
             return True
 
     def check_params_get(self):
+        self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
         if self.args["branch"] and self.args["branch"] not in lut.known_branches:

@@ -370,7 +370,7 @@ class routePackageRepocop(Resource):
         args = pkg_repocop_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = Repocop(g.connection, **args)
-        if not wrk.check_params():
+        if not wrk.check_params_get():
             abort(
                 400,
                 message=f"Request parameters validation error",
