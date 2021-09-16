@@ -25,9 +25,9 @@ class BasePathNamespace:
     DATABASE_PASS = ""
     # debug settings
     FLASK_DEBUG = False
-    SQL_DEBUG = True
+    SQL_DEBUG = False
     # logging settings
-    LOG_LEVEL = logging.DEBUG
+    LOG_LEVEL = logging.INFO
     # misc settings
     DEPENDENCY_MAX_DEPTH = 5
     # API admin credentials
