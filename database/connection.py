@@ -61,10 +61,14 @@ class DBConnection:
 
         try:
             if isinstance(self.db_query, tuple):
+                if settings.SQL_DEBUG:
+                    logger.debug(f"SQL request:\n{self.db_query[0]}")
                 response = self.clickhouse_client.execute(
                     self.db_query[0], self.db_query[1]
                 )
             else:
+                if settings.SQL_DEBUG:
+                    logger.debug(f"SQL request:\n{self.db_query}")
                 response = self.clickhouse_client.execute(self.db_query)
             response_status = True
             logger.debug(f"SQL request elapsed {self.clickhouse_client.last_query.elapsed:.3f} seconds")
