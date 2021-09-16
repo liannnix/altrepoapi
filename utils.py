@@ -2,6 +2,7 @@ import mmh3
 import json
 import time
 import logging
+from logging import handlers
 import datetime
 import argparse
 import configparser
@@ -27,12 +28,42 @@ def mmhash(val):
 
 
 def get_logger(name):
-    logging.basicConfig(
-        format=u"%(levelname)-8s [%(asctime)s] %(message)s",
-        level=settings.LOG_LEVEL,
-        filename=settings.LOG_FILE,
-    )
-    logger = logging.getLogger(name)
+    """Get logger instance with specific name as child of root logger.
+    Creates root logger if it doesn't exists."""
+    
+    root_logger = logging.getLogger(settings.PROJECT_NAME)
+    root_logger.setLevel(settings.LOG_LEVEL)
+
+    if not len(root_logger.handlers):
+        # syslog handler config
+        if settings.LOG_LEVEL == logging.DEBUG:
+            fmt = logging.Formatter(
+                ": %(levelname)-9s%(name)s %(module)s %(funcName)s %(lineno)d\t%(message)s"
+            )
+        else:
+            fmt = logging.Formatter(": %(levelname)-9s%(message)s")
+
+        syslog_handler = handlers.SysLogHandler(
+            address="/dev/log", facility=handlers.SysLogHandler.LOG_DAEMON
+        )
+        syslog_handler.ident = settings.PROJECT_NAME
+        syslog_handler.setFormatter(fmt)
+
+        # file handler config
+        fmt = logging.Formatter(
+            "%(asctime)s\t%(levelname)s\t%(name)s %(module)s %(funcName)s %(lineno)d\t%(message)s"
+        )
+
+        file_handler = handlers.RotatingFileHandler(
+            filename=settings.LOG_FILE, maxBytes=2 ** 26, backupCount=10
+        )
+        file_handler.setFormatter(fmt)
+
+        root_logger.addHandler(syslog_handler)
+        root_logger.addHandler(file_handler)
+
+    logger_name = ".".join((settings.PROJECT_NAME, name))
+    logger = logging.getLogger(logger_name)
 
     return logger
 
