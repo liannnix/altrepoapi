@@ -1,7 +1,7 @@
 from time import sleep
 from clickhouse_driver import Client, errors
 
-from settings import namespace
+from settings import namespace as settings
 from utils import get_logger, exception_to_logger, json_str_error, print_statusbar, func_time
 
 logger = get_logger(__name__)
@@ -43,6 +43,7 @@ class DBConnection:
         return True
 
     def _connection_test(self):
+        logger.debug(f"Connecting to databse {settings.DATABASE_NAME}@{settings.DATABASE_HOST}")
         try:
             self.clickhouse_client.connection.connect()
         except Exception as error:
@@ -66,6 +67,7 @@ class DBConnection:
             else:
                 response = self.clickhouse_client.execute(self.db_query)
             response_status = True
+            logger.debug(f"SQL request elapsed {self.clickhouse_client.last_query.elapsed:.3f} seconds")
         except Exception as error:
             if issubclass(error.__class__, errors.Error):
                 logger.error(exception_to_logger(error))
@@ -88,24 +90,23 @@ class Connection:
     def __init__(self, request_line=None):
         self.request_line = request_line
         self.db_connection = DBConnection(
-            namespace.DATABASE_HOST,
-            namespace.DATABASE_NAME,
-            namespace.DATABASE_USER,
-            namespace.DATABASE_PASS,
+            settings.DATABASE_HOST,
+            settings.DATABASE_NAME,
+            settings.DATABASE_USER,
+            settings.DATABASE_PASS,
         )
 
-    @func_time(logger)
     def send_request(self, trace=False):
         status = self.db_connection.connection_status
         if not status:
-            for try_ in range(namespace.TRY_CONNECTION_NUMBER):
-                logger.debug("Attempt to connect to the database #{}".format(try_))
+            for try_ in range(settings.TRY_CONNECTION_NUMBER):
+                logger.debug("Attempt to connect to the database #{}".format(try_ + 1))
 
                 status = self.db_connection.make_connection()
                 if status:
                     break
 
-                sleep(namespace.TRY_TIMEOUT)
+                sleep(settings.TRY_TIMEOUT)
 
         if status:
             self.db_connection.db_query = self.request_line
