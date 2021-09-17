@@ -28,6 +28,7 @@ from .parsers import (
     last_pkgs_args,
     pkgset_categories_args,
     all_archs_args,
+    pkgs_with_cve_fix_args,
 )
 from .serializers import (
     pkgset_packages_model,
@@ -47,6 +48,7 @@ from .serializers import (
     pkgsets_by_hash_model,
     last_packages_model,
     deleted_package_model,
+    last_pkgs_with_cve_fix_model,
 )
 
 logger = get_logger(__name__)
@@ -679,6 +681,39 @@ class routeDeletedPackageInfo(Resource):
         args = pkgset_pkghash_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = DeletedPackageInfo(g.connection, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route(
+    "/last_packages_with_cve_fixed",
+    doc={
+        "description": (
+            "Get information about last packages with CVE "
+            "fixes mentioned in changelog"
+        ),
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package deletion info not found in database",
+        },
+    },
+)
+class routeLastPackagesWithCVEFix(Resource):
+    @ns.expect(pkgs_with_cve_fix_args)
+    @ns.marshal_with(last_pkgs_with_cve_fix_model)
+    def get(self):
+        args = pkgs_with_cve_fix_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        wrk = LastPackagesWithCVEFix(g.connection, **args)
         if not wrk.check_params():
             abort(
                 400,

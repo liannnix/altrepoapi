@@ -456,18 +456,20 @@ class LastPackagesWithCVEFix(APIWorker):
         PackageMeta = namedtuple(
             "PackageMeta",
             [
-                "pkg_name",
-                "pkg_version",
-                "pkg_release",
-                "pkg_buildtime",
-                "pkg_summary",
+                "name",
+                "version",
+                "release",
+                "buildtime",
+                "summary",
                 "changelog_date",
                 "changelog_text",
             ],
         )
 
-        packages = [dict(pkg_hash=str(el[0]), **PackageMeta(*el[1:])._asdict()) for el in response]
+        packages = [dict(hash=str(el[0]), **PackageMeta(*el[1:])._asdict()) for el in response]
+        for package in packages:
+            package["changelog_date"] = datetime_to_iso(package["changelog_date"])
 
-        res = {"request_args": self.args, "length": len(packages), "tasks": packages}
+        res = {"request_args": self.args, "length": len(packages), "packages": packages}
 
         return res, 200
