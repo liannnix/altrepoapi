@@ -523,7 +523,6 @@ GROUP BY
     get_all_maintaners_with_nicknames = """
 SELECT
     any(pkg_packager) AS name,
-    argMax(email, cnt) as email,
     argMax(packager_nick, cnt) AS nick,
     any(cnt) AS count
 FROM
@@ -531,7 +530,6 @@ FROM
     SELECT DISTINCT
         pkg_packager,
         substring(pkg_packager_email, 1, position(pkg_packager_email, '@') - 1) AS packager_nick,
-        any(pkg_packager_email) as email,
         countDistinct(pkg_hash) AS cnt
     FROM last_packages
     WHERE pkgset_name = '{branch}'

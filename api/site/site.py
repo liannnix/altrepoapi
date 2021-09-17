@@ -450,7 +450,8 @@ class routePackagsetsByHash(Resource):
             abort(code, **response_error_parser(result))
         return result, code
 
-
+@ns.deprecated
+@ns.route("/all_maintainers") 
 @ns.route(
     "/all_maintainers_with_emails",
     doc={
@@ -461,7 +462,6 @@ class routePackagsetsByHash(Resource):
         },
     },
 )
-# @ns.route("/all_maintainers")
 class routeMaintainersAll(Resource):
     @ns.expect(all_maintainers_args)
     @ns.marshal_list_with(all_maintainers_model)
@@ -482,7 +482,6 @@ class routeMaintainersAll(Resource):
         return result, code
 
 
-@ns.route("/all_maintainers")
 @ns.route(
     "/all_maintainers_with_nicknames",
     doc={
