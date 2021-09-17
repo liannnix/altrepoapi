@@ -779,5 +779,44 @@ WHERE pkgset_uuid IN
 ) AND pkg_hash IN all_src_hashes
 """
 
+    get_last_packages_with_cve_fixes = """
+WITH
+changelog_with_cve AS
+(
+    SELECT DISTINCT
+        chlog_hash,
+        chlog_text
+    FROM Changelog
+    WHERE match(chlog_text, 'CVE-\d{{4}}-(\d{{7}}|\d{{6}}|\d{{5}}|\d{{4}})')
+),
+(
+    SELECT groupUniqArray(chlog_hash)
+    FROM changelog_with_cve
+) AS changelog_hashes
+SELECT DISTINCT
+    pkg_hash,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_buildtime,
+    pkg_summary,
+    pkg_changelog.date[1],
+    CHLG.chlog_text
+FROM Packages
+LEFT JOIN 
+(
+    SELECT * FROM changelog_with_cve
+) AS CHLG ON CHLG.chlog_hash = (pkg_changelog.hash[1])
+WHERE pkg_hash IN
+(
+    SELECT pkg_hash
+    FROM static_last_packages
+    WHERE pkgset_name = '{branch}'
+        AND pkg_sourcepackage = 1
+)
+    AND has(changelog_hashes, pkg_changelog.hash[1])
+ORDER BY pkg_buildtime DESC
+"""
+
 
 sitesql = SQL()
