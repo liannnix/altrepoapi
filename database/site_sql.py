@@ -375,7 +375,7 @@ WHERE pkg_sourcepackage = 0
 GROUP BY pkg_arch
 """
 
-    get_last_pkgs_from_tasks = """
+    get_last_subtasks_from_tasks = """
 SELECT
     task_id,
     subtask_id,

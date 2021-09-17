@@ -238,7 +238,7 @@ class LastTaskPackages(APIWorker):
         else:
             self.task_owner = ""
 
-        self.conn.request_line = self.sql.get_last_pkgs_from_tasks.format(
+        self.conn.request_line = self.sql.get_last_subtasks_from_tasks.format(
             branch=self.branch, limit=self.tasks_limit, task_owner=self.task_owner
         )
         status, response = self.conn.send_request()
