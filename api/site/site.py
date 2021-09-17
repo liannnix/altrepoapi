@@ -4,6 +4,7 @@ from flask_restx import Resource, abort, Namespace
 from utils import get_logger, url_logging, response_error_parser
 
 from .endpoints.package_info import PackageInfo, PackageChangelog, DeletedPackageInfo
+from .endpoints.package_info import LastPackagesWithCVEFix
 from .endpoints.pkgset_packages import PackagesetPackages, PackagesetPackageHash
 from .endpoints.packager_info import AllMaintainers, MaintainerInfo, MaintainerPackages
 from .endpoints.packager_info import MaintainerBranches, RepocopByMaintainer
@@ -45,7 +46,7 @@ from .serializers import (
     fing_pkgs_by_name_model,
     pkgsets_by_hash_model,
     last_packages_model,
-    deleted_package_model
+    deleted_package_model,
 )
 
 logger = get_logger(__name__)
@@ -299,7 +300,10 @@ class routeAllPackagesets(Resource):
     "/all_pkgset_archs",
     doc={
         "description": "Get binary package archs list",
-        "responses": {404: "Data not found in database"},
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Data not found in database",
+        },
     },
 )
 class routeAllPackagesetArchs(Resource):
@@ -326,7 +330,10 @@ class routeAllPackagesetArchs(Resource):
     "/all_pkgset_archs_with_src_count",
     doc={
         "description": ("Get binary package archs list " "with source packages count"),
-        "responses": {404: "Data not found in database"},
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Data not found in database",
+        },
     },
 )
 class routeAllPackagesetArchs(Resource):
