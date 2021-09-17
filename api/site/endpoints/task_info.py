@@ -234,7 +234,7 @@ class LastTaskPackages(APIWorker):
         self.task_owner = self.args["task_owner"]
 
         if self.task_owner is not None:
-            self.task_owner = f"AND task_owner like '{self.task_owner}%'"
+            self.task_owner = f"AND task_owner = '{self.task_owner}'"
         else:
             self.task_owner = ""
 
