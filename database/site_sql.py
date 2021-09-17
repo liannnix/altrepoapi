@@ -376,46 +376,75 @@ GROUP BY pkg_arch
 """
 
     get_last_subtasks_from_tasks = """
-SELECT
-    task_id,
-    subtask_id,
-    task_owner,
-    task_changed,
-    subtask_userid,
-    subtask_type,
-    subtask_package,
-    subtask_srpm_name,
-    TI.titer_srcrpm_hash
-FROM Tasks
-INNER JOIN
+WITH
+last_tasks AS
+(
+    SELECT DISTINCT
+        task_id ,
+        task_changed,
+        task_message
+    FROM TaskStates
+    WHERE task_id IN
+    (
+        SELECT DISTINCT task_id
+        FROM Tasks
+        WHERE task_repo = '{branch}'
+        ORDER BY task_changed DESC LIMIT {limit2}
+    )
+    AND task_state = 'DONE'
+    ORDER BY
+    task_changed DESC
+    LIMIT {limit}
+)
+SELECT * FROM
 (
     SELECT DISTINCT
         task_id,
         subtask_id,
+        TSK.task_owner,
         task_changed,
+        TSK.subtask_userid,
+        TSK.subtask_type,
+        TSK.subtask_package,
+        TSK.subtask_srpm_name,
         titer_srcrpm_hash
     FROM TaskIterations
-    WHERE titer_srcrpm_hash != 0 
-) AS TI USING (task_id, subtask_id, task_changed)
-WHERE subtask_deleted = 0
-    AND (task_id, task_changed) IN
+    LEFT JOIN
     (
-        SELECT DISTINCT
-            task_id AS id,
-            task_changed AS changed
-        FROM TaskStates
-        WHERE task_id IN
+        SELECT
+            task_id,
+            subtask_id,
+            task_owner,
+            task_changed,
+            subtask_userid,
+            subtask_type,
+            subtask_package,
+            subtask_srpm_name
+        FROM
+            Tasks
+        PREWHERE subtask_deleted = 0
+        AND (task_id, task_changed) IN
         (
-            SELECT DISTINCT task_id
-            FROM Tasks
-            WHERE task_repo = '{branch}'
-                {task_owner}
+            SELECT
+                task_id,
+                task_changed
+            FROM last_tasks
         )
-            AND task_state = 'DONE'
-        ORDER BY task_changed DESC
-        LIMIT {limit}
-    )
-ORDER BY task_changed DESC, subtask_id ASC
+    ) AS TSK USING (task_id,subtask_id, task_changed)
+    PREWHERE titer_srcrpm_hash != 0
+        AND (task_id, task_changed) IN
+        (
+            SELECT
+                task_id,
+                task_changed
+            FROM last_tasks
+        )
+    ORDER BY task_changed DESC, subtask_id ASC
+) AS RQ
+LEFT JOIN
+(
+    SELECT * from last_tasks
+) AS LST USING (task_id, task_changed)
 """
 
     get_last_pkgs_info = """
@@ -441,17 +470,6 @@ WHERE
     (
         SELECT * FROM {tmp_table}
     )
-"""
-
-    get_message_by_task = """
-SELECT
-    task_id,
-    task_message
-FROM TaskStates
-WHERE (task_state = 'DONE') AND (task_id IN
-(
-    SELECT * FROM {tmp_table}
-))
 """
 
     get_pkgset_groups_count = """

@@ -207,7 +207,7 @@ class LastTaskPackages(APIWorker):
 
         if self.args["task_owner"] == "":
             self.validation_results.append(
-                self.validation_results.append(f"task owner's nickname should not be empty string")
+                f"task owner's nickname should not be empty string"
             )
 
         if self.args["branch"] == "" or self.args["branch"] not in lut.known_branches:
@@ -239,7 +239,10 @@ class LastTaskPackages(APIWorker):
             self.task_owner = ""
 
         self.conn.request_line = self.sql.get_last_subtasks_from_tasks.format(
-            branch=self.branch, limit=self.tasks_limit, task_owner=self.task_owner
+            branch=self.branch,
+            limit=self.tasks_limit,
+            limit2=(self.tasks_limit * 10),
+            task_owner=self.task_owner,
         )
         status, response = self.conn.send_request()
         if not status:
@@ -268,53 +271,15 @@ class LastTaskPackages(APIWorker):
                 "subtask_package",
                 "subtask_srpm_name",
                 "titer_srcrpm_hash",
+                "task_message",
             ],
         )
 
         tasks = [TasksMeta(*el)._asdict() for el in response]
 
-        task_ids = {t["task_id"] for t in tasks}
-
-        # create temporary table from the tasks ID
-        tmp_table_ids = "tmp_task_ids"
-        self.conn.request_line = self.sql.create_tmp_table.format(
-            tmp_table=tmp_table_ids, columns="(task_id UInt32)"
-        )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
-        # insert task ID into temporary table
-        self.conn.request_line = (
-            self.sql.insert_into_tmp_table.format(tmp_table=tmp_table_ids),
-            ((x,) for x in task_ids),
-        )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
-        # select task messages by task ID
-        self.conn.request_line = self.sql.get_message_by_task.format(tmp_table=tmp_table_ids)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
-        if not response:
-            self._store_error(
-                {
-                    "message": f"No data found in database for packages",
-                    "args": self.args,
-                },
-                self.ll.INFO,
-                404,
-            )
-            return self.error
-
-        message = {el[0]: el[1] for el in response}
-
         src_pkg_hashes = {t["titer_srcrpm_hash"] for t in tasks}
 
-        # create temporary table fro source package hashes
+        # create temporary table for source package hashes
         tmp_table = "tmp_srcpkg_hashes"
         self.conn.request_line = self.sql.create_tmp_table.format(
             tmp_table=tmp_table, columns="(pkg_hash UInt64)"
@@ -371,8 +336,8 @@ class LastTaskPackages(APIWorker):
                 retval[task_id] = {
                     "task_owner": subtask["task_owner"],
                     "task_changed": datetime_to_iso(subtask["task_changed"]),
-                    "task_message": message.get(task_id, ""),
-                    "packages": []
+                    "task_message": subtask["task_message"],
+                    "packages": [],
                 }
 
             pkg_info = {
@@ -389,7 +354,10 @@ class LastTaskPackages(APIWorker):
                 pkg_info["pkg_hash"] = str(subtask["titer_srcrpm_hash"])
                 try:
                     pkg_info.update(
-                        {k: v for k, v in packages[subtask["titer_srcrpm_hash"]].items()}
+                        {
+                            k: v
+                            for k, v in packages[subtask["titer_srcrpm_hash"]].items()
+                        }
                     )
                 except KeyError:
                     # skip task with packages not inserted from table buffers
