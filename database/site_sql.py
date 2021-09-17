@@ -389,6 +389,7 @@ last_tasks AS
         SELECT DISTINCT task_id
         FROM Tasks
         WHERE task_repo = '{branch}'
+            {task_owner}
         ORDER BY task_changed DESC LIMIT {limit2}
     )
     AND task_state = 'DONE'
