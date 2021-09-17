@@ -506,7 +506,7 @@ WHERE (pkgset_ruuid IN
 )) AND (pkgset_depth = 0)
 """
 
-    get_all_maintainers = """
+    get_all_maintainers_with_emails = """
 SELECT
     pkg_packager,
     pkg_packager_email,
@@ -517,6 +517,29 @@ WHERE pkg_sourcepackage = 1
 GROUP BY
     pkg_packager,
     pkg_packager_email
+"""
+
+    get_all_maintaners_with_nicknames = """
+SELECT
+    any(pkg_packager) AS name,
+    argMax(email, cnt) as email,
+    argMax(packager_nick, cnt) AS nick,
+    any(cnt) AS count
+FROM
+(
+    SELECT DISTINCT
+        pkg_packager,
+        substring(pkg_packager_email, 1, position(pkg_packager_email, '@') - 1) AS packager_nick,
+        any(pkg_packager_email) as email,
+        countDistinct(pkg_hash) AS cnt
+    FROM last_packages
+    WHERE pkgset_name = '{branch}'
+        AND pkg_sourcepackage = 1
+    GROUP BY
+        pkg_packager,
+        packager_nick
+)
+GROUP BY packager_nick ORDER by name
 """
 
     get_maintainer_info = """

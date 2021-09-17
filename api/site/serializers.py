@@ -259,8 +259,9 @@ pkgsets_by_hash_model = ns.model(
 all_maintainers_el_model = ns.model(
     "AllMaintainersElementModel",
     {
-        "pkg_packager": fields.String(description="Name maintainers"),
-        "pkg_packager_email": fields.String(description="Email maintainers"),
+        "pkg_packager": fields.String(description="Maintainer's name"),
+        "pkg_packager_email": fields.String(description="Maintainer's email"),
+        "packager_nickname": fields.String(description="Maintainer's nickname"),
         "count_source_pkg": fields.Integer(description="Number of source packages"),
     },
 )
