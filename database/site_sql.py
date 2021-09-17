@@ -443,6 +443,17 @@ WHERE
     )
 """
 
+    get_message_by_task = """
+SELECT
+    task_id,
+    task_message
+FROM TaskStates
+WHERE (task_state = 'DONE') AND (task_id IN
+(
+    SELECT * FROM {tmp_table}
+))
+"""
+
     get_pkgset_groups_count = """
 SELECT
     pkg_group_,

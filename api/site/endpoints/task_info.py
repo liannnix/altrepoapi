@@ -273,6 +273,45 @@ class LastTaskPackages(APIWorker):
 
         tasks = [TasksMeta(*el)._asdict() for el in response]
 
+        task_ids = {t["task_id"] for t in tasks}
+
+        # create temporary table from the tasks ID
+        tmp_table_ids = "tmp_task_ids"
+        self.conn.request_line = self.sql.create_tmp_table.format(
+            tmp_table=tmp_table_ids, columns="(task_id UInt32)"
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        # insert task ID into temporary table
+        self.conn.request_line = (
+            self.sql.insert_into_tmp_table.format(tmp_table=tmp_table_ids),
+            ((x,) for x in task_ids),
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        # select task messages by task ID
+        self.conn.request_line = self.sql.get_message_by_task.format(tmp_table=tmp_table_ids)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {
+                    "message": f"No data found in database for packages",
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        message = {el[0]: el[1] for el in response}
+
         src_pkg_hashes = {t["titer_srcrpm_hash"] for t in tasks}
 
         # create temporary table fro source package hashes
@@ -332,7 +371,8 @@ class LastTaskPackages(APIWorker):
                 retval[task_id] = {
                     "task_owner": subtask["task_owner"],
                     "task_changed": datetime_to_iso(subtask["task_changed"]),
-                    "packages": [],
+                    "task_message": message.get(task_id, ""),
+                    "packages": []
                 }
 
             pkg_info = {

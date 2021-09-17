@@ -394,6 +394,7 @@ last_packages_pkg_model = ns.model(
         "task_id": fields.Integer(description="task id"),
         "task_owner": fields.String(description="task owner"),
         "task_changed": fields.String(description="task completed at"),
+        "task_message": fields.String(description="task message"),
         "packages": fields.Nested(
             last_packages_el_model,
             description="task subtasks packages information",
