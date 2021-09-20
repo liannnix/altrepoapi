@@ -1,3 +1,4 @@
+import types
 from time import sleep
 from clickhouse_driver import Client, errors
 
@@ -56,19 +57,30 @@ class DBConnection:
         self.clickhouse_client.disconnect()
         return None
 
+    def _debug_sql_query_printout(self):
+        if not settings.SQL_DEBUG:
+            return
+        if isinstance(self.db_query, tuple):
+            # SQL query has params
+            if not isinstance(self.db_query[1], (list, tuple, types.GeneratorType)):
+                query = self.clickhouse_client.substitute_params(self.db_query[0], self.db_query[1])
+            else:
+                query = self.db_query[0]
+        else:
+            query = self.db_query
+
+        logger.debug(f"SQL request:\n{query}")
+
     def send_request(self, trace=False):
         response_status = False
 
         try:
+            self._debug_sql_query_printout()
             if isinstance(self.db_query, tuple):
-                if settings.SQL_DEBUG:
-                    logger.debug(f"SQL request:\n{self.db_query[0]}")
                 response = self.clickhouse_client.execute(
                     self.db_query[0], self.db_query[1]
                 )
             else:
-                if settings.SQL_DEBUG:
-                    logger.debug(f"SQL request:\n{self.db_query}")
                 response = self.clickhouse_client.execute(self.db_query)
             response_status = True
             logger.debug(f"SQL request elapsed {self.clickhouse_client.last_query.elapsed:.3f} seconds")
