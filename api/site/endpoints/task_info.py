@@ -234,15 +234,19 @@ class LastTaskPackages(APIWorker):
         self.task_owner = self.args["task_owner"]
 
         if self.task_owner is not None:
-            self.task_owner = f"AND task_owner = '{self.task_owner}'"
+            task_owner_sub = f"AND task_owner = %(task_owner)s"
         else:
             self.task_owner = ""
+            task_owner_sub = ""
 
-        self.conn.request_line = self.sql.get_last_subtasks_from_tasks.format(
-            branch=self.branch,
-            limit=self.tasks_limit,
-            limit2=(self.tasks_limit * 10),
-            task_owner=self.task_owner,
+        self.conn.request_line = (
+            self.sql.get_last_subtasks_from_tasks.format(task_owner_sub=task_owner_sub),
+            {
+                "branch": self.branch,
+                "task_owner": self.task_owner,
+                "limit": self.tasks_limit,
+                "limit2": (self.tasks_limit * 10),
+            },
         )
         status, response = self.conn.send_request()
         if not status:

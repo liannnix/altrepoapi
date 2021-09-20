@@ -388,14 +388,14 @@ last_tasks AS
     (
         SELECT DISTINCT task_id
         FROM Tasks
-        WHERE task_repo = '{branch}'
-            {task_owner}
-        ORDER BY task_changed DESC LIMIT {limit2}
+        WHERE task_repo = %(branch)s
+            {task_owner_sub}
+        ORDER BY task_changed DESC LIMIT %(limit2)s
     )
     AND task_state = 'DONE'
     ORDER BY
     task_changed DESC
-    LIMIT {limit}
+    LIMIT %(limit)s
 )
 SELECT * FROM
 (
@@ -432,8 +432,7 @@ SELECT * FROM
             FROM last_tasks
         )
     ) AS TSK USING (task_id,subtask_id, task_changed)
-    PREWHERE titer_srcrpm_hash != 0
-        AND (task_id, task_changed) IN
+    PREWHERE (task_id, task_changed) IN
         (
             SELECT
                 task_id,
