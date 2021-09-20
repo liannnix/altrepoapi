@@ -43,8 +43,9 @@ class Bugzilla(APIWorker):
 
     def get_bug_by_package(self):
         srcpkg_name = self.args["srcpkg_name"]
-        self.conn.request_line = self.sql.get_pkg_name_by_srcpkg.format(
-            srcpkg_name=srcpkg_name
+        self.conn.request_line = (
+            self.sql.get_pkg_name_by_srcpkg,
+            {"srcpkg_name": srcpkg_name},
         )
         status, response = self.conn.send_request()
         if not status:
