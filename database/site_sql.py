@@ -42,10 +42,47 @@ WHERE pkgset_name = '{branch}'
 ORDER BY pkg_name
 """
 
-    get_pkg_changelog = """
+    get_pkg_changelog_old = """
 SELECT changelog
 FROM PackageChangelog_view
 WHERE pkg_hash = {pkghash}
+"""
+
+    get_pkg_changelog = """
+WITH pkg_changelog AS
+    (
+        SELECT
+            pkg_hash,
+            pkg_changelog.date AS date,
+            pkg_changelog.name as name,
+            pkg_changelog.evr AS evr,
+            pkg_changelog.hash AS hash
+        FROM repodb.Packages
+ARRAY JOIN pkg_changelog
+        WHERE pkg_hash = %(pkghash)s
+    )
+SELECT
+    pkg_hash,
+    date,
+    name,
+    evr,
+    Chg.chlog_text as text
+FROM pkg_changelog
+LEFT JOIN
+(
+    SELECT DISTINCT
+        chlog_hash AS hash,
+        chlog_text
+    FROM repodb.Changelog_buffer
+    WHERE chlog_hash IN (
+        SELECT hash
+        FROM pkg_changelog
+    )
+) AS Chg ON Chg.hash = pkg_changelog.hash
+ORDER BY
+    date DESC,
+    evr DESC
+LIMIT %(limit)s
 """
 
     get_pkg_info = """

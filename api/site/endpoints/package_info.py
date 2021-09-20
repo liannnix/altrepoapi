@@ -33,7 +33,10 @@ class PackageChangelog(APIWorker):
 
     def get(self):
         self.chlog_length = self.args["changelog_last"]
-        self.conn.request_line = self.sql.get_pkg_changelog.format(pkghash=self.pkghash)
+        self.conn.request_line = (
+            self.sql.get_pkg_changelog,
+            {"pkghash": self.pkghash, "limit": self.chlog_length},
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -49,19 +52,8 @@ class PackageChangelog(APIWorker):
             )
             return self.error
 
-        changelog_list = []
-        for changelog in response[0]:
-            i = 0
-            for v in changelog:
-                changelog_dict = {}
-                changelog_dict["date"] = datetime_to_iso(v[0])
-                changelog_dict["name"] = v[1]
-                changelog_dict["evr"] = v[2]
-                changelog_dict["message"] = v[3]
-                changelog_list.append(changelog_dict)
-                i += 1
-                if i >= self.chlog_length:
-                    break
+        Changelog = namedtuple("Changelog", ["date", "name", "evr", "message"])
+        changelog_list = [Changelog(*el[1:])._asdict() for el in response]
 
         res = {
             "pkghash": str(self.pkghash),
@@ -262,7 +254,10 @@ class PackageInfo(APIWorker):
             return self.error
         bin_packages_list = [el[0] for el in response]
         # get package changelog
-        self.conn.request_line = self.sql.get_pkg_changelog.format(pkghash=self.pkghash)
+        self.conn.request_line = (
+            self.sql.get_pkg_changelog,
+            {"pkghash": self.pkghash, "limit": self.chlog_length},
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -278,19 +273,8 @@ class PackageInfo(APIWorker):
             )
             return self.error
 
-        changelog_list = []
-        for changelog in response[0]:
-            i = 0
-            for v in changelog:
-                changelog_dict = {}
-                changelog_dict["date"] = datetime_to_iso(v[0])
-                changelog_dict["name"] = v[1]
-                changelog_dict["evr"] = v[2]
-                changelog_dict["message"] = v[3]
-                changelog_list.append(changelog_dict)
-                i += 1
-                if i >= self.chlog_length:
-                    break
+        Changelog = namedtuple("Changelog", ["date", "name", "evr", "message"])
+        changelog_list = [Changelog(*el[1:])._asdict() for el in response]
 
         res = {
             "pkghash": str(self.pkghash),
@@ -369,7 +353,7 @@ class DeletedPackageInfo(APIWorker):
         self.conn.request_line = self.sql.get_srcpkg_hash_for_branch_on_date.format(
             name=self.name,
             branch=self.branch,
-            task_changed=delete_task_info["task_changed"]
+            task_changed=delete_task_info["task_changed"],
         )
         status, response = self.conn.send_request()
         if not status:
@@ -466,7 +450,9 @@ class LastPackagesWithCVEFix(APIWorker):
             ],
         )
 
-        packages = [dict(hash=str(el[0]), **PackageMeta(*el[1:])._asdict()) for el in response]
+        packages = [
+            dict(hash=str(el[0]), **PackageMeta(*el[1:])._asdict()) for el in response
+        ]
         for package in packages:
             package["changelog_date"] = datetime_to_iso(package["changelog_date"])
 
