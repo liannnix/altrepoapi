@@ -124,7 +124,6 @@ maintainer_info_args.add_argument(
     "branch", type=str, required=True, help="name of packageset", location="args"
 )
 
-
 maintainer_branches_args = reqparse.RequestParser()
 maintainer_branches_args.add_argument(
     "maintainer_nickname",
@@ -132,4 +131,9 @@ maintainer_branches_args.add_argument(
     required=True,
     help="nickname of maintainer",
     location="args",
+)
+
+pkgs_with_cve_fix_args = reqparse.RequestParser()
+pkgs_with_cve_fix_args.add_argument(
+    "branch", type=str, required=True, help="name of packageset", location="args"
 )

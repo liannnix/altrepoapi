@@ -259,8 +259,9 @@ pkgsets_by_hash_model = ns.model(
 all_maintainers_el_model = ns.model(
     "AllMaintainersElementModel",
     {
-        "pkg_packager": fields.String(description="Name maintainers"),
-        "pkg_packager_email": fields.String(description="Email maintainers"),
+        "pkg_packager": fields.String(description="Maintainer's name"),
+        "pkg_packager_email": fields.String(description="Maintainer's email"),
+        "packager_nickname": fields.String(description="Maintainer's nickname"),
         "count_source_pkg": fields.Integer(description="Number of source packages"),
     },
 )
@@ -429,4 +430,30 @@ deleted_package_model = ns.model(
         "subtask_owner": fields.String(attribute="subtask_userid", description="subtask created by"),
         "task_changed": fields.String(description="task completed at"),
     }
+)
+
+last_pkgs_with_cve_fix_el_model = ns.model(
+    "SiteLastPackagesWithCVEFixesElementModel",
+    {
+        "hash": fields.String(description="package hash UInt64 as string"),
+        "name": fields.String(description="package name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "summary": fields.String(description="package summary"),
+        "buildtime": fields.Integer(description="package buildtime"),
+        "changelog_date": fields.String(description="package last changelog date (ISO 8601 format)"),
+        "changelog_text": fields.String(description="package last changelog text"),
+    }
+)
+last_pkgs_with_cve_fix_model = ns.model(
+    "SiteLastPackagesWithCVEFixesModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "packages": fields.Nested(
+            last_pkgs_with_cve_fix_el_model,
+            description="last packages with CVE fixes information",
+            as_list=True,
+        ),
+    },
 )

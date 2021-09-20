@@ -4,6 +4,7 @@ from flask_restx import Resource, abort, Namespace
 from utils import get_logger, url_logging, response_error_parser
 
 from .endpoints.package_info import PackageInfo, PackageChangelog, DeletedPackageInfo
+from .endpoints.package_info import LastPackagesWithCVEFix
 from .endpoints.pkgset_packages import PackagesetPackages, PackagesetPackageHash
 from .endpoints.packager_info import AllMaintainers, MaintainerInfo, MaintainerPackages
 from .endpoints.packager_info import MaintainerBranches, RepocopByMaintainer
@@ -27,6 +28,7 @@ from .parsers import (
     last_pkgs_args,
     pkgset_categories_args,
     all_archs_args,
+    pkgs_with_cve_fix_args,
 )
 from .serializers import (
     pkgset_packages_model,
@@ -45,7 +47,8 @@ from .serializers import (
     fing_pkgs_by_name_model,
     pkgsets_by_hash_model,
     last_packages_model,
-    deleted_package_model
+    deleted_package_model,
+    last_pkgs_with_cve_fix_model,
 )
 
 logger = get_logger(__name__)
@@ -299,7 +302,10 @@ class routeAllPackagesets(Resource):
     "/all_pkgset_archs",
     doc={
         "description": "Get binary package archs list",
-        "responses": {404: "Data not found in database"},
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Data not found in database",
+        },
     },
 )
 class routeAllPackagesetArchs(Resource):
@@ -326,7 +332,10 @@ class routeAllPackagesetArchs(Resource):
     "/all_pkgset_archs_with_src_count",
     doc={
         "description": ("Get binary package archs list " "with source packages count"),
-        "responses": {404: "Data not found in database"},
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Data not found in database",
+        },
     },
 )
 class routeAllPackagesetArchs(Resource):
@@ -443,11 +452,12 @@ class routePackagsetsByHash(Resource):
             abort(code, **response_error_parser(result))
         return result, code
 
-
+@ns.deprecated
+@ns.route("/all_maintainers") 
 @ns.route(
-    "/all_maintainers",
+    "/all_maintainers_with_emails",
     doc={
-        "description": "List of all maintainers",
+        "description": "List of all maintainers in branch with emails",
         "responses": {
             400: "Request parameters validation error",
             404: "Package not found in database",
@@ -468,7 +478,37 @@ class routeMaintainersAll(Resource):
                 args=args,
                 validation_message=wrk.validation_results,
             )
-        result, code = wrk.get()
+        result, code = wrk.get_with_emails()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route(
+    "/all_maintainers_with_nicknames",
+    doc={
+        "description": "List of all maintainers in branch with nicknames",
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package not found in database",
+        },
+    },
+)
+class routeMaintainersAll(Resource):
+    @ns.expect(all_maintainers_args)
+    @ns.marshal_list_with(all_maintainers_model)
+    def get(self):
+        args = all_maintainers_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        wrk = AllMaintainers(g.connection, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get_with_nicknames()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
@@ -641,6 +681,39 @@ class routeDeletedPackageInfo(Resource):
         args = pkgset_pkghash_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = DeletedPackageInfo(g.connection, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route(
+    "/last_packages_with_cve_fixed",
+    doc={
+        "description": (
+            "Get information about last packages with CVE "
+            "fixes mentioned in changelog"
+        ),
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package deletion info not found in database",
+        },
+    },
+)
+class routeLastPackagesWithCVEFix(Resource):
+    @ns.expect(pkgs_with_cve_fix_args)
+    @ns.marshal_with(last_pkgs_with_cve_fix_model)
+    def get(self):
+        args = pkgs_with_cve_fix_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        wrk = LastPackagesWithCVEFix(g.connection, **args)
         if not wrk.check_params():
             abort(
                 400,
