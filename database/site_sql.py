@@ -34,9 +34,9 @@ LEFT JOIN
         chlog_text
     FROM Changelog
 ) AS CHLG ON CHLG.chlog_hash = (pkg_changelog.hash[1])
-WHERE pkgset_name = '{branch}'
+WHERE pkgset_name = %(branch)s
     AND pkg_sourcepackage IN {src}
-    AND pkg_buildtime >= {buildtime}
+    AND pkg_buildtime >= %(buildtime)s
     AND pkg_name NOT LIKE '%%-debuginfo'
     {group}
 ORDER BY pkg_name
@@ -521,7 +521,6 @@ WHERE pkg_hash IN
     WHERE pkgset_name = '{branch}'
         AND pkg_sourcepackage IN {sourcef}
         AND pkg_name NOT LIKE '%%-debuginfo'
-    
 )
 GROUP BY pkg_group_
 ORDER BY pkg_group_ ASC

@@ -59,15 +59,17 @@ class PackagesetPackages(APIWorker):
         self.buildtime = self.args["buildtime"]
 
         if self.group is not None:
-            self.group = f"AND pkg_group_ like '{self.group}%'"
+            group = f"AND pkg_group_ = %(group)s"
         else:
+            group = ""
             self.group = ""
 
         pkg_type_to_sql = {"source": (1,), "binary": (0,), "all": (1, 0)}
         sourcef = pkg_type_to_sql[self.pkg_type]
 
-        self.conn.request_line = self.sql.get_repo_packages.format(
-            buildtime=self.buildtime, branch=self.branch, group=self.group, src=sourcef
+        self.conn.request_line = (
+            self.sql.get_repo_packages.format(src=sourcef, group=group),
+            {"buildtime": self.buildtime, "branch": self.branch, "group": self.group},
         )
         status, response = self.conn.send_request()
         if not status:
@@ -386,11 +388,7 @@ class PkgsetCategoriesCount(APIWorker):
             )
             return self.error
 
-        cat_raw = {el[0]: el[1] for el in response}
-        res = []
-        for cat in lut.pkg_groups:
-            cnt = sum([v for k, v in cat_raw.items() if k.startswith(cat)])
-            res.append({"category": cat, "count": cnt})
+        res = [{"category": el[0], "count": el[1]} for el in response]
 
         res = {"request_args": self.args, "length": len(res), "categories": res}
         return res, 200
