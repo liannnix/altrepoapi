@@ -62,7 +62,7 @@ WITH bugs AS
             bz_assignee
         FROM Bugzilla
         WHERE (bz_assignee LIKE '{maintainer_nickname}'
-            OR bz_assignee LIKE '{maintainer_nickname}%')
+            OR bz_assignee LIKE '{maintainer_nickname}@%')
     )
 SELECT *
 FROM
