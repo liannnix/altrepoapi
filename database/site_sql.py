@@ -542,20 +542,7 @@ WHERE (pkgset_ruuid IN
 )) AND (pkgset_depth = 0)
 """
 
-    get_all_maintainers_with_emails = """
-SELECT
-    pkg_packager,
-    pkg_packager_email,
-    countDistinct(pkg_hash) as cnt
-FROM last_packages
-WHERE pkg_sourcepackage = 1
-    AND pkgset_name = '{branch}'
-GROUP BY
-    pkg_packager,
-    pkg_packager_email
-"""
-
-    get_all_maintaners_with_nicknames = """
+    get_all_maintaners = """
 SELECT
     argMax(pkg_packager, cnt) AS name,
     argMax(packager_nick, cnt) AS nick,

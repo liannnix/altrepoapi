@@ -32,12 +32,11 @@ class AllMaintainers(APIWorker):
         else:
             return True
 
-    def get_with_emails(self):
-        return {"message": "API endpoint removed"}, 410
-
     def get(self):
         branch = self.args["branch"]
-        self.conn.request_line = self.sql.get_all_maintaners_with_nicknames.format(branch=branch, where_clause="")
+        self.conn.request_line = self.sql.get_all_maintaners.format(
+            branch=branch, where_clause=""
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -58,7 +57,7 @@ class AllMaintainers(APIWorker):
         res = {"request_args": self.args, "length": len(res), "maintainers": res}
 
         return res, 200
-    
+
 
 class MaintainerInfo(APIWorker):
     """Retrieves maintainer's packages summary from last package sets."""
@@ -336,10 +335,9 @@ class RepocopByMaintainer(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database",
-                 "args": self.args},
+                {"message": f"No data not found in database", "args": self.args},
                 self.ll.INFO,
-                404
+                404,
             )
             return self.error
         res = [MaintainerRepocop(*el)._asdict() for el in response]
