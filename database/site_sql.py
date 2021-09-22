@@ -559,7 +559,7 @@ GROUP BY
 SELECT
     argMax(pkg_packager, cnt) AS name,
     argMax(packager_nick, cnt) AS nick,
-    max(cnt) AS count
+    sum(cnt) AS count
 FROM
 (
     SELECT DISTINCT
