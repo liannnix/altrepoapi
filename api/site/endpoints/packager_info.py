@@ -51,7 +51,7 @@ class AllMaintainers(APIWorker):
             return self.error
 
         res = [
-            {"pkg_packager": m[0], "pkg_packager_email": "", "packager_nickname": m[1], "count_source_pkg": m[2]}
+            {"packager_name": m[0], "packager_nickname": m[1], "count_source_pkg": m[2]}
             for m in response
         ]
 
