@@ -569,9 +569,7 @@ SELECT
     pkgset_name,
     countDistinct(pkg_hash)
 FROM last_packages
-WHERE (pkg_packager_email LIKE '{maintainer_nickname}@%' 
-    OR pkg_packager_email LIKE '{maintainer_nickname} at%'
-    OR pkg_packager LIKE '%{maintainer_nickname}@%')
+WHERE pkg_packager_email LIKE '{maintainer_nickname}@%'
     AND pkg_sourcepackage = 1
 GROUP BY
     pkgset_name    
@@ -586,9 +584,7 @@ SELECT
     pkg_version,
     pkg_release
 FROM last_packages
-WHERE (pkg_packager_email LIKE '{maintainer_nickname}@%' 
-    OR pkg_packager_email LIKE '{maintainer_nickname} at%'
-    OR pkg_packager LIKE '%{maintainer_nickname}@%')
+WHERE pkg_packager_email LIKE '{maintainer_nickname}@%'
     and pkgset_name = '{branch}'
     and pkg_sourcepackage = 1
 GROUP BY
