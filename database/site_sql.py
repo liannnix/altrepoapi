@@ -557,7 +557,7 @@ GROUP BY
 
     get_all_maintaners_with_nicknames = """
 SELECT
-    argMax(pkg_packager) AS name,
+    argMax(pkg_packager, cnt) AS name,
     argMax(packager_nick, cnt) AS nick,
     max(cnt) AS count
 FROM
