@@ -33,41 +33,11 @@ class AllMaintainers(APIWorker):
             return True
 
     def get_with_emails(self):
+        return {"message": "API endpoint removed"}, 410
+
+    def get(self):
         branch = self.args["branch"]
-        self.conn.request_line = self.sql.get_all_maintainers_with_emails.format(branch=branch)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
-        if not response:
-            self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
-                self.ll.INFO,
-                404,
-            )
-            return self.error
-
-        maintainers = sorted([(*el,) for el in response], key=lambda val: val[0])
-
-        def nickname_from_email(email):
-            if "@" in email:
-                return email.split("@")[0].strip()
-            if " at " in email:
-                return email.split(" at ")[0].strip()
-            return ""
-
-        res = [
-            {"pkg_packager": m[0], "pkg_packager_email": m[1], "packager_nickname": nickname_from_email(m[1]), "count_source_pkg": m[2]}
-            for m in maintainers
-        ]
-
-        res = {"request_args": self.args, "length": len(res), "maintainers": res}
-
-        return res, 200
-
-    def get_with_nicknames(self):
-        branch = self.args["branch"]
-        self.conn.request_line = self.sql.get_all_maintaners_with_nicknames.format(branch=branch)
+        self.conn.request_line = self.sql.get_all_maintaners_with_nicknames.format(branch=branch, where_clause="")
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)

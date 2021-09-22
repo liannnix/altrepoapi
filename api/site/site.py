@@ -452,8 +452,8 @@ class routePackagsetsByHash(Resource):
             abort(code, **response_error_parser(result))
         return result, code
 
+
 @ns.deprecated
-@ns.route("/all_maintainers") 
 @ns.route(
     "/all_maintainers_with_emails",
     doc={
@@ -466,7 +466,7 @@ class routePackagsetsByHash(Resource):
 )
 class routeMaintainersAll(Resource):
     @ns.expect(all_maintainers_args)
-    @ns.marshal_list_with(all_maintainers_model)
+    # @ns.marshal_list_with(all_maintainers_model)
     def get(self):
         args = all_maintainers_args.parse_args(strict=True)
         url_logging(logger, g.url)
@@ -485,13 +485,15 @@ class routeMaintainersAll(Resource):
 
 
 @ns.route(
-    "/all_maintainers_with_nicknames",
-    doc={
-        "description": "List of all maintainers in branch with nicknames",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+    "/all_maintainers",
+    doc={"description": "alias for /all_maintainers_with_nicknames"}
+)
+@ns.route("/all_maintainers_with_nicknames")
+@ns.doc(
+    description="List of maintainers in branch with nicknames and source packages count",
+    responses={
+        400: "Request parameters validation error",
+        404: "Package not found in database",
     },
 )
 class routeMaintainersAll(Resource):
@@ -508,7 +510,7 @@ class routeMaintainersAll(Resource):
                 args=args,
                 validation_message=wrk.validation_results,
             )
-        result, code = wrk.get_with_nicknames()
+        result, code = wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code

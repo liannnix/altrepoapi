@@ -573,6 +573,7 @@ FROM
         pkg_packager,
         packager_nick
 )
+{where_clause}
 GROUP BY packager_nick ORDER by name
 """
 
