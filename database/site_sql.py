@@ -564,20 +564,6 @@ FROM
 GROUP BY packager_nick ORDER by name
 """
 
-    get_maintainer_info = """
-SELECT
-    groupUniqArray(pkg_packager),
-    groupUniqArray(pkg_packager_email),
-    toDateTime(max(pkg_buildtime)),
-    countIf(pkg_sourcepackage, pkg_sourcepackage=1) as src,
-    countIf(pkg_sourcepackage, pkg_sourcepackage=0) as bin
-FROM last_packages
-WHERE (pkg_packager_email LIKE '{maintainer_nickname}@%'
-    OR pkg_packager_email LIKE '{maintainer_nickname} at%'
-    OR pkg_packager LIKE '%{maintainer_nickname}@%')
-    AND pkgset_name = '{branch}'
-"""
-
     get_maintainer_branches = """
 SELECT
     pkgset_name,

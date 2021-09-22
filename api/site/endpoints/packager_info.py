@@ -93,8 +93,12 @@ class MaintainerInfo(APIWorker):
     def get(self):
         maintainer_nickname = self.args["maintainer_nickname"]
         branch = self.args["branch"]
-        self.conn.request_line = self.sql.get_maintainer_info.format(
-            maintainer_nickname=maintainer_nickname, branch=branch
+        where_clause = "WHERE packager_nick = %(nickname)s"
+        self.conn.request_line = (
+            self.sql.get_all_maintaners.format(
+                branch=branch, where_clause=where_clause
+            ),
+            {"nickname": maintainer_nickname},
         )
         status, response = self.conn.send_request()
         if not status:
@@ -103,7 +107,7 @@ class MaintainerInfo(APIWorker):
         if not response or response[0][0] == []:
             self._store_error(
                 {
-                    "message": f"No data found in database for {maintainer_nickname} {branch}",
+                    "message": f"No data found in database for {maintainer_nickname} on {branch}",
                     "args": self.args,
                 },
                 self.ll.INFO,
@@ -114,15 +118,12 @@ class MaintainerInfo(APIWorker):
         MaintainersInfo = namedtuple(
             "MaintainersInfoModel",
             [
-                "maintainer_name",
-                "maintainer_email",
-                "last_buildtime",
-                "count_source_pkg",
-                "count_binary_pkg",
+                "packager_name",
+                "packager_nickname",
+                "count_source_pkg"
             ],
         )
         res = MaintainersInfo(*response[0])._asdict()
-        res["last_buildtime"] = datetime_to_iso(res["last_buildtime"])
         res = {"request_args": self.args, "information": res}
 
         return res, 200

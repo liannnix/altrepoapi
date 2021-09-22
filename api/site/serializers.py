@@ -275,22 +275,12 @@ all_maintainers_model = ns.model(
     },
 )
 
-maintainer_info_el_model = ns.model(
-    "MaintainerInfoElementModel",
-    {
-        "maintainer_name": fields.Raw(description="Maintainer nickname"),
-        "maintainer_email": fields.Raw(description="Maintainer email"),
-        "last_buildtime": fields.String(description="Last buildtime"),
-        "count_source_pkg": fields.Integer(description="Number of source packages"),
-        "count_binary_pkg": fields.Integer(description="Number of binary packages"),
-    },
-)
 maintainer_info_model = ns.model(
     "MaintainerInfoModel",
     {
         "request_args": fields.Raw(description="request arguments"),
         "information": fields.Nested(
-            maintainer_info_el_model, description="maintainers info"
+            all_maintainers_el_model, description="maintainers info"
         ),
     },
 )
