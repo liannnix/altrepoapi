@@ -446,3 +446,33 @@ last_pkgs_with_cve_fix_model = ns.model(
         ),
     },
 )
+
+all_pkgsets_summary_counts_model = ns.model(
+    "SiteAllPackagesetsSummaryCountsModel",
+    {
+        "arch": fields.String(description="binary packages arch"),
+        "count": fields.Integer(description="source packages count"),
+    },
+)
+all_pkgsets_summary_branches_model = ns.model(
+    "SiteAllPackagesetsSummaryBranchesModel",
+    {
+        "branch": fields.String(description="package set name"),
+        "packages_count": fields.Nested(
+            all_pkgsets_summary_counts_model,
+            description="list of source packages count by binary packages archs",
+            as_list=True,
+        ),
+    },
+)
+all_pkgsets_summary_model = ns.model(
+    "SiteAllPackagesetsSummaryModel",
+    {
+        "length": fields.Integer(description="number of packages found"),
+        "branches": fields.Nested(
+            all_pkgsets_summary_branches_model,
+            description="list of branches with source packages count",
+            as_list=True,
+        ),
+    },
+)

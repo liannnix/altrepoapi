@@ -330,6 +330,34 @@ class AllPackagesets(APIWorker):
         res = {"length": len(res), "branches": res}
         return res, 200
 
+    def get_summary(self):
+        self.conn.request_line = self.sql.get_all_pkgsets_with_src_cnt_by_bin_archs
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {"message": f"No data not found in database", "args": self.args},
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        PkgCount = namedtuple("PkgCount", ["branch", "arch", "count"])
+        counts = {}
+
+        for cnt in [PkgCount(*el) for el in response]:
+            if cnt.branch not in counts:
+                counts[cnt.branch] = []
+            counts[cnt.branch].append({"arch": cnt.arch, "count": cnt.count})
+
+        # sort package counts by branch
+        res = [{"branch": br, "packages_count": counts[br]} for br in sort_branches(counts.keys())]
+
+        res = {"length": len(res), "branches": res}
+        return res, 200
+
 
 class PkgsetCategoriesCount(APIWorker):
     """Retrieves package sets categories and packages count."""

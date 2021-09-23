@@ -412,6 +412,37 @@ WHERE pkg_sourcepackage = 0
 GROUP BY pkg_arch
 """
 
+    get_all_pkgsets_with_src_cnt_by_bin_archs = """
+SELECT * FROM
+(
+	SELECT
+		pkgset_name,
+	    pkg_arch,
+	    countDistinct(src_pkg_name) AS cnt
+	FROM last_packages
+	LEFT JOIN
+	(
+	    SELECT
+	        pkg_hash,
+	        pkg_name AS src_pkg_name
+	    FROM Packages
+	    WHERE pkg_sourcepackage = 1
+	) AS P ON P.pkg_hash = last_packages.pkg_srcrpm_hash
+	WHERE pkg_sourcepackage = 0
+	    AND pkg_arch != 'x86_64-i586'
+	GROUP BY pkgset_name, pkg_arch
+	UNION ALL
+	SELECT
+	    pkgset_name,
+	    'srpm',
+	    count(pkg_hash)
+	FROM static_last_packages
+	WHERE pkg_sourcepackage = 1
+	GROUP BY pkgset_name
+)
+ORDER BY pkgset_name , cnt DESC
+"""
+
     get_last_subtasks_from_tasks = """
 WITH
 last_tasks AS
