@@ -476,6 +476,7 @@ SELECT * FROM
         TSK.subtask_type,
         TSK.subtask_package,
         TSK.subtask_srpm_name,
+        TSK.subtask_pkg_from,
         titer_srcrpm_hash
     FROM TaskIterations
     LEFT JOIN
@@ -488,9 +489,9 @@ SELECT * FROM
             subtask_userid,
             subtask_type,
             subtask_package,
-            subtask_srpm_name
-        FROM
-            Tasks
+            subtask_srpm_name,
+            subtask_pkg_from
+        FROM Tasks
         PREWHERE subtask_deleted = 0
         AND (task_id, task_changed) IN
         (

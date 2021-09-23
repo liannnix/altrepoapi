@@ -274,6 +274,7 @@ class LastTaskPackages(APIWorker):
                 "subtask_type",
                 "subtask_package",
                 "subtask_srpm_name",
+                "subtask_pkg_from",
                 "titer_srcrpm_hash",
                 "task_message",
             ],
@@ -351,6 +352,10 @@ class LastTaskPackages(APIWorker):
 
             if subtask["subtask_type"] in ("gear", "srpm"):
                 pkg_info["subtask_type"] = "build"
+            elif subtask["subtask_type"] == 'rebuild':
+                # if task rebuilt from another branch then change type to 'build'
+                if subtask["subtask_pkg_from"] != self.branch:
+                    pkg_info["subtask_type"] = "build"
             else:
                 pkg_info["subtask_type"] = subtask["subtask_type"]
 
