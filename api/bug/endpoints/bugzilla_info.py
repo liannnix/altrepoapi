@@ -63,9 +63,8 @@ class Bugzilla(APIWorker):
             return self.error
         packages = {el[0] for el in response}
         packages.add(srcpkg_name)
-        packages_regex = [f"^{el}$" for el in packages]
         self.conn.request_line = self.sql.get_bugzilla_info_by_srcpkg.format(
-            packages=packages_regex
+            packages=tuple(packages)
         )
         status, response = self.conn.send_request()
         if not status:

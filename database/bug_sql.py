@@ -24,7 +24,7 @@ WITH bugs AS
             bz_id,
             bz_component
         FROM Bugzilla
-        WHERE multiMatchAny(bz_component, {packages})
+        WHERE bz_component IN {packages}
     )
 SELECT *
 FROM
