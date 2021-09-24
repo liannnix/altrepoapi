@@ -148,7 +148,7 @@ class PackageInfo(APIWorker):
                 "summary",
                 "description",
                 "packager",
-                "packager_email",
+                "packager_nickname",
                 "category",
             ],
         )
@@ -216,7 +216,7 @@ class PackageInfo(APIWorker):
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
-        pkg_maintainers = [{"name": el[0], "email": el[1]} for el in response]
+        pkg_maintainers = [el[0] for el in response]
         # get package ACLs
         pkg_acl = []
         self.conn.request_line = self.sql.get_pkg_acl.format(
@@ -274,7 +274,9 @@ class PackageInfo(APIWorker):
             return self.error
 
         Changelog = namedtuple("Changelog", ["date", "name", "evr", "message"])
-        changelog_list = [Changelog(*el[1:])._asdict() for el in response]
+        changelog_list = [
+            Changelog(datetime_to_iso(el[1]), *el[2:])._asdict() for el in response
+        ]
 
         res = {
             "pkghash": str(self.pkghash),

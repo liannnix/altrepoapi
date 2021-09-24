@@ -11,13 +11,6 @@ package_info_changelog_el_model = ns.model(
         "message": fields.String(description="changelog message"),
     },
 )
-package_maintaners_el_model = ns.model(
-    "SitePackageInfoMaintainersElementModel",
-    {
-        "name": fields.String(description="maintainer name"),
-        "email": fields.String(description="maintainer email"),
-    },
-)
 package_versions_el_model = ns.model(
     "SitePackageVersionsElementModel",
     {
@@ -51,9 +44,10 @@ package_info_model = ns.model(
         "summary": fields.String(description="package summary"),
         "description": fields.String(description="package description"),
         "packager": fields.String(description="package packager name"),
-        "packager_email": fields.String(description="package packager email"),
+        "packager_nickname": fields.String(description="package packager nickname"),
         "packages": fields.List(fields.String, description="bunary packages"),
         "acl": fields.List(fields.String, description="bunary packages"),
+        "maintainers": fields.List(fields.String, description="all maintainer's nicknames"),
         "tasks": fields.Nested(
             package_info_tasks_el_model, as_list=True, description="package tasks"
         ),
@@ -61,11 +55,6 @@ package_info_model = ns.model(
             package_info_changelog_el_model,
             as_list=True,
             description="package changelog",
-        ),
-        "maintainers": fields.Nested(
-            package_maintaners_el_model,
-            as_list=True,
-            description="all package maintainers",
         ),
         "versions": fields.Nested(
             package_versions_el_model, as_list=True, description="all package versions"

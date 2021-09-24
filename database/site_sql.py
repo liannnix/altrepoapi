@@ -96,7 +96,7 @@ SELECT
     pkg_summary,
     pkg_description,
     pkg_packager,
-    pkg_packager_email,
+    substring(pkg_packager_email, 1, position(pkg_packager_email, '@') - 1) AS packager_nick,
     pkg_group_
 FROM Packages
 WHERE pkg_hash = {pkghash}
@@ -104,8 +104,7 @@ WHERE pkg_hash = {pkghash}
 
     get_pkg_maintaners = """
 SELECT DISTINCT
-    pkg_packager,
-    pkg_packager_email
+    substring(pkg_packager_email, 1, position(pkg_packager_email, '@') - 1) AS packager_nick
 FROM Packages
 WHERE pkg_name = '{name}'
     AND pkg_sourcepackage = 1
