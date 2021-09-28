@@ -220,6 +220,9 @@ email_match = re.compile("(<.+@?.+>)+")
 
 def get_nickname_from_packager(packager):
     m = email_match.search(packager)
+    if m is None:
+        # return original string if no regex match found
+        return packager
     email_ = m.group(1).strip().replace(" at ", "@")
     email_ = email_.lstrip("<")
     nickname = email_.split('@')[0]
