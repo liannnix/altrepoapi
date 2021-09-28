@@ -521,6 +521,7 @@ SELECT DISTINCT
     pkg_release,
     pkg_buildtime,
     pkg_summary,
+    pkg_changelog.name[1],
     pkg_changelog.date[1],
     CHLG.chlog_text
 FROM Packages

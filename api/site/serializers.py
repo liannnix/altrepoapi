@@ -361,6 +361,9 @@ last_packages_el_model = ns.model(
         "buildtime": fields.Integer(
             attribute="pkg_buildtime", description="package buildtime"
         ),
+        "changelog_name": fields.String(
+            description="package last changelog name"
+        ),
         "changelog_date": fields.String(
             description="package last changelog message date"
         ),

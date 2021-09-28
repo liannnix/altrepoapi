@@ -327,6 +327,7 @@ class LastTaskPackages(APIWorker):
                 "pkg_release",
                 "pkg_buildtime",
                 "pkg_summary",
+                "changelog_name",
                 "changelog_date",
                 "changelog_text",
             ],
