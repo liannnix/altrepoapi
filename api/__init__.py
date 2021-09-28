@@ -16,7 +16,7 @@ authorizations = {
 }
 
 api = Api(
-    version="1.2",
+    version="1.3",
     title="altrepodb",
     description="altrepodb API",
     default="api",
