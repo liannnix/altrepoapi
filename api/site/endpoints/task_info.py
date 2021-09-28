@@ -1,6 +1,6 @@
 from collections import namedtuple
 
-from utils import datetime_to_iso
+from utils import datetime_to_iso, get_nickname_from_packager
 
 from api.base import APIWorker
 from api.misc import lut
@@ -376,6 +376,7 @@ class LastTaskPackages(APIWorker):
                     self.logger.warning(f"No package info. Skip task {task_id}")
                     continue
                 pkg_info["changelog_date"] = datetime_to_iso(pkg_info["changelog_date"])
+                pkg_info["changelog_nickname"] = get_nickname_from_packager(pkg_info["changelog_name"])
             else:
                 pkg_info["pkg_hash"] = ""
                 for k in ("subtask_package", "subtask_srpm_name"):

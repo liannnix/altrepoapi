@@ -47,7 +47,9 @@ package_info_model = ns.model(
         "packager_nickname": fields.String(description="package packager nickname"),
         "packages": fields.List(fields.String, description="bunary packages"),
         "acl": fields.List(fields.String, description="bunary packages"),
-        "maintainers": fields.List(fields.String, description="all maintainer's nicknames"),
+        "maintainers": fields.List(
+            fields.String, description="all maintainer's nicknames"
+        ),
         "tasks": fields.Nested(
             package_info_tasks_el_model, as_list=True, description="package tasks"
         ),
@@ -361,8 +363,9 @@ last_packages_el_model = ns.model(
         "buildtime": fields.Integer(
             attribute="pkg_buildtime", description="package buildtime"
         ),
-        "changelog_name": fields.String(
-            description="package last changelog name"
+        "changelog_name": fields.String(description="package last changelog name"),
+        "changelog_nickname": fields.String(
+            description="package last changelog nickname"
         ),
         "changelog_date": fields.String(
             description="package last changelog message date"
@@ -408,9 +411,11 @@ deleted_package_model = ns.model(
         "task_id": fields.Integer(description="task id"),
         "subtask_id": fields.Integer(description="subtask id"),
         "task_owner": fields.String(description="task created by"),
-        "subtask_owner": fields.String(attribute="subtask_userid", description="subtask created by"),
+        "subtask_owner": fields.String(
+            attribute="subtask_userid", description="subtask created by"
+        ),
         "task_changed": fields.String(description="task completed at"),
-    }
+    },
 )
 
 last_pkgs_with_cve_fix_el_model = ns.model(
@@ -422,9 +427,11 @@ last_pkgs_with_cve_fix_el_model = ns.model(
         "release": fields.String(description="package release"),
         "summary": fields.String(description="package summary"),
         "buildtime": fields.Integer(description="package buildtime"),
-        "changelog_date": fields.String(description="package last changelog date (ISO 8601 format)"),
+        "changelog_date": fields.String(
+            description="package last changelog date (ISO 8601 format)"
+        ),
         "changelog_text": fields.String(description="package last changelog text"),
-    }
+    },
 )
 last_pkgs_with_cve_fix_model = ns.model(
     "SiteLastPackagesWithCVEFixesModel",
