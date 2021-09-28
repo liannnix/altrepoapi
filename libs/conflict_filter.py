@@ -19,7 +19,7 @@ SELECT DISTINCT
     dp_name,
     dp_version,
     dp_flag
-FROM Depends_buffer
+FROM Depends
 WHERE pkg_hash IN %(hshs)s
     AND dp_type IN ('conflict', 'provide', 'obsolete')
 """
@@ -31,7 +31,7 @@ SELECT
     pkg_version,
     pkg_release,
     pkg_disttag
-FROM Packages_buffer
+FROM Packages
 WHERE pkg_hash IN %(hshs)s
 """
 
