@@ -470,7 +470,7 @@ FROM
             SELECT
                 pkg_hash,
                 file_hashname
-            FROM Files_buffer
+            FROM Files
             PREWHERE file_hashname IN
             (
                 SELECT file_hashname
@@ -493,7 +493,7 @@ FROM
                 SELECT
                     pkg_hash,
                     file_hashname
-                FROM Files_buffer
+                FROM Files
                 WHERE pkg_hash IN %(hshs)s AND file_class != 'directory'
             ) AS InPkg USING file_hashname
         GROUP BY (InPkg.pkg_hash, pkg_hash)
@@ -503,8 +503,8 @@ FROM
         SELECT
             pkg_name AS foundpkgname,
             pkg_hash
-        FROM last_packages
-        WHERE pkgset_name = %(branch)s AND pkg_sourcepackage = 0
+        FROM Packages
+        WHERE pkg_sourcepackage = 0
     ) AS pkgCom ON Sel1.pkg_hash = pkgCom.pkg_hash
 ) AS Sel2
 LEFT JOIN
@@ -512,8 +512,8 @@ LEFT JOIN
     SELECT
         pkg_name AS inpkgname,
         pkg_hash
-    FROM last_packages
-    WHERE pkgset_name = %(branch)s AND pkg_sourcepackage = 0
+    FROM Packages
+    WHERE pkg_sourcepackage = 0
 ) AS pkgIn ON pkgIn.pkg_hash = InPkg.pkg_hash
 WHERE foundpkgname != inpkgname
 """
@@ -521,7 +521,7 @@ WHERE foundpkgname != inpkgname
     misconflict_get_fnames_by_fnhashs = """
 SELECT fn_hash,
        fn_name
-FROM FileNames_buffer
+FROM FileNames
 WHERE fn_hash IN %(hshs)s
 """
 
@@ -529,7 +529,7 @@ WHERE fn_hash IN %(hshs)s
 SELECT
     pkg_name,
     groupUniqArray(pkg_arch)
-FROM Packages_buffer
+FROM Packages
 WHERE pkg_hash IN {hshs}
 GROUP BY pkg_name
 """

@@ -22,7 +22,7 @@ class MisconflictPackages(APIWorker):
         self.result = {}
         super().__init__()
 
-    def build_dependencies(self):
+    def build_dependencies(self, pkg_hashes=None):
         # do all kind of black magic here
         self.packages = tuple(self.packages)
         if self.archs:
@@ -32,47 +32,50 @@ class MisconflictPackages(APIWorker):
             self.archs = lut.default_archs
         self.archs = tuple(self.archs)
 
-        # get hash for package names
-        self.conn.request_line = (
-            self.sql.misconflict_get_hshs_by_pkgs,
-            {"pkgs": self.packages, "branch": self.branch, "arch": self.archs},
-        )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return
-        if not response:
-            self._store_error(
-                {
-                    "message": (
-                        f"Packages {list(self.packages)} not in package set '{self.branch}'"
-                        f" for archs {list(self.archs)}"
-                    )
-                },
-                self.ll.INFO,
-                404,
+        if not pkg_hashes:
+            # get hash for package names
+            self.conn.request_line = (
+                self.sql.misconflict_get_hshs_by_pkgs,
+                {"pkgs": self.packages, "branch": self.branch, "arch": self.archs},
             )
-            return
+            status, response = self.conn.send_request()
+            if status is False:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return
+            if not response:
+                self._store_error(
+                    {
+                        "message": (
+                            f"Packages {list(self.packages)} not in package set '{self.branch}'"
+                            f" for archs {list(self.archs)}"
+                        )
+                    },
+                    self.ll.INFO,
+                    404,
+                )
+                return
 
-        # check the existence of a package by comparing the number of input
-        # and selected from database
-        # form a list of package hashes
-        input_pkg_hshs = tuple({pkg[0] for pkg in response})
-        input_pkgs_names = {pkg[1] for pkg in response}
-        if len(input_pkgs_names) != len(self.packages):
-            # return utils.json_str_error("Error of input data.")
-            self._store_error(
-                {
-                    "message": (
-                        f"Packages ({set(self.packages) - input_pkgs_names}) not in"
-                        f" package set '{self.branch}'"
-                        f" for archs {list(self.archs)}"
-                    )
-                },
-                self.ll.INFO,
-                404,
-            )
-            return
+            # check the existence of a package by comparing the number of input
+            # and selected from database
+            # form a list of package hashes
+            input_pkg_hshs = tuple({pkg[0] for pkg in response})
+            input_pkgs_names = {pkg[1] for pkg in response}
+            if len(input_pkgs_names) != len(self.packages):
+                # return utils.json_str_error("Error of input data.")
+                self._store_error(
+                    {
+                        "message": (
+                            f"Packages ({set(self.packages) - input_pkgs_names}) not in"
+                            f" package set '{self.branch}'"
+                            f" for archs {list(self.archs)}"
+                        )
+                    },
+                    self.ll.INFO,
+                    404,
+                )
+                return
+        else:
+            input_pkg_hshs = tuple(pkg_hashes)
 
         # get list of (input package | conflict package | conflict files)
         self.conn.request_line = (
