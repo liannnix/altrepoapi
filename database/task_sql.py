@@ -494,7 +494,9 @@ WITH
         FROM TaskIterations_buffer
         WHERE task_id = {id}
     ) AS last_changed
-SELECT DISTINCT pkg_name
+SELECT DISTINCT
+    pkg_name,
+    pkg_hash
 FROM Packages_buffer
 WHERE pkg_hash IN 
 (

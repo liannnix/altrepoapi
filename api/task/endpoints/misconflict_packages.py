@@ -74,7 +74,8 @@ class TaskMisconflictPackages(APIWorker):
                 404,
             )
             return self.error
-        self.args["packages"] = [pkg[0] for pkg in response]
+        self.args["packages"] = tuple({pkg[0] for pkg in response})
+        pkg_hashes = tuple({pkg[1] for pkg in response})
         # init MisconflictPackages class with args
         self.mp = MisconflictPackages(
             self.conn,
@@ -84,7 +85,7 @@ class TaskMisconflictPackages(APIWorker):
         )
 
         # build result
-        self.mp.build_dependencies()
+        self.mp.build_dependencies(pkg_hashes=pkg_hashes)
 
         # format result
         if self.mp.status:
