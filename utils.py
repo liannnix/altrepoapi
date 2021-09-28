@@ -1,3 +1,4 @@
+import re
 import mmh3
 import json
 import time
@@ -214,3 +215,12 @@ def sort_branches(branches):
     res += sorted([_ for _ in branches if _ not in res], reverse=True)
 
     return tuple(res)
+
+email_match = re.compile("(<.+@?.+>)+")
+
+def get_nickname_from_packager(packager):
+    m = email_match.search(packager)
+    email_ = m.group(1).strip().replace(" at ", "@")
+    email_ = email_.lstrip("<")
+    nickname = email_.split('@')[0]
+    return nickname

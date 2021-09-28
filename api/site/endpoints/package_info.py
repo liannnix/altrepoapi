@@ -1,6 +1,11 @@
 from collections import namedtuple
 
-from utils import datetime_to_iso, tuplelist_to_dict, sort_branches
+from utils import (
+    datetime_to_iso,
+    tuplelist_to_dict,
+    sort_branches,
+    get_nickname_from_packager,
+)
 
 from api.base import APIWorker
 from api.misc import lut
@@ -207,16 +212,20 @@ class PackageInfo(APIWorker):
                         )
                         pkg_tasks.append({"type": "build", "id": pkg_task})
                         break
-        # get package maintaners
+        # get package maintainers from changelog
         pkg_maintainers = []
-        self.conn.request_line = self.sql.get_pkg_maintaners.format(
-            name=pkg_info["name"]
+        self.conn.request_line = self.sql.get_pkg_maintainers.format(
+            pkghash=self.pkghash
         )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
-        pkg_maintainers = [el[0] for el in response]
+        for el in response[0][0]:
+            if "altlinux" in el:
+                nickname = get_nickname_from_packager(el)
+                if nickname not in pkg_maintainers:
+                    pkg_maintainers.append(nickname)
         # get package ACLs
         pkg_acl = []
         self.conn.request_line = self.sql.get_pkg_acl.format(

@@ -102,12 +102,10 @@ FROM Packages
 WHERE pkg_hash = {pkghash}
 """
 
-    get_pkg_maintaners = """
-SELECT DISTINCT
-    substring(pkg_packager_email, 1, position(pkg_packager_email, '@') - 1) AS packager_nick
+    get_pkg_maintainers = """
+SELECT pkg_changelog.name
 FROM Packages
-WHERE pkg_name = '{name}'
-    AND pkg_sourcepackage = 1
+WHERE pkg_hash = {pkghash}
 """
 
     get_binary_pkgs = """
