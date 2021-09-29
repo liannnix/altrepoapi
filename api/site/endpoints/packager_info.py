@@ -400,6 +400,7 @@ class MaintainerBeehiveErrors(APIWorker):
         BeehiveStatus = namedtuple(
             "BeehiveStatus",
             [
+                "hash",
                 "branch",
                 "name",
                 "version",
@@ -407,11 +408,18 @@ class MaintainerBeehiveErrors(APIWorker):
                 "arch",
                 "build_time",
                 "updated",
+                "epoch",
             ]
         )
         res = [BeehiveStatus(*el)._asdict() for el in response]
 
         for el in res:
+            epoch_ = el["epoch"]
+            if epoch_ == 0:
+                epoch_version = el["version"]
+            else:
+                epoch_version = str(epoch_) + ":" + el["version"]
+
             url = "/".join((
                 lut.beehive_base,
                 "logs",
@@ -422,12 +430,14 @@ class MaintainerBeehiveErrors(APIWorker):
                 "error",
                 "-".join((
                     el["name"],
-                    el["version"],
+                    epoch_version,
                     el["release"]
                 )),
             ))
             el["url"] = url
             el["updated"] = datetime_to_iso(el["updated"])
+            # el.pop("hash", None)
+            # el.pop("epoch", None)
 
         res = {"request_args": self.args, "length": len(res), "beehive": res}
 

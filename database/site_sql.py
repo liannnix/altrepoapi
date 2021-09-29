@@ -744,32 +744,35 @@ last_bh_updated AS
 maintainer_packages AS
 (
     SELECT
-        pkg_name,
-        pkg_version,
-        pkg_release
+        pkg_hash,
+        pkg_epoch
     FROM last_packages
     WHERE pkg_packager_email LIKE '{maintainer_nickname}@%'
         AND pkgset_name = '{branch}'
         AND pkg_sourcepackage = 1
 )
 SELECT
+    pkg_hash,
     pkgset_name,
     pkg_name,
     pkg_version,
     pkg_release,
     bh_arch,
     bh_build_time,
-    bh_updated
+    bh_updated,
+    Pkg.pkg_epoch
 FROM BeehiveStatus
+LEFT JOIN
+(SELECT pkg_hash, pkg_epoch FROM maintainer_packages) AS Pkg USING (pkg_hash)
 WHERE pkgset_name = '{branch}'
     AND bh_status = 'error'
     AND bh_updated IN
     (
         SELECT * FROM last_bh_updated
     )
-    AND (pkg_name, pkg_version, pkg_release) IN
+    AND pkg_hash IN
     (
-        SELECT * FROM maintainer_packages
+        SELECT pkg_hash FROM maintainer_packages
     )
 ORDER BY pkg_name
 """
