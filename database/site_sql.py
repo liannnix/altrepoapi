@@ -751,11 +751,6 @@ maintainer_packages AS
     WHERE pkg_packager_email LIKE '{maintainer_nickname}@%'
         AND pkgset_name = '{branch}'
         AND pkg_sourcepackage = 1
-    GROUP BY
-        pkg_name,
-        pkg_version,
-        pkg_release
-    ORDER BY pkg_name
 )
 SELECT
     pkgset_name,
@@ -776,6 +771,7 @@ WHERE pkgset_name = '{branch}'
     (
         SELECT * FROM maintainer_packages
     )
+ORDER BY pkg_name
 """
 
     get_deleted_package_task = """
