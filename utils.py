@@ -11,6 +11,9 @@ from collections import defaultdict
 from urllib.parse import unquote
 from dataclasses import dataclass
 
+from typing import List
+
+
 from settings import namespace as settings
 
 
@@ -227,3 +230,52 @@ def get_nickname_from_packager(packager):
     email_ = email_.lstrip("<")
     nickname = email_.split('@')[0]
     return nickname
+
+
+rpmsense_flags = [
+        "RPMSENSE_ANY",
+        "RPMSENSE_SERIAL",
+        "RPMSENSE_LESS",
+        "RPMSENSE_GREATER",
+        "RPMSENSE_EQUAL",
+        "RPMSENSE_PROVIDES",
+        "RPMSENSE_CONFLICTS",
+        "RPMSENSE_PREREQ",
+        "RPMSENSE_OBSOLETES",
+        "RPMSENSE_INTERP",
+        "RPMSENSE_SCRIPT_PRE",
+        "RPMSENSE_SCRIPT_POST",
+        "RPMSENSE_SCRIPT_PREUN",
+        "RPMSENSE_SCRIPT_POSTUN",
+        "RPMSENSE_SCRIPT_VERIFY",
+        "RPMSENSE_FIND_REQUIRES",
+        "RPMSENSE_FIND_PROVIDES",
+        "RPMSENSE_TRIGGERIN",
+        "RPMSENSE_TRIGGERUN",
+        "RPMSENSE_TRIGGERPOSTUN",
+        "___SENSE_MULTILIB",
+        "RPMSENSE_SCRIPT_PREP",
+        "RPMSENSE_SCRIPT_BUILD",
+        "RPMSENSE_SCRIPT_INSTALL",
+        "RPMSENSE_SCRIPT_CLEAN",
+        "RPMSENSE_RPMLIB",
+        "RPMSENSE_TRIGGERPREIN",
+        "RPMSENSE_KEYRING",
+    ]
+
+
+def dp_flags_decode(dp_flag: int) -> List[str]:
+    res = []
+    if dp_flag < 0:
+        return []
+    if dp_flag == 0:
+        res = [rpmsense_flags[0]]
+        return res
+    x = dp_flag
+    pos = 1
+    while x > 0:
+        if x & 0x1:
+            res.append(rpmsense_flags[pos])
+        x = x >> 1
+        pos += 1
+    return res
