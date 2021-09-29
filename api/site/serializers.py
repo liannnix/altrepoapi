@@ -20,6 +20,15 @@ package_versions_el_model = ns.model(
         "pkghash": fields.String(description="package hash UInt64 as string"),
     },
 )
+package_beehive_el_model = ns.model(
+    "SitePackageBeehiveElementModel",
+    {
+        "arch": fields.String(description="Beehive rebuild arch"),
+        "status": fields.String(description="Beehive rebuild status"),
+        "updated": fields.String(description="Beehive rebuild date"),
+        "build_time": fields.Float(description="package build time"),
+    },
+)
 package_info_tasks_el_model = ns.model(
     "SitePackageTasksElementModel",
     {
@@ -60,6 +69,9 @@ package_info_model = ns.model(
         ),
         "versions": fields.Nested(
             package_versions_el_model, as_list=True, description="all package versions"
+        ),
+        "beehive": fields.Nested(
+            package_beehive_el_model, as_list=True, description="Beehive rebuild status"
         ),
     },
 )

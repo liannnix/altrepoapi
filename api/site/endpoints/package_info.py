@@ -287,6 +287,25 @@ class PackageInfo(APIWorker):
             Changelog(datetime_to_iso(el[1]), *el[2:])._asdict() for el in response
         ]
 
+        # get package beehive rebuild status
+        if self.branch not in lut.known_beehive_branches:
+            # return empty result list if branch not in beehive branches
+            bh_status = []
+        else:
+            # get last beehive errors by package hash
+            self.conn.request_line = (
+                self.sql.get_last_bh_rebuild_status_by_hsh,
+                {"pkghash": self.pkghash, "branch": self.branch},
+            )
+            status, response = self.conn.send_request()
+            if not status:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return self.error
+            BeehiveStatus = namedtuple("BeehiveStatus", ["arch", "status", "build_time", "updated"])
+            bh_status = [BeehiveStatus(*el)._asdict() for el in response]
+            for bh in bh_status:
+                bh["updated"] = datetime_to_iso(bh["updated"])
+
         res = {
             "pkghash": str(self.pkghash),
             "request_args": self.args,
@@ -299,6 +318,7 @@ class PackageInfo(APIWorker):
             "maintainers": pkg_maintainers,
             "acl": pkg_acl,
             "versions": pkg_versions,
+            "beehive": bh_status,
         }
 
         return res, 200
