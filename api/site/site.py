@@ -8,6 +8,7 @@ from .endpoints.package_info import LastPackagesWithCVEFix
 from .endpoints.pkgset_packages import PackagesetPackages, PackagesetPackageHash
 from .endpoints.packager_info import AllMaintainers, MaintainerInfo, MaintainerPackages
 from .endpoints.packager_info import MaintainerBranches, RepocopByMaintainer
+from .endpoints.packager_info import MaintainerBeehiveErrors
 from .endpoints.pkgset_packages import PackagesetFindPackages, AllPackagesets
 from .endpoints.pkgset_packages import PkgsetCategoriesCount, AllPackagesetArchs
 from .endpoints.pkgset_packages import AllPackagesetsByHash
@@ -50,6 +51,7 @@ from .serializers import (
     deleted_package_model,
     last_pkgs_with_cve_fix_model,
     all_pkgsets_summary_model,
+    beehive_by_maintainer_model,
 )
 
 logger = get_logger(__name__)
@@ -713,6 +715,36 @@ class routeLastPackagesWithCVEFix(Resource):
         args = pkgs_with_cve_fix_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = LastPackagesWithCVEFix(g.connection, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route(
+    "/beehive_errors_by_maintainer",
+    doc={
+        "description": "Get Beehive rebuild errors by the maintainer's nickname",
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package not found in database",
+        },
+    },
+)
+class routeBeehiveByMaintainer(Resource):
+    @ns.expect(maintainer_info_args)
+    @ns.marshal_list_with(beehive_by_maintainer_model)
+    def get(self):
+        args = maintainer_info_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        wrk = MaintainerBeehiveErrors(g.connection, **args)
         if not wrk.check_params():
             abort(
                 400,

@@ -346,3 +346,89 @@ class RepocopByMaintainer(APIWorker):
         res = {"request_args": self.args, "length": len(res), "packages": res}
 
         return res, 200
+
+
+class MaintainerBeehiveErrors(APIWorker):
+    """Retrieves maintainer's packages Beehive rebuild errors."""
+
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sitesql
+        super().__init__()
+
+    def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        self.validation_results = []
+
+        if self.args["branch"] == "" or self.args["branch"] not in lut.known_beehive_branches:
+            self.validation_results.append(
+                f"unknown package set name : {self.args['branch']}"
+            )
+            self.validation_results.append(
+                f"allowed package set names are : {lut.known_beehive_branches}"
+            )
+
+        if self.args["maintainer_nickname"] == "":
+            self.validation_results.append(
+                f"maintainer nickname should not be empty string"
+            )
+
+        if self.validation_results != []:
+            return False
+        else:
+            return True
+
+    def get(self):
+        maintainer_nickname = self.args["maintainer_nickname"]
+        branch = self.args["branch"]
+        self.conn.request_line = self.sql.get_beehive_errors_by_maintainer.format(
+            maintainer_nickname=maintainer_nickname, branch=branch
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {"message": f"No data not found in database", "args": self.args},
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        BeehiveStatus = namedtuple(
+            "BeehiveStatus",
+            [
+                "branch",
+                "name",
+                "version",
+                "release",
+                "arch",
+                "build_time",
+                "updated",
+            ]
+        )
+        res = [BeehiveStatus(*el)._asdict() for el in response]
+
+        for el in res:
+            url = "/".join((
+                lut.beehive_base,
+                "logs",
+                "Sisyphus" if el["branch"] == "sisyphus" else el["branch"],
+                el["arch"],
+                "archive",
+                el["updated"].strftime("%Y/%m%d"),
+                "error",
+                "-".join((
+                    el["name"],
+                    el["version"],
+                    el["release"]
+                )),
+            ))
+            el["url"] = url
+            el["updated"] = datetime_to_iso(el["updated"])
+
+        res = {"request_args": self.args, "length": len(res), "beehive": res}
+
+        return res, 200

@@ -26,7 +26,7 @@ package_beehive_el_model = ns.model(
         "arch": fields.String(description="Beehive rebuild arch"),
         "status": fields.String(description="Beehive rebuild status"),
         "updated": fields.String(description="Beehive rebuild date"),
-        "build_time": fields.Float(description="package build time"),
+        "build_time": fields.Float(description="Beehive package build elapsed (seconds)"),
     },
 )
 package_info_tasks_el_model = ns.model(
@@ -486,4 +486,30 @@ all_pkgsets_summary_model = ns.model(
             as_list=True,
         ),
     },
+)
+
+beehive_by_maintainer_el_model = ns.model(
+    "",
+    {
+        "branch": fields.String(description="Beehive branch"),
+        "name": fields.String(description="package name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "arch": fields.String(description="Beehive arch"),
+        "updated": fields.String(description="Beehive rebuild date"),
+        "build_time": fields.Float(description="Beehive package build elapsed (seconds)"),
+        "url": fields.String(description="Beehive package build error log URL"),
+    }
+)
+beehive_by_maintainer_model = ns.model(
+    "",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "beehive": fields.Nested(
+            beehive_by_maintainer_el_model,
+            description="Beehive packages rebuild errors",
+            as_list=True,
+        ),
+    }
 )

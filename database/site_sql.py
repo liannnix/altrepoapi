@@ -615,8 +615,8 @@ SELECT
     pkg_release
 FROM last_packages
 WHERE pkg_packager_email LIKE '{maintainer_nickname}@%'
-    and pkgset_name = '{branch}'
-    and pkg_sourcepackage = 1
+    AND pkgset_name = '{branch}'
+    AND pkg_sourcepackage = 1
 GROUP BY
     pkg_name,
     pkg_version,
@@ -721,6 +721,61 @@ GROUP BY
 ORDER BY
     pkg_name ASC,
     pkg_arch ASC    
+"""
+
+    get_beehive_errors_by_maintainer = """
+WITH
+last_bh_updated AS
+(
+    SELECT updated
+    FROM
+    (
+        SELECT
+            pkgset_name,
+            bh_arch,
+            max(bh_updated) AS updated
+        FROM BeehiveStatus
+        WHERE pkgset_name = '{branch}'
+        GROUP BY
+            pkgset_name,
+            bh_arch
+    )
+),
+maintainer_packages AS
+(
+    SELECT
+        pkg_name,
+        pkg_version,
+        pkg_release
+    FROM last_packages
+    WHERE pkg_packager_email LIKE '{maintainer_nickname}@%'
+        AND pkgset_name = '{branch}'
+        AND pkg_sourcepackage = 1
+    GROUP BY
+        pkg_name,
+        pkg_version,
+        pkg_release
+    ORDER BY pkg_name
+)
+SELECT
+    pkgset_name,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    bh_arch,
+    bh_build_time,
+    bh_updated
+FROM BeehiveStatus
+WHERE pkgset_name = '{branch}'
+    AND bh_status = 'error'
+    AND bh_updated IN
+    (
+        SELECT * FROM last_bh_updated
+    )
+    AND (pkg_name, pkg_version, pkg_release) IN
+    (
+        SELECT * FROM maintainer_packages
+    )
 """
 
     get_deleted_package_task = """

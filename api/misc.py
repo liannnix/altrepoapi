@@ -226,6 +226,7 @@ class LookupTables:
     ]
 
     gitalt_base = "http://git.altlinux.org"
+    beehive_base = "http://git.altlinux.org/beehive"
 
 
 lut = LookupTables()
