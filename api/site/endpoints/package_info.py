@@ -255,6 +255,19 @@ class PackageInfo(APIWorker):
         pkg_versions = [
             PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
         ]
+
+        # get package dependencies
+        pkg_dependencies = []
+        self.conn.request_line = self.sql.get_pkg_dependencies.format(pkghash=self.pkghash)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        PkgDependencies = namedtuple(
+            "PkgDependencies", ["name", "version", "flag"]
+        )
+        pkg_dependencies = [PkgDependencies(*el)._asdict() for el in response]
+
         # get provided binary packages
         bin_packages_list = []
         self.conn.request_line = self.sql.get_binary_pkgs.format(pkghash=self.pkghash)
@@ -345,6 +358,7 @@ class PackageInfo(APIWorker):
             "acl": pkg_acl,
             "versions": pkg_versions,
             "beehive": bh_status,
+            "dependencies": pkg_dependencies,
         }
 
         return res, 200

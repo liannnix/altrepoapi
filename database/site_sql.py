@@ -135,6 +135,16 @@ WHERE pkg_name = '{name}'
     AND pkg_sourcepackage = 1
 """
 
+    get_pkg_dependencies = """
+SELECT
+    dp_name,
+    dp_version,
+    dp_flag
+FROM Depends
+WHERE pkg_hash = '{pkghash}'
+    AND dp_type = 'require'
+"""
+
     get_pkg_task_by_hash = """
 SELECT DISTINCT
     task_id,

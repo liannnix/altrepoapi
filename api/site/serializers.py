@@ -38,6 +38,14 @@ package_info_tasks_el_model = ns.model(
         "id": fields.String(description="task id"),
     },
 )
+package_dependencies_el_model = ns.model(
+    "SitePackageDependenciesElementModel",
+    {
+        "name": fields.String(description="the name of the dependent package"),
+        "version": fields.String(description="the version of the dependent package"),
+        "flag": fields.String(description="dependency attributes"),
+    }
+)
 package_info_model = ns.model(
     "SitePackageInfoModel",
     {
@@ -74,6 +82,9 @@ package_info_model = ns.model(
         ),
         "beehive": fields.Nested(
             package_beehive_el_model, as_list=True, description="Beehive rebuild status"
+        ),
+        "dependencies": fields.Nested(
+            package_dependencies_el_model, as_list=True, description="all the dependence of the package"
         ),
     },
 )
