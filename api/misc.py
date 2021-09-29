@@ -215,6 +215,15 @@ class LookupTables:
         "Toys",
         "Video",
     ]
+    known_beehive_branches = [
+        "sisyphus",
+        "p10",
+        "p9",
+    ]
+    known_beehive_archs = [
+        "i586",
+        "x86_64",
+    ]
 
     gitalt_base = "http://git.altlinux.org"
 
