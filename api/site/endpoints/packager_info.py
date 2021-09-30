@@ -408,6 +408,7 @@ class MaintainerBeehiveErrors(APIWorker):
                 "arch",
                 "build_time",
                 "updated",
+                "ftbfs_since",
                 "epoch",
             ]
         )
@@ -436,6 +437,7 @@ class MaintainerBeehiveErrors(APIWorker):
             ))
             el["url"] = url
             el["updated"] = datetime_to_iso(el["updated"])
+            el["ftbfs_since"] = datetime_to_iso(el["ftbfs_since"])
             # el.pop("hash", None)
             # el.pop("epoch", None)
 

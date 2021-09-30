@@ -760,6 +760,7 @@ SELECT
     bh_arch,
     bh_build_time,
     bh_updated,
+    bh_ftbfs_since,
     Pkg.pkg_epoch
 FROM BeehiveStatus
 LEFT JOIN

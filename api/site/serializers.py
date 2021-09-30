@@ -498,6 +498,7 @@ beehive_by_maintainer_el_model = ns.model(
         "release": fields.String(description="package release"),
         "arch": fields.String(description="Beehive arch"),
         "updated": fields.String(description="Beehive rebuild date"),
+        "ftbfs_since": fields.String(description="Package FTBFS since date"),
         "build_time": fields.Float(description="Beehive package build elapsed (seconds)"),
         "url": fields.String(description="Beehive package build error log URL"),
     }
