@@ -927,7 +927,8 @@ SELECT
     bh_arch,
     bh_status,
     bh_build_time,
-    bh_updated
+    bh_updated,
+    bh_ftbfs_since
 FROM BeehiveStatus
 WHERE pkgset_name = %(branch)s
     AND pkg_hash = %(pkghash)s

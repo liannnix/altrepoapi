@@ -301,10 +301,11 @@ class PackageInfo(APIWorker):
             if not status:
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
-            BeehiveStatus = namedtuple("BeehiveStatus", ["arch", "status", "build_time", "updated"])
+            BeehiveStatus = namedtuple("BeehiveStatus", ["arch", "status", "build_time", "updated", "ftbfs_since"])
             bh_status = [BeehiveStatus(*el)._asdict() for el in response]
             for bh in bh_status:
                 bh["updated"] = datetime_to_iso(bh["updated"])
+                bh["ftbfs_since"] = datetime_to_iso(bh["ftbfs_since"])
 
         res = {
             "pkghash": str(self.pkghash),
