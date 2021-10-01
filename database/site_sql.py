@@ -90,6 +90,7 @@ SELECT
     pkg_name,
     pkg_version,
     pkg_release,
+    pkg_epoch,
     pkg_buildtime,
     pkg_url,
     pkg_license,

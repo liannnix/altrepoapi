@@ -28,6 +28,7 @@ package_beehive_el_model = ns.model(
         "updated": fields.String(description="Beehive rebuild date"),
         "build_time": fields.Float(description="Beehive package build elapsed (seconds)"),
         "ftbfs_since": fields.String(description="Package FTBFS since date"),
+        "url": fields.String(description="Beehive package build error log URL"),
     },
 )
 package_info_tasks_el_model = ns.model(

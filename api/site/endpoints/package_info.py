@@ -147,6 +147,7 @@ class PackageInfo(APIWorker):
                 "name",
                 "version",
                 "release",
+                "epoch",
                 "buildtime",
                 "url",
                 "license",
@@ -304,6 +305,30 @@ class PackageInfo(APIWorker):
             BeehiveStatus = namedtuple("BeehiveStatus", ["arch", "status", "build_time", "updated", "ftbfs_since"])
             bh_status = [BeehiveStatus(*el)._asdict() for el in response]
             for bh in bh_status:
+                epoch_ = pkg_info["epoch"]
+                if epoch_ == 0:
+                    epoch_version = pkg_info["version"]
+                else:
+                    epoch_version = str(epoch_) + ":" + pkg_info["version"]
+
+                url = "/".join((
+                    lut.beehive_base,
+                    "logs",
+                    "Sisyphus" if self.branch == "sisyphus" else self.branch,
+                    bh["arch"],
+                    "archive",
+                    bh["updated"].strftime("%Y/%m%d"),
+                    "error",
+                    "-".join((
+                        pkg_info["name"],
+                        epoch_version,
+                        pkg_info["release"]
+                    )),
+                ))
+                if bh["status"] == "error":
+                    bh["url"] = url
+                else:
+                    bh["url"] = ""
                 bh["updated"] = datetime_to_iso(bh["updated"])
                 bh["ftbfs_since"] = datetime_to_iso(bh["ftbfs_since"])
 
