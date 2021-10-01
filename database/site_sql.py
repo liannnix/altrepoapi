@@ -141,7 +141,7 @@ SELECT
     dp_version,
     dp_flag
 FROM Depends
-WHERE pkg_hash = '{pkghash}'
+WHERE pkg_hash = {pkghash}
     AND dp_type = 'require'
 """
 
