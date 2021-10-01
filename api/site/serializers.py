@@ -43,7 +43,8 @@ package_dependencies_el_model = ns.model(
     {
         "name": fields.String(description="the name of the dependent package"),
         "version": fields.String(description="the version of the dependent package"),
-        "flag": fields.String(description="dependency attributes"),
+        "flag": fields.Integer(description="dependency flag"),
+        "flag_decoded": fields.List(fields.String, description="decoded dependency flag"),
     }
 )
 package_info_model = ns.model(

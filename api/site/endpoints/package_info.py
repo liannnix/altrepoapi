@@ -259,19 +259,19 @@ class PackageInfo(APIWorker):
 
         # get package dependencies
         pkg_dependencies = []
-        self.conn.request_line = self.sql.get_pkg_dependencies.format(pkghash=self.pkghash)
+        self.conn.request_line = self.sql.get_pkg_dependencies.format(
+            pkghash=self.pkghash
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
-        PkgDependencies = namedtuple(
-            "PkgDependencies", ["name", "version", "flag"]
-        )
+        PkgDependencies = namedtuple("PkgDependencies", ["name", "version", "flag"])
         pkg_dependencies = [PkgDependencies(*el)._asdict() for el in response]
 
         # change numeric flag on text
         for el in pkg_dependencies:
-            el['flag'] = dp_flags_decode(el['flag'], lut.rpmsense_flags)
+            el["flag_decoded"] = dp_flags_decode(el["flag"], lut.rpmsense_flags)
 
         # get provided binary packages
         bin_packages_list = []
@@ -320,7 +320,10 @@ class PackageInfo(APIWorker):
             if not status:
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
-            BeehiveStatus = namedtuple("BeehiveStatus", ["arch", "status", "build_time", "updated", "ftbfs_since"])
+            BeehiveStatus = namedtuple(
+                "BeehiveStatus",
+                ["arch", "status", "build_time", "updated", "ftbfs_since"],
+            )
             bh_status = [BeehiveStatus(*el)._asdict() for el in response]
             for bh in bh_status:
                 epoch_ = pkg_info["epoch"]
@@ -329,20 +332,20 @@ class PackageInfo(APIWorker):
                 else:
                     epoch_version = str(epoch_) + ":" + pkg_info["version"]
 
-                url = "/".join((
-                    lut.beehive_base,
-                    "logs",
-                    "Sisyphus" if self.branch == "sisyphus" else self.branch,
-                    bh["arch"],
-                    "archive",
-                    bh["updated"].strftime("%Y/%m%d"),
-                    "error",
-                    "-".join((
-                        pkg_info["name"],
-                        epoch_version,
-                        pkg_info["release"]
-                    )),
-                ))
+                url = "/".join(
+                    (
+                        lut.beehive_base,
+                        "logs",
+                        "Sisyphus" if self.branch == "sisyphus" else self.branch,
+                        bh["arch"],
+                        "archive",
+                        bh["updated"].strftime("%Y/%m%d"),
+                        "error",
+                        "-".join(
+                            (pkg_info["name"], epoch_version, pkg_info["release"])
+                        ),
+                    )
+                )
                 if bh["status"] == "error":
                     bh["url"] = url
                 else:
