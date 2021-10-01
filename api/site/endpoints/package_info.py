@@ -4,7 +4,8 @@ from utils import (
     datetime_to_iso,
     tuplelist_to_dict,
     sort_branches,
-    get_nickname_from_packager, dp_flags_decode,
+    get_nickname_from_packager,
+    dp_flags_decode,
 )
 
 from api.base import APIWorker
@@ -270,7 +271,7 @@ class PackageInfo(APIWorker):
 
         # change numeric flag on text
         for el in pkg_dependencies:
-            el['flag'] = dp_flags_decode(el['flag'])
+            el['flag'] = dp_flags_decode(el['flag'], lut.rpmsense_flags)
 
         # get provided binary packages
         bin_packages_list = []

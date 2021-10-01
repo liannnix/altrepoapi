@@ -228,5 +228,36 @@ class LookupTables:
     gitalt_base = "http://git.altlinux.org"
     beehive_base = "http://git.altlinux.org/beehive"
 
+    rpmsense_flags = [
+        "RPMSENSE_ANY",
+        "RPMSENSE_SERIAL",
+        "RPMSENSE_LESS",
+        "RPMSENSE_GREATER",
+        "RPMSENSE_EQUAL",
+        "RPMSENSE_PROVIDES",
+        "RPMSENSE_CONFLICTS",
+        "RPMSENSE_PREREQ",
+        "RPMSENSE_OBSOLETES",
+        "RPMSENSE_INTERP",
+        "RPMSENSE_SCRIPT_PRE",
+        "RPMSENSE_SCRIPT_POST",
+        "RPMSENSE_SCRIPT_PREUN",
+        "RPMSENSE_SCRIPT_POSTUN",
+        "RPMSENSE_SCRIPT_VERIFY",
+        "RPMSENSE_FIND_REQUIRES",
+        "RPMSENSE_FIND_PROVIDES",
+        "RPMSENSE_TRIGGERIN",
+        "RPMSENSE_TRIGGERUN",
+        "RPMSENSE_TRIGGERPOSTUN",
+        "___SENSE_MULTILIB",
+        "RPMSENSE_SCRIPT_PREP",
+        "RPMSENSE_SCRIPT_BUILD",
+        "RPMSENSE_SCRIPT_INSTALL",
+        "RPMSENSE_SCRIPT_CLEAN",
+        "RPMSENSE_RPMLIB",
+        "RPMSENSE_TRIGGERPREIN",
+        "RPMSENSE_KEYRING",
+    ]
+
 
 lut = LookupTables()

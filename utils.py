@@ -11,8 +11,6 @@ from collections import defaultdict
 from urllib.parse import unquote
 from dataclasses import dataclass
 
-from typing import List
-
 
 from settings import namespace as settings
 
@@ -34,7 +32,7 @@ def mmhash(val):
 def get_logger(name):
     """Get logger instance with specific name as child of root logger.
     Creates root logger if it doesn't exists."""
-    
+
     root_logger = logging.getLogger(settings.PROJECT_NAME)
     root_logger.setLevel(settings.LOG_LEVEL)
 
@@ -219,7 +217,9 @@ def sort_branches(branches):
 
     return tuple(res)
 
+
 email_match = re.compile("(<.+@?.+>)+")
+
 
 def get_nickname_from_packager(packager):
     m = email_match.search(packager)
@@ -228,54 +228,22 @@ def get_nickname_from_packager(packager):
         return packager
     email_ = m.group(1).strip().replace(" at ", "@")
     email_ = email_.lstrip("<")
-    nickname = email_.split('@')[0]
+    nickname = email_.split("@")[0]
     return nickname
 
 
-rpmsense_flags = [
-        "RPMSENSE_ANY",
-        "RPMSENSE_SERIAL",
-        "RPMSENSE_LESS",
-        "RPMSENSE_GREATER",
-        "RPMSENSE_EQUAL",
-        "RPMSENSE_PROVIDES",
-        "RPMSENSE_CONFLICTS",
-        "RPMSENSE_PREREQ",
-        "RPMSENSE_OBSOLETES",
-        "RPMSENSE_INTERP",
-        "RPMSENSE_SCRIPT_PRE",
-        "RPMSENSE_SCRIPT_POST",
-        "RPMSENSE_SCRIPT_PREUN",
-        "RPMSENSE_SCRIPT_POSTUN",
-        "RPMSENSE_SCRIPT_VERIFY",
-        "RPMSENSE_FIND_REQUIRES",
-        "RPMSENSE_FIND_PROVIDES",
-        "RPMSENSE_TRIGGERIN",
-        "RPMSENSE_TRIGGERUN",
-        "RPMSENSE_TRIGGERPOSTUN",
-        "___SENSE_MULTILIB",
-        "RPMSENSE_SCRIPT_PREP",
-        "RPMSENSE_SCRIPT_BUILD",
-        "RPMSENSE_SCRIPT_INSTALL",
-        "RPMSENSE_SCRIPT_CLEAN",
-        "RPMSENSE_RPMLIB",
-        "RPMSENSE_TRIGGERPREIN",
-        "RPMSENSE_KEYRING",
-    ]
-
-
-def dp_flags_decode(dp_flag: int) -> List[str]:
+def dp_flags_decode(dp_flag: int, dp_decode_table: list) -> list[str]:
     res = []
     if dp_flag < 0:
         return []
     if dp_flag == 0:
-        res = [rpmsense_flags[0]]
+        res = [dp_decode_table[0]]
         return res
     x = dp_flag
     pos = 1
-    while x > 0:
+    while x > 0 and pos < len(dp_decode_table):
         if x & 0x1:
-            res.append(rpmsense_flags[pos])
+            res.append(dp_decode_table[pos])
         x = x >> 1
         pos += 1
     return res
