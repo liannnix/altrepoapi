@@ -77,7 +77,7 @@ pkgset_status_post_el_model = ns.model(
         "rs_description_en": fields.String(
             description="html description in English in Base64 format"
         ),
-        "rs_mirrors_json": fields.Raw(description="packageset mirror's auxilary info as JSON substructure"),
+        "rs_mirrors_json": fields.List(fields.Raw, description="packageset mirror's auxilary info as JSON substructure"),
     },
 )
 pkgset_status_post_model = ns.model(
