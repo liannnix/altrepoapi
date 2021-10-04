@@ -738,19 +738,15 @@ ORDER BY
 WITH
 last_bh_updated AS
 (
-    SELECT updated
-    FROM
-    (
-        SELECT
-            pkgset_name,
-            bh_arch,
-            max(bh_updated) AS updated
-        FROM BeehiveStatus
-        WHERE pkgset_name = '{branch}'
-        GROUP BY
-            pkgset_name,
-            bh_arch
-    )
+    SELECT
+        pkgset_name,
+        bh_arch as arch,
+        max(bh_updated) AS updated
+    FROM BeehiveStatus
+    WHERE pkgset_name = '{branch}'
+    GROUP BY
+        pkgset_name,
+        bh_arch
 ),
 maintainer_packages AS
 (
@@ -778,9 +774,9 @@ LEFT JOIN
 (SELECT pkg_hash, pkg_epoch FROM maintainer_packages) AS Pkg USING (pkg_hash)
 WHERE pkgset_name = '{branch}'
     AND bh_status = 'error'
-    AND bh_updated IN
+    AND (bh_arch, bh_updated) IN
     (
-        SELECT * FROM last_bh_updated
+        SELECT arch, updated FROM last_bh_updated
     )
     AND pkg_hash IN
     (
