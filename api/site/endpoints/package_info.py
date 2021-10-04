@@ -581,6 +581,7 @@ class PackageDownloadLinks(APIWorker):
                 "titer_pkgs_hash",
             ],
         )
+        PkgInfo = namedtuple("PkgInfo", ["file", "arch", "size"])
         self.conn.request_line = self.sql.get_build_task_by_hash.format(
             pkghash=self.pkghash
         )
@@ -618,7 +619,7 @@ class PackageDownloadLinks(APIWorker):
                 )
                 return self.error
             # store filenames and archs as dict
-            filenames = {el[0]: (el[1], el[2]) for el in response}
+            filenames = {el[0]: PkgInfo(*el[1:]) for el in response}
         else:
             # no task found -> use ftp.altlinux.org
             use_task = False
@@ -641,13 +642,13 @@ class PackageDownloadLinks(APIWorker):
                 )
                 return self.error
             # store filenames and archs as dict
-            filenames = {el[0]: (el[1], el[2]) for el in response}
+            filenames = {el[0]: PkgInfo(*el[1:]) for el in response}
             for h, f in filenames.items():
                 if h != self.pkghash:
-                    if f[1] not in bin_pkgs:
-                        bin_pkgs[f[1]] = []
-                    if h not in bin_pkgs[f[1]]:
-                        bin_pkgs[f[1]].append(h)
+                    if f.arch not in bin_pkgs:
+                        bin_pkgs[f.arch] = []
+                    if h not in bin_pkgs[f.arch]:
+                        bin_pkgs[f.arch].append(h)
 
         # get package files MD5 checksum
         hshs = tuple(filenames.keys())
@@ -671,7 +672,8 @@ class PackageDownloadLinks(APIWorker):
         md5_sums = {el[0]: el[1] for el in response}
 
         # pop source package filename
-        src_filename = filenames[self.pkghash][0]
+        src_filename = filenames[self.pkghash].file
+        src_filesize = filenames[self.pkghash].size
         filenames.pop(self.pkghash, None)
         # get source package arch
         archs = ["x86_64", "i586"]
@@ -683,7 +685,7 @@ class PackageDownloadLinks(APIWorker):
         # pop noarch binary packages for archs != src_arch
         for k, v in bin_pkgs.items():
             for p in v:
-                if k != src_arch and filenames[p][1] == "noarch":
+                if k != src_arch and filenames[p].arch == "noarch":
                     filenames.pop(p, None)
 
         def make_link_to_task(base, task, subtask, arch, filename, is_src):
@@ -730,6 +732,7 @@ class PackageDownloadLinks(APIWorker):
                     is_src=True,
                 ),
                 "md5": md5_sums[self.pkghash],
+                "size": src_filesize,
             }]
 
             for k, v in bin_pkgs.items():
@@ -739,16 +742,17 @@ class PackageDownloadLinks(APIWorker):
                         if p in filenames:
                             res[k].append(
                                 {
-                                    "name": filenames[p][0],
+                                    "name": filenames[p].file,
                                     "url": make_link_to_task(
                                         task_base_,
                                         task_,
                                         subtask_,
                                         k,
-                                        filenames[p][0],
+                                        filenames[p].file,
                                         is_src=False,
                                     ),
-                                    "md5": md5_sums[p]
+                                    "md5": md5_sums[p],
+                                    "size": filenames[p].size,
                                 }
                             )
         else:
@@ -771,7 +775,8 @@ class PackageDownloadLinks(APIWorker):
                         src_filename,
                         is_src=True,
                     ),
-                    "md5": md5_sums[self.pkghash]
+                    "md5": md5_sums[self.pkghash],
+                    "size": src_filesize,
                 }]
 
             for k, v in bin_pkgs.items():
@@ -781,16 +786,17 @@ class PackageDownloadLinks(APIWorker):
                         if p in filenames:
                             res[k].append(
                                 {
-                                    "name": filenames[p][0],
+                                    "name": filenames[p].file,
                                     "url": make_link_to_repo(
                                         repo_base_,
                                         branch_,
                                         files_,
                                         k,
-                                        filenames[p][0],
+                                        filenames[p].file,
                                         is_src=False,
                                     ),
-                                    "md5": md5_sums[p]
+                                    "md5": md5_sums[p],
+                                    "size": filenames[p].size,
                                 }
                             )
 

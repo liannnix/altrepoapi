@@ -970,7 +970,8 @@ WHERE (task_id, task_changed) IN
 SELECT DISTINCT
     pkg_hash,
     pkg_filename,
-    pkg_arch
+    pkg_arch,
+    pkg_filesize
 FROM last_packages
 WHERE pkg_srcrpm_hash = {pkghash} AND pkgset_name = '{branch}'
 """
@@ -979,7 +980,8 @@ WHERE pkg_srcrpm_hash = {pkghash} AND pkgset_name = '{branch}'
 SELECT
     pkg_hash,
     pkg_filename,
-    pkg_arch
+    pkg_arch,
+    pkg_filesize
 FROM Packages
 WHERE pkg_hash IN {hshs}
 """
