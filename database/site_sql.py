@@ -917,19 +917,15 @@ ORDER BY pkg_buildtime DESC
 WITH
 last_bh_updated AS
 (
-    SELECT updated
-    FROM
-    (
-        SELECT
-            pkgset_name,
-            bh_arch,
-            max(bh_updated) AS updated
-        FROM BeehiveStatus
-        WHERE pkgset_name = %(branch)s
-        GROUP BY
-            pkgset_name,
-            bh_arch
-    )
+    SELECT
+        pkgset_name,
+        bh_arch as arch,
+        max(bh_updated) AS updated
+    FROM BeehiveStatus
+    WHERE pkgset_name = %(branch)s
+    GROUP BY
+        pkgset_name,
+        bh_arch
 )
 SELECT
     bh_arch,
@@ -940,9 +936,9 @@ SELECT
 FROM BeehiveStatus
 WHERE pkgset_name = %(branch)s
     AND pkg_hash = %(pkghash)s
-    AND bh_updated IN
+    AND (bh_arch, bh_updated) IN
     (
-        SELECT * FROM last_bh_updated
+        SELECT arch, updated FROM last_bh_updated
     )
 """
 
