@@ -538,3 +538,243 @@ class LastPackagesWithCVEFix(APIWorker):
         res = {"request_args": self.args, "length": len(packages), "packages": packages}
 
         return res, 200
+
+
+class PackageDownloadLinks(APIWorker):
+    """Retrieves package info from DB."""
+
+    def __init__(self, connection, pkghash, **kwargs):
+        self.pkghash = pkghash
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sitesql
+        super().__init__()
+
+    def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        self.validation_results = []
+
+        if self.args["branch"] == "" or self.args["branch"] not in lut.known_branches:
+            self.validation_results.append(
+                f"unknown package set name : {self.args['branch']}"
+            )
+            self.validation_results.append(
+                f"allowed package set names are : {lut.known_branches}"
+            )
+
+        if self.validation_results != []:
+            return False
+        else:
+            return True
+
+    def get(self):
+        self.branch = self.args["branch"]
+        bin_pkgs = {}
+        #  get package task info
+        TaskInfo = namedtuple(
+            "TaskInfo",
+            [
+                "task_id",
+                "subtask_id",
+                "subtask_arch",
+                "titer_srcrpm_hash",
+                "titer_pkgs_hash",
+            ],
+        )
+        self.conn.request_line = self.sql.get_build_task_by_hash.format(
+            pkghash=self.pkghash
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if response:
+            #  use hashes from task
+            use_task = True
+            subtasks = [TaskInfo(*el)._asdict() for el in response]
+            # get package hashes and archs from Tasks
+            for t in subtasks:
+                bin_pkgs[t["subtask_arch"]] = {
+                    h for h in t["titer_pkgs_hash"] if h != 0
+                }
+                bin_pkgs[t["subtask_arch"]] = list(bin_pkgs[t["subtask_arch"]])
+            # get package file names
+            hshs = [self.pkghash] + [h for hs in bin_pkgs.values() for h in hs]
+            self.conn.request_line = self.sql.get_pkgs_filename_by_hshs.format(
+                hshs=hshs
+            )
+            status, response = self.conn.send_request()
+            if not status:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return self.error
+            if not response:
+                self._store_error(
+                    {
+                        "message": f"No package fienames info found in DB",
+                        "args": self.args,
+                    },
+                    self.ll.INFO,
+                    404,
+                )
+                return self.error
+            # store filenames and archs as dict
+            filenames = {el[0]: (el[1], el[2]) for el in response}
+        else:
+            # no task found -> use ftp.altlinux.org
+            use_task = False
+            # get package hashes and archs from last_packages
+            self.conn.request_line = self.sql.get_src_and_binary_pkgs.format(
+                pkghash=self.pkghash, branch=self.branch
+            )
+            status, response = self.conn.send_request()
+            if not status:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return self.error
+            if not response:
+                self._store_error(
+                    {
+                        "message": f"No package fienames info found in DB",
+                        "args": self.args,
+                    },
+                    self.ll.INFO,
+                    404,
+                )
+                return self.error
+            # store filenames and archs as dict
+            filenames = {el[0]: (el[1], el[2]) for el in response}
+            for h, f in filenames.items():
+                if h != self.pkghash:
+                    if f[1] not in bin_pkgs:
+                        bin_pkgs[f[1]] = []
+                    if h not in bin_pkgs[f[1]]:
+                        bin_pkgs[f[1]].append(h)
+
+        # pop source package filename
+        src_filename = filenames[self.pkghash][0]
+        filenames.pop(self.pkghash, None)
+        # get source package arch
+        archs = ["x86_64", "i586"]
+        archs += [arch for arch in bin_pkgs.keys() if arch not in archs]
+        for arch in archs:
+            if len(bin_pkgs[arch]) > 0:
+                src_arch = arch
+                break
+        # pop noarch binary packages for archs != src_arch
+        for k, v in bin_pkgs.items():
+            for p in v:
+                if k != src_arch and filenames[p][1] == "noarch":
+                    filenames.pop(p, None)
+
+        def make_link_to_task(base, task, subtask, arch, filename, is_src):
+            return "/".join(
+                (
+                    base,
+                    str(task),
+                    "build",
+                    str(subtask),
+                    arch,
+                    "srpm" if is_src else "rpms",
+                    filename,
+                )
+            )
+
+        def make_link_to_repo(base, branch, files, arch, filename, is_src):
+            return "/".join(
+                (
+                    base,
+                    branch,
+                    files,
+                    "" if is_src else arch,
+                    "SRPMS" if is_src else "RPMS",
+                    filename,
+                )
+            )
+
+        res = {}
+
+        if use_task:
+            # build links to task
+            task_ = subtasks[0]["task_id"]
+            subtask_ = subtasks[0]["subtask_id"]
+            task_base_ = "http://git.altlinux.org/tasks"
+
+            res["src"] = [{
+                "name": src_filename,
+                "url": make_link_to_task(
+                    task_base_,
+                    task_,
+                    subtask_,
+                    src_arch,
+                    src_filename,
+                    is_src=True,
+                ),
+            }]
+
+            for k, v in bin_pkgs.items():
+                if len(v) > 0:
+                    res[k] = []
+                    for p in v:
+                        if p in filenames:
+                            res[k].append(
+                                {
+                                    "name": filenames[p][0],
+                                    "url": make_link_to_task(
+                                        task_base_,
+                                        task_,
+                                        subtask_,
+                                        k,
+                                        filenames[p][0],
+                                        is_src=False,
+                                    ),
+                                }
+                            )
+        else:
+            #  build links to repo
+            repo_base_ = "http://ftp.altlinux.org/pub/distributions/ALTLinux"
+            if self.branch == "sisyphus":
+                branch_ = "Sisyphus"
+                files_ = "files"
+            else:
+                branch_ = self.branch
+                files_ = "branch/files"
+
+                res["src"] = [{
+                    "name": src_filename,
+                    "url": make_link_to_repo(
+                        repo_base_,
+                        branch_,
+                        files_,
+                        src_arch,
+                        src_filename,
+                        is_src=True,
+                    ),
+                }]
+
+            for k, v in bin_pkgs.items():
+                if len(v) > 0:
+                    res[k] = []
+                    for p in v:
+                        if p in filenames:
+                            res[k].append(
+                                {
+                                    "name": filenames[p][0],
+                                    "url": make_link_to_repo(
+                                        repo_base_,
+                                        branch_,
+                                        files_,
+                                        k,
+                                        filenames[p][0],
+                                        is_src=False,
+                                    ),
+                                }
+                            )
+
+        res = {
+            "pkghash": str(self.pkghash),
+            "request_args": self.args,
+            "downloads": [
+                {"arch": k, "packages": v} for k, v in res.items() if len(v) > 0
+            ],
+        }
+
+        return res, 200

@@ -4,7 +4,7 @@ from flask_restx import Resource, abort, Namespace
 from utils import get_logger, url_logging, response_error_parser
 
 from .endpoints.package_info import PackageInfo, PackageChangelog, DeletedPackageInfo
-from .endpoints.package_info import LastPackagesWithCVEFix
+from .endpoints.package_info import LastPackagesWithCVEFix, PackageDownloadLinks
 from .endpoints.pkgset_packages import PackagesetPackages, PackagesetPackageHash
 from .endpoints.packager_info import AllMaintainers, MaintainerInfo, MaintainerPackages
 from .endpoints.packager_info import MaintainerBranches, RepocopByMaintainer
@@ -52,6 +52,7 @@ from .serializers import (
     last_pkgs_with_cve_fix_model,
     all_pkgsets_summary_model,
     beehive_by_maintainer_model,
+    package_downloads_model
 )
 
 logger = get_logger(__name__)
@@ -745,6 +746,39 @@ class routeBeehiveByMaintainer(Resource):
         args = maintainer_info_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = MaintainerBeehiveErrors(g.connection, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route(
+    "/package_downloads/<int:pkghash>",
+    doc={
+        "params": {"pkghash": "package hash"},
+        "description": "Get package download links by hash",
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package not found in database",
+        },
+    },
+)
+class routePackageDownloadLinks(Resource):
+    pass
+
+    @ns.expect(all_archs_args)
+    @ns.marshal_with(package_downloads_model)
+    def get(self, pkghash):
+        args = all_archs_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        wrk = PackageDownloadLinks(g.connection, pkghash, **args)
         if not wrk.check_params():
             abort(
                 400,

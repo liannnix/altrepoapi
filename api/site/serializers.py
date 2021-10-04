@@ -503,7 +503,7 @@ all_pkgsets_summary_model = ns.model(
 )
 
 beehive_by_maintainer_el_model = ns.model(
-    "",
+    "SiteBeehiveByMaintainerElementModel",
     {
         "branch": fields.String(description="Beehive branch"),
         "name": fields.String(description="package name"),
@@ -517,13 +517,44 @@ beehive_by_maintainer_el_model = ns.model(
     }
 )
 beehive_by_maintainer_model = ns.model(
-    "",
+    "SiteBeehiveByMaintainerModel",
     {
         "request_args": fields.Raw(description="request arguments"),
         "length": fields.Integer(description="number of packages found"),
         "beehive": fields.Nested(
             beehive_by_maintainer_el_model,
             description="Beehive packages rebuild errors",
+            as_list=True,
+        ),
+    }
+)
+
+package_downloads_pkg_model = ns.model(
+    "SitePackagesDownloadsPackageModel",
+    {
+        "name": fields.String(description="package name"),
+        "url": fields.String(description="package download link"),
+    }
+)
+package_downloads_el_model = ns.model(
+    "SitePackagesDownloadsElementModel",
+    {
+        "arch": fields.String(description="package architecture"),
+        "packages": fields.Nested(
+            package_downloads_pkg_model,
+            description="Packages downloads",
+            as_list=True,
+        ),
+    }
+)
+package_downloads_model = ns.model(
+    "SitePackagesDownloadsModel",
+    {
+        "pkghash": fields.String(description="package hash UInt64 as string"),
+        "request_args": fields.Raw(description="request arguments"),
+        "downloads": fields.Nested(
+            package_downloads_el_model,
+            description="Packages downloads",
             as_list=True,
         ),
     }

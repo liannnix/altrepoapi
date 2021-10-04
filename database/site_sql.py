@@ -942,5 +942,47 @@ WHERE pkgset_name = %(branch)s
     )
 """
 
+    get_build_task_by_hash = """
+SELECT
+    task_id,
+    subtask_id,
+    subtask_arch,
+    titer_srcrpm_hash,
+    titer_pkgs_hash
+FROM TaskIterations
+WHERE (task_id, task_changed) IN
+(
+    SELECT
+    argMax(task_id, task_changed),
+    max(task_changed)
+    FROM TaskIterations
+    WHERE titer_srcrpm_hash = {pkghash} AND task_id IN
+    (
+        SELECT task_id
+        FROM TaskStates
+        WHERE task_state = 'DONE'
+    )
+)
+    AND titer_srcrpm_hash = {pkghash}
+"""
+
+    get_src_and_binary_pkgs = """
+SELECT DISTINCT
+    pkg_hash,
+    pkg_filename,
+    pkg_arch
+FROM last_packages
+WHERE pkg_srcrpm_hash = {pkghash} AND pkgset_name = '{branch}'
+"""
+
+    get_pkgs_filename_by_hshs = """
+SELECT
+    pkg_hash,
+    pkg_filename,
+    pkg_arch
+FROM Packages
+WHERE pkg_hash IN {hshs}
+"""
+
 
 sitesql = SQL()
