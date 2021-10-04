@@ -713,6 +713,15 @@ class PackageDownloadLinks(APIWorker):
                 )
             )
 
+        def bytes2human(size: int) -> str:
+            """Convert file size in bytes to human readable string representation."""
+            for unit in ["", "K", "M", "G", "T", "P", "E"]:
+                if abs(size) < 1024.0:
+                    return f"{size:3.1f} {unit}B"
+                size /= 1024.0
+            return f"{size:.1f} ZB"
+
+
         res = {}
 
         if use_task:
@@ -732,7 +741,7 @@ class PackageDownloadLinks(APIWorker):
                     is_src=True,
                 ),
                 "md5": md5_sums[self.pkghash],
-                "size": src_filesize,
+                "size": bytes2human(src_filesize),
             }]
 
             for k, v in bin_pkgs.items():
@@ -752,7 +761,7 @@ class PackageDownloadLinks(APIWorker):
                                         is_src=False,
                                     ),
                                     "md5": md5_sums[p],
-                                    "size": filenames[p].size,
+                                    "size": bytes2human(filenames[p].size),
                                 }
                             )
         else:
@@ -776,7 +785,7 @@ class PackageDownloadLinks(APIWorker):
                         is_src=True,
                     ),
                     "md5": md5_sums[self.pkghash],
-                    "size": src_filesize,
+                    "size": bytes2human(src_filesize),
                 }]
 
             for k, v in bin_pkgs.items():
@@ -796,7 +805,7 @@ class PackageDownloadLinks(APIWorker):
                                         is_src=False,
                                     ),
                                     "md5": md5_sums[p],
-                                    "size": filenames[p].size,
+                                    "size": bytes2human(filenames[p].size),
                                 }
                             )
 
