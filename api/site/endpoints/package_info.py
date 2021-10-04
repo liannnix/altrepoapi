@@ -649,6 +649,27 @@ class PackageDownloadLinks(APIWorker):
                     if h not in bin_pkgs[f[1]]:
                         bin_pkgs[f[1]].append(h)
 
+        # get package files MD5 checksum
+        hshs = tuple(filenames.keys())
+        self.conn.request_line = self.sql.get_pkkgs_md5_by_hshs.format(
+            hshs=hshs
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {
+                    "message": f"No package MD5 info found in DB",
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+        md5_sums = {el[0]: el[1] for el in response}
+
         # pop source package filename
         src_filename = filenames[self.pkghash][0]
         filenames.pop(self.pkghash, None)
@@ -708,6 +729,7 @@ class PackageDownloadLinks(APIWorker):
                     src_filename,
                     is_src=True,
                 ),
+                "md5": md5_sums[self.pkghash],
             }]
 
             for k, v in bin_pkgs.items():
@@ -726,6 +748,7 @@ class PackageDownloadLinks(APIWorker):
                                         filenames[p][0],
                                         is_src=False,
                                     ),
+                                    "md5": md5_sums[p]
                                 }
                             )
         else:
@@ -748,6 +771,7 @@ class PackageDownloadLinks(APIWorker):
                         src_filename,
                         is_src=True,
                     ),
+                    "md5": md5_sums[self.pkghash]
                 }]
 
             for k, v in bin_pkgs.items():
@@ -766,6 +790,7 @@ class PackageDownloadLinks(APIWorker):
                                         filenames[p][0],
                                         is_src=False,
                                     ),
+                                    "md5": md5_sums[p]
                                 }
                             )
 

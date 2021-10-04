@@ -984,5 +984,13 @@ FROM Packages
 WHERE pkg_hash IN {hshs}
 """
 
+    get_pkkgs_md5_by_hshs = """
+SELECT
+    pkgh_mmh,
+    pkgh_md5
+FROM PackageHash_view
+WHERE pkgh_mmh IN {hshs}
+"""
+
 
 sitesql = SQL()

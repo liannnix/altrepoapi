@@ -534,6 +534,7 @@ package_downloads_pkg_model = ns.model(
     {
         "name": fields.String(description="package name"),
         "url": fields.String(description="package download link"),
+        "md5": fields.String(description="package MD5 checksum"),
     }
 )
 package_downloads_el_model = ns.model(
