@@ -54,7 +54,7 @@ class TasksByPackage(APIWorker):
             type_ = "srpm"
             link_ = f"{git_base_url}/srpms/{subtask['srpm_name'][0]}/{subtask['srpm_name']}.git"
             if subtask["srpm_evr"] != "":
-                link_ += f"?a=commit;hb={subtask['srpm_evr']}"
+                link_ += f"?a=tree;hb={subtask['srpm_evr']}"
         elif subtask["type"] == "delete":
             # 'delete' return only package name
             type_ = "delete"
@@ -64,13 +64,13 @@ class TasksByPackage(APIWorker):
             type_ = "gear"
             link_ = git_base_url + subtask["dir"]
             if subtask["tag_id"] != "":
-                link_ += f"?a=commit;hb={subtask['tag_id']}"
+                link_ += f"?a=tree;hb={subtask['tag_id']}"
         elif subtask["srpm_name"] != "" or subtask["type"] == "srpm":
             # 'srpm' and 'rebuild' + 'unknown' with srpm
             type_ = "srpm"
             link_ = f"{git_base_url}/srpms/{subtask['srpm_name'][0]}/{subtask['srpm_name']}.git"
             if subtask["srpm_evr"] != "":
-                link_ += f"?a=commit;hb={subtask['srpm_evr']}"
+                link_ += f"?a=tree;hb={subtask['srpm_evr']}"
 
         return type_, link_
 
