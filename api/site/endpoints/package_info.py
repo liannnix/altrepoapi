@@ -679,7 +679,7 @@ class PackageDownloadLinks(APIWorker):
         archs = ["x86_64", "i586"]
         archs += [arch for arch in bin_pkgs.keys() if arch not in archs]
         for arch in archs:
-            if len(bin_pkgs[arch]) > 0:
+            if arch in bin_pkgs and len(bin_pkgs[arch]) > 0:
                 src_arch = arch
                 break
         # pop noarch binary packages for archs != src_arch
@@ -749,21 +749,41 @@ class PackageDownloadLinks(APIWorker):
                     res[k] = []
                     for p in v:
                         if p in filenames:
-                            res[k].append(
-                                {
-                                    "name": filenames[p].file,
-                                    "url": make_link_to_task(
-                                        task_base_,
-                                        task_,
-                                        subtask_,
-                                        k,
-                                        filenames[p].file,
-                                        is_src=False,
-                                    ),
-                                    "md5": md5_sums[p],
-                                    "size": bytes2human(filenames[p].size),
-                                }
-                            )
+                            if filenames[p].arch == "noarch":
+                                # save noarch packages separatelly
+                                if "noarch" not in res:
+                                    res["noarch"] = []
+                                res["noarch"].append(
+                                    {
+                                        "name": filenames[p].file,
+                                        "url": make_link_to_task(
+                                            task_base_,
+                                            task_,
+                                            subtask_,
+                                            k,
+                                            filenames[p].file,
+                                            is_src=False,
+                                        ),
+                                        "md5": md5_sums[p],
+                                        "size": bytes2human(filenames[p].size),
+                                    }
+                                )
+                            else:
+                                res[k].append(
+                                    {
+                                        "name": filenames[p].file,
+                                        "url": make_link_to_task(
+                                            task_base_,
+                                            task_,
+                                            subtask_,
+                                            k,
+                                            filenames[p].file,
+                                            is_src=False,
+                                        ),
+                                        "md5": md5_sums[p],
+                                        "size": bytes2human(filenames[p].size),
+                                    }
+                                )
         else:
             #  build links to repo
             repo_base_ = "http://ftp.altlinux.org/pub/distributions/ALTLinux"
