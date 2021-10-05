@@ -822,6 +822,12 @@ WHERE subtask_deleted = 0
 GROUP BY task_id
 """
 
+    get_delete_task_message = """
+SELECT task_message
+FROM TaskStates
+WHERE task_id = {task_id} AND task_changed = '{task_changed}'
+"""
+
     get_srcpkg_hash_for_branch_on_date = """
 SELECT
     pkg_hash,

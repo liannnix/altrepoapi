@@ -441,6 +441,7 @@ deleted_package_model = ns.model(
             attribute="subtask_userid", description="subtask created by"
         ),
         "task_changed": fields.String(description="task completed at"),
+        "task_message": fields.String(description="task message"),
     },
 )
 

@@ -429,6 +429,19 @@ class DeletedPackageInfo(APIWorker):
         )
         delete_task_info = TaskMeta(*response[0])._asdict()
 
+        # get task message
+        delete_task_info["task_message"] = ""
+        self.conn.request_line = self.sql.get_delete_task_message.format(
+            task_id=delete_task_info["task_id"],
+            task_changed=delete_task_info["task_changed"],
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if response:
+            delete_task_info["task_message"] = response[0][0]
+
         self.conn.request_line = self.sql.get_srcpkg_hash_for_branch_on_date.format(
             name=self.name,
             branch=self.branch,
