@@ -559,5 +559,10 @@ package_downloads_model = ns.model(
             description="Packages downloads",
             as_list=True,
         ),
+        "versions": fields.Nested(
+            package_versions_el_model,
+            description="Packages downloads",
+            as_list=True,
+        ),
     }
 )

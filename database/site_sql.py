@@ -135,6 +135,22 @@ WHERE pkg_name = '{name}'
     AND pkg_sourcepackage = 1
 """
 
+    get_pkg_versions_by_hash = """
+SELECT DISTINCT
+    pkgset_name,
+    pkg_version,
+    pkg_release,
+    toString(pkg_hash)
+FROM static_last_packages
+WHERE pkg_name = (
+    SELECT DISTINCT pkg_name
+    FROM static_last_packages
+    WHERE pkg_hash= {pkghash}
+        AND pkg_sourcepackage = 1
+)
+    AND pkg_sourcepackage = 1
+"""
+
     get_pkg_dependencies = """
 SELECT
     dp_name,

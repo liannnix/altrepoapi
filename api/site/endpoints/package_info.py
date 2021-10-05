@@ -688,6 +688,25 @@ class PackageDownloadLinks(APIWorker):
                 if k != src_arch and filenames[p].arch == "noarch":
                     filenames.pop(p, None)
 
+        # get package versions
+        pkg_versions = []
+        self.conn.request_line = self.sql.get_pkg_versions_by_hash.format(pkghash=self.pkghash)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        PkgVersions = namedtuple(
+            "PkgVersions", ["branch", "version", "release", "pkghash"]
+        )
+        # sort package versions by branch
+        pkg_branches = sort_branches([el[0] for el in response])
+        pkg_versions = tuplelist_to_dict(response, 3)
+        # workaround for multiple versions of returned for certain branch
+        pkg_versions = [
+            PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
+        ]
+
+
         def make_link_to_task(base, task, subtask, arch, filename, is_src):
             return "/".join(
                 (
@@ -835,6 +854,7 @@ class PackageDownloadLinks(APIWorker):
             "downloads": [
                 {"arch": k, "packages": v} for k, v in res.items() if len(v) > 0
             ],
+            "versions": pkg_versions
         }
 
         return res, 200
