@@ -220,13 +220,20 @@ class MaintainerBranches(APIWorker):
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
+        if not response:
+            self._store_error(
+                {"message": f"No data not found in database", "args": self.args},
+                self.ll.INFO,
+                404,
+            )
+            return self.error
 
         MaintainerBranches = namedtuple("MaintainerBranches", ["branch", "count"])
         branches = []
         for branch in sort_branches([el[0] for el in response]):
-            for test in [MaintainerBranches(*b)._asdict() for b in response]:
-                if test["branch"] == branch:
-                    branches.append(test)
+            for el in [MaintainerBranches(*b)._asdict() for b in response]:
+                if el["branch"] == branch:
+                    branches.append(el)
                     break
         res = {"request_args": self.args, "length": len(branches), "branches": branches}
 
