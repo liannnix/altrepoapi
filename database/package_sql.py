@@ -19,16 +19,92 @@ TRUNCATE TABLE {tmp_table}
 INSERT INTO {tmp_table} (*) VALUES
 """
 
+    insert_last_packages_hashes = """
+INSERT INTO {tmp_table}
+SELECT pkg_hash
+FROM static_last_packages
+WHERE pkgset_name = '{branch}'
+"""
+
+    create_shadow_last_pkgs_w_srcs = """
+CREATE TEMPORARY TABLE last_packages_with_source
+(pkg_hash UInt64, pkg_name String, pkg_arch String, sourcepkgname String, pkgset_name String)
+"""
+
+    fill_shadow_last_pkgs_w_srcs = """
+INSERT INTO last_packages_with_source SELECT
+    pkg_hash,
+    pkg_name,
+    pkg_arch,
+    sourcepkgname,
+    '{branch}' AS pkgset_name
+FROM
+(
+    SELECT
+        pkg_hash,
+        pkg_name,
+        pkg_arch,
+        srcPackage.pkg_name AS sourcepkgname,
+        pkg_srcrpm_hash
+    FROM Packages
+    LEFT JOIN
+    (
+        SELECT
+            pkg_hash AS pkg_srcrpm_hash,
+            pkg_name
+        FROM Packages
+        WHERE pkg_sourcepackage = 1
+    ) AS srcPackage USING (pkg_srcrpm_hash)
+    WHERE pkg_sourcepackage = 0
+        AND pkg_srcrpm_hash != 0
+        AND pkg_hash IN
+        (
+            SELECT pkg_hash FROM {tmp_table}
+        )
+)
+"""
+
+    create_shadow_last_dependss = """
+CREATE TEMPORARY TABLE last_depends
+(pkg_hash UInt64, dp_name String, dp_type String, pkg_name String, pkg_arch String, pkg_sourcepackage UInt8, pkgset_name String)
+"""
+
+    fill_shadow_last_depends = """
+INSERT INTO last_depends
+SELECT
+    pkg_hash,
+    dp_name,
+    dp_type,
+    pkg_name,
+    pkg_arch,
+    pkg_sourcepackage,
+    '{branch}' AS pkgset_name
+FROM Depends
+INNER JOIN
+(
+    SELECT
+        pkg_hash,
+        pkg_name,
+        pkg_sourcepackage,
+        pkg_arch
+    FROM Packages
+) AS PkgSet USING (pkg_hash)
+WHERE pkg_hash IN
+(
+    SELECT pkg_hash FROM {tmp_table}
+)
+"""
+
     insert_build_req_deep_1 = """
 INSERT INTO {tmp_table}
 SELECT DISTINCT pkg_name
-FROM Packages_buffer
+FROM Packages
 WHERE 
 (
     pkg_filename IN
     (
         SELECT DISTINCT if(pkg_sourcepackage = 1, pkg_filename, pkg_sourcerpm) AS sourcerpm
-        FROM Packages_buffer
+        FROM Packages
         WHERE pkg_hash IN
         (
             SELECT DISTINCT pkg_hash
@@ -36,7 +112,7 @@ WHERE
             WHERE dp_name IN
             (
                 SELECT dp_name
-                FROM Depends_buffer
+                FROM Depends
                 WHERE pkg_hash IN
                 (
                     SELECT pkg_hash
@@ -93,11 +169,11 @@ SELECT DISTINCT *
 FROM
 (
     SELECT pkg_name
-    FROM Packages_buffer
+    FROM Packages
     WHERE pkg_filename IN
     (
         SELECT DISTINCT if(pkg_sourcepackage = 1, pkg_filename, pkg_sourcerpm) AS sourcerpm
-        FROM Packages_buffer
+        FROM Packages
         WHERE pkg_hash IN
         (
             {wrapper}
@@ -339,10 +415,10 @@ SELECT DISTINCT
     SrcPkg.pkg_epoch,
     SrcPkg.pkg_serial_,
     pkg_sourcerpm AS filename,
-    pkgset_name,
+    '{branch}' AS pkgset_name,
     groupUniqArray(pkg_arch),
     CAST(toDateTime(any(SrcPkg.pkg_buildtime)), 'String') AS buildtime_str
-FROM last_packages
+FROM Packages
 INNER JOIN
 (
     SELECT
@@ -352,18 +428,23 @@ INNER JOIN
         pkg_epoch,
         pkg_serial_,
         pkg_filename as filename,
-        pkgset_name,
         pkg_buildtime
-    FROM last_packages
+    FROM Packages
     WHERE pkg_name IN
     (
         SELECT * FROM {tmp_table}
     )
-        AND pkgset_name = %(branch)s
+        AND pkg_hash IN
+        (
+            SELECT pkg_hash FROM {tmp_table2}
+        )
         AND pkg_sourcepackage = 1
 ) AS SrcPkg USING filename
-WHERE pkgset_name = %(branch)s
-    AND pkg_sourcepackage = 0
+WHERE pkg_sourcepackage = 0
+    AND pkg_hash IN
+    (
+        SELECT pkg_hash FROM {tmp_table2}
+    )
 GROUP BY
 (
     SrcPkg.pkg_name,
@@ -371,8 +452,7 @@ GROUP BY
     SrcPkg.pkg_release,
     SrcPkg.pkg_epoch,
     SrcPkg.pkg_serial_,
-    filename,
-    pkgset_name
+    filename
 )
 """
 
@@ -418,7 +498,7 @@ WHERE dp_name IN
                 AND pkg_name NOT LIKE '%%-debuginfo'
         UNION ALL
             SELECT pkg_name
-            FROM Packages_buffer
+            FROM Packages
             WHERE pkg_name IN
             (
                 SELECT * FROM {tmp_table}
@@ -474,7 +554,7 @@ FROM
             PREWHERE file_hashname IN
             (
                 SELECT file_hashname
-                FROM Files_buffer
+                FROM Files
                 WHERE pkg_hash IN %(hshs)s AND file_class != 'directory'
             )
                 AND pkg_hash IN
@@ -618,7 +698,7 @@ CREATE TEMPORARY TABLE {tmp_table} AS
 SELECT DISTINCT
     pkg_hash,
     file_hashname
-FROM Files_buffer
+FROM Files
 WHERE pkg_hash IN
 (
     SELECT pkg_hash
@@ -644,7 +724,7 @@ file_md5 = unhex(%(elem)s)
     gen_table_fnhshs_by_file = """
 CREATE TEMPORARY TABLE {tmp_table} AS
 SELECT fn_hash, fn_name
-FROM FileNames_buffer
+FROM FileNames
 WHERE fn_name LIKE %(elem)s
 """
 
@@ -658,7 +738,7 @@ SELECT pkg_hash,
        pkg_disttag,
        pkg_arch,
        %(branch)s
-FROM Packages_buffer
+FROM Packages
 WHERE pkg_hash IN
 (
     SELECT pkg_hash FROM {tmp_table}
@@ -668,7 +748,7 @@ WHERE pkg_hash IN
     pkg_by_file_get_fnames_by_fnhashs = """
 SELECT fn_hash,
        fn_name
-FROM FileNames_buffer
+FROM FileNames
 WHERE fn_hash IN
 (
     SELECT file_hashname from {tmp_table}
@@ -748,7 +828,7 @@ LEFT JOIN
         pkg_packager_email,
         pkg_packager,
         pkg_arch
-    FROM Packages_buffer
+    FROM Packages
 ) AS Pkg USING pkg_hash
 WHERE file_class = 'file'
     AND pkg_hash IN
@@ -763,7 +843,7 @@ WHERE file_class = 'file'
     AND file_hashdir NOT IN
     (
         SELECT file_hashname
-        FROM Files_buffer
+        FROM Files
         WHERE file_class = 'directory'
             AND pkg_hash IN
             (

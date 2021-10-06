@@ -83,6 +83,55 @@ class BuildDependency(APIWorker):
             )
             return True
 
+        # create temporary table with repository state hashes
+        tmp_repo_state = "tmp_repo_state_hshs"
+        self.conn.request_line = self.sql.create_tmp_table.format(
+            tmp_table=tmp_repo_state, columns="(pkg_hash UInt64)"
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return
+        # fill it from last_packages
+        self.conn.request_line = self.sql.insert_last_packages_hashes.format(
+            tmp_table=tmp_repo_state, branch=self.branch
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return
+        # create shadow copy for last_depends and last_packages_with_source
+        # proceed with last_packages_with_source
+        # 1. create shdowing temporary table
+        self.conn.request_line = self.sql.create_shadow_last_pkgs_w_srcs
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return
+        # 2. fill shadowing temporary table
+        self.conn.request_line = self.sql.fill_shadow_last_pkgs_w_srcs.format(
+            tmp_table=tmp_repo_state, branch=self.branch
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return
+        # proceed with last_packages_with_source
+        # 1. create shdowing temporary table
+        self.conn.request_line = self.sql.create_shadow_last_dependss
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return
+        # 2. fill shadowing temporary table
+        self.conn.request_line = self.sql.fill_shadow_last_depends.format(
+            tmp_table=tmp_repo_state, branch=self.branch
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return
+
         # create tmp table with list of packages
         tmp_table_name = "tmp_pkg_ls"
         self.conn.request_line = self.sql.create_tmp_table.format(
@@ -112,7 +161,7 @@ class BuildDependency(APIWorker):
             self._store_sql_error(response, self.ll.ERROR, 500)
             return
 
-        #  set depth to 2 if in 'oneandhalf' mode 
+        #  set depth to 2 if in 'oneandhalf' mode
         if self.oneandhalf:
             self.depth = 2
 
@@ -179,7 +228,9 @@ class BuildDependency(APIWorker):
 
             # filter level 2 packages by level 1 packages dependencies
             self.conn.request_line = (
-                self.sql.filter_l2_src_pkgs.format(tmp_table1="l1_pkgs", tmp_table2="l2_pkgs"),
+                self.sql.filter_l2_src_pkgs.format(
+                    tmp_table1="l1_pkgs", tmp_table2="l2_pkgs"
+                ),
                 {"branch": self.branch},
             )
             status, response = self.conn.send_request()
@@ -353,9 +404,10 @@ class BuildDependency(APIWorker):
         sorted_pkgs = tuple(result_dict.keys())
 
         # get output data for sorted package list
-        self.conn.request_line = (
-            self.sql.get_output_data.format(tmp_table=tmp_table_name),
-            {"branch": self.branch},
+        self.conn.request_line = self.sql.get_output_data.format(
+            branch=self.branch,
+            tmp_table=tmp_table_name,
+            tmp_table2=tmp_repo_state,
         )
         status, response = self.conn.send_request()
         if status is False:
@@ -404,7 +456,7 @@ class BuildDependency(APIWorker):
                 base_query = base_query.format(pkg=reqfilter_binpkgs[0])
             else:
                 last_query = None
-                # FIXME: rewrite that awful cyclic SQL build!!!
+                # TODO: rewrite that awful cyclic SQL build
                 for pkg in reqfilter_binpkgs:
                     if not last_query:
                         last_query = base_query.format(pkg=pkg)
