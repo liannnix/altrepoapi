@@ -5,13 +5,13 @@ from dataclasses import dataclass
 class SQL:
     check_task = """
 SELECT count(task_id)
-FROM TaskStates_buffer
+FROM TaskStates
 WHERE task_id = {id}
 """
 
     task_repo = """
 SELECT any(task_repo)
-FROM Tasks_buffer
+FROM Tasks
 WHERE task_id = {id}
 """
 
@@ -19,7 +19,7 @@ WHERE task_id = {id}
 SELECT
     any(task_repo),
     any(task_owner)
-FROM Tasks_buffer
+FROM Tasks
 WHERE task_id = {id}
 """
 
@@ -29,7 +29,7 @@ SELECT DISTINCT
     task_iter,
     subtask_id,
     max(task_changed)
-FROM TaskIterations_buffer
+FROM TaskIterations
 WHERE task_id = {id}
 GROUP BY
     task_try,
@@ -45,12 +45,12 @@ ORDER BY
 WITH
 (
     SELECT max(task_changed) AS task_changed
-    FROM TaskIterations_buffer
+    FROM TaskIterations
     WHERE task_id = {id}
         AND (task_try, task_iter) = {ti}
 ) AS last_task_changed
 SELECT *
-FROM TaskIterations_buffer
+FROM TaskIterations
 WHERE task_id = {id}
     AND task_changed = last_task_changed
 ORDER BY
@@ -60,7 +60,7 @@ ORDER BY
 
     task_iterations_by_task_changed = """
 SELECT *
-FROM TaskIterations_buffer
+FROM TaskIterations
 WHERE task_id = {id}
     AND task_changed = '{changed}'
 ORDER BY
@@ -89,12 +89,12 @@ ORDER BY
 WITH
 (
     SELECT max(task_changed) AS task_changed
-    FROM TaskIterations_buffer
+    FROM TaskIterations
     WHERE task_id = {id}
         AND (task_try, task_iter) = {ti}
 ) AS last_task_changed
 SELECT *
-FROM Tasks_buffer
+FROM Tasks
 WHERE task_id = {id}
     AND task_changed = last_task_changed
     AND subtask_deleted = 0
@@ -103,7 +103,7 @@ ORDER BY subtask_id
 
     task_subtasks_by_task_changed = """
 SELECT *
-FROM Tasks_buffer
+FROM Tasks
 WHERE task_id = {id}
     AND task_changed = '{changed}'
     AND subtask_deleted = 0
@@ -136,19 +136,19 @@ ORDER BY subtask_id
 WITH
 (
     SELECT max(task_changed) AS task_changed
-    FROM TaskIterations_buffer
+    FROM TaskIterations
     WHERE task_id = {id}
         AND (task_try, task_iter) = {ti}
 ) AS last_task_changed
 SELECT DISTINCT *
-FROM TaskStates_buffer
+FROM TaskStates
 WHERE task_id = {id}
     AND task_changed = last_task_changed
 """
 
     task_state_by_task_changed = """
 SELECT DISTINCT *
-FROM TaskStates_buffer
+FROM TaskStates
 WHERE task_id = {id}
     AND task_changed = '{changed}'
 """
@@ -178,11 +178,11 @@ SELECT
     pkg_filename,
     pkg_arch,
     pkg_sourcepackage
-FROM Packages_buffer
+FROM Packages
 WHERE pkg_hash IN 
 (
     SELECT pkgh_mmh
-    FROM PackageHash_buffer
+    FROM PackageHash
     WHERE pkgh_sha256 IN 
     (
         SELECT tplan_sha256
@@ -211,14 +211,14 @@ SELECT
     subtask_arch,
     task_try,
     task_iter
-FROM TaskIterations_buffer
+FROM TaskIterations
 WHERE task_id = {id}
     AND (task_try, task_iter) IN
     (
         SELECT
             argMax(task_try, task_changed),
             argMax(task_iter, task_changed)
-        FROM TaskIterations_buffer
+        FROM TaskIterations
         WHERE task_id = {id}
     )
 GROUP BY
@@ -232,7 +232,7 @@ ORDER BY subtask_id
 
     repo_single_task_plan_hshs = """
 SELECT pkgh_mmh
-FROM PackageHash_buffer
+FROM PackageHash
 WHERE pkgh_sha256 IN
 (
     SELECT tplan_sha256
@@ -246,7 +246,7 @@ WHERE pkgh_sha256 IN
 WITH
     (
         SELECT max(task_changed)
-        FROM TaskStates_buffer
+        FROM TaskStates
         WHERE (task_state = 'DONE') AND (task_id = 
         (
             SELECT argMax(task_prev, task_changed)
@@ -256,7 +256,7 @@ WITH
     ) AS current_task_prev_changed,
     (
         SELECT max(task_changed)
-        FROM TaskStates_buffer
+        FROM TaskStates
         WHERE (task_id = {id}) AND (task_prev != 0)
     ) AS current_task_last_changed,
     (
@@ -268,7 +268,7 @@ WITH
             INNER JOIN
             (
                 SELECT task_id, task_changed
-                FROM TaskStates_buffer
+                FROM TaskStates
             ) AS T ON T.task_id = toUInt32(pkgset_kv.v[indexOf(pkgset_kv.k, 'task')])
             WHERE pkgset_nodename = '{repo}'
             ORDER BY changed DESC
@@ -289,11 +289,11 @@ ORDER BY task_changed DESC
 WITH
     (
         SELECT max(task_changed)
-        FROM TaskStates_buffer
+        FROM TaskStates
         WHERE (task_id = {id}) AND (task_prev != 0)
     ) AS current_task_last_changed
 SELECT pkg_hash
-FROM PackageSet_buffer
+FROM PackageSet
 WHERE pkgset_uuid IN
 (
     SELECT pkgset_uuid FROM PackageSetName
@@ -307,7 +307,7 @@ WHERE pkgset_uuid IN
             INNER JOIN
             (
                 SELECT task_id, task_changed
-                FROM TaskStates_buffer
+                FROM TaskStates
             ) AS T ON T.task_id = toUInt32(pkgset_kv.v[indexOf(pkgset_kv.k, 'task')])
             WHERE pkgset_nodename = '{repo}'
             ORDER BY changed DESC
@@ -322,7 +322,7 @@ WHERE pkgset_uuid IN
 WITH
     (
         SELECT max(task_changed)
-        FROM TaskStates_buffer
+        FROM TaskStates
         WHERE (task_id = {id}) AND (task_prev != 0)
     ) AS current_task_last_changed
 SELECT
@@ -342,7 +342,7 @@ WHERE pkgset_uuid IN
         INNER JOIN
         (
             SELECT task_id, task_changed
-            FROM TaskStates_buffer
+            FROM TaskStates
         ) AS T ON T.task_id = toUInt32(pkgset_kv.v[indexOf(pkgset_kv.k, 'task')])
         WHERE pkgset_nodename = '{repo}'
         ORDER BY changed DESC
@@ -354,7 +354,7 @@ WHERE pkgset_uuid IN
 
     repo_tasks_plan_hshs = """
 SELECT DISTINCT pkgh_mmh
-FROM PackageHash_buffer
+FROM PackageHash
 WHERE pkgh_sha256 IN
 (
     SELECT tplan_sha256
@@ -389,7 +389,7 @@ SELECT DISTINCT
     pkg_arch,
     pkg_filename,
     pkg_sourcepackage
-FROM Packages_buffer
+FROM Packages
 WHERE pkg_hash IN
 (
     SELECT * FROM {table}
@@ -401,7 +401,7 @@ SELECT
     pkg_name,
     pkg_arch,
     pkg_filename
-FROM Packages_buffer
+FROM Packages
 WHERE pkg_hash IN
 (
     SELECT * FROM {table}
@@ -412,7 +412,7 @@ ORDER BY pkg_name
 
     diff_repo_pkgs = """
 SELECT pkg_hash
-FROM Packages_buffer
+FROM Packages
 WHERE pkg_hash IN
 (
     SELECT * FROM {tmp_table1}
@@ -420,7 +420,7 @@ WHERE pkg_hash IN
     AND pkg_name IN
     (
         SELECT DISTINCT pkg_name
-        FROM Packages_buffer
+        FROM Packages
         WHERE pkg_hash IN
         (
             SELECT * FROM {tmp_table2}
@@ -435,14 +435,14 @@ SELECT
     dp_type,
     pkg_arch,
     groupUniqArray(dp_name)
-FROM Packages_buffer
+FROM Packages
 INNER JOIN
 (
     SELECT DISTINCT
         pkg_hash,
         dp_name,
         dp_type
-    FROM Depends_buffer
+    FROM Depends
     WHERE pkg_hash IN
     (
         SELECT * FROM {table}
@@ -466,15 +466,15 @@ GROUP BY
 WITH
 (
     SELECT max(task_changed)
-    FROM TaskIterations_buffer
+    FROM TaskIterations
     WHERE task_id = {id}
 ) as last_changed
 SELECT DISTINCT pkg_name
-FROM Packages_buffer
+FROM Packages
 WHERE pkg_hash IN
 (
     SELECT titer_srcrpm_hash
-    FROM TaskIterations_buffer
+    FROM TaskIterations
     WHERE task_id = {id}
         AND task_changed = last_changed
 )
@@ -491,17 +491,17 @@ WHERE task_id = {id}
 WITH 
     (
         SELECT max(task_changed)
-        FROM TaskIterations_buffer
+        FROM TaskIterations
         WHERE task_id = {id}
     ) AS last_changed
 SELECT DISTINCT
     pkg_name,
     pkg_hash
-FROM Packages_buffer
+FROM Packages
 WHERE pkg_hash IN 
 (
     SELECT arrayJoin(titer_pkgs_hash)
-    FROM TaskIterations_buffer
+    FROM TaskIterations
     WHERE task_id = {id}
         AND task_changed = last_changed
 )
@@ -535,15 +535,15 @@ ORDER BY pkgset_date DESC
 WITH
 (
     SELECT max(task_changed)
-    FROM TaskIterations_buffer
+    FROM TaskIterations
     WHERE task_id = {id}
 ) as last_changed
 SELECT DISTINCT pkg_name
-FROM Packages_buffer
+FROM Packages
 WHERE pkg_hash IN
 (
     SELECT titer_srcrpm_hash
-    FROM TaskIterations_buffer
+    FROM TaskIterations
     WHERE task_id = {id}
         AND task_changed = last_changed
 )
@@ -553,14 +553,14 @@ WHERE pkg_hash IN
 WITH
 (
     SELECT max(task_changed)
-    FROM TaskIterations_buffer
+    FROM TaskIterations
     WHERE task_id = {id}
 ) as last_changed
 SELECT DISTINCT pkg_hash
 FROM
 (
     SELECT titer_srcrpm_hash AS pkg_hash
-    FROM TaskIterations_buffer
+    FROM TaskIterations
     WHERE task_id = {id}
         AND task_changed = last_changed
 )
