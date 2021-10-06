@@ -118,7 +118,7 @@ class TaskRepo(APIWorker):
         else:
             task_del_pkgs = set()
 
-        self.conn.request_line = self.sql.repo_tasks_diff_list.format(
+        self.conn.request_line = self.sql.repo_tasks_diff_list_before_task.format(
             id=self.task_id, repo=task_repo
         )
         status, response = self.conn.send_request()
@@ -130,7 +130,7 @@ class TaskRepo(APIWorker):
         if response:
             tasks_diff_list += {el[0] for el in response}
 
-        self.conn.request_line = self.sql.repo_last_repo.format(
+        self.conn.request_line = self.sql.repo_last_repo_hashes_before_task.format(
             id=self.task_id, repo=task_repo
         )
         status, response = self.conn.send_request()
@@ -311,3 +311,242 @@ class TaskRepo(APIWorker):
             res["archs"].append({"arch": k, "packages": v})
 
         return res, 200
+
+
+class TaskRepoState(APIWorker):
+    """Builds package set state from task."""
+
+    def __init__(self, connection: object, id: int, **kwargs) -> None:
+        self.conn = connection
+        self.args = kwargs
+        self.sql = tasksql
+        self.task_id = id
+        self.repo = {}
+        super().__init__()
+
+    def check_task_id(self) -> bool:
+        self.conn.request_line = self.sql.check_task.format(id=self.task_id)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.INFO, 500)
+            return False
+
+        if response[0][0] == 0:
+            return False
+        return True
+
+    def build_task_repo(self) -> tuple[int]:
+        if not self.check_task_id():
+            self._store_sql_error(
+                {"Error": f"Non-existent task {self.task_id}"},
+                self.ll.ERROR,
+                404,
+            )
+            return None
+        #  get task branch
+        self.conn.request_line = self.sql.task_repo.format(id=self.task_id)
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.repo
+        if not response:
+            self._store_sql_error(
+                {"Error": f"Non-existent data for task {self.task_id}"},
+                self.ll.ERROR,
+                500,
+            )
+            return None
+        task_repo = response[0][0]
+        # get task state
+        self.conn.request_line = self.sql.task_state.format(id=self.task_id)
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.repo
+        if not response:
+            self._store_sql_error(
+                {"Error": f"Non-existent data for task {self.task_id}"},
+                self.ll.ERROR,
+                500,
+            )
+            return None
+        task_state = response[0][0]
+        if task_state not in ("DONE", "EPERM", "TESTED", "FAILED"):
+            self._store_error(
+                {"Error": f"task state {task_state} not supported for data query"},
+                self.ll.INFO,
+                404,
+            )
+        # get subtask try, iteration and archs
+        self.conn.request_line = self.sql.repo_task_content.format(id=self.task_id)
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return None
+        if not response:
+            self._store_sql_error(
+                {"Error": f"Non-existent data for task {self.task_id}"},
+                self.ll.ERROR,
+                500,
+            )
+            return None
+
+        task_archs = set(("src", "noarch", "x86_64-i586"))
+        task_try = 0
+        task_iter = 0
+        for el in response:
+            task_archs.add(el[0])
+            task_try = el[1]
+            task_iter = el[2]
+        #  get task plan
+        task_tplan_hashes = set()
+        for arch in task_archs:
+            t = str(self.task_id) + str(task_try) + str(task_iter) + arch
+            task_tplan_hashes.add(mmhash(t))
+        # get task plan 'add' hashes
+        self.conn.request_line = (
+            self.sql.repo_single_task_plan_hshs,
+            {"hshs": tuple(task_tplan_hashes), "act": "add"},
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return None
+        if response:
+            task_add_pkgs = set(join_tuples(response))
+        else:
+            task_add_pkgs = set()
+        # get task plan 'delete' hashes
+        self.conn.request_line = (
+            self.sql.repo_single_task_plan_hshs,
+            {"hshs": tuple(task_tplan_hashes), "act": "delete"},
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return None
+        if response:
+            task_del_pkgs = set(join_tuples(response))
+        else:
+            task_del_pkgs = set()
+        # if no task plan found return an error
+        if not task_add_pkgs and not task_del_pkgs:
+            self._store_error(
+                {
+                    "Error": f"No plan found for task {self.task_id} in state {task_state} in DB"
+                },
+                self.ll.INFO,
+                404,
+            )
+        # get task_diff list and latest repo package hashes
+        if task_state == "DONE":
+            # if task state is 'DONE' use last previous repo and applly all 'DONE' task chain on top of it
+            # get task diff list
+            self.conn.request_line = self.sql.repo_tasks_diff_list_before_task.format(
+                id=self.task_id, repo=task_repo
+            )
+            status, response = self.conn.send_request()
+            if status is False:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return None
+
+            tasks_diff_list = []
+            if response:
+                tasks_diff_list += {el[0] for el in response}
+            # get latest repo before task hashes
+            self.conn.request_line = self.sql.repo_last_repo_hashes_before_task.format(
+                id=self.task_id, repo=task_repo
+            )
+            status, response = self.conn.send_request()
+            if status is False:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return None
+            if not response:
+                self._store_sql_error(
+                    {
+                        "Error": f"Failed to get last repo packages for task {self.task_id}"
+                    },
+                    self.ll.ERROR,
+                    500,
+                )
+                return None
+
+            last_repo_pkgs = set(join_tuples(response))
+        else:
+            # if task state is 'EPERM', 'TESTED' or 'FAILED' use latest repo and apply all 'DONE' on top of it
+            self.conn.request_line = self.sql.repo_last_repo_tasks_diff_list.format(
+                repo=task_repo
+            )
+            status, response = self.conn.send_request()
+            if status is False:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return None
+
+            tasks_diff_list = []
+            if response:
+                tasks_diff_list += {el[0] for el in response}
+            # get latest repo before task hashes
+            self.conn.request_line = self.sql.repo_last_repo_hashes.format(
+                repo=task_repo
+            )
+            status, response = self.conn.send_request()
+            if status is False:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return None
+            if not response:
+                self._store_sql_error(
+                    {
+                        "Error": f"Failed to get last repo packages for task {self.task_id}"
+                    },
+                    self.ll.ERROR,
+                    500,
+                )
+                return None
+
+            last_repo_pkgs = set(join_tuples(response))
+
+        if tasks_diff_list:
+            self.conn.request_line = (
+                self.sql.repo_tasks_plan_hshs,
+                {"id": tuple(tasks_diff_list), "act": "add"},
+            )
+            status, response = self.conn.send_request()
+            if status is False:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return None
+            if not response:
+                tasks_diff_add_hshs = set()
+            else:
+                tasks_diff_add_hshs = set(join_tuples(response))
+
+            self.conn.request_line = (
+                self.sql.repo_tasks_plan_hshs,
+                {"id": tuple(tasks_diff_list), "act": "delete"},
+            )
+            status, response = self.conn.send_request()
+            if status is False:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return None
+            if not response:
+                tasks_diff_del_hshs = set()
+            else:
+                tasks_diff_del_hshs = set(join_tuples(response))
+
+            if not tasks_diff_add_hshs and not tasks_diff_del_hshs:
+                self._store_sql_error(
+                    {
+                        "Error": f"Failed to get task plan hashes for tasks {tasks_diff_list}"
+                    },
+                    self.ll.ERROR,
+                    500,
+                )
+                return None
+        else:
+            tasks_diff_add_hshs = set()
+            tasks_diff_del_hshs = set()
+
+        task_base_repo_pkgs = (last_repo_pkgs - tasks_diff_del_hshs) | tasks_diff_add_hshs
+        task_current_repo_pkgs = (task_base_repo_pkgs - task_del_pkgs) | task_add_pkgs
+
+        self.status = True
+        return tuple(task_current_repo_pkgs)

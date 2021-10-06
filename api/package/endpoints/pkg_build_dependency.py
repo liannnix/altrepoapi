@@ -43,7 +43,7 @@ class BuildDependency(APIWorker):
         self.result = {}
         super().__init__()
 
-    def build_dependencies(self):
+    def build_dependencies(self, task_repo_hashes: tuple[int] = None):
         # do all kind of black magic here
         input_pkgs = self.packages
         depends_type_to_sql = {"source": (1,), "binary": (0,), "both": (1, 0)}
@@ -92,14 +92,27 @@ class BuildDependency(APIWorker):
         if status is False:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return
-        # fill it from last_packages
-        self.conn.request_line = self.sql.insert_last_packages_hashes.format(
-            tmp_table=tmp_repo_state, branch=self.branch
-        )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return
+        if task_repo_hashes is not None:
+            # use repository hashes from task
+            self.conn.request_line = (
+                self.sql.insert_into_tmp_table.format(
+                    tmp_table=tmp_repo_state
+                ),
+                ((hsh,) for hsh in task_repo_hashes)
+            )
+            status, response = self.conn.send_request()
+            if status is False:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return
+        else:
+            # fill it from last_packages
+            self.conn.request_line = self.sql.insert_last_packages_hashes.format(
+                tmp_table=tmp_repo_state, branch=self.branch
+            )
+            status, response = self.conn.send_request()
+            if status is False:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return
         # create shadow copy for last_depends and last_packages_with_source
         # proceed with last_packages_with_source
         # 1. create shdowing temporary table

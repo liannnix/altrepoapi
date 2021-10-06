@@ -4,6 +4,7 @@ from api.base import APIWorker
 from api.misc import lut
 from database.task_sql import tasksql
 from api.package.endpoints.pkg_build_dependency import BuildDependency
+from .task_repo import TaskRepoState
 
 
 class TaskBuildDependency(APIWorker):
@@ -92,6 +93,11 @@ class TaskBuildDependency(APIWorker):
             )
             return self.error
         self.args["package"] = list({pkg[0] for pkg in response})
+        # get task repo state
+        self.tr = TaskRepoState(self.conn, self.task_id)
+        task_repo_hashes = self.tr.build_task_repo()
+        if not self.tr.status:
+            return self.tr.error
         # init BuildDependency class with args
         self.bd = BuildDependency(
             self.conn,
@@ -108,7 +114,7 @@ class TaskBuildDependency(APIWorker):
         )
 
         # build result
-        self.bd.build_dependencies()
+        self.bd.build_dependencies(task_repo_hashes=task_repo_hashes)
 
         # format result
         if self.bd.status:

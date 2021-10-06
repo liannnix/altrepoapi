@@ -15,6 +15,12 @@ FROM Tasks
 WHERE task_id = {id}
 """
 
+    task_state = """
+SELECT argMax(task_state, task_changed)
+FROM TaskStates
+WHERE task_id = {id}
+"""
+
     task_repo_owner = """
 SELECT
     any(task_repo),
@@ -207,7 +213,7 @@ WHERE tupleElement(res, 6) = 0
 """
 
     repo_task_content = """
-SELECT
+SELECT DISTINCT
     subtask_arch,
     task_try,
     task_iter
@@ -222,7 +228,6 @@ WHERE task_id = {id}
         WHERE task_id = {id}
     )
 GROUP BY
-    titer_srcrpm_hash,
     subtask_id,
     subtask_arch,
     task_try,
@@ -242,40 +247,40 @@ WHERE pkgh_sha256 IN
 )
 """
 
-    repo_tasks_diff_list = """
+    repo_tasks_diff_list_before_task = """
 WITH
+(
+    SELECT max(task_changed)
+    FROM TaskStates
+    WHERE (task_state = 'DONE') AND (task_id =
     (
-        SELECT max(task_changed)
+        SELECT argMax(task_prev, task_changed)
         FROM TaskStates
-        WHERE (task_state = 'DONE') AND (task_id = 
+        WHERE (task_id = {id}) AND task_prev != 0
+    ))
+) AS current_task_prev_changed,
+(
+    SELECT max(task_changed)
+    FROM TaskStates
+    WHERE (task_id = {id}) AND (task_prev != 0)
+) AS current_task_last_changed,
+(
+    SELECT changed
+    FROM
+    (
+        SELECT T.task_changed AS changed
+        FROM PackageSetName
+        INNER JOIN
         (
-            SELECT argMax(task_prev, task_changed)
+            SELECT task_id, task_changed
             FROM TaskStates
-            WHERE (task_id = {id}) AND task_prev != 0
-        ))
-    ) AS current_task_prev_changed,
-    (
-        SELECT max(task_changed)
-        FROM TaskStates
-        WHERE (task_id = {id}) AND (task_prev != 0)
-    ) AS current_task_last_changed,
-    (
-        SELECT changed
-        FROM 
-        (
-            SELECT T.task_changed AS changed
-            FROM PackageSetName
-            INNER JOIN
-            (
-                SELECT task_id, task_changed
-                FROM TaskStates
-            ) AS T ON T.task_id = toUInt32(pkgset_kv.v[indexOf(pkgset_kv.k, 'task')])
-            WHERE pkgset_nodename = '{repo}'
-            ORDER BY changed DESC
-        )
-        WHERE changed < current_task_last_changed
-        LIMIT 1
-    ) AS last_repo_task_changed
+        ) AS T ON T.task_id = toUInt32(pkgset_kv.v[indexOf(pkgset_kv.k, 'task')])
+        WHERE pkgset_nodename = '{repo}'
+        ORDER BY changed DESC
+    )
+    WHERE changed < current_task_last_changed
+    LIMIT 1
+) AS last_repo_task_changed
 SELECT task_id
 FROM TaskStates
 WHERE task_state = 'DONE'
@@ -285,13 +290,13 @@ WHERE task_state = 'DONE'
 ORDER BY task_changed DESC
 """
 
-    repo_last_repo = """
+    repo_last_repo_hashes_before_task = """
 WITH
-    (
-        SELECT max(task_changed)
-        FROM TaskStates
-        WHERE (task_id = {id}) AND (task_prev != 0)
-    ) AS current_task_last_changed
+(
+    SELECT max(task_changed)
+    FROM TaskStates
+    WHERE (task_id = {id}) AND (task_prev != 0)
+) AS current_task_last_changed
 SELECT pkg_hash
 FROM PackageSet
 WHERE pkgset_uuid IN
@@ -318,13 +323,44 @@ WHERE pkgset_uuid IN
 )
 """
 
+    repo_last_repo_hashes = """
+SELECT pkg_hash
+FROM static_last_packages
+WHERE pkgset_name = '{repo}'
+"""
+
+    repo_last_repo_tasks_diff_list = """
+WITH
+(
+    SELECT max(pkgset_date)
+    FROM static_last_packages
+    WHERE pkgset_name = '{repo}'
+) AS last_repo_date,
+(
+    SELECT toUInt32(pkgset_kv.v[indexOf(pkgset_kv.k, 'task')])
+    FROM PackageSetName
+    WHERE pkgset_nodename = '{repo}' AND pkgset_date = last_repo_date
+) AS last_repo_task,
+(
+    SELECT max(task_changed)
+    FROM TaskStates
+    WHERE (task_state = 'DONE') AND task_id = last_repo_task
+) AS last_repo_task_changed
+SELECT task_id
+FROM TaskStates
+WHERE task_state = 'DONE'
+    AND task_changed > last_repo_task_changed
+    AND task_id IN (SELECT task_id FROM Tasks WHERE task_repo = '{repo}')
+ORDER BY task_changed DESC
+"""
+
     repo_last_repo_content = """
 WITH
-    (
-        SELECT max(task_changed)
-        FROM TaskStates
-        WHERE (task_id = {id}) AND (task_prev != 0)
-    ) AS current_task_last_changed
+(
+    SELECT max(task_changed)
+    FROM TaskStates
+    WHERE (task_id = {id}) AND (task_prev != 0)
+) AS current_task_last_changed
 SELECT
     pkgset_nodename,
     pkgset_date,
