@@ -326,7 +326,6 @@ FROM
         )
     ) AS pkgs USING pkg_name
 WHERE pkgset_name = %(branch)s
-ORDER BY sourcepkgname ASC
 UNION ALL SELECT
     arrayJoin(%(pkgs)s),
     '',
