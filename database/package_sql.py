@@ -19,11 +19,39 @@ TRUNCATE TABLE {tmp_table}
 INSERT INTO {tmp_table} (*) VALUES
 """
 
+    drop_tmp_table = """
+DROP TABLE {tmp_table}
+"""
+
     insert_last_packages_hashes = """
 INSERT INTO {tmp_table}
 SELECT pkg_hash
 FROM static_last_packages
 WHERE pkgset_name = '{branch}'
+"""
+
+    insert_pkgs_hshs_filtered_src = """
+INSERT INTO {tmp_table}
+SELECT pkg_hash
+FROM Packages
+WHERE pkg_hash IN
+(
+    SELECT pkg_hash FROM {tmp_table2}
+)
+    AND pkg_sourcepackage = 1
+"""
+
+    insert_pkgs_hshs_filtered_bin = """
+INSERT INTO {tmp_table}
+SELECT pkg_hash
+FROM Packages
+WHERE pkg_hash IN
+(
+    SELECT pkg_hash FROM {tmp_table2}
+)
+    AND pkg_sourcepackage = 0
+    AND pkg_name NOT LIKE '%%-debuginfo'
+    AND pkg_arch in {arch}
 """
 
     create_shadow_last_pkgs_w_srcs = """
@@ -119,7 +147,7 @@ WHERE
                     FROM last_packages_with_source
                     WHERE sourcepkgname IN %(pkgs)s
                         AND pkgset_name = %(branch)s
-                        AND pkg_arch IN ('x86_64', 'noarch')
+                        AND pkg_arch IN %(archs)s
                         AND pkg_name NOT LIKE '%%-debuginfo'
                 )
                     AND dp_type = 'provide'
@@ -153,7 +181,7 @@ WHERE dp_name IN
             FROM {tmp_table}
         )
             AND pkgset_name = %(branch)s
-            AND pkg_arch IN ('x86_64', 'noarch')
+            AND pkg_arch IN %(archs)s
             AND pkg_name NOT LIKE '%%-debuginfo'
     )
         AND dp_type = 'provide'
@@ -240,7 +268,7 @@ FROM
             WHERE pkgset_name = %(branch)s
                 AND dp_type = 'provide'
                 AND pkg_sourcepackage = 0
-                AND pkg_arch IN ('x86_64', 'noarch')
+                AND pkg_arch IN %(archs)s
         )
     ) AS pkgs USING pkg_name
 WHERE pkgset_name = %(branch)s
@@ -294,7 +322,7 @@ FROM
             WHERE pkgset_name = %(branch)s
                 AND dp_type = 'provide'
                 AND pkg_sourcepackage = 0
-                AND pkg_arch IN ('x86_64', 'noarch')
+                AND pkg_arch IN %(archs)s
         )
     ) AS pkgs USING pkg_name
 WHERE pkgset_name = %(branch)s

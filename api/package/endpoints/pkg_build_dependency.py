@@ -113,6 +113,43 @@ class BuildDependency(APIWorker):
             if status is False:
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return
+        # delete unused binary packages arch hashes and '*-debuginfo' package hashes
+        tmp_repo_state_filtered = "tmp_repo_state_hshs_filtered"
+        self.conn.request_line = self.sql.create_tmp_table.format(
+            tmp_table=tmp_repo_state_filtered, columns="(pkg_hash UInt64)"
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return
+        # insert source packages hashes
+        self.conn.request_line = self.sql.insert_pkgs_hshs_filtered_src.format(
+            tmp_table=tmp_repo_state_filtered,
+            tmp_table2=tmp_repo_state
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return
+        # insert binary packages hashes
+        self.conn.request_line = self.sql.insert_pkgs_hshs_filtered_bin.format(
+            tmp_table=tmp_repo_state_filtered,
+            tmp_table2=tmp_repo_state,
+            arch=tuple(self.arch)
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return
+        # drop initial repo state hashes temporary table
+        self.conn.request_line = self.sql.drop_tmp_table.format(
+            tmp_table=tmp_repo_state
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return
+        tmp_repo_state = tmp_repo_state_filtered
         # create shadow copy for last_depends and last_packages_with_source
         # proceed with last_packages_with_source
         # 1. create shdowing temporary table
@@ -162,6 +199,7 @@ class BuildDependency(APIWorker):
                 "sfilter": sourcef,
                 "pkgs": input_pkgs,
                 "branch": self.branch,
+                "archs": tuple(self.arch),
                 "union": list(input_pkgs),
             },
         )
@@ -188,7 +226,7 @@ class BuildDependency(APIWorker):
                     self.sql.insert_result_for_depth_level.format(
                         wrapper=deep_wrapper, tmp_table=tmp_table_name
                     ),
-                    {"sfilter": sourcef, "branch": self.branch},
+                    {"sfilter": sourcef, "branch": self.branch, "archs": tuple(self.arch)},
                 )
                 status, response = self.conn.send_request()
                 if status is False:
@@ -244,7 +282,7 @@ class BuildDependency(APIWorker):
                 self.sql.filter_l2_src_pkgs.format(
                     tmp_table1="l1_pkgs", tmp_table2="l2_pkgs"
                 ),
-                {"branch": self.branch},
+                {"branch": self.branch, "archs": tuple(self.arch)},
             )
             status, response = self.conn.send_request()
             if status is False:
@@ -308,7 +346,7 @@ class BuildDependency(APIWorker):
                 self.sql.insert_src_deps.format(
                     tmp_deps=tmp_table_pkg_dep, tmp_table=tmp_table_name
                 ),
-                {"branch": self.branch, "pkgs": list(input_pkgs)},
+                {"branch": self.branch, "pkgs": list(input_pkgs), "archs": tuple(self.arch)},
             )
             status, response = self.conn.send_request()
             if status is False:
