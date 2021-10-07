@@ -259,7 +259,7 @@ class BuildDependency(APIWorker):
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return
 
-            # level 1 packages
+            # level 2 packages
             self.conn.request_line = self.sql.create_tmp_table.format(
                 tmp_table="l2_pkgs", columns="(pkgname String)"
             )
@@ -490,7 +490,7 @@ class BuildDependency(APIWorker):
             else:
                 self.conn.request_line = (
                     self.sql.req_filter_by_src,
-                    {"srcpkg": self.reqfiltersrc, "branch": self.branch},
+                    {"srcpkg": self.reqfiltersrc, "branch": self.branch, "archs": tuple(self.arch)},
                 )
                 status, response = self.conn.send_request()
                 if status is False:

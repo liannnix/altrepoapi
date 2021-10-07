@@ -489,7 +489,7 @@ SELECT DISTINCT pkg_name
 FROM last_packages_with_source
 WHERE sourcepkgname = %(srcpkg)s
     AND pkgset_name = %(branch)s
-    AND pkg_arch IN ('x86_64','noarch')
+    AND pkg_arch IN %(archs)s
     AND pkg_name NOT LIKE '%%debuginfo'
 """
 
