@@ -290,16 +290,15 @@ FROM
         BinDeps.pkg_name,
         pkg_name,
         sourcepkgname
-   FROM last_packages_with_source
-   INNER JOIN
+    FROM
     (
         SELECT DISTINCT 
-            BinDeps.pkg_name,
-            pkg_name
+            pkg_name AS `BinDeps.pkg_name`,
+            SrcDeps.pkg_name AS pkg_name_
         FROM
         (
             SELECT DISTINCT
-                BinDeps.pkg_name,
+                SrcDeps.pkg_name,
                 pkg_name,
                 dp_name
             FROM last_depends
@@ -309,23 +308,28 @@ FROM
                     pkg_name,
                     dp_name
                 FROM last_depends
-                WHERE pkg_name IN
-                (
-                    SELECT ''
-                    UNION ALL
-                        SELECT * FROM {tmp_table}
-                )
-                    AND pkgset_name = %(branch)s
-                    AND dp_type = 'require'
-                    AND pkg_sourcepackage = 1
-            ) AS BinDeps USING dp_name
-            WHERE pkgset_name = %(branch)s
-                AND dp_type = 'provide'
-                AND pkg_sourcepackage = 0
-                AND pkg_arch IN %(archs)s
+                WHERE pkgset_name = %(branch)s
+                    AND dp_type = 'provide'
+                    AND pkg_sourcepackage = 0
+                    AND pkg_arch IN %(archs)s
+            ) AS SrcDeps USING dp_name
+            WHERE pkg_name IN
+            (
+                SELECT ''
+                UNION ALL
+                    SELECT * FROM {tmp_table}
+            )
+                AND pkgset_name = %(branch)s
+                AND dp_type = 'require'
+                AND pkg_sourcepackage = 1
         )
-    ) AS pkgs USING pkg_name
-WHERE pkgset_name = %(branch)s
+    ) AS pkgs
+    INNER JOIN
+    (
+        SELECT pkg_name, sourcepkgname
+        FROM last_packages_with_source
+        WHERE pkgset_name = %(branch)s
+    ) AS LPWS ON (LPWS.pkg_name = pkg_name_)
 UNION ALL SELECT
     arrayJoin(%(pkgs)s),
     '',
