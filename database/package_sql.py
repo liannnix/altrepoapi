@@ -279,13 +279,19 @@ WHERE sourcepkgname IN
 )
 """
 
-    insert_src_deps = """
+    insert_src_deps = (
+# get source packages that provides dependencies required by input list
+# 'BinDeps.pkg_name' - input source package
+# 'sourcepkgname' - source packages that provides binary packages required by 'BinDeps.pkg_name'
+"""
 INSERT INTO {tmp_deps} (pkgname,reqname)
 SELECT DISTINCT
     BinDeps.pkg_name,
     sourcepkgname
 FROM
-(
+("""
+# get 'sourcepkgname' by 'pkg_name'
+"""
     SELECT DISTINCT
         BinDeps.pkg_name,
         pkg_name,
@@ -296,7 +302,9 @@ FROM
             pkg_name AS `BinDeps.pkg_name`,
             SrcDeps.pkg_name AS pkg_name_
         FROM
-        (
+        ("""
+# get binary packages ('SrcDeps.pkg_name') required in 'dp_name' by 'pkg_name'
+"""
             SELECT DISTINCT
                 SrcDeps.pkg_name,
                 pkg_name,
@@ -336,6 +344,7 @@ UNION ALL SELECT
     ''
 )
 """
+    )
 
     insert_binary_deps = """
 INSERT INTO {tmp_req} (pkgname, reqname)
