@@ -218,7 +218,8 @@ class TaskDiff(APIWorker):
                         res_list_add = [dep for dep in task_set - repo_set]
 
                         if res_list_del or res_list_add:
-                            result_dict[arch][name]["deps"] = []
+                            if result_dict[arch][name]["deps"] is None:
+                                result_dict[arch][name]["deps"] = []
                             result_dict[arch][name]["deps"].append(
                                 {
                                     "type": type_,

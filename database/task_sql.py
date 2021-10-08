@@ -483,13 +483,6 @@ INNER JOIN
     (
         SELECT * FROM {table}
     )
-        AND dp_type IN
-        (
-            'provide',
-            'require',
-            'obsolete',
-            'conflict'
-        )
 ) AS Deps USING pkg_hash
 WHERE pkg_name NOT LIKE '%%-debuginfo'
 GROUP BY
