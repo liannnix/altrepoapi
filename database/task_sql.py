@@ -469,7 +469,7 @@ WHERE pkg_hash IN
 SELECT
     pkg_name,
     dp_type,
-    pkg_arch,
+    if(pkg_sourcepackage = 0, pkg_arch, 'src') AS arch,
     groupUniqArray(dp_name)
 FROM Packages
 INNER JOIN
@@ -494,7 +494,7 @@ INNER JOIN
 WHERE pkg_name NOT LIKE '%%-debuginfo'
 GROUP BY
     pkg_name,
-    pkg_arch,
+    arch,
     dp_type
 """
 

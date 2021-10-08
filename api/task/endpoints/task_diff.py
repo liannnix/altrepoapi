@@ -130,6 +130,7 @@ class TaskDiff(APIWorker):
                         result_dict[p_arch][p_name]["add"].append(p_fname)
 
         if task_add_pkgs:
+            # get package hashes from repo by names from task_add_pkgs hashes
             self.conn.request_line = self.sql.diff_repo_pkgs.format(
                 tmp_table1="tmpRepoHshs", tmp_table2="tmpTaskAddHshs"
             )
