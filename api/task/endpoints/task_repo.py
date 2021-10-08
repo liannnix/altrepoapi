@@ -136,6 +136,7 @@ class TaskRepoState(APIWorker):
                 self.ll.INFO,
                 404,
             )
+            return None
         # get task_diff list and latest repo package hashes
         if task_state == "DONE":
             # if task state is 'DONE' use last previous repo and applly all 'DONE' task chain on top of it
