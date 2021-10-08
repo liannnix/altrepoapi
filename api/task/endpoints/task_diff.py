@@ -6,7 +6,7 @@ from utils import join_tuples, remove_duplicate
 from api.base import APIWorker
 from api.misc import lut
 from database.task_sql import tasksql
-from api.task.endpoints.task_repo import TaskRepo
+from api.task.endpoints.task_repo import TaskRepoState
 
 
 class TaskDiff(APIWorker):
@@ -31,14 +31,14 @@ class TaskDiff(APIWorker):
         return True
 
     def get(self):
-        self.tr = TaskRepo(self.conn, self.task_id)
-        self.tr.build_task_repo()
+        self.tr = TaskRepoState(self.conn, self.task_id)
+        self.tr.build_task_repo(keep_artefacts=True)
         if not self.tr.status:
             return self.tr.error
 
-        repo_pkgs = self.tr.repo["base_repo_pkgs"]
-        task_add_pkgs = self.tr.repo["task_add_pkgs"]
-        task_del_pkgs = self.tr.repo["task_del_pkgs"]
+        repo_pkgs = self.tr.task_base_repo_pkgs
+        task_add_pkgs = self.tr.task_add_pkgs
+        task_del_pkgs = self.tr.task_del_pkgs
 
         self.conn.request_line = self.sql.create_tmp_hshs_table.format(
             table="tmpRepoHshs"
