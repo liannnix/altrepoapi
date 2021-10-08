@@ -1,4 +1,6 @@
 import re
+from typing import List
+
 import mmh3
 import json
 import time
@@ -233,7 +235,7 @@ def get_nickname_from_packager(packager):
     return nickname
 
 
-def dp_flags_decode(dp_flag: int, dp_decode_table: list) -> list[str]:
+def dp_flags_decode(dp_flag: int, dp_decode_table: list) -> List[str]:
     res = []
     if dp_flag < 0:
         return []

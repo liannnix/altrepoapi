@@ -123,9 +123,7 @@ ORDER BY pkg_name ASC
 """
 
     get_source_pkgs = """
-SELECT DISTINCT
-    pkg_name,
-    pkg_srcrpm_hash
+SELECT DISTINCT pkg_name
 FROM Packages
 WHERE pkg_srcrpm_hash = (
     SELECT pkg_srcrpm_hash
