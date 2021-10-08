@@ -90,6 +90,7 @@ SELECT
     pkg_name,
     pkg_version,
     pkg_release,
+    pkg_arch,
     pkg_epoch,
     pkg_buildtime,
     pkg_url,
@@ -110,11 +111,26 @@ WHERE pkg_hash = {pkghash}
 """
 
     get_binary_pkgs = """
+SELECT DISTINCT
+    pkg_name,
+    groupUniqArray((pkg_arch, pkg_hash))
+FROM Packages
+WHERE (pkg_srcrpm_hash = {pkghash})
+    AND (pkg_sourcepackage = 0)
+GROUP BY pkg_name
+ORDER BY pkg_name ASC
+"""
+
+    get_source_pkgs = """
 SELECT DISTINCT pkg_name
 FROM Packages
-WHERE pkg_srcrpm_hash = {pkghash}
-    AND pkg_sourcepackage = 0
-ORDER BY pkg_name ASC
+WHERE pkg_srcrpm_hash = (
+    SELECT pkg_srcrpm_hash
+    FROM Packages
+    WHERE pkg_hash = {pkghash}
+        AND pkg_sourcepackage = 0
+    ORDER BY pkg_srcrpm_hash ASC
+) AND pkg_sourcepackage = 1
 """
 
     get_pkg_acl = """
@@ -134,6 +150,32 @@ FROM static_last_packages
 WHERE pkg_name = '{name}'
     AND pkg_sourcepackage = 1
 """
+
+    get_pkg_binary_versions = """
+    SELECT DISTINCT
+        pkgset_name,
+        pkg_version,
+        pkg_release,
+        toString(pkg_hash)
+    FROM last_packages
+    WHERE pkg_name = '{name}'
+        AND pkg_arch = '{arch}'
+        AND pkg_sourcepackage = 0
+    """
+
+    get_pkg_binary_list_versions = """
+        SELECT DISTINCT
+            pkgset_name,
+            pkg_version,
+            pkg_release
+        FROM static_last_packages
+        WHERE pkg_name = '{name}'
+            AND pkg_sourcepackage = 0
+        GROUP BY 
+            pkgset_name,
+            pkg_version,
+            pkg_release
+        """
 
     get_pkg_versions_by_hash = """
 SELECT DISTINCT
@@ -224,6 +266,18 @@ WHERE pkgset_name = '{branch}'
     AND pkg_name = '{name}'
     AND pkg_sourcepackage = 1
 """
+
+    get_pkghash_by_binary_name = """
+    SELECT DISTINCT
+        pkg_hash,
+        pkg_version,
+        pkg_release
+    FROM last_packages
+    WHERE pkgset_name = '{branch}'
+        AND pkg_name = '{name}'
+        AND pkg_arch = '{arch}'
+        AND pkg_sourcepackage = 0
+    """
 
     get_tasks_by_pkg_name = """
 WITH
@@ -984,5 +1038,17 @@ FROM PackageHash_view
 WHERE pkgh_mmh IN {hshs}
 """
 
+    get_pkgs_binary_list = """
+SELECT DISTINCT
+    pkg_hash,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_arch
+FROM last_packages
+WHERE pkgset_name = '{branch}'
+    AND pkg_name = '{name}'
+    AND pkg_sourcepackage = 0
+"""
 
 sitesql = SQL()

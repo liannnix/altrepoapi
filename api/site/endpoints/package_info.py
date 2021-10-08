@@ -142,12 +142,17 @@ class PackageInfo(APIWorker):
     def get(self):
         self.branch = self.args["branch"]
         self.chlog_length = self.args["changelog_last"]
+        self.pkg_type = self.args["package_type"]
+
+        pkg_type_to_sql = {"source": 1, "binary": 0}
+        source = pkg_type_to_sql[self.pkg_type]
         PkgMeta = namedtuple(
             "PkgMeta",
             [
                 "name",
                 "version",
                 "release",
+                "arch",
                 "epoch",
                 "buildtime",
                 "url",
@@ -241,7 +246,14 @@ class PackageInfo(APIWorker):
             pkg_acl = response[0][0]
         # get package versions
         pkg_versions = []
-        self.conn.request_line = self.sql.get_pkg_versions.format(name=pkg_info["name"])
+        if source == 1:
+            self.conn.request_line = self.sql.get_pkg_versions.format(
+                name=pkg_info["name"]
+            )
+        else:
+            self.conn.request_line = self.sql.get_pkg_binary_versions.format(
+                name=pkg_info["name"], arch=pkg_info["arch"]
+            )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -259,28 +271,43 @@ class PackageInfo(APIWorker):
 
         # get package dependencies
         pkg_dependencies = []
-        self.conn.request_line = self.sql.get_pkg_dependencies.format(
-            pkghash=self.pkghash
-        )
+        if source == 1:
+            self.conn.request_line = self.sql.get_pkg_dependencies.format(
+                pkghash=self.pkghash
+            )
+            status, response = self.conn.send_request()
+            if not status:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return self.error
+            PkgDependencies = namedtuple("PkgDependencies", ["name", "version", "flag"])
+            pkg_dependencies = [PkgDependencies(*el)._asdict() for el in response]
+
+            # change numeric flag on text
+            for el in pkg_dependencies:
+                el["flag_decoded"] = dp_flags_decode(el["flag"], lut.rpmsense_flags)
+
+        # get provided binary and source packages
+        packages_list = []
+        if source == 1:
+            self.conn.request_line = self.sql.get_binary_pkgs.format(
+                pkghash=self.pkghash
+            )
+        else:
+            self.conn.request_line = self.sql.get_source_pkgs.format(
+                pkghash=self.pkghash
+            )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
-        PkgDependencies = namedtuple("PkgDependencies", ["name", "version", "flag"])
-        pkg_dependencies = [PkgDependencies(*el)._asdict() for el in response]
 
-        # change numeric flag on text
-        for el in pkg_dependencies:
-            el["flag_decoded"] = dp_flags_decode(el["flag"], lut.rpmsense_flags)
-
-        # get provided binary packages
-        bin_packages_list = []
-        self.conn.request_line = self.sql.get_binary_pkgs.format(pkghash=self.pkghash)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
-        bin_packages_list = [el[0] for el in response]
+        if source == 1:
+            dict_task_pkgs_bin = {}
+            for elem in response:
+                dict_task_pkgs_bin[elem[0]] = {el[0]: str(el[1]) for el in elem[1]}
+            packages_list = dict_task_pkgs_bin
+        if source == 0:
+            packages_list = [el[0] for el in response]
         # get package changelog
         self.conn.request_line = (
             self.sql.get_pkg_changelog,
@@ -360,7 +387,7 @@ class PackageInfo(APIWorker):
             "task": pkg_task,
             "gear": gear_link,
             "tasks": pkg_tasks,
-            "packages": bin_packages_list,
+            "packages": packages_list,
             "changelog": changelog_list,
             "maintainers": pkg_maintainers,
             "acl": pkg_acl,
@@ -665,9 +692,7 @@ class PackageDownloadLinks(APIWorker):
 
         # get package files MD5 checksum
         hshs = tuple(filenames.keys())
-        self.conn.request_line = self.sql.get_pkkgs_md5_by_hshs.format(
-            hshs=hshs
-        )
+        self.conn.request_line = self.sql.get_pkkgs_md5_by_hshs.format(hshs=hshs)
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -703,7 +728,9 @@ class PackageDownloadLinks(APIWorker):
 
         # get package versions
         pkg_versions = []
-        self.conn.request_line = self.sql.get_pkg_versions_by_hash.format(pkghash=self.pkghash)
+        self.conn.request_line = self.sql.get_pkg_versions_by_hash.format(
+            pkghash=self.pkghash
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -718,7 +745,6 @@ class PackageDownloadLinks(APIWorker):
         pkg_versions = [
             PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
         ]
-
 
         def make_link_to_task(base, task, subtask, arch, filename, is_src):
             return "/".join(
@@ -753,7 +779,6 @@ class PackageDownloadLinks(APIWorker):
                 size /= 1024.0
             return f"{size:.1f} ZB"
 
-
         res = {}
 
         if use_task:
@@ -762,19 +787,21 @@ class PackageDownloadLinks(APIWorker):
             subtask_ = subtasks[0]["subtask_id"]
             task_base_ = "http://git.altlinux.org/tasks"
 
-            res["src"] = [{
-                "name": src_filename,
-                "url": make_link_to_task(
-                    task_base_,
-                    task_,
-                    subtask_,
-                    src_arch,
-                    src_filename,
-                    is_src=True,
-                ),
-                "md5": md5_sums[self.pkghash],
-                "size": bytes2human(src_filesize),
-            }]
+            res["src"] = [
+                {
+                    "name": src_filename,
+                    "url": make_link_to_task(
+                        task_base_,
+                        task_,
+                        subtask_,
+                        src_arch,
+                        src_filename,
+                        is_src=True,
+                    ),
+                    "md5": md5_sums[self.pkghash],
+                    "size": bytes2human(src_filesize),
+                }
+            ]
 
             for k, v in bin_pkgs.items():
                 if len(v) > 0:
@@ -826,19 +853,21 @@ class PackageDownloadLinks(APIWorker):
                 branch_ = self.branch
                 files_ = "branch/files"
 
-                res["src"] = [{
-                    "name": src_filename,
-                    "url": make_link_to_repo(
-                        repo_base_,
-                        branch_,
-                        files_,
-                        src_arch,
-                        src_filename,
-                        is_src=True,
-                    ),
-                    "md5": md5_sums[self.pkghash],
-                    "size": bytes2human(src_filesize),
-                }]
+                res["src"] = [
+                    {
+                        "name": src_filename,
+                        "url": make_link_to_repo(
+                            repo_base_,
+                            branch_,
+                            files_,
+                            src_arch,
+                            src_filename,
+                            is_src=True,
+                        ),
+                        "md5": md5_sums[self.pkghash],
+                        "size": bytes2human(src_filesize),
+                    }
+                ]
 
             for k, v in bin_pkgs.items():
                 if len(v) > 0:
@@ -867,7 +896,92 @@ class PackageDownloadLinks(APIWorker):
             "downloads": [
                 {"arch": k, "packages": v} for k, v in res.items() if len(v) > 0
             ],
-            "versions": pkg_versions
+            "versions": pkg_versions,
         }
 
+        return res, 200
+
+
+class PackagesBinaryListInfo(APIWorker):
+    """Retrieves all binary package architecture."""
+
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sitesql
+        super().__init__()
+
+    def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        self.validation_results = []
+
+        if self.args["branch"] == "" or self.args["branch"] not in lut.known_branches:
+            self.validation_results.append(
+                f"unknown package set name : {self.args['branch']}"
+            )
+            self.validation_results.append(
+                f"allowed package set names are : {lut.known_branches}"
+            )
+
+        if self.args["name"] == "":
+            self.validation_results.append(f"package name should not be empty string")
+
+        if self.validation_results != []:
+            return False
+        else:
+            return True
+
+    def get(self):
+        self.branch = self.args["branch"]
+        self.name = self.args["name"]
+
+        self.conn.request_line = self.sql.get_pkgs_binary_list.format(
+            branch=self.branch, name=self.name
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {
+                    "message": f"No found",
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        PkgMeta = namedtuple(
+            "PkgMeta",
+            ["hash", "name", "version", "release", "arch"],
+        )
+
+        retval = [PkgMeta(*el)._asdict() for el in response]
+
+        # get package versions
+        pkg_versions = []
+        self.conn.request_line = self.sql.get_pkg_binary_list_versions.format(
+            name=retval[0]["name"]
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        PkgVersions = namedtuple("PkgVersions", ["branch", "version", "release"])
+        # sort package versions by branch
+        pkg_branches = sort_branches([el[0] for el in response])
+        pkg_versions = tuplelist_to_dict(response, 3)
+        # FIXME: workaround for multiple versions of returned for certain branch
+        pkg_versions = [
+            PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
+        ]
+
+        res = {
+            "request_args": self.args,
+            "length": len(retval),
+            "packages": retval,
+            "versions": pkg_versions,
+        }
         return res, 200

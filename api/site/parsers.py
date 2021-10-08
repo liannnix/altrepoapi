@@ -13,6 +13,15 @@ package_info_args.add_argument(
     help="changelog history length",
     location="args",
 )
+package_info_args.add_argument(
+    "package_type",
+    type=str,
+    choices=("source", "binary"),
+    default="source",
+    required=False,
+    help="packages type [source|binary]",
+    location="args",
+)
 
 pkgset_packages_args = reqparse.RequestParser()
 pkgset_packages_args.add_argument(
@@ -55,6 +64,17 @@ pkgset_pkghash_args.add_argument(
 )
 pkgset_pkghash_args.add_argument(
     "name", type=str, required=True, help="package name", location="args"
+)
+
+pkgset_pkg_binary_hash_args = reqparse.RequestParser()
+pkgset_pkg_binary_hash_args.add_argument(
+    "branch", type=str, required=True, help="name of packageset", location="args"
+)
+pkgset_pkg_binary_hash_args.add_argument(
+    "name", type=str, required=True, help="package name", location="args"
+)
+pkgset_pkg_binary_hash_args.add_argument(
+    "arch", type=str, required=True, help="package arch", location="args"
 )
 
 task_by_name_args = reqparse.RequestParser()
@@ -136,4 +156,12 @@ maintainer_branches_args.add_argument(
 pkgs_with_cve_fix_args = reqparse.RequestParser()
 pkgs_with_cve_fix_args.add_argument(
     "branch", type=str, required=True, help="name of packageset", location="args"
+)
+
+pkgs_binary_list_args = reqparse.RequestParser()
+pkgs_binary_list_args.add_argument(
+    "branch", type=str, required=True, help="name of packageset", location="args"
+)
+pkgs_binary_list_args.add_argument(
+    "name", type=str, required=True, help="binary package name", location="args"
 )

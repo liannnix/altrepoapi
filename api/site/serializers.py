@@ -55,6 +55,7 @@ package_info_model = ns.model(
         "name": fields.String(description="package name"),
         "version": fields.String(description="package version"),
         "release": fields.String(description="package release"),
+        "arch": fields.String(description="package arch"),
         "buildtime": fields.Integer(description="package build time"),
         "task": fields.Integer(description="package build task"),
         "gear": fields.String(description="package task gear type"),
@@ -65,7 +66,7 @@ package_info_model = ns.model(
         "description": fields.String(description="package description"),
         "packager": fields.String(description="package packager name"),
         "packager_nickname": fields.String(description="package packager nickname"),
-        "packages": fields.List(fields.String, description="bunary packages"),
+        "packages": fields.Raw(fields.Raw, description="binary or source packages"),
         "acl": fields.List(fields.String, description="bunary packages"),
         "maintainers": fields.List(
             fields.String, description="all maintainer's nicknames"
@@ -566,4 +567,28 @@ package_downloads_model = ns.model(
             as_list=True,
         ),
     }
+)
+
+pkgs_binary_list_el_model = ns.model(
+    "SitePackagesBinaryListElementModel",
+    {
+        "hash": fields.String(description="package hash UInt64 as string"),
+        "name": fields.String(description="package name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "arch": fields.String(description="package arch")
+    },
+)
+pkgs_binary_list_model = ns.model(
+    "SitePackagesBinaryListModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "packages": fields.Nested(
+            pkgs_binary_list_el_model,
+            description="binary packages list",
+            as_list=True,
+        ),
+        "versions": fields.Nested(package_versions_el_model, as_list=True, description="all package versions")
+    },
 )

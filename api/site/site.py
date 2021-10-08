@@ -3,9 +3,9 @@ from flask_restx import Resource, abort, Namespace
 
 from utils import get_logger, url_logging, response_error_parser
 
-from .endpoints.package_info import PackageInfo, PackageChangelog, DeletedPackageInfo
+from .endpoints.package_info import PackageInfo, PackageChangelog, DeletedPackageInfo, PackagesBinaryListInfo
 from .endpoints.package_info import LastPackagesWithCVEFix, PackageDownloadLinks
-from .endpoints.pkgset_packages import PackagesetPackages, PackagesetPackageHash
+from .endpoints.pkgset_packages import PackagesetPackages, PackagesetPackageHash, PackagesetPackageBinaryHash
 from .endpoints.packager_info import AllMaintainers, MaintainerInfo, MaintainerPackages
 from .endpoints.packager_info import MaintainerBranches, RepocopByMaintainer
 from .endpoints.packager_info import MaintainerBeehiveErrors
@@ -30,6 +30,8 @@ from .parsers import (
     pkgset_categories_args,
     all_archs_args,
     pkgs_with_cve_fix_args,
+    pkgset_pkg_binary_hash_args,
+    pkgs_binary_list_args,
 )
 from .serializers import (
     pkgset_packages_model,
@@ -52,7 +54,8 @@ from .serializers import (
     last_pkgs_with_cve_fix_model,
     all_pkgsets_summary_model,
     beehive_by_maintainer_model,
-    package_downloads_model
+    package_downloads_model,
+    pkgs_binary_list_model,
 )
 
 logger = get_logger(__name__)
@@ -157,6 +160,36 @@ class routePackageInfo(Resource):
 
 
 @ns.route(
+    "/packages_binary_list",
+    doc={
+        "description": "Get package info by hash",
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package not found in database",
+        },
+    },
+)
+class routePackagesBinaryList(Resource):
+    @ns.expect(pkgs_binary_list_args)
+    @ns.marshal_with(pkgs_binary_list_model)
+    def get(self):
+        args = pkgs_binary_list_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        wrk = PackagesBinaryListInfo(g.connection, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route(
     "/pkghash_by_name",
     doc={
         "description": (
@@ -175,6 +208,37 @@ class routePackagesetPackageHash(Resource):
         args = pkgset_pkghash_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = PackagesetPackageHash(g.connection, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+@ns.route(
+    "/pkghash_by_binary_name",
+    doc={
+        "description": (
+            "Get source package hash by package name and " "package set name"
+        ),
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package not found in database",
+        },
+    },
+)
+class routePackagesetPackageBinaryHash(Resource):
+    @ns.expect(pkgset_pkg_binary_hash_args)
+    @ns.marshal_with(pkgset_pkghash_model)
+    def get(self):
+        args = pkgset_pkg_binary_hash_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        wrk = PackagesetPackageBinaryHash(g.connection, **args)
         if not wrk.check_params():
             abort(
                 400,

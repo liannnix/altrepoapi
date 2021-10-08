@@ -33,7 +33,7 @@ class TaskRepoState(APIWorker):
             return False
         return True
 
-    def build_task_repo(self, keep_artefacts: bool) -> None:
+    def build_task_repo(self) -> tuple[int]:
         if not self.check_task_id():
             self._store_sql_error(
                 {"Error": f"Non-existent task {self.task_id}"},
