@@ -95,7 +95,7 @@ class TaskBuildDependency(APIWorker):
         self.args["package"] = list({pkg[0] for pkg in response})
         # get task repo state
         self.tr = TaskRepoState(self.conn, self.task_id)
-        task_repo_hashes = self.tr.build_task_repo()
+        self.tr.build_task_repo(keep_artefacts=False)
         if not self.tr.status:
             return self.tr.error
         # init BuildDependency class with args
@@ -114,7 +114,7 @@ class TaskBuildDependency(APIWorker):
         )
 
         # build result
-        self.bd.build_dependencies(task_repo_hashes=task_repo_hashes)
+        self.bd.build_dependencies(task_repo_hashes=self.tr.task_repo_pkgs)
 
         # format result
         if self.bd.status:

@@ -204,9 +204,7 @@ class TaskRepo(APIWorker):
             tasks_diff_add_hshs = set()
             tasks_diff_del_hshs = set()
 
-        task_base_repo_pkgs = (
-            last_repo_pkgs - tasks_diff_del_hshs
-        ) | tasks_diff_add_hshs
+        task_base_repo_pkgs = (last_repo_pkgs - tasks_diff_del_hshs) | tasks_diff_add_hshs
         task_current_repo_pkgs = (task_base_repo_pkgs - task_del_pkgs) | task_add_pkgs
 
         self.repo = {
@@ -321,7 +319,10 @@ class TaskRepoState(APIWorker):
         self.args = kwargs
         self.sql = tasksql
         self.task_id = id
-        self.repo = {}
+        self.task_add_pkgs: tuple[int] = tuple()
+        self.task_del_pkgs: tuple[int] = tuple()
+        self.task_repo_pkgs: tuple[int] = tuple()
+        self.task_base_repo_pkgs: tuple[int] = tuple()
         super().__init__()
 
     def check_task_id(self) -> bool:
@@ -335,7 +336,7 @@ class TaskRepoState(APIWorker):
             return False
         return True
 
-    def build_task_repo(self) -> tuple[int]:
+    def build_task_repo(self, keep_artefacts: bool) -> None:
         if not self.check_task_id():
             self._store_sql_error(
                 {"Error": f"Non-existent task {self.task_id}"},
@@ -348,7 +349,7 @@ class TaskRepoState(APIWorker):
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.repo
+            return None
         if not response:
             self._store_sql_error(
                 {"Error": f"Non-existent data for task {self.task_id}"},
@@ -362,7 +363,7 @@ class TaskRepoState(APIWorker):
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.repo
+            return None
         if not response:
             self._store_sql_error(
                 {"Error": f"Non-existent data for task {self.task_id}"},
@@ -548,5 +549,11 @@ class TaskRepoState(APIWorker):
         task_base_repo_pkgs = (last_repo_pkgs - tasks_diff_del_hshs) | tasks_diff_add_hshs
         task_current_repo_pkgs = (task_base_repo_pkgs - task_del_pkgs) | task_add_pkgs
 
+        if keep_artefacts:
+            self.task_add_pkgs = tuple(task_add_pkgs)
+            self.task_del_pkgs = tuple(task_del_pkgs)
+            self.task_base_repo_pkgs = tuple(task_base_repo_pkgs)
+        
+        self.task_repo_pkgs = tuple(task_current_repo_pkgs)
         self.status = True
-        return tuple(task_current_repo_pkgs)
+        return None
