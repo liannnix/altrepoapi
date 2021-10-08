@@ -1,5 +1,5 @@
 from copy import deepcopy
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 
 from utils import join_tuples, remove_duplicate
 
@@ -11,7 +11,7 @@ from api.task.endpoints.task_repo import TaskRepoState
 
 class TaskDiff(APIWorker):
     """Retrieves task difference from previous repository state."""
-    
+
     def __init__(self, connection, id, **kwargs):
         self.conn = connection
         self.args = kwargs
@@ -129,6 +129,27 @@ class TaskDiff(APIWorker):
                     if p_fname not in result_dict[p_arch][p_name]["add"]:
                         result_dict[p_arch][p_name]["add"].append(p_fname)
 
+        DepInfo = namedtuple("DepInfo", ["dp_name", "dp_flag", "dp_version"])
+
+        def decode_dp_flag(dp_flag: int) -> str:
+            """Decodes version equality from dp_flag."""
+            result = ""
+            if dp_flag == 0:
+                return result
+            if 0x02 & dp_flag:
+                result = "<"
+            if 0x04 & dp_flag:
+                result = ">"
+            if 0x08 & dp_flag:
+                result += "="
+            return result
+
+        def convert_dpinfo_to_string(depinfo: DepInfo) -> str:
+            result = " ".join(
+                (depinfo.dp_name, decode_dp_flag(depinfo.dp_flag), depinfo.dp_version)
+            )
+            return result
+
         if task_add_pkgs:
             # get package hashes from repo by names from task_add_pkgs hashes
             self.conn.request_line = self.sql.diff_repo_pkgs.format(
@@ -214,8 +235,8 @@ class TaskDiff(APIWorker):
                         task_set = set(value)
                         repo_set = set(repo_struct[name][type_][arch])
 
-                        res_list_del = [dep for dep in repo_set - task_set]
-                        res_list_add = [dep for dep in task_set - repo_set]
+                        res_list_del = [convert_dpinfo_to_string(DepInfo(*dep)) for dep in repo_set - task_set]
+                        res_list_add = [convert_dpinfo_to_string(DepInfo(*dep)) for dep in task_set - repo_set]
 
                         if res_list_del or res_list_add:
                             if result_dict[arch][name]["deps"] is None:

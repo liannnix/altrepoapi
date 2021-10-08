@@ -470,13 +470,15 @@ SELECT
     pkg_name,
     dp_type,
     if(pkg_sourcepackage = 0, pkg_arch, 'src') AS arch,
-    groupUniqArray(dp_name)
+    groupUniqArray(tuple(dp_name, dp_flag, dp_version))
 FROM Packages
 INNER JOIN
 (
     SELECT DISTINCT
         pkg_hash,
         dp_name,
+        dp_flag,
+        dp_version,
         dp_type
     FROM Depends
     WHERE pkg_hash IN
