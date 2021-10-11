@@ -286,7 +286,8 @@ class PackageInfo(APIWorker):
                 el["flag_decoded"] = dp_flags_decode(el["flag"], lut.rpmsense_flags)
 
         # get provided binary and source packages
-        packages_list = []
+        source_packages = {}
+        binary_packages = {}
         if source == 1:
             self.conn.request_line = self.sql.get_binary_pkgs.format(pkghash=self.pkghash)
         else:
@@ -296,13 +297,12 @@ class PackageInfo(APIWorker):
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
 
-        if source == 1:
-            dict_task_pkgs_bin = {}
+        if response and source == 1:
             for elem in response:
-                dict_task_pkgs_bin[elem[0]] = {el[0]: str(el[1]) for el in elem[1]}
-            packages_list = dict_task_pkgs_bin
-        if source == 0:
-            packages_list = [el[0] for el in response]
+                binary_packages[elem[0]] = {el[0]: str(el[1]) for el in elem[1]}
+        if response and source == 0:
+            for elem in response:
+                source_packages[elem[0]] = str(elem[1])
         # get package changelog
         self.conn.request_line = (
             self.sql.get_pkg_changelog,
@@ -382,7 +382,8 @@ class PackageInfo(APIWorker):
             "task": pkg_task,
             "gear": gear_link,
             "tasks": pkg_tasks,
-            "packages": packages_list,
+            "source_packages": source_packages,
+            "binary_packages": binary_packages,
             "changelog": changelog_list,
             "maintainers": pkg_maintainers,
             "acl": pkg_acl,
