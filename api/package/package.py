@@ -9,7 +9,6 @@ from .endpoints.package_info import PackageInfo
 from .endpoints.find_packageset import FindPackageset
 from .endpoints.unpackaged_dirs import UnpackagedDirs
 from .endpoints.package_by_file import PackageByFileName, PackageByFileMD5
-from .endpoints.dependent_packages import DependentPackages
 from .endpoints.pkg_build_dependency import PackageBuildDependency
 from .endpoints.misconflict_packages import PackageMisconflictPackages
 from .endpoints.build_dependency_set import PackageBuildDependencySet
@@ -21,13 +20,19 @@ from .parsers import (
     pkg_build_dep_args,
     misconflict_pkg_args,
     pkg_repocop_args,
+    pkg_find_pkgset_args,
+    pkg_by_file_name_args,
+    pkg_by_file_md5_args,
+    unpackaged_dirs_args,
+    build_dep_set_args,
 )
-from .parsers import pkg_find_pkgset_args, pkg_by_file_name_args, pkg_by_file_md5_args
-from .parsers import dependent_packages_args, unpackaged_dirs_args, build_dep_set_args
-from .serializers import package_info_model, pkg_build_dep_model, misconflict_pkgs_model
-from .serializers import pkg_find_pkgset_model, pkg_by_file_name_model
-from .serializers import dependent_packages_model, unpackaged_dirs_args_model
 from .serializers import (
+    package_info_model,
+    pkg_build_dep_model,
+    misconflict_pkgs_model,
+    pkg_find_pkgset_model,
+    pkg_by_file_name_model,
+    unpackaged_dirs_args_model,
     build_dep_set_model,
     repocop_json_list_model,
     repocop_json_get_list_model,
@@ -227,41 +232,6 @@ class routePackageByFileMD5(Resource):
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
-
-
-@ns.deprecated
-@ns.route(
-    "/dependent_packages",
-    # doc={
-    #     "description": (
-    #         "Get information about packages whose binary packages "
-    #         "depends on given package"
-    #     ),
-    #     "responses": {
-    #         400: "Request parameters validation error",
-    #         404: "Package not found in database",
-    #     },
-    # },
-)
-class routeDependentPackages(Resource):
-    # @ns.expect(dependent_packages_args)
-    # @ns.marshal_with(dependent_packages_model)
-    def get(self):
-        abort(410)
-        # args = dependent_packages_args.parse_args(strict=True)
-        # url_logging(logger, g.url)
-        # wrk = DependentPackages(g.connection, **args)
-        # if not wrk.check_params():
-        #     abort(
-        #         400,
-        #         message=f"Request parameters validation error",
-        #         args=args,
-        #         validation_message=wrk.validation_results,
-        #     )
-        # result, code = wrk.get()
-        # if code != 200:
-        #     abort(code, **response_error_parser(result))
-        # return result, code
 
 
 @ns.route(

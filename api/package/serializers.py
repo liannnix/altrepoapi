@@ -251,32 +251,6 @@ pkg_by_file_name_model = ns.model(
     },
 )
 
-dependent_packages_el_model = ns.model(
-    "DependentPackagesElementModel",
-    {
-        "name": fields.String(description="package name"),
-        "version": fields.String(description="package version"),
-        "release": fields.String(description="package release"),
-        "epoch": fields.Integer(description="package epoch"),
-        "serial": fields.Integer(description="package serial"),
-        "sourcerpm": fields.String(description="source package file"),
-        "branch": fields.String(description="package set name"),
-        "archs": fields.List(fields.String, description="binary packages archs"),
-    },
-)
-dependent_packages_model = ns.model(
-    "DependentPackagesModel",
-    {
-        "request_args": fields.Raw(description="request arguments"),
-        "length": fields.Integer(description="number of packages found"),
-        "packages": fields.Nested(
-            dependent_packages_el_model,
-            description="dependent packages information",
-            as_list=True,
-        ),
-    },
-)
-
 unpackaged_dirs_args_el_model = ns.model(
     "UnpackagedDirsElementModel",
     {

@@ -188,14 +188,6 @@ pkg_by_file_md5_args.add_argument(
     "arch", type=str, required=False, help="packages architecture", location="args"
 )
 
-dependent_packages_args = reqparse.RequestParser()
-dependent_packages_args.add_argument(
-    "name", type=str, required=True, help="package name", location="args"
-)
-dependent_packages_args.add_argument(
-    "branch", type=str, required=True, help="name of package set", location="args"
-)
-
 unpackaged_dirs_args = reqparse.RequestParser()
 unpackaged_dirs_args.add_argument(
     "packager", type=str, required=True, help="maintainer nickname", location="args"
