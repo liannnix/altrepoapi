@@ -229,37 +229,39 @@ class routePackageByFileMD5(Resource):
         return result, code
 
 
+@ns.deprecated
 @ns.route(
     "/dependent_packages",
-    doc={
-        "description": (
-            "Get information about packages whose binary packages "
-            "depends on given package"
-        ),
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
-    },
+    # doc={
+    #     "description": (
+    #         "Get information about packages whose binary packages "
+    #         "depends on given package"
+    #     ),
+    #     "responses": {
+    #         400: "Request parameters validation error",
+    #         404: "Package not found in database",
+    #     },
+    # },
 )
 class routeDependentPackages(Resource):
-    @ns.expect(dependent_packages_args)
-    @ns.marshal_with(dependent_packages_model)
+    # @ns.expect(dependent_packages_args)
+    # @ns.marshal_with(dependent_packages_model)
     def get(self):
-        args = dependent_packages_args.parse_args(strict=True)
-        url_logging(logger, g.url)
-        wrk = DependentPackages(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        abort(410)
+        # args = dependent_packages_args.parse_args(strict=True)
+        # url_logging(logger, g.url)
+        # wrk = DependentPackages(g.connection, **args)
+        # if not wrk.check_params():
+        #     abort(
+        #         400,
+        #         message=f"Request parameters validation error",
+        #         args=args,
+        #         validation_message=wrk.validation_results,
+        #     )
+        # result, code = wrk.get()
+        # if code != 200:
+        #     abort(code, **response_error_parser(result))
+        # return result, code
 
 
 @ns.route(
