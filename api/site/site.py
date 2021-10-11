@@ -162,7 +162,7 @@ class routePackageInfo(Resource):
 @ns.route(
     "/packages_binary_list",
     doc={
-        "description": "Get package info by hash",
+        "description": "Get binary package archs and versions",
         "responses": {
             400: "Request parameters validation error",
             404: "Package not found in database",
@@ -193,7 +193,7 @@ class routePackagesBinaryList(Resource):
     "/pkghash_by_name",
     doc={
         "description": (
-            "Get source package hash by package name and " "package set name"
+            "Get source package hash by package name and package set name"
         ),
         "responses": {
             400: "Request parameters validation error",
@@ -224,7 +224,7 @@ class routePackagesetPackageHash(Resource):
     "/pkghash_by_binary_name",
     doc={
         "description": (
-            "Get source package hash by package name and " "package set name"
+            "Get source package hash by package name and package set name"
         ),
         "responses": {
             400: "Request parameters validation error",
@@ -342,7 +342,7 @@ class routeAllPackagesets(Resource):
 @ns.route(
     "/all_pkgsets_with_src_count",
     doc={
-        "description": ("Get package sets list " "with source packages count"),
+        "description": ("Get package sets list with source packages count"),
         "responses": {404: "Data not found in database"},
     },
 )
@@ -426,7 +426,7 @@ class routeAllPackagesetArchs(Resource):
 @ns.route(
     "/all_pkgset_archs_with_src_count",
     doc={
-        "description": ("Get binary package archs list " "with source packages count"),
+        "description": ("Get binary package archs list with source packages count"),
         "responses": {
             400: "Request parameters validation error",
             404: "Data not found in database",
@@ -456,7 +456,7 @@ class routeAllPackagesetArchs(Resource):
 @ns.route(
     "/last_packages",
     doc={
-        "description": ("Get list of last packages from tasks " "for given parameters"),
+        "description": ("Get list of last packages from tasks for given parameters"),
         "responses": {
             400: "Request parameters validation error",
             404: "Package not found in database",
@@ -487,7 +487,7 @@ class routeLastTaskPackages(Resource):
     "/pkgset_categories_count",
     doc={
         "description": (
-            "Get list of package categories with count " "for given package set"
+            "Get list of package categories with count for given package set"
         ),
         "responses": {
             400: "Request parameters validation error",
