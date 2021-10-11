@@ -205,6 +205,7 @@ def sort_branches(branches):
     Returns:
         tuple: list of sorted branch names
     """
+    #  TODO: remove workaround 'p9_mipsel' branch
     res = [_ for _ in branches if _.startswith("s")]
     res += sorted(
         [_ for _ in branches if _.startswith("p") and not _.endswith("mipsel")],
