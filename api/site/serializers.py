@@ -66,8 +66,9 @@ package_info_model = ns.model(
         "description": fields.String(description="package description"),
         "packager": fields.String(description="package packager name"),
         "packager_nickname": fields.String(description="package packager nickname"),
-        "packages": fields.Raw(fields.Raw, description="binary or source packages"),
-        "acl": fields.List(fields.String, description="bunary packages"),
+        "binary_packages": fields.Raw(description="binary packages"),
+        "source_packages": fields.Raw(description="source packages"),
+        "acl": fields.List(fields.String, description="binary packages"),
         "maintainers": fields.List(
             fields.String, description="all maintainer's nicknames"
         ),

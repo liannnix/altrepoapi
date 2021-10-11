@@ -102,6 +102,7 @@ SELECT
     pkg_group_
 FROM Packages
 WHERE pkg_hash = {pkghash}
+    {source}
 """
 
     get_pkg_maintainers = """
@@ -122,7 +123,9 @@ ORDER BY pkg_name ASC
 """
 
     get_source_pkgs = """
-SELECT DISTINCT pkg_name
+SELECT DISTINCT
+    pkg_name,
+    pkg_srcrpm_hash
 FROM Packages
 WHERE pkg_srcrpm_hash = (
     SELECT pkg_srcrpm_hash
