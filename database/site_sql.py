@@ -390,81 +390,49 @@ ORDER BY pkg_name
 """
 
     get_all_pkgset_names = """
-SELECT groupUniqArray(pkgset_nodename)
-FROM PackageSetName
-WHERE pkgset_depth = 0
+SELECT groupUniqArray(pkgset_name)
+FROM lv_pkgset_stat
 """
 
     get_all_pkgset_names_with_pkg_count = """
 SELECT
     pkgset_name,
-    count(pkg_hash)
-FROM static_last_packages
-WHERE pkg_sourcepackage = 1
-GROUP BY pkgset_name
+    cnt
+FROM lv_pkgset_stat
+WHERE pkg_arch = 'srpm'
 """
 
     get_all_bin_pkg_archs = """
 SELECT groupUniqArray(pkg_arch)
-FROM Packages
-WHERE pkg_sourcepackage = 0
-    AND pkg_hash IN
-    (
-        SELECT pkg_hash
-        FROM static_last_packages
-        WHERE pkg_sourcepackage = 0
-            AND pkgset_name = '{branch}'
-    )
+FROM lv_pkgset_stat
+WHERE pkgset_name = '{branch}'
 """
 
     get_all_src_cnt_by_bin_archs = """
 SELECT
     pkg_arch,
-    countDistinct(src_pkg_name)
-FROM last_packages
-LEFT JOIN 
-(
-    SELECT
-        pkg_hash,
-        pkg_name AS src_pkg_name
-    FROM Packages
-    WHERE pkg_sourcepackage = 1
-) AS P ON P.pkg_hash = last_packages.pkg_srcrpm_hash
-WHERE pkg_sourcepackage = 0
-    AND pkg_arch != 'x86_64-i586'
-    AND pkgset_name = '{branch}'
-GROUP BY pkg_arch
+    cnt
+FROM lv_pkgset_stat
+WHERE pkgset_name = '{branch}'
+    AND pkg_arch NOT LIKE 'srpm'
 """
 
     get_all_pkgsets_with_src_cnt_by_bin_archs = """
-SELECT * FROM
-(
-	SELECT
-		pkgset_name,
-	    pkg_arch,
-	    countDistinct(src_pkg_name) AS cnt
-	FROM last_packages
-	LEFT JOIN
-	(
-	    SELECT
-	        pkg_hash,
-	        pkg_name AS src_pkg_name
-	    FROM Packages
-	    WHERE pkg_sourcepackage = 1
-	) AS P ON P.pkg_hash = last_packages.pkg_srcrpm_hash
-	WHERE pkg_sourcepackage = 0
-	    AND pkg_arch != 'x86_64-i586'
-	GROUP BY pkgset_name, pkg_arch
-	UNION ALL
-	SELECT
-	    pkgset_name,
-	    'srpm',
-	    count(pkg_hash)
-	FROM static_last_packages
-	WHERE pkg_sourcepackage = 1
-	GROUP BY pkgset_name
-)
-ORDER BY pkgset_name , cnt DESC
+SELECT
+    pkgset_name,
+    pkg_arch,
+    cnt
+FROM lv_pkgset_stat
+"""
+
+    get_pkgset_stat = """
+SELECT
+    pkgset_name,
+    pkgset_date,
+    pkg_arch,
+    cnt
+FROM lv_pkgset_stat
+{where}
 """
 
     get_last_subtasks_from_tasks = """
