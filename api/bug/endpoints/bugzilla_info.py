@@ -31,7 +31,7 @@ class Bugzilla(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["srcpkg_name"] == "":
+        if self.args["package_name"] == "":
             self.validation_results.append(
                 f"Source package name should not be empty string"
             )
@@ -42,27 +42,33 @@ class Bugzilla(APIWorker):
             return True
 
     def get_bug_by_package(self):
-        srcpkg_name = self.args["srcpkg_name"]
-        self.conn.request_line = (
-            self.sql.get_pkg_name_by_srcpkg,
-            {"srcpkg_name": srcpkg_name},
-        )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
-        if not response or response[0][0] == []:
-            self._store_error(
-                {
-                    "message": f"No data found in database for {srcpkg_name} source package",
-                    "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+        package_name = self.args["package_name"]
+        self.pkg_type = self.args["package_type"]
+        pkg_type_to_sql = {"source": 1, "binary": 0}
+        source = pkg_type_to_sql[self.pkg_type]
+        if source == 1:
+            self.conn.request_line = (
+                self.sql.get_pkg_name_by_srcpkg,
+                {"srcpkg_name": package_name},
             )
-            return self.error
-        packages = {el[0] for el in response}
-        packages.add(srcpkg_name)
+            status, response = self.conn.send_request()
+            if not status:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return self.error
+            if not response or response[0][0] == []:
+                self._store_error(
+                    {
+                        "message": f"No data found in database for {package_name} source package",
+                        "args": self.args,
+                    },
+                    self.ll.INFO,
+                    404,
+                )
+                return self.error
+            packages = {el[0] for el in response}
+            packages.add(package_name)
+        else:
+            packages = {package_name}
         self.conn.request_line = self.sql.get_bugzilla_info_by_srcpkg.format(
             packages=tuple(packages)
         )

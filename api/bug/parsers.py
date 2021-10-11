@@ -2,10 +2,19 @@ from flask_restx import reqparse
 
 package_bugzilla_args = reqparse.RequestParser()
 package_bugzilla_args.add_argument(
-    "srcpkg_name",
+    "package_name",
     type=str,
     required=True,
-    help="source package name",
+    help="source or binary package name",
+    location="args",
+)
+package_bugzilla_args.add_argument(
+    "package_type",
+    type=str,
+    choices=("source", "binary"),
+    default="source",
+    required=False,
+    help="packages type [source|binary]",
     location="args",
 )
 
