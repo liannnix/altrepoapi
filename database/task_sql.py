@@ -470,7 +470,7 @@ SELECT
     pkg_name,
     dp_type,
     if(pkg_sourcepackage = 0, pkg_arch, 'src') AS arch,
-    groupUniqArray(tuple(dp_name, dp_flag, dp_version))
+    groupUniqArray(tuple(dp_name, bitAnd(0xe, dp_flag), dp_version))
 FROM Packages
 INNER JOIN
 (
