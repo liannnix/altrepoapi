@@ -207,7 +207,7 @@ def sort_branches(branches):
     """
     res = [_ for _ in branches if _.startswith("s")]
     res += sorted(
-        [_ for _ in branches if _.startswith("p")],
+        [_ for _ in branches if _.startswith("p") and not _.endswith("mipsel")],
         key=lambda k: int(k[1:]),
         reverse=True,
     )
