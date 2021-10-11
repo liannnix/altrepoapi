@@ -47,6 +47,14 @@ package_dependencies_el_model = ns.model(
         "flag_decoded": fields.List(fields.String, description="decoded dependency flag"),
     }
 )
+package_info_archs_el_model = ns.model(
+    "",
+    {
+        "name": fields.String(description="package name"),
+        "archs": fields.List(fields.String, description="package arches"),
+        'pkghash': fields.List(fields.String, description="package hash UInt64 as string"),
+    }
+)
 package_info_model = ns.model(
     "SitePackageInfoModel",
     {
@@ -66,11 +74,14 @@ package_info_model = ns.model(
         "description": fields.String(description="package description"),
         "packager": fields.String(description="package packager name"),
         "packager_nickname": fields.String(description="package packager nickname"),
-        "binary_packages": fields.Raw(description="binary packages"),
-        "source_packages": fields.Raw(description="source packages"),
         "acl": fields.List(fields.String, description="binary packages"),
         "maintainers": fields.List(
             fields.String, description="all maintainer's nicknames"
+        ),
+        "package_archs": fields.Nested(
+            package_info_archs_el_model,
+            as_list=True,
+            description="List of source or binary packages by archs"
         ),
         "tasks": fields.Nested(
             package_info_tasks_el_model, as_list=True, description="package tasks"

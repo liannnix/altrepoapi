@@ -1,5 +1,4 @@
 from collections import namedtuple
-from pprint import pprint
 
 from utils import (
     datetime_to_iso,
@@ -286,8 +285,7 @@ class PackageInfo(APIWorker):
                 el["flag_decoded"] = dp_flags_decode(el["flag"], lut.rpmsense_flags)
 
         # get provided binary and source packages
-        source_packages = {}
-        binary_packages = {}
+        package_archs = {}
         if source == 1:
             self.conn.request_line = self.sql.get_binary_pkgs.format(pkghash=self.pkghash)
         else:
@@ -299,10 +297,10 @@ class PackageInfo(APIWorker):
 
         if response and source == 1:
             for elem in response:
-                binary_packages[elem[0]] = {el[0]: str(el[1]) for el in elem[1]}
+                package_archs[elem[0]] = {el[0]: str(el[1]) for el in elem[1]}
         if response and source == 0:
             for elem in response:
-                source_packages[elem[0]] = str(elem[1])
+                package_archs[elem[0]] = {"src": str(elem[1])}
         # get package changelog
         self.conn.request_line = (
             self.sql.get_pkg_changelog,
@@ -375,6 +373,20 @@ class PackageInfo(APIWorker):
                 bh["updated"] = datetime_to_iso(bh["updated"])
                 bh["ftbfs_since"] = datetime_to_iso(bh["ftbfs_since"])
 
+        res_package_archs = []
+        for k, v in package_archs.items():
+            # res_package_archs.append(
+            tmp = {
+                "name": k,
+                "archs": [],
+                "pkghash": []
+            }
+            for arch, hash in v.items():
+                tmp["archs"].append(arch)
+                tmp["pkghash"].append(str(hash))
+            res_package_archs.append(tmp)
+
+
         res = {
             "pkghash": str(self.pkghash),
             "request_args": self.args,
@@ -382,8 +394,7 @@ class PackageInfo(APIWorker):
             "task": pkg_task,
             "gear": gear_link,
             "tasks": pkg_tasks,
-            "source_packages": source_packages,
-            "binary_packages": binary_packages,
+            "package_archs": res_package_archs,
             "changelog": changelog_list,
             "maintainers": pkg_maintainers,
             "acl": pkg_acl,
