@@ -293,7 +293,8 @@ class PackageInfo(APIWorker):
         package_archs = {}
         if source:
             self.conn.request_line = self.sql.get_binary_pkgs.format(
-                pkghash=self.pkghash
+                pkghash=self.pkghash,
+                branch=self.branch
             )
         else:
             self.conn.request_line = self.sql.get_source_pkgs.format(

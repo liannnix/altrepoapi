@@ -118,6 +118,12 @@ SELECT DISTINCT
 FROM Packages
 WHERE (pkg_srcrpm_hash = {pkghash})
     AND (pkg_sourcepackage = 0)
+    AND pkg_arch IN
+    (
+        SELECT pkg_arch
+        FROM lv_pkgset_stat
+        WHERE pkgset_name = '{branch}'
+    )
 GROUP BY pkg_name
 ORDER BY pkg_name ASC
 """
