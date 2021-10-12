@@ -258,7 +258,6 @@ class PackageInfo(APIWorker):
         PkgVersions = namedtuple(
             "PkgVersions", ["branch", "version", "release", "pkghash"]
         )
-        print(response)
         # sort package versions by branch
         pkg_branches = sort_branches([el[0] for el in response])
         pkg_versions = tuplelist_to_dict(response, 3)
