@@ -429,6 +429,10 @@ class DeletedPackageInfo(APIWorker):
         if self.args["name"] == "":
             self.validation_results.append(f"package name should not be empty string")
 
+        if self.args["package_type"] == "binary":
+            if self.args["arch"] not in lut.known_archs:
+                self.validation_results.append(f"binary package arch should be in {lut.known_archs}")
+
         if self.validation_results != []:
             return False
         else:
@@ -437,82 +441,102 @@ class DeletedPackageInfo(APIWorker):
     def get(self):
         self.branch = self.args["branch"]
         self.name = self.args["name"]
+        self.arch = self.args["arch"]
+        source = 1 if self.args["package_type"] == "source" else 0
 
-        self.conn.request_line = self.sql.get_deleted_package_task.format(
-            name=self.name, branch=self.branch
-        )
+        if source:
+            # get task info where source package was deleted
+            self.conn.request_line = self.sql.get_deleted_package_task_by_src.format(
+                name=self.name, branch=self.branch
+            )
+        else:
+            # get task info where source package of input binary was deleted
+            self.conn.request_line = self.sql.get_deleted_package_task_by_bin.format(
+                name=self.name, branch=self.branch
+            )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
-        if not response:
-            self._store_error(
-                {
-                    "message": f"No information about deleting package {self.name} from {self.branch} found",
-                    "args": self.args,
-                },
-                self.ll.INFO,
-                404,
-            )
-            return self.error
-
         TaskMeta = namedtuple(
-            "TaskMeta",
-            ["task_id", "subtask_id", "task_changed", "task_owner", "subtask_userid"],
-        )
-        delete_task_info = TaskMeta(*response[0])._asdict()
-
-        # get task message
-        delete_task_info["task_message"] = ""
-        self.conn.request_line = self.sql.get_delete_task_message.format(
-            task_id=delete_task_info["task_id"],
-            task_changed=delete_task_info["task_changed"],
-        )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
+                "TaskMeta",
+                ["task_id", "subtask_id", "task_changed", "task_owner", "subtask_userid"],
+            )
         if response:
-            delete_task_info["task_message"] = response[0][0]
+            delete_task_info = TaskMeta(*response[0])._asdict()
 
-        self.conn.request_line = self.sql.get_srcpkg_hash_for_branch_on_date.format(
-            name=self.name,
-            branch=self.branch,
-            task_changed=delete_task_info["task_changed"],
-        )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
-        if not response:
+            # task in wich source package was deleted found
+            # get task message
+            delete_task_info["task_message"] = ""
+            self.conn.request_line = self.sql.get_delete_task_message.format(
+                task_id=delete_task_info["task_id"],
+                task_changed=delete_task_info["task_changed"],
+            )
+            status, response = self.conn.send_request()
+            if not status:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return self.error
+            if response:
+                delete_task_info["task_message"] = response[0][0]
+            # get last package version info from branch
+            if source:
+                self.conn.request_line = self.sql.get_srcpkg_hash_for_branch_on_date.format(
+                    name=self.name,
+                    branch=self.branch,
+                    task_changed=delete_task_info["task_changed"],
+                )
+            else:
+                self.conn.request_line = self.sql.get_binpkg_hash_for_branch_on_date.format(
+                    arch=self.arch,
+                    name=self.name,
+                    branch=self.branch,
+                    task_changed=delete_task_info["task_changed"],
+                )
+            status, response = self.conn.send_request()
+            if not status:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return self.error
+            if not response:
+                self._store_error(
+                    {
+                        "message": f"No information about deleting package {self.name} from {self.branch} was found",
+                        "args": self.args,
+                    },
+                    self.ll.INFO,
+                    404,
+                )
+                return self.error
+
+            pkg_hash = str(response[0][0])
+            pkg_version = str(response[0][1])
+            pkg_release = str(response[0][2])
+
+            delete_task_info["task_changed"] = datetime_to_iso(delete_task_info["task_changed"])
+
+            res = {
+                "package": self.name,
+                "branch": self.branch,
+                "hash": pkg_hash,
+                "version": pkg_version,
+                "release": pkg_release,
+                **delete_task_info,
+            }
+
+            return res, 200
+        else:
+            # task in wich source package was deleted not found
+            arch_ = ""
+            if not source:
+                arch_ = f"with {self.arch} arch "
             self._store_error(
                 {
-                    "message": f"No information about deleting package {self.name} from {self.branch} found",
+                    "message": f"No information about deleting package {self.name} {arch_}from {self.branch} was found",
                     "args": self.args,
                 },
                 self.ll.INFO,
                 404,
             )
             return self.error
-
-        pkg_hash = str(response[0][0])
-        pkg_version = str(response[0][1])
-        pkg_release = str(response[0][2])
-
-        delete_task_info["task_changed"] = datetime_to_iso(
-            delete_task_info["task_changed"]
-        )
-
-        res = {
-            "package": self.name,
-            "branch": self.branch,
-            "hash": pkg_hash,
-            "version": pkg_version,
-            "release": pkg_release,
-            **delete_task_info,
-        }
-
-        return res, 200
 
 
 class LastPackagesWithCVEFix(APIWorker):

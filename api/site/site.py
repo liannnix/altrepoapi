@@ -32,6 +32,7 @@ from .parsers import (
     pkgs_with_cve_fix_args,
     pkgset_pkg_binary_hash_args,
     pkgs_binary_list_args,
+    deleted_package_args,
 )
 from .serializers import (
     pkgset_packages_model,
@@ -741,10 +742,10 @@ class routeRepocopByMaintainer(Resource):
     },
 )
 class routeDeletedPackageInfo(Resource):
-    @ns.expect(pkgset_pkghash_args)
+    @ns.expect(deleted_package_args)
     @ns.marshal_with(deleted_package_model)
     def get(self):
-        args = pkgset_pkghash_args.parse_args(strict=True)
+        args = deleted_package_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = DeletedPackageInfo(g.connection, **args)
         if not wrk.check_params():

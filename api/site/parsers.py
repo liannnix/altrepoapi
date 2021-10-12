@@ -165,3 +165,23 @@ pkgs_binary_list_args.add_argument(
 pkgs_binary_list_args.add_argument(
     "name", type=str, required=True, help="binary package name", location="args"
 )
+
+deleted_package_args = reqparse.RequestParser()
+deleted_package_args.add_argument(
+    "branch", type=str, required=True, help="name of packageset", location="args"
+)
+deleted_package_args.add_argument(
+    "name", type=str, required=True, help="package name", location="args"
+)
+deleted_package_args.add_argument(
+    "package_type",
+    type=str,
+    choices=("source", "binary"),
+    default="source",
+    required=False,
+    help="packages type [source|binary]",
+    location="args",
+)
+deleted_package_args.add_argument(
+    "arch", type=str, required=False, help="arch of binary packages", location="args"
+)

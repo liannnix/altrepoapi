@@ -826,7 +826,7 @@ WHERE pkgset_name = '{branch}'
 ORDER BY pkg_name
 """
 
-    get_deleted_package_task = """
+    get_deleted_package_task_by_src = """
 SELECT
     task_id,
     any(subtask_id),
@@ -837,6 +837,39 @@ FROM Tasks
 WHERE subtask_deleted = 0
     AND subtask_type = 'delete'
     AND subtask_package = '{name}'
+    AND task_repo = '{branch}'
+    AND task_id IN
+    (
+        SELECT task_id
+        FROM TaskStates
+        WHERE task_state = 'DONE'
+    )
+GROUP BY task_id
+"""
+
+    get_deleted_package_task_by_bin = """
+WITH
+(
+    SELECT DISTINCT pkg_name
+    FROM Packages
+    WHERE pkg_hash IN
+    (
+        SELECT any(pkg_srcrpm_hash)
+        FROM Packages
+        WHERE pkg_name = '{name}'
+        AND pkg_sourcepackage = 0
+    ) AND pkg_sourcepackage = 1
+) AS src_package
+SELECT
+    task_id,
+    any(subtask_id),
+    max(task_changed),
+    any(task_owner),
+    any(subtask_userid)
+FROM Tasks
+WHERE subtask_deleted = 0
+    AND subtask_type = 'delete'
+    AND subtask_package = src_package
     AND task_repo = '{branch}'
     AND task_id IN
     (
@@ -871,6 +904,34 @@ WHERE pkg_hash IN
         SELECT pkgset_uuid
         FROM PackageSetName
         WHERE pkgset_nodename = 'srpm' AND pkgset_ruuid IN (
+            SELECT argMax(pkgset_uuid, pkgset_date)
+            FROM PackageSetName
+            WHERE pkgset_nodename = '{branch}'
+                AND toDate(pkgset_date) <= (toDate('{task_changed}') - 1)
+        )
+    )
+)
+"""
+
+    get_binpkg_hash_for_branch_on_date = """
+SELECT
+    pkg_hash,
+    pkg_version,
+    pkg_release
+FROM Packages
+WHERE pkg_hash IN (
+    SELECT pkg_hash
+    FROM PackageSet
+    WHERE pkg_hash IN (
+        SELECT pkg_hash
+        FROM Packages
+        WHERE pkg_name = '{name}'
+            AND pkg_arch = '{arch}'
+            AND pkg_sourcepackage = 0
+    ) AND pkgset_uuid IN (
+        SELECT pkgset_uuid
+        FROM PackageSetName
+        WHERE pkgset_depth = 2 AND pkgset_ruuid IN (
             SELECT argMax(pkgset_uuid, pkgset_date)
             FROM PackageSetName
             WHERE pkgset_nodename = '{branch}'
