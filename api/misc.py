@@ -20,8 +20,11 @@ class LookupTables:
         "p7",
         "p8",
         "p9",
+        "p9_mipsel",
         "p10",
         "sisyphus",
+        "sisyphus_mipsel",
+        "sisyphus_riscv64",
         "t6",
         "t7",
     ]
@@ -43,6 +46,7 @@ class LookupTables:
         "e2kv4",
         "e2k",
         "mipsel",
+        "riscv64",
     ]
     default_archs = ["x86_64", "i586", "aarch64", "armh", "ppc64le", "noarch"]
     package_params = [
