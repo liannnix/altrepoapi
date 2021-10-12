@@ -931,10 +931,11 @@ SELECT
     argMax(rc_test_message, rc_test_date),
     max(rc_test_date)
 FROM PackagesRepocop
-WHERE rc_srcpkg_name = '{pkgs}'
-    AND pkgset_name = '{branch}'
+WHERE pkgset_name = '{branch}'
+    {pkgs}
     {srcpkg_version}
     {srcpkg_release}
+    {arch}
 GROUP BY
     pkg_name,
     pkg_version,

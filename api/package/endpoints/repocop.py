@@ -58,15 +58,20 @@ class Repocop(APIWorker):
             )
 
         if (
-            self.args["srcpkg_version"] is not None
-            and self.args["srcpkg_version"] == ""
+            self.args["package_version"] is not None
+            and self.args["package_version"] == ""
         ):
             self.validation_results.append("srcpkg_version cannot be empty")
         if (
-            self.args["srcpkg_release"] is not None
-            and self.args["srcpkg_release"] == ""
+            self.args["package_release"] is not None
+            and self.args["package_release"] == ""
         ):
             self.validation_results.append("srcpkg_release cannot be empty")
+        if (
+            self.args["bin_package_arch"] is not None
+            and self.args["bin_package_arch"] == ""
+        ):
+            self.validation_results.append("bin_package_arch cannot be empty")
 
         if self.validation_results != []:
             return False
@@ -85,21 +90,45 @@ class Repocop(APIWorker):
         return "data loaded successfully", 201
 
     def get(self):
-        self.source_pakage = self.args["srcpkg_name"]
+        self.source_pakage = self.args["package_name"]
         branch = self.args['branch']
-        if self.args["srcpkg_version"] is not None:
-            version_cond = f"AND rc_srcpkg_version = '{self.args['srcpkg_version']}'"
+        self.pkg_type = self.args["package_type"]
+
+        pkg_type_to_sql = {"source": 1, "binary": 0}
+        source = pkg_type_to_sql[self.pkg_type]
+
+        if source == 1:
+            name_cond = f"AND rc_srcpkg_name = '{self.args['package_name']}'"
+            if self.args["package_version"] is not None:
+                version_cond = f"AND rc_srcpkg_version = '{self.args['package_version']}'"
+            else:
+                version_cond = ""
+            if self.args["package_release"] is not None:
+                release_cond = f"AND rc_srcpkg_release = '{self.args['package_release']}'"
+            else:
+                release_cond = ""
+        if source == 0:
+            name_cond = f"AND pkg_name = '{self.args['package_name']}'"
+            if self.args["package_version"] is not None:
+                version_cond = f"AND pkg_version = '{self.args['package_version']}'"
+            else:
+                version_cond = ""
+            if self.args["package_release"] is not None:
+                release_cond = f"AND pkg_release = '{self.args['package_release']}'"
+            else:
+                release_cond = ""
+
+        if self.args["bin_package_arch"] is not None:
+            arch_cond = f"AND pkg_arch = '{self.args['bin_package_arch']}'"
         else:
-            version_cond = ""
-        if self.args["srcpkg_release"] is not None:
-            release_cond = f"AND rc_srcpkg_release = '{self.args['srcpkg_release']}'"
-        else:
-            release_cond = ""
+            arch_cond = ""
+
         self.conn.request_line = self.sql.get_out_repocop.format(
-            pkgs=self.source_pakage,
+            pkgs=name_cond,
             srcpkg_version=version_cond,
             srcpkg_release=release_cond,
-            branch=branch
+            branch=branch,
+            arch=arch_cond
         )
 
         status, response = self.conn.send_request()

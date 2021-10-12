@@ -230,19 +230,35 @@ pkg_repocop_args.add_argument(
     "branch", type=str, required=True, help="package branch", location="args"
 )
 pkg_repocop_args.add_argument(
-    "srcpkg_name", type=str, required=True, help="source package name", location="args"
+    "package_name", type=str, required=True, help="source or binary package name", location="args"
 )
 pkg_repocop_args.add_argument(
-    "srcpkg_version",
+    "package_version",
     type=str,
     required=False,
-    help="source package version",
+    help="source or binary package version",
     location="args",
 )
 pkg_repocop_args.add_argument(
-    "srcpkg_release",
+    "package_release",
     type=str,
     required=False,
-    help="source package release",
+    help="source or binary package release",
+    location="args",
+)
+pkg_repocop_args.add_argument(
+    "bin_package_arch",
+    type=str,
+    required=False,
+    help="binary package arch",
+    location="args",
+)
+pkg_repocop_args.add_argument(
+    "package_type",
+    type=str,
+    choices=("source", "binary"),
+    default="source",
+    required=False,
+    help="packages type [source|binary]",
     location="args",
 )
