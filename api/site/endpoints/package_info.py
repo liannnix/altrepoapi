@@ -195,7 +195,7 @@ class PackageInfo(APIWorker):
         )
 
         self.conn.request_line = self.sql.get_task_gears_by_hash.format(
-            pkghash=self.pkghash, branch=self.branch
+            pkghash=self.pkghash
         )
         status, response = self.conn.send_request()
         if not status:
@@ -222,6 +222,10 @@ class PackageInfo(APIWorker):
                         )
                         pkg_tasks.append({"type": "build", "id": pkg_task})
                         break
+        # clear pkg_tasks fro taskless branches
+        if self.branch in lut.taskless_branches:
+            pkg_task = 0
+            pkg_tasks = []
         # get package maintainers from changelog
         pkg_maintainers = []
         self.conn.request_line = self.sql.get_pkg_maintainers.format(

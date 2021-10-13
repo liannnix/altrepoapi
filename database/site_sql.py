@@ -262,7 +262,6 @@ AND task_id IN
     FROM TaskStates
     WHERE task_state = 'DONE'
 )
-AND task_repo = '{branch}'
 ORDER BY task_changed DESC
 """
 
