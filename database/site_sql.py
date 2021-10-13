@@ -1079,6 +1079,12 @@ WHERE (task_id, task_changed) IN
     )
 )
     AND titer_srcrpm_hash = {pkghash}
+    AND
+    (
+        SELECT count(task_id)
+        FROM Tasks
+        WHERE task_repo = '{branch}'
+    ) != 0
 """
 
     get_src_and_binary_pkgs = """
@@ -1101,7 +1107,7 @@ FROM Packages
 WHERE pkg_hash IN {hshs}
 """
 
-    get_pkkgs_md5_by_hshs = """
+    get_pkgs_md5_by_hshs = """
 SELECT
     pkgh_mmh,
     pkgh_md5

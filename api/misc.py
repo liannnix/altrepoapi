@@ -28,6 +28,7 @@ class LookupTables:
         "t6",
         "t7",
     ]
+    taskless_branches = ["p9_mipsel", "sisyphus_mipsel", "sisyphus_riscv64"]
     known_archs = [
         "x86_64",
         "noarch",

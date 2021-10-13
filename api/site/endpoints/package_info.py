@@ -665,7 +665,7 @@ class PackageDownloadLinks(APIWorker):
         )
         PkgInfo = namedtuple("PkgInfo", ["file", "arch", "size"])
         self.conn.request_line = self.sql.get_build_task_by_hash.format(
-            pkghash=self.pkghash
+            pkghash=self.pkghash, branch=self.branch
         )
         status, response = self.conn.send_request()
         if not status:
@@ -734,7 +734,7 @@ class PackageDownloadLinks(APIWorker):
 
         # get package files MD5 checksum
         hshs = tuple(filenames.keys())
-        self.conn.request_line = self.sql.get_pkkgs_md5_by_hshs.format(hshs=hshs)
+        self.conn.request_line = self.sql.get_pkgs_md5_by_hshs.format(hshs=hshs)
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -754,8 +754,9 @@ class PackageDownloadLinks(APIWorker):
         # pop source package filename
         src_filename = filenames[self.pkghash].file
         src_filesize = filenames[self.pkghash].size
+        src_arch = filenames[self.pkghash].arch
         filenames.pop(self.pkghash, None)
-        # get source package arch
+        # get source package arch by binary packages
         archs = ["x86_64", "i586"]
         archs += [arch for arch in bin_pkgs.keys() if arch not in archs]
         for arch in archs:
@@ -888,28 +889,35 @@ class PackageDownloadLinks(APIWorker):
         else:
             #  build links to repo
             repo_base_ = "http://ftp.altlinux.org/pub/distributions/ALTLinux"
-            if self.branch == "sisyphus":
+            if self.branch in lut.taskless_branches:
+                branch_, arch_ = self.branch.split("_")
+                files_ = "files"
+                repo_base_ += f"/ports/{arch_}"
+                if branch_ == "sisyphus":
+                    branch_ = "Sisyphus"
+
+            elif self.branch == "sisyphus":
                 branch_ = "Sisyphus"
                 files_ = "files"
             else:
                 branch_ = self.branch
                 files_ = "branch/files"
 
-                res["src"] = [
-                    {
-                        "name": src_filename,
-                        "url": make_link_to_repo(
-                            repo_base_,
-                            branch_,
-                            files_,
-                            src_arch,
-                            src_filename,
-                            is_src=True,
-                        ),
-                        "md5": md5_sums[self.pkghash],
-                        "size": bytes2human(src_filesize),
-                    }
-                ]
+            res["src"] = [
+                {
+                    "name": src_filename,
+                    "url": make_link_to_repo(
+                        repo_base_,
+                        branch_,
+                        files_,
+                        src_arch,
+                        src_filename,
+                        is_src=True,
+                    ),
+                    "md5": md5_sums[self.pkghash],
+                    "size": bytes2human(src_filesize),
+                }
+            ]
 
             for k, v in bin_pkgs.items():
                 if len(v) > 0:
