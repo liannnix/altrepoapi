@@ -1201,4 +1201,75 @@ WHERE pkgset_name = '{branch}'
     AND pkg_sourcepackage = 0
 """
 
+    get_last_branch_src_diff = """
+WITH
+(
+    SELECT DISTINCT pkgset_date
+    FROM lv_pkgset_stat
+    WHERE pkgset_name = '{branch}'
+) AS last_pkgset_date
+SELECT DISTINCT pkg_hash
+FROM static_last_packages
+WHERE pkgset_name = '{branch}'
+    AND pkg_sourcepackage = 1
+    AND pkg_hash NOT IN
+    (
+        SELECT pkg_hash
+        FROM PackageSet
+        WHERE pkgset_uuid = (
+            SELECT pkgset_uuid
+            FROM PackageSetName
+            WHERE pkgset_nodename = 'srpm'
+                AND pkgset_ruuid = (
+                    SELECT argMax(pkgset_ruuid, pkgset_date)
+                    FROM PackageSetName
+                    WHERE pkgset_depth = 0
+                        AND pkgset_nodename = '{branch}'
+                        AND pkgset_date < last_pkgset_date
+                )
+        )
+    )
+"""
+
+    get_last_branch_pkgs_info = """
+SELECT * FROM
+(
+    SELECT DISTINCT
+        pkg_hash,
+        pkg_name,
+        pkg_version,
+        pkg_release,
+        pkg_summary,
+        pkg_changelog.name[1],
+        pkg_changelog.date[1],
+        CHLG.chlog_text
+    FROM Packages
+    LEFT JOIN
+    (
+        SELECT
+            chlog_hash,
+            chlog_text
+        FROM Changelog
+    ) AS CHLG ON CHLG.chlog_hash = (pkg_changelog.hash[1])
+    WHERE
+        pkg_hash IN
+        (
+            SELECT * FROM {tmp_table}
+        )
+    {packager}
+    LIMIT {limit}
+) AS RQ
+LEFT JOIN
+(
+    SELECT
+        pkg_srcrpm_hash AS hash,
+        max(pkg_buildtime) AS last_build
+    FROM Packages
+    WHERE pkg_sourcepackage = 0
+    GROUP BY pkg_srcrpm_hash
+) AS BinLastBuild ON BinLastBuild.hash = RQ.pkg_hash
+ORDER BY last_build DESC
+"""
+
+
 sitesql = SQL()

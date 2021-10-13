@@ -11,7 +11,7 @@ from .endpoints.packager_info import MaintainerBranches, RepocopByMaintainer
 from .endpoints.packager_info import MaintainerBeehiveErrors
 from .endpoints.pkgset_packages import PackagesetFindPackages, AllPackagesets
 from .endpoints.pkgset_packages import PkgsetCategoriesCount, AllPackagesetArchs
-from .endpoints.pkgset_packages import AllPackagesetsByHash
+from .endpoints.pkgset_packages import AllPackagesetsByHash, LastBranchPackages
 from .endpoints.task_info import TasksByPackage, LastTaskPackages, TasksByMaintainer
 
 ns = Namespace("site", description="web site API")
@@ -33,6 +33,7 @@ from .parsers import (
     pkgset_pkg_binary_hash_args,
     pkgs_binary_list_args,
     deleted_package_args,
+    last_pkgs_branch_args,
 )
 from .serializers import (
     pkgset_packages_model,
@@ -57,6 +58,7 @@ from .serializers import (
     beehive_by_maintainer_model,
     package_downloads_model,
     pkgs_binary_list_model,
+    last_packages_branch_model,
 )
 
 logger = get_logger(__name__)
@@ -456,6 +458,7 @@ class routeAllPackagesetArchs(Resource):
 
 @ns.route(
     "/last_packages",
+    "/last_packages_by_tasks",
     doc={
         "description": ("Get list of last packages from tasks for given parameters"),
         "responses": {
@@ -471,6 +474,36 @@ class routeLastTaskPackages(Resource):
         args = last_pkgs_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = LastTaskPackages(g.connection, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route(
+    "/last_packages_by_branch",
+    doc={
+        "description": ("Get list of last packages from branch for given parameters"),
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package not found in database",
+        },
+    },
+)
+class routeLastBranchPackages(Resource):
+    @ns.expect(last_pkgs_branch_args)
+    @ns.marshal_with(last_packages_branch_model)
+    def get(self):
+        args = last_pkgs_branch_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        wrk = LastBranchPackages(g.connection, **args)
         if not wrk.check_params():
             abort(
                 400,

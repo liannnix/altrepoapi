@@ -605,3 +605,45 @@ pkgs_binary_list_model = ns.model(
         "versions": fields.Nested(package_versions_el_model, as_list=True, description="all package versions")
     },
 )
+
+last_packages_branch_pkg_model = ns.model(
+    "SiteLastBranchPackagesPackageModel",
+    {
+        "hash": fields.String(
+            description="package hash UInt64 as string"
+        ),
+        "name": fields.String(attribute="pkg_name", description="package name"),
+        "version": fields.String(
+            attribute="pkg_version", description="package version"
+        ),
+        "release": fields.String(
+            attribute="pkg_release", description="package release"
+        ),
+        "summary": fields.String(
+            attribute="pkg_summary", description="package summary"
+        ),
+        "buildtime": fields.Integer(
+            attribute="pkg_buildtime", description="last binary package buildtime"
+        ),
+        "changelog_name": fields.String(description="package last changelog name"),
+        "changelog_nickname": fields.String(
+            description="package last changelog nickname"
+        ),
+        "changelog_date": fields.String(
+            description="package last changelog message date"
+        ),
+        "changelog_text": fields.String(description="package last changelog message"),
+    }
+)
+last_packages_branch_model = ns.model(
+    "SiteLastBranchPackagesModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "packages": fields.Nested(
+            last_packages_branch_pkg_model,
+            description="last packages list",
+            as_list=True,
+        ),
+    }
+)

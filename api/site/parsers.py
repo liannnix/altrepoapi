@@ -102,7 +102,7 @@ last_pkgs_args.add_argument(
     type=int,
     default=10,
     required=True,
-    help="number of last packages to get",
+    help="number of last tasks to get",
     location="args",
 )
 last_pkgs_args.add_argument(
@@ -184,4 +184,20 @@ deleted_package_args.add_argument(
 )
 deleted_package_args.add_argument(
     "arch", type=str, required=False, help="arch of binary packages", location="args"
+)
+
+last_pkgs_branch_args = reqparse.RequestParser()
+last_pkgs_branch_args.add_argument(
+    "branch", type=str, required=True, help="name of packageset", location="args"
+)
+last_pkgs_branch_args.add_argument(
+    "packages_limit",
+    type=int,
+    default=10,
+    required=True,
+    help="number of last packages to get",
+    location="args",
+)
+last_pkgs_branch_args.add_argument(
+    "packager", type=str, required=False, help="package packager's nickname", location="args"
 )

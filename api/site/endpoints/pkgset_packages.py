@@ -1,6 +1,7 @@
 from collections import namedtuple
 
 from utils import tuplelist_to_dict, sort_branches, datetime_to_iso
+from utils import get_nickname_from_packager
 
 from api.base import APIWorker
 from api.misc import lut
@@ -600,4 +601,137 @@ class AllPackagesetsByHash(APIWorker):
         res = sort_branches([el[0] for el in response])
 
         res = {"pkghash": str(self.pkghash), "length": len(res), "branches": res}
+        return res, 200
+
+
+class LastBranchPackages(APIWorker):
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sitesql
+        super().__init__()
+
+    def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        self.validation_results = []
+
+        if self.args["packager"] == "":
+            self.validation_results.append(
+                f"packager's nickname should not be empty string"
+            )
+
+        if self.args["branch"] == "" or self.args["branch"] not in lut.known_branches:
+            self.validation_results.append(
+                f"unknown package set name : {self.args['branch']}"
+            )
+            self.validation_results.append(
+                f"allowed package set names are : {lut.known_branches}"
+            )
+
+        if self.args["packages_limit"] and self.args["packages_limit"] < 1:
+            self.validation_results.append(
+                f"last packages limit should be greater or equal to 1"
+            )
+
+        if self.validation_results != []:
+            return False
+        else:
+            return True
+
+    def get(self):
+        self.branch = self.args["branch"]
+        self.packager = self.args["packager"]
+        self.packages_limit = self.args["packages_limit"]
+
+        if self.packager is not None:
+            packager_sub = f"AND pkg_packager_email LIKE '{self.packager}@%'"
+        else:
+            self.packager = ""
+            packager_sub = ""
+
+        # get source packages diff from current branch state and previous one
+        self.conn.request_line = self.sql.get_last_branch_src_diff.format(branch=self.branch)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {
+                    "message": f"No data found in database for given parameters",
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
+        src_pkg_hashes = [el[0] for el in response]
+        # strore list of source package hashes to temporary table
+        # create temporary table for source package hashes
+        tmp_table = "tmp_srcpkg_hashes"
+        self.conn.request_line = self.sql.create_tmp_table.format(
+            tmp_table=tmp_table, columns="(pkg_hash UInt64)"
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        # insert package hashes into temporary table
+        self.conn.request_line = (
+            self.sql.insert_into_tmp_table.format(tmp_table=tmp_table),
+            ((x,) for x in src_pkg_hashes),
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        # get source and binary packages info by hashes from temporary table
+        self.conn.request_line = self.sql.get_last_branch_pkgs_info.format(
+            tmp_table=tmp_table,
+            packager=packager_sub,
+            limit=self.packages_limit
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {
+                    "message": f"No data found in database for packages",
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        PkgMeta = namedtuple(
+            "PkgMeta",
+            [
+                "pkg_name",
+                "pkg_version",
+                "pkg_release",
+                "pkg_summary",
+                "changelog_name",
+                "changelog_date",
+                "changelog_text",
+                "hash",
+                "pkg_buildtime",
+            ],
+        )
+
+        packages = (PkgMeta(*el[1:])._asdict() for el in response)
+
+        retval = []
+
+        for pkg in packages:
+            pkg["changelog_date"] = datetime_to_iso(pkg["changelog_date"])
+            pkg["changelog_nickname"] = get_nickname_from_packager(pkg["changelog_name"])
+            retval.append(pkg)
+
+        res = {
+            "request_args": self.args,
+            "length": len(retval),
+            "packages": retval,
+        }
         return res, 200
