@@ -887,6 +887,68 @@ WHERE subtask_deleted = 0
 GROUP BY task_id
 """
 
+    preselect_last_build_task_by_src = """
+pkg_name = '{name}'
+"""
+
+    preselect_last_build_task_by_bin = """
+pkg_hash IN
+(
+    SELECT pkg_srcrpm_hash
+    FROM Packages
+    WHERE pkg_name = '{name}'
+        AND pkg_arch = '{arch}'
+        AND pkg_sourcepackage = 0
+)
+"""
+
+    get_last_build_task_by_pkg = """
+WITH
+src_pkg_hashes AS
+(
+    SELECT
+        pkg_hash,
+        pkg_version,
+        pkg_release
+    FROM Packages
+    WHERE {preselect} AND pkg_sourcepackage = 1
+)
+SELECT DISTINCT
+    task_id,
+    titer_srcrpm_hash,
+    PI.pkg_version,
+    PI.pkg_release
+FROM TaskIterations
+LEFT JOIN
+(
+    SELECT
+        pkg_hash,
+        pkg_version,
+        pkg_release
+    FROM src_pkg_hashes
+) AS PI ON PI.pkg_hash = titer_srcrpm_hash
+WHERE titer_srcrpm_hash IN
+    (
+        SELECT pkg_hash FROM src_pkg_hashes
+    )
+    AND (task_id, subtask_id) IN
+    (
+        SELECT
+            task_id, subtask_id
+        FROM Tasks
+        WHERE task_repo = '{branch}'
+            AND subtask_deleted = 0
+            AND task_id IN
+            (
+                SELECT task_id
+                FROM TaskStates
+                WHERE task_state = 'DONE'
+            )
+    )
+    AND task_changed < '{task_changed}'
+ORDER BY task_changed DESC LIMIT 1
+"""
+
     get_delete_task_message = """
 SELECT task_message
 FROM TaskStates

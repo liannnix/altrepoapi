@@ -508,20 +508,46 @@ class DeletedPackageInfo(APIWorker):
             if not status:
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
-            if not response:
-                self._store_error(
-                    {
-                        "message": f"No information about deleting package {self.name} from {self.branch} was found",
-                        "args": self.args,
-                    },
-                    self.ll.INFO,
-                    404,
+            if response:
+                pkg_hash = str(response[0][0])
+                pkg_version = str(response[0][1])
+                pkg_release = str(response[0][2])
+            else:
+                #  find if package were ever built before delete
+                if source:
+                    # get task info where source package was last built before delete
+                    presel_sql = self.sql.preselect_last_build_task_by_src.format(
+                        name=self.name
+                    )
+                else:
+                    # get task info where source package of input binary was was last built before delete
+                    presel_sql = self.sql.preselect_last_build_task_by_bin.format(
+                        name=self.name, arch=self.arch
+                    )
+                self.conn.request_line = self.sql.get_last_build_task_by_pkg.format(
+                    preselect=presel_sql,
+                    branch=self.branch,
+                    task_changed=delete_task_info["task_changed"],
                 )
-                return self.error
+                status, response = self.conn.send_request()
+                if not status:
+                    self._store_sql_error(response, self.ll.ERROR, 500)
+                    return self.error
+                # nothing helped to find out package history
+                if not response:
+                    self._store_error(
+                        {
+                            "message": f"No information about deleting package {self.name} from {self.branch} was found",
+                            "args": self.args,
+                        },
+                        self.ll.INFO,
+                        404,
+                    )
+                    return self.error
 
-            pkg_hash = str(response[0][0])
-            pkg_version = str(response[0][1])
-            pkg_release = str(response[0][2])
+                pkg_hash = str(response[0][1])
+                pkg_version = str(response[0][2])
+                pkg_release = str(response[0][3])
 
             delete_task_info["task_changed"] = datetime_to_iso(delete_task_info["task_changed"])
 
