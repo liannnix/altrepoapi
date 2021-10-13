@@ -207,24 +207,40 @@ def sort_branches(branches):
     Returns:
         tuple: list of sorted branch names
     """
-    #  TODO: remove workaround 'p9_mipsel' branch
-    res = [_ for _ in branches if _.startswith("s")]
-    res += sorted(
-        [_ for _ in branches if _.startswith("p") and not _.endswith("mipsel")],
-        key=lambda k: int(k[1:]),
-        reverse=True,
-    )
-    res += sorted([_ for _ in branches if _.startswith("c")], reverse=True)
-    res += sorted([_ for _ in branches if _.startswith("t")], reverse=True)
+    # sort elements that starts with key in sort_order_keys
+    sort_order_keys = (("s", False), ("p", True), ("c", True), ("t", True))
+    res = []
+
+    def _get_serial(x):
+        # try to find number sequence from input string and return it as integer
+        # or return input value length
+        numbers = "0123456789"
+        numbers_pos = [x.find(n) for n in numbers]
+        if max(numbers_pos) == -1:
+            return len(x)
+        serial_ = ""
+        first_num = min([x for x in numbers_pos if x != -1])
+        for i in range(first_num, len(x)):
+            if x[i] in numbers:
+                serial_ += x[i]
+            else:
+                break
+        return int(serial_)
+
+    for sk in sort_order_keys:
+        res += sorted(
+            [x for x in branches if x.startswith(sk[0])],
+            key=lambda k: _get_serial(k),
+            reverse=sk[1],
+        )
+
     res += sorted([_ for _ in branches if _ not in res], reverse=True)
 
     return tuple(res)
 
 
-email_match = re.compile("(<.+@?.+>)+")
-
-
 def get_nickname_from_packager(packager):
+    email_match = re.compile("(<.+@?.+>)+")
     m = email_match.search(packager)
     if m is None:
         # return original string if no regex match found
