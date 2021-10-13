@@ -195,7 +195,7 @@ class PackageInfo(APIWorker):
         )
 
         self.conn.request_line = self.sql.get_task_gears_by_hash.format(
-            pkghash=self.pkghash
+            pkghash=self.pkghash, branch=self.branch
         )
         status, response = self.conn.send_request()
         if not status:

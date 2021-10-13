@@ -161,30 +161,30 @@ WHERE pkg_name = '{name}'
 """
 
     get_pkg_binary_versions = """
-    SELECT DISTINCT
-        pkgset_name,
-        pkg_version,
-        pkg_release,
-        toString(pkg_hash)
-    FROM last_packages
-    WHERE pkg_name = '{name}'
-        AND pkg_arch = '{arch}'
-        AND pkg_sourcepackage = 0
-    """
+SELECT DISTINCT
+    pkgset_name,
+    pkg_version,
+    pkg_release,
+    toString(pkg_hash)
+FROM last_packages
+WHERE pkg_name = '{name}'
+    AND pkg_arch = '{arch}'
+    AND pkg_sourcepackage = 0
+"""
 
     get_pkg_binary_list_versions = """
-        SELECT DISTINCT
-            pkgset_name,
-            pkg_version,
-            pkg_release
-        FROM static_last_packages
-        WHERE pkg_name = '{name}'
-            AND pkg_sourcepackage = 0
-        GROUP BY 
-            pkgset_name,
-            pkg_version,
-            pkg_release
-        """
+SELECT DISTINCT
+    pkgset_name,
+    pkg_version,
+    pkg_release
+FROM static_last_packages
+WHERE pkg_name = '{name}'
+    AND pkg_sourcepackage = 0
+GROUP BY
+    pkgset_name,
+    pkg_version,
+    pkg_release
+"""
 
     get_pkg_versions_by_hash = """
 SELECT DISTINCT
@@ -262,6 +262,7 @@ AND task_id IN
     FROM TaskStates
     WHERE task_state = 'DONE'
 )
+AND task_repo = '{branch}'
 ORDER BY task_changed DESC
 """
 
