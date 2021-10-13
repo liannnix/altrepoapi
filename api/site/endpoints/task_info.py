@@ -390,9 +390,27 @@ class LastTaskPackages(APIWorker):
 
             retval[task_id]["packages"].append(pkg_info)
 
+        # get last branch task
+        last_branch_task = 0
+        if self.branch not in lut.taskless_branches:
+            self.conn.request_line = self.sql.get_last_branch_task.format(
+                branch=self.branch
+            )
+            status, response = self.conn.send_request()
+            if not status:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return self.error
+            if response:
+                last_branch_task = response[0][0]
+
         retval = [{"task_id": k, **v} for k, v in retval.items()]
 
-        res = {"request_args": self.args, "length": len(retval), "tasks": retval}
+        res = {
+            "request_args": self.args,
+            "length": len(retval),
+            "tasks": retval,
+            "last_branch_task": last_branch_task,
+        }
         return res, 200
 
 

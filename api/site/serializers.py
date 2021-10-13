@@ -436,6 +436,7 @@ last_packages_model = ns.model(
             description="last tasks packages information",
             as_list=True,
         ),
+        "last_branch_task": fields.Integer(description="last loaded branch task"),
     },
 )
 
