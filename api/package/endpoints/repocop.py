@@ -97,31 +97,26 @@ class Repocop(APIWorker):
         pkg_type_to_sql = {"source": 1, "binary": 0}
         source = pkg_type_to_sql[self.pkg_type]
 
+        version_cond = ""
+        release_cond = ""
+        arch_cond = ""
         if source == 1:
             name_cond = f"AND rc_srcpkg_name = '{self.args['package_name']}'"
             if self.args["package_version"] is not None:
                 version_cond = f"AND rc_srcpkg_version = '{self.args['package_version']}'"
-            else:
-                version_cond = ""
+
             if self.args["package_release"] is not None:
                 release_cond = f"AND rc_srcpkg_release = '{self.args['package_release']}'"
-            else:
-                release_cond = ""
         if source == 0:
             name_cond = f"AND pkg_name = '{self.args['package_name']}'"
             if self.args["package_version"] is not None:
                 version_cond = f"AND pkg_version = '{self.args['package_version']}'"
-            else:
-                version_cond = ""
+
             if self.args["package_release"] is not None:
                 release_cond = f"AND pkg_release = '{self.args['package_release']}'"
-            else:
-                release_cond = ""
 
         if self.args["bin_package_arch"] is not None:
             arch_cond = f"AND pkg_arch = '{self.args['bin_package_arch']}'"
-        else:
-            arch_cond = ""
 
         self.conn.request_line = self.sql.get_out_repocop.format(
             pkgs=name_cond,
