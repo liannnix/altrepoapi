@@ -390,10 +390,11 @@ class LastTaskPackages(APIWorker):
 
             retval[task_id]["packages"].append(pkg_info)
 
-        # get last branch task
+        # get last branch task and date
         last_branch_task = 0
+        last_branch_date = ""
         if self.branch not in lut.taskless_branches:
-            self.conn.request_line = self.sql.get_last_branch_task.format(
+            self.conn.request_line = self.sql.get_last_branch_task_and_date.format(
                 branch=self.branch
             )
             status, response = self.conn.send_request()
@@ -402,6 +403,7 @@ class LastTaskPackages(APIWorker):
                 return self.error
             if response:
                 last_branch_task = response[0][0]
+                last_branch_date = datetime_to_iso(response[0][1])
 
         retval = [{"task_id": k, **v} for k, v in retval.items()]
 
@@ -410,6 +412,7 @@ class LastTaskPackages(APIWorker):
             "length": len(retval),
             "tasks": retval,
             "last_branch_task": last_branch_task,
+            "last_branch_date": last_branch_date,
         }
         return res, 200
 

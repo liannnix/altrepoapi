@@ -603,9 +603,10 @@ WHERE
     )
 """
 
-    get_last_branch_task = """
+    get_last_branch_task_and_date = """
 SELECT
-    toUInt32(pkgset_kv.v[indexOf(pkgset_kv.k, 'task')])
+    toUInt32(pkgset_kv.v[indexOf(pkgset_kv.k, 'task')]),
+    pkgset_date
 FROM PackageSetName
 WHERE pkgset_nodename = '{branch}'
     AND pkgset_date = (
@@ -613,6 +614,12 @@ WHERE pkgset_nodename = '{branch}'
         FROM lv_pkgset_stat
         WHERE pkgset_name = '{branch}'
     )
+"""
+
+    get_last_branch_date = """
+SELECT DISTINCT pkgset_date
+FROM lv_pkgset_stat
+WHERE pkgset_name = '{branch}'
 """
 
     get_pkgset_groups_count = """

@@ -437,6 +437,7 @@ last_packages_model = ns.model(
             as_list=True,
         ),
         "last_branch_task": fields.Integer(description="last loaded branch task"),
+        "last_branch_date": fields.String(description="last loaded branch date"),
     },
 )
 
@@ -645,5 +646,6 @@ last_packages_branch_model = ns.model(
             description="last packages list",
             as_list=True,
         ),
+        "last_branch_date": fields.String(description="last loaded branch date"),
     }
 )

@@ -711,6 +711,16 @@ class LastBranchPackages(APIWorker):
 
         packages = (PkgMeta(*el[1:])._asdict() for el in response)
 
+        # get last branch date
+        self.conn.request_line = self.sql.get_last_branch_date.format(
+            branch=self.branch
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        last_branch_date = datetime_to_iso(response[0][0])
+
         retval = []
 
         for pkg in packages:
@@ -722,5 +732,6 @@ class LastBranchPackages(APIWorker):
             "request_args": self.args,
             "length": len(retval),
             "packages": retval,
+            "last_branch_date": last_branch_date,
         }
         return res, 200
