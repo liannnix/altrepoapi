@@ -3,16 +3,30 @@ from flask_restx import Resource, abort, Namespace
 
 from utils import get_logger, url_logging, response_error_parser
 
-from .endpoints.package_info import PackageInfo, PackageChangelog, DeletedPackageInfo, PackagesBinaryListInfo
+from .endpoints.package_info import (
+    PackageInfo,
+    PackageChangelog,
+    DeletedPackageInfo,
+    PackagesBinaryListInfo,
+)
 from .endpoints.package_info import LastPackagesWithCVEFix, PackageDownloadLinks
-from .endpoints.pkgset_packages import PackagesetPackages, PackagesetPackageHash, PackagesetPackageBinaryHash
+from .endpoints.pkgset_packages import (
+    PackagesetPackages,
+    PackagesetPackageHash,
+    PackagesetPackageBinaryHash,
+)
 from .endpoints.packager_info import AllMaintainers, MaintainerInfo, MaintainerPackages
 from .endpoints.packager_info import MaintainerBranches, RepocopByMaintainer
 from .endpoints.packager_info import MaintainerBeehiveErrors
 from .endpoints.pkgset_packages import PackagesetFindPackages, AllPackagesets
 from .endpoints.pkgset_packages import PkgsetCategoriesCount, AllPackagesetArchs
 from .endpoints.pkgset_packages import AllPackagesetsByHash, LastBranchPackages
-from .endpoints.task_info import TasksByPackage, LastTaskPackages, TasksByMaintainer
+from .endpoints.task_info import (
+    TasksByPackage,
+    LastTaskPackages,
+    TasksByMaintainer,
+    PackageVersionsFromTasks,
+)
 
 ns = Namespace("site", description="web site API")
 
@@ -34,6 +48,7 @@ from .parsers import (
     pkgs_binary_list_args,
     deleted_package_args,
     last_pkgs_branch_args,
+    pkgs_versions_from_tasks_args,
 )
 from .serializers import (
     pkgset_packages_model,
@@ -59,6 +74,7 @@ from .serializers import (
     package_downloads_model,
     pkgs_binary_list_model,
     last_packages_branch_model,
+    pkgs_versions_from_tasks_model,
 )
 
 logger = get_logger(__name__)
@@ -222,6 +238,7 @@ class routePackagesetPackageHash(Resource):
         if code != 200:
             abort(code, **response_error_parser(result))
         return result, code
+
 
 @ns.route(
     "/pkghash_by_binary_name",
@@ -877,6 +894,36 @@ class routePackageDownloadLinks(Resource):
         args = all_archs_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = PackageDownloadLinks(g.connection, pkghash, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route(
+    "/package_versions_from_tasks",
+    doc={
+        "description": "Get source package versions from tasks",
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package not found in database",
+        },
+    },
+)
+class routePackageVersionsFromTasks(Resource):
+    @ns.expect(pkgs_versions_from_tasks_args)
+    @ns.marshal_with(pkgs_versions_from_tasks_model)
+    def get(self):
+        args = pkgs_versions_from_tasks_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        wrk = PackageVersionsFromTasks(g.connection, **args)
         if not wrk.check_params():
             abort(
                 400,

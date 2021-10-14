@@ -201,3 +201,11 @@ last_pkgs_branch_args.add_argument(
 last_pkgs_branch_args.add_argument(
     "packager", type=str, required=False, help="package packager's nickname", location="args"
 )
+
+pkgs_versions_from_tasks_args = reqparse.RequestParser()
+pkgs_versions_from_tasks_args.add_argument(
+    "name", type=str, required=True, help="source package name", location="args"
+)
+pkgs_versions_from_tasks_args.add_argument(
+    "branch", type=str, required=False, help="packageset name", location="args"
+)

@@ -649,3 +649,27 @@ last_packages_branch_model = ns.model(
         "last_branch_date": fields.String(description="last loaded branch date"),
     }
 )
+
+pkgs_versions_from_tasks_el_model = ns.model(
+    "SItePackagesVersionsFromTasksElementModel",
+    {
+        "branch": fields.String(description="package set name"),
+        "task": fields.Integer(description="package build task"),
+        "hash": fields.String(description="package hash UInt64 as string"),
+        "name": fields.String(description="package name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+    }
+)
+pkgs_versions_from_tasks_model = ns.model(
+    "SItePackagesVersionsFromTasksModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of versions found"),
+        "versions": fields.Nested(
+            pkgs_versions_from_tasks_el_model,
+            description="package versions list",
+            as_list=True,
+        ),
+    }
+)
