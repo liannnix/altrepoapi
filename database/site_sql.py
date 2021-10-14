@@ -1257,10 +1257,14 @@ SELECT * FROM
     LEFT JOIN
     (
         SELECT
-            chlog_hash,
+            pkg_hash,
             chlog_text
-        FROM Changelog
-    ) AS CHLG ON CHLG.chlog_hash = (pkg_changelog.hash[1])
+        FROM mv_src_packages_last_changelog
+        WHERE pkg_hash IN (
+            SELECT pkg_hash
+            FROM {hsh_source}
+        )
+    ) AS CHLG ON CHLG.pkg_hash = Packages.pkg_hash
     WHERE
         pkg_hash IN
         (
