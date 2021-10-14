@@ -1202,33 +1202,43 @@ WHERE pkgset_name = '{branch}'
 """
 
     get_last_branch_src_diff = """
-WITH
+CREATE TEMPORARY TABLE {tmp_table} AS
+SELECT pkg_hash FROM
 (
-    SELECT DISTINCT pkgset_date
-    FROM lv_pkgset_stat
+    WITH
+    (
+        SELECT DISTINCT pkgset_date
+        FROM lv_pkgset_stat
+        WHERE pkgset_name = '{branch}'
+    ) AS last_pkgset_date
+    SELECT DISTINCT pkg_hash
+    FROM static_last_packages
     WHERE pkgset_name = '{branch}'
-) AS last_pkgset_date
-SELECT DISTINCT pkg_hash
-FROM static_last_packages
+        AND pkg_sourcepackage = 1
+        AND pkg_hash NOT IN
+        (
+            SELECT pkg_hash
+            FROM PackageSet
+            WHERE pkgset_uuid = (
+                SELECT pkgset_uuid
+                FROM PackageSetName
+                WHERE pkgset_nodename = 'srpm'
+                    AND pkgset_ruuid = (
+                        SELECT argMax(pkgset_ruuid, pkgset_date)
+                        FROM PackageSetName
+                        WHERE pkgset_depth = 0
+                            AND pkgset_nodename = '{branch}'
+                            AND pkgset_date < last_pkgset_date
+                    )
+            )
+        )
+)
+"""
+
+    get_last_branch_hsh_source = """
+static_last_packages
 WHERE pkgset_name = '{branch}'
     AND pkg_sourcepackage = 1
-    AND pkg_hash NOT IN
-    (
-        SELECT pkg_hash
-        FROM PackageSet
-        WHERE pkgset_uuid = (
-            SELECT pkgset_uuid
-            FROM PackageSetName
-            WHERE pkgset_nodename = 'srpm'
-                AND pkgset_ruuid = (
-                    SELECT argMax(pkgset_ruuid, pkgset_date)
-                    FROM PackageSetName
-                    WHERE pkgset_depth = 0
-                        AND pkgset_nodename = '{branch}'
-                        AND pkgset_date < last_pkgset_date
-                )
-        )
-    )
 """
 
     get_last_branch_pkgs_info = """
@@ -1254,7 +1264,7 @@ SELECT * FROM
     WHERE
         pkg_hash IN
         (
-            SELECT * FROM {tmp_table}
+            SELECT pkg_hash FROM {hsh_source}
         )
     {packager}
     LIMIT {limit}

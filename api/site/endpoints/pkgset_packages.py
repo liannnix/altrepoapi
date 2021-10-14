@@ -649,44 +649,33 @@ class LastBranchPackages(APIWorker):
             self.packager = ""
             packager_sub = ""
 
-        # get source packages diff from current branch state and previous one
-        self.conn.request_line = self.sql.get_last_branch_src_diff.format(branch=self.branch)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
-        if not response:
-            self._store_error(
-                {
-                    "message": f"No data found in database for given parameters",
-                    "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+        if not self.packager:
+            # get source packages diff from current branch state and previous one
+            tmp_table = "tmp_srcpkg_hashes"
+            self.conn.request_line = self.sql.get_last_branch_src_diff.format(
+                tmp_table=tmp_table,
+                branch=self.branch
             )
-        src_pkg_hashes = [el[0] for el in response]
-        # strore list of source package hashes to temporary table
-        # create temporary table for source package hashes
-        tmp_table = "tmp_srcpkg_hashes"
-        self.conn.request_line = self.sql.create_tmp_table.format(
-            tmp_table=tmp_table, columns="(pkg_hash UInt64)"
-        )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
-        # insert package hashes into temporary table
-        self.conn.request_line = (
-            self.sql.insert_into_tmp_table.format(tmp_table=tmp_table),
-            ((x,) for x in src_pkg_hashes),
-        )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
+            status, response = self.conn.send_request()
+            if not status:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return self.error
+            if not response:
+                self._store_error(
+                    {
+                        "message": f"No data found in database for given parameters",
+                        "args": self.args,
+                    },
+                    self.ll.INFO,
+                    404,
+                )
+        else:
+            tmp_table = self.sql.get_last_branch_hsh_source.format(
+                branch=self.branch
+            )
         # get source and binary packages info by hashes from temporary table
         self.conn.request_line = self.sql.get_last_branch_pkgs_info.format(
-            tmp_table=tmp_table,
+            hsh_source=tmp_table,
             packager=packager_sub,
             limit=self.packages_limit
         )
