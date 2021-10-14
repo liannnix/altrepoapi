@@ -30,10 +30,10 @@ FROM last_packages
 LEFT JOIN 
 (
     SELECT
-        chlog_hash,
+        pkg_hash,
         chlog_text
-    FROM Changelog
-) AS CHLG ON CHLG.chlog_hash = (pkg_changelog.hash[1])
+    FROM mv_src_packages_last_changelog
+    ) AS CHLG ON CHLG.pkg_hash = last_packages.pkg_hash
 WHERE pkgset_name = %(branch)s
     AND pkg_sourcepackage IN {src}
     AND pkg_buildtime >= %(buildtime)s
@@ -579,17 +579,23 @@ SELECT DISTINCT
     pkg_release,
     pkg_buildtime,
     pkg_summary,
-    pkg_changelog.name[1],
-    pkg_changelog.date[1],
+    CHLG.chlog_name,
+    CHLG.chlog_date,
     CHLG.chlog_text
 FROM Packages
 LEFT JOIN 
 (
     SELECT
-        chlog_hash,
+        pkg_hash,
+        chlog_name,
+        chlog_date,
         chlog_text
-    FROM Changelog
-) AS CHLG ON CHLG.chlog_hash = (pkg_changelog.hash[1])
+    FROM mv_src_packages_last_changelog
+    WHERE pkg_hash IN (
+        SELECT pkg_hash
+        FROM {tmp_table}
+    )
+) AS CHLG ON CHLG.pkg_hash = Packages.pkg_hash
 WHERE
     pkg_hash IN
     (
