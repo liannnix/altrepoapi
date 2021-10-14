@@ -1300,33 +1300,35 @@ ORDER BY last_build DESC
 
     get_all_src_versions_from_tasks = """
 WITH
-    pkg_packages AS
-    (
-        SELECT
-            pkg_hash,
-            pkg_name,
-            pkg_version,
-            pkg_release
-        FROM Packages
-        WHERE pkg_name = '{name}' AND pkg_sourcepackage = 1
-    ),
-    pkg_tasks AS
-    (
-        SELECT DISTINCT
-            task_id,
-            titer_srcrpm_hash
-        FROM TaskIterations
-        WHERE titer_srcrpm_hash IN (
-            SELECT pkg_hash
-            FROM pkg_packages
-        )
-            AND task_id IN
-            (
-                SELECT task_id
-                FROM TaskStates
-                WHERE task_state = 'DONE'
-            )
+pkg_packages AS
+(
+    SELECT
+        pkg_hash,
+        pkg_name,
+        pkg_version,
+        pkg_release
+    FROM Packages
+    WHERE pkg_name = '{name}' AND pkg_sourcepackage = 1
+),
+pkg_tasks AS
+(
+    SELECT DISTINCT
+        task_id,
+        titer_srcrpm_hash
+    FROM TaskIterations
+    WHERE titer_srcrpm_hash IN (
+        SELECT pkg_hash
+        FROM pkg_packages
     )
+        AND (task_id, task_changed) IN
+        (
+            SELECT
+                task_id,
+                task_changed
+            FROM TaskStates
+            WHERE task_state = 'DONE'
+        )
+)
 SELECT DISTINCT
     pkg_tasks.task_id,
     toString(pkg_tasks.titer_srcrpm_hash),
