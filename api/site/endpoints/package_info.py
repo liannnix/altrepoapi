@@ -297,8 +297,7 @@ class PackageInfo(APIWorker):
         package_archs = {}
         if source:
             self.conn.request_line = self.sql.get_binary_pkgs.format(
-                pkghash=self.pkghash,
-                branch=self.branch
+                pkghash=self.pkghash, branch=self.branch
             )
         else:
             self.conn.request_line = self.sql.get_source_pkgs.format(
@@ -707,14 +706,13 @@ class PackageDownloadLinks(APIWorker):
             subtasks = [TaskInfo(*el)._asdict() for el in response]
             # get package hashes and archs from Tasks
             for t in subtasks:
-                bin_pkgs[t["subtask_arch"]] = {
-                    h for h in t["titer_pkgs_hash"] if h != 0
-                }
-                bin_pkgs[t["subtask_arch"]] = list(bin_pkgs[t["subtask_arch"]])
+                bin_pkgs[t["subtask_arch"]] = list(
+                    {h for h in t["titer_pkgs_hash"] if h != 0}
+                )
             # get package file names
             hshs = [self.pkghash] + [h for hs in bin_pkgs.values() for h in hs]
             self.conn.request_line = self.sql.get_pkgs_filename_by_hshs.format(
-                hshs=hshs
+                hshs=tuple(set(hshs))
             )
             status, response = self.conn.send_request()
             if not status:
@@ -786,7 +784,7 @@ class PackageDownloadLinks(APIWorker):
         src_filesize = filenames[self.pkghash].size
         src_arch = filenames[self.pkghash].arch
         filenames.pop(self.pkghash, None)
-        # get source package arch by binary packages
+        # get source package subtask arch by binary packages
         archs = ["x86_64", "i586"]
         archs += [arch for arch in bin_pkgs.keys() if arch not in archs]
         for arch in archs:
@@ -802,6 +800,15 @@ class PackageDownloadLinks(APIWorker):
                     and len(filenames) != 1
                 ):
                     filenames.pop(p, None)
+        # remove duplicated noarch packages for archs in bin_pkgs
+        uniq_noarch_pkgs = set()
+        for h in filenames:
+            if filenames[h].arch == "noarch":
+                for arch in archs:
+                    if h in bin_pkgs[arch] and not h in uniq_noarch_pkgs:
+                        uniq_noarch_pkgs.add(h)
+                    else:
+                        bin_pkgs[arch] = [x for x in bin_pkgs[arch] if x != h]
         # get package versions
         pkg_versions = []
         self.conn.request_line = self.sql.get_pkg_versions_by_hash.format(
