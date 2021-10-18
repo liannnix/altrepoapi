@@ -423,6 +423,9 @@ FROM
     ) AS Bin USING pkg_name
 WHERE pkgset_name = %(branch)s
     AND pkg_arch IN %(archs)s)
+UNION ALL SELECT
+    arrayJoin(%(pkgs)s),
+    ''
 """
 
     get_all_filtred_pkgs_with_deps = """

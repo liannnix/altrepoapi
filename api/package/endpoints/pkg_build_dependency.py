@@ -361,7 +361,7 @@ class BuildDependency(APIWorker):
                 self.sql.insert_binary_deps.format(
                     tmp_table=tmp_table_name, tmp_req=tmp_table_pkg_dep
                 ),
-                {"branch": self.branch, "archs": tuple(self.arch)},
+                {"branch": self.branch, "archs": tuple(self.arch), "pkgs": list(input_pkgs)},
             )
             status, response = self.conn.send_request()
             if status is False:
