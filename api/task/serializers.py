@@ -79,8 +79,9 @@ task_diff_archs_model = ns.model(
 task_diff_model = ns.model(
     "TaskDiffModel",
     {
-        "task_id": fields.Integer,
-        "task_diff": fields.Nested(task_diff_archs_model, as_list=True),
+        "task_id": fields.Integer(description="task id"),
+        "task_have_plan": fields.Boolean(description="task have package hashses add/delete plan"),
+        "task_diff": fields.Nested(task_diff_archs_model, as_list=True, description="task diff"),
     },
 )
 

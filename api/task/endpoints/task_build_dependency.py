@@ -116,6 +116,9 @@ class TaskBuildDependency(APIWorker):
         # build result
         self.bd.build_dependencies(task_repo_hashes=self.tr.task_repo_pkgs)
 
+        # set flag if task plan is applied to repository state
+        self.args["task_plan_applied"] = self.tr.have_plan
+
         # format result
         if self.bd.status:
             # result processing

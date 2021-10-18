@@ -20,6 +20,7 @@ class TaskRepoState(APIWorker):
         self.task_del_pkgs: tuple[int] = tuple()
         self.task_repo_pkgs: tuple[int] = tuple()
         self.task_base_repo_pkgs: tuple[int] = tuple()
+        self.have_plan = False
         super().__init__()
 
     def check_task_id(self) -> bool:
@@ -127,16 +128,21 @@ class TaskRepoState(APIWorker):
             task_del_pkgs = set(join_tuples(response))
         else:
             task_del_pkgs = set()
-        # if no task plan found return an error
+        # if no task plan found return an error if task not in 'FAILED' state
         if not task_add_pkgs and not task_del_pkgs:
-            self._store_error(
-                {
-                    "Error": f"No plan found for task {self.task_id} in state {task_state} in DB"
-                },
-                self.ll.INFO,
-                404,
-            )
-            return None
+            if task_state == "FAILED":
+                self.have_plan = False
+            else:
+                self._store_error(
+                    {
+                        "Error": f"No plan found for task {self.task_id} in state {task_state} in DB"
+                    },
+                    self.ll.INFO,
+                    404,
+                )
+                return None
+        else:
+            self.have_plan = True
         # get task_diff list and latest repo package hashes
         if task_state == "DONE":
             # if task state is 'DONE' use last previous repo and applly all 'DONE' task chain on top of it

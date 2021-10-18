@@ -264,4 +264,7 @@ class TaskDiff(APIWorker):
                 )
             result_dict_2["task_diff"].append(arch_dict)
 
+        # set flag if task plan is applied to repository state
+        result_dict_2["task_have_plan"] = self.tr.have_plan
+
         return result_dict_2, 200
