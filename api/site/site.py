@@ -49,7 +49,7 @@ from .parsers import (
     pkgs_binary_list_args,
     deleted_package_args,
     last_pkgs_branch_args,
-    pkgs_versions_from_tasks_args
+    pkgs_versions_from_tasks_args,
 )
 from .serializers import (
     pkgset_packages_model,

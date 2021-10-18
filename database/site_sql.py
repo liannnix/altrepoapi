@@ -1217,6 +1217,24 @@ WHERE pkgh_mmh IN {hshs}
     WHERE pkg_hash = {pkghash}
 """
 
+    get_pkgs_bin_depends = """
+    SELECT
+        dp_name,
+        dp_version,
+        dp_flag,
+        dp_type
+    FROM Depends
+    WHERE pkg_hash = {pkghash}    
+"""
+
+    get_pkgs_name_and_arch = """
+    SELECT
+        pkg_name,
+        pkg_arch
+    FROM Packages
+    WHERE pkg_hash = {pkghash}
+"""
+
     get_last_branch_src_diff = """
 CREATE TEMPORARY TABLE {tmp_table} AS
 SELECT pkg_hash FROM
