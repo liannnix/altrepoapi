@@ -793,13 +793,15 @@ class PackageDownloadLinks(APIWorker):
             if arch in bin_pkgs and len(bin_pkgs[arch]) > 0:
                 src_arch = arch
                 break
-
         # pop noarch binary packages for archs != src_arch
         for k, v in bin_pkgs.items():
             for p in v:
-                if k != src_arch and filenames[int(p)].arch == "noarch":
+                if (
+                    k != src_arch
+                    and filenames[p].arch == "noarch"
+                    and len(filenames) != 1
+                ):
                     filenames.pop(p, None)
-
         # get package versions
         pkg_versions = []
         self.conn.request_line = self.sql.get_pkg_versions_by_hash.format(
