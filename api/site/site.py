@@ -6,7 +6,9 @@ from utils import get_logger, url_logging, response_error_parser
 from .endpoints.package_info import (
     PackageInfo,
     PackageChangelog,
-    DeletedPackageInfo, PackagesBinaryListInfo
+    DeletedPackageInfo,
+    PackagesBinaryListInfo,
+    DependsBinPackage,
 )
 from .endpoints.package_info import LastPackagesWithCVEFix, PackageDownloadLinks
 from .endpoints.pkgset_packages import (
@@ -44,9 +46,10 @@ from .parsers import (
     all_archs_args,
     pkgs_with_cve_fix_args,
     pkgset_pkg_binary_hash_args,
+    pkgs_binary_list_args,
     deleted_package_args,
     last_pkgs_branch_args,
-    pkgs_versions_from_tasks_args, pkgs_binary_list_args
+    pkgs_versions_from_tasks_args
 )
 from .serializers import (
     pkgset_packages_model,
@@ -70,8 +73,10 @@ from .serializers import (
     all_pkgsets_summary_model,
     beehive_by_maintainer_model,
     package_downloads_model,
+    pkgs_binary_list_model,
     last_packages_branch_model,
-    pkgs_versions_from_tasks_model, pkgs_binary_list_model,
+    pkgs_versions_from_tasks_model,
+    package_dependencies_model,
 )
 
 logger = get_logger(__name__)
@@ -162,6 +167,36 @@ class routePackageInfo(Resource):
         args = package_info_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = PackageInfo(g.connection, pkghash, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route(
+    "/packages_binary_list",
+    doc={
+        "description": "Get binary package archs and versions",
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package not found in database",
+        },
+    },
+)
+class routePackagesBinaryList(Resource):
+    @ns.expect(pkgs_binary_list_args)
+    @ns.marshal_with(pkgs_binary_list_model)
+    def get(self):
+        args = pkgs_binary_list_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        wrk = PackagesBinaryListInfo(g.connection, **args)
         if not wrk.check_params():
             abort(
                 400,
@@ -905,27 +940,26 @@ class routePackageVersionsFromTasks(Resource):
 
 
 @ns.route(
-    "/packages_binary_list",
+    "/depends_binary_package/<int:pkghash>",
     doc={
-        "description": "Get binary package archs and versions",
+        "description": "Get binary package require or provide depends",
         "responses": {
             400: "Request parameters validation error",
             404: "Package not found in database",
         },
     },
 )
-class routePackagesBinaryList(Resource):
-    @ns.expect(pkgs_binary_list_args)
-    @ns.marshal_with(pkgs_binary_list_model)
-    def get(self):
-        args = pkgs_binary_list_args.parse_args(strict=True)
+class routeDependsBinPakage(Resource):
+    @ns.expect()
+    @ns.marshal_with(package_dependencies_model)
+    def get(self, pkghash):
         url_logging(logger, g.url)
-        wrk = PackagesBinaryListInfo(g.connection, **args)
+        wrk = DependsBinPackage(g.connection, pkghash)
         if not wrk.check_params():
             abort(
                 400,
                 message=f"Request parameters validation error",
-                args=args,
+                # args=args,
                 validation_message=wrk.validation_results,
             )
         result, code = wrk.get()
