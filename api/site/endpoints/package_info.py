@@ -784,13 +784,14 @@ class PackageDownloadLinks(APIWorker):
         src_filesize = filenames[self.pkghash].size
         src_arch = filenames[self.pkghash].arch
         filenames.pop(self.pkghash, None)
-        # get source package subtask arch by binary packages
+        # get source package arch by binary packages
         archs = ["x86_64", "i586"]
         archs += [arch for arch in bin_pkgs.keys() if arch not in archs]
         for arch in archs:
             if arch in bin_pkgs and len(bin_pkgs[arch]) > 0:
                 src_arch = arch
                 break
+
         # pop noarch binary packages for archs != src_arch
         for k, v in bin_pkgs.items():
             for p in v:
