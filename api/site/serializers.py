@@ -43,9 +43,25 @@ package_dependencies_el_model = ns.model(
     {
         "name": fields.String(description="the name of the dependent package"),
         "version": fields.String(description="the version of the dependent package"),
+        "type": fields.String(description="dependency type"),
         "flag": fields.Integer(description="dependency flag"),
         "flag_decoded": fields.List(fields.String, description="decoded dependency flag"),
     }
+)
+package_dependencies_model = ns.model(
+    "SitePackageDependenciesModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of dependencies found"),
+        "dependencies": fields.Nested(
+            package_dependencies_el_model,
+            description="unpackaged directories information",
+            as_list=True,
+        ),
+        "versions": fields.Nested(
+            package_versions_el_model, as_list=True, description="all package versions"
+        ),
+    },
 )
 package_info_archs_el_model = ns.model(
     "",

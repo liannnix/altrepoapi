@@ -793,10 +793,11 @@ class PackageDownloadLinks(APIWorker):
             if arch in bin_pkgs and len(bin_pkgs[arch]) > 0:
                 src_arch = arch
                 break
+
         # pop noarch binary packages for archs != src_arch
         for k, v in bin_pkgs.items():
             for p in v:
-                if k != src_arch and filenames[p].arch == "noarch":
+                if k != src_arch and filenames[int(p)].arch == "noarch":
                     filenames.pop(p, None)
 
         # get package versions
@@ -1065,3 +1066,83 @@ class PackagesBinaryListInfo(APIWorker):
             "versions": pkg_versions,
         }
         return res, 200
+
+
+class DependsBinPackage(APIWorker):
+    """Dependencies of the binary package"""
+
+    def __init__(self, connection, pkghash, **kwargs):
+        self.conn = connection
+        self.pkghash = pkghash
+        self.args = kwargs
+        self.sql = sitesql
+        super().__init__()
+
+    def get(self):
+        self.conn.request_line = self.sql.get_pkgs_bin_depends.format(pkghash=self.pkghash)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {
+                    "message": f"No found",
+                    "args": self.pkghash,
+                },
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        PkgDependencies = namedtuple("PkgDependencies", ["name", "version", "flag", "type"])
+        pkg_dependencies = [PkgDependencies(*el)._asdict() for el in response]
+
+        # change numeric flag on text
+        for el in pkg_dependencies:
+            el["flag_decoded"] = dp_flags_decode(el["flag"], lut.rpmsense_flags)
+
+        # get package name and arch
+        self.conn.request_line = self.sql.get_pkgs_name_and_arch.format(pkghash=self.pkghash)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+
+        # get package versions
+        pkg_versions = []
+        self.conn.request_line = self.sql.get_pkg_binary_versions.format(
+            name=response[0][0], arch=response[0][1]
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        PkgVersions = namedtuple(
+            "PkgVersions", ["branch", "version", "release", "pkghash"]
+        )
+        # sort package versions by branch
+        pkg_branches = sort_branches([el[0] for el in response])
+        pkg_versions = tuplelist_to_dict(response, 3)
+
+        pkg_versions = [
+            PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
+        ]
+
+        res = {
+            "request_args": self.pkghash,
+            "length": len(pkg_dependencies),
+            "dependencies": pkg_dependencies,
+            "versions": pkg_versions
+        }
+        return res, 200
+
+
+class DependsBinPakageList(APIWorker):
+
+    def __init__(self, connection, pkghash, **kwargs):
+        self.conn = connection
+        self.pkghash = pkghash
+        self.args = kwargs
+        self.sql = sitesql
+        super().__init__()
