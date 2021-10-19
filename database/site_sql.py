@@ -1201,29 +1201,6 @@ FROM PackageHash_view
 WHERE pkgh_mmh IN {hshs}
 """
 
-    get_pkgs_binary_list = """
-SELECT DISTINCT
-    pkg_hash,
-    pkg_name,
-    pkg_version,
-    pkg_release,
-    pkg_arch
-FROM last_packages
-WHERE pkgset_name = '{branch}'
-    AND pkg_name = '{name}'
-    AND pkg_sourcepackage = 0
-"""
-
-    get_pkgs_bin_depends = """
-    SELECT
-        dp_name,
-        dp_version,
-        dp_flag,
-        dp_type
-    FROM Depends
-    WHERE pkg_hash = {pkghash}    
-"""
-
     get_pkgs_name_and_arch = """
     SELECT
         pkg_name,
@@ -1368,6 +1345,31 @@ LEFT JOIN
     SELECT *
     FROM pkg_packages
 ) AS PKG ON pkg_hash = titer_srcrpm_hash
+"""
+
+    get_pkg_binary_versions = """
+SELECT DISTINCT
+    pkgset_name,
+    pkg_version,
+    pkg_release,
+    toString(pkg_hash)
+FROM last_packages
+WHERE pkg_name = '{name}'
+    AND pkg_arch = '{arch}'
+    AND pkg_sourcepackage = 0
+"""
+
+    get_pkgs_binary_list = """
+SELECT DISTINCT
+    pkg_hash,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_arch
+FROM last_packages
+WHERE pkgset_name = '{branch}'
+    AND pkg_name = '{name}'
+    AND pkg_sourcepackage = 0
 """
 
 

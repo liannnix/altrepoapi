@@ -158,14 +158,6 @@ pkgs_with_cve_fix_args.add_argument(
     "branch", type=str, required=True, help="name of packageset", location="args"
 )
 
-pkgs_binary_list_args = reqparse.RequestParser()
-pkgs_binary_list_args.add_argument(
-    "branch", type=str, required=True, help="name of packageset", location="args"
-)
-pkgs_binary_list_args.add_argument(
-    "name", type=str, required=True, help="binary package name", location="args"
-)
-
 deleted_package_args = reqparse.RequestParser()
 deleted_package_args.add_argument(
     "branch", type=str, required=True, help="name of packageset", location="args"
@@ -208,4 +200,12 @@ pkgs_versions_from_tasks_args.add_argument(
 )
 pkgs_versions_from_tasks_args.add_argument(
     "branch", type=str, required=False, help="packageset name", location="args"
+)
+
+pkgs_binary_list_args = reqparse.RequestParser()
+pkgs_binary_list_args.add_argument(
+    "branch", type=str, required=True, help="name of packageset", location="args"
+)
+pkgs_binary_list_args.add_argument(
+    "name", type=str, required=True, help="binary package name", location="args"
 )

@@ -48,21 +48,7 @@ package_dependencies_el_model = ns.model(
         "flag_decoded": fields.List(fields.String, description="decoded dependency flag"),
     }
 )
-package_dependencies_model = ns.model(
-    "SitePackageDependenciesModel",
-    {
-        "request_args": fields.Raw(description="request arguments"),
-        "length": fields.Integer(description="number of dependencies found"),
-        "dependencies": fields.Nested(
-            package_dependencies_el_model,
-            description="unpackaged directories information",
-            as_list=True,
-        ),
-        "versions": fields.Nested(
-            package_versions_el_model, as_list=True, description="all package versions"
-        ),
-    },
-)
+
 package_info_archs_el_model = ns.model(
     "",
     {
@@ -599,30 +585,6 @@ package_downloads_model = ns.model(
     }
 )
 
-pkgs_binary_list_el_model = ns.model(
-    "SitePackagesBinaryListElementModel",
-    {
-        "hash": fields.String(description="package hash UInt64 as string"),
-        "name": fields.String(description="package name"),
-        "version": fields.String(description="package version"),
-        "release": fields.String(description="package release"),
-        "arch": fields.String(description="package arch")
-    },
-)
-pkgs_binary_list_model = ns.model(
-    "SitePackagesBinaryListModel",
-    {
-        "request_args": fields.Raw(description="request arguments"),
-        "length": fields.Integer(description="number of packages found"),
-        "packages": fields.Nested(
-            pkgs_binary_list_el_model,
-            description="binary packages list",
-            as_list=True,
-        ),
-        "versions": fields.Nested(package_versions_el_model, as_list=True, description="all package versions")
-    },
-)
-
 last_packages_branch_pkg_model = ns.model(
     "SiteLastBranchPackagesPackageModel",
     {
@@ -688,4 +650,28 @@ pkgs_versions_from_tasks_model = ns.model(
             as_list=True,
         ),
     }
+)
+
+pkgs_binary_list_el_model = ns.model(
+    "SitePackagesBinaryListElementModel",
+    {
+        "hash": fields.String(description="package hash UInt64 as string"),
+        "name": fields.String(description="package name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "arch": fields.String(description="package arch")
+    },
+)
+pkgs_binary_list_model = ns.model(
+    "SitePackagesBinaryListModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "packages": fields.Nested(
+            pkgs_binary_list_el_model,
+            description="binary packages list",
+            as_list=True,
+        ),
+        "versions": fields.Nested(package_versions_el_model, as_list=True, description="all package versions")
+    },
 )
