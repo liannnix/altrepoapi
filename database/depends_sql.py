@@ -70,7 +70,7 @@ LEFT JOIN
         chlog_text
     FROM mv_src_packages_last_changelog
     ) AS CHLG ON CHLG.pkg_hash = last_packages.pkg_hash
-WHERE pkgset_name = 'sisyphus'
+WHERE pkgset_name = '{branch}'
     AND pkg_hash IN (SELECT * FROM {tmp_table})
     AND pkg_buildtime >= 0
 ORDER BY pkg_name
