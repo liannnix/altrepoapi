@@ -3,8 +3,6 @@ import getpass
 import logging
 from dataclasses import dataclass
 
-import secret
-
 
 @dataclass
 class BasePathNamespace:
@@ -35,7 +33,7 @@ class BasePathNamespace:
     # API admin credentials
     ADMIN_USER = "admin"
     # echo -n "SuperSecretPa\$\$w0rd" | sha512sum   # !! '$' symbol should be escaped in echo with backslash !!
-    ADMIN_PASSWORD = secret.password
+    ADMIN_PASSWORD = ""
 
 
 namespace = BasePathNamespace()
