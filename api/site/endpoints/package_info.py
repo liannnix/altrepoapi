@@ -791,7 +791,6 @@ class PackageDownloadLinks(APIWorker):
             if arch in bin_pkgs and len(bin_pkgs[arch]) > 0:
                 src_arch = arch
                 break
-
         # pop noarch binary packages for archs != src_arch
         for k, v in bin_pkgs.items():
             for p in v:
@@ -1097,7 +1096,7 @@ class BinaryPackageScripts(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No found",
+                    "message": f"No information found in DB for package hash {self.pkghash}",
                     "args": self.pkghash,
                 },
                 self.ll.INFO,
