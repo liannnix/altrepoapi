@@ -8,7 +8,7 @@ from .endpoints.package_info import (
     PackageChangelog,
     DeletedPackageInfo,
     PackagesBinaryListInfo,
-    DependsBinPackage,
+    BinaryPackageScripts,
 )
 from .endpoints.package_info import LastPackagesWithCVEFix, PackageDownloadLinks
 from .endpoints.pkgset_packages import (
@@ -76,7 +76,7 @@ from .serializers import (
     pkgs_binary_list_model,
     last_packages_branch_model,
     pkgs_versions_from_tasks_model,
-    package_dependencies_model,
+    depends_packages_model,
 )
 
 logger = get_logger(__name__)
@@ -940,21 +940,21 @@ class routePackageVersionsFromTasks(Resource):
 
 
 @ns.route(
-    "/depends_binary_package/<int:pkghash>",
+    "/binary_package_scripts/<int:pkghash>",
     doc={
-        "description": "Get binary package require or provide depends",
+        "description": "Get binary package scripts",
         "responses": {
             400: "Request parameters validation error",
             404: "Package not found in database",
         },
     },
 )
-class routeDependsBinPakage(Resource):
-    @ns.expect()
-    @ns.marshal_with(package_dependencies_model)
+class routeBinPackageScripts(Resource):
+    # @ns.expect()
+    @ns.marshal_with(depends_packages_model)
     def get(self, pkghash):
         url_logging(logger, g.url)
-        wrk = DependsBinPackage(g.connection, pkghash)
+        wrk = BinaryPackageScripts(g.connection, pkghash)
         if not wrk.check_params():
             abort(
                 400,

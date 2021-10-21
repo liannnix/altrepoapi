@@ -1077,8 +1077,8 @@ class PackagesBinaryListInfo(APIWorker):
         return res, 200
 
 
-class DependsBinPackage(APIWorker):
-    """Dependencies of the binary package"""
+class BinaryPackageScripts(APIWorker):
+    """Get scripts and versions of a binary package"""
 
     def __init__(self, connection, pkghash, **kwargs):
         self.conn = connection
@@ -1088,7 +1088,7 @@ class DependsBinPackage(APIWorker):
         super().__init__()
 
     def get(self):
-        self.conn.request_line = self.sql.get_pkgs_bin_depends.format(pkghash=self.pkghash)
+        self.conn.request_line = self.sql.get_bin_pkg_scripts.format(pkghash=self.pkghash)
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -1104,12 +1104,8 @@ class DependsBinPackage(APIWorker):
             )
             return self.error
 
-        PkgDependencies = namedtuple("PkgDependencies", ["name", "version", "flag", "type"])
-        pkg_dependencies = [PkgDependencies(*el)._asdict() for el in response]
-
-        # change numeric flag on text
-        for el in pkg_dependencies:
-            el["flag_decoded"] = dp_flags_decode(el["flag"], lut.rpmsense_flags)
+        PkgScripts = namedtuple("PkgScripts", ["postin", "postun", "prein", "preun"])
+        pkg_scripts = [PkgScripts(*el)._asdict() for el in response]
 
         # get package name and arch
         self.conn.request_line = self.sql.get_pkgs_name_and_arch.format(pkghash=self.pkghash)
@@ -1140,18 +1136,8 @@ class DependsBinPackage(APIWorker):
 
         res = {
             "request_args": self.pkghash,
-            "length": len(pkg_dependencies),
-            "dependencies": pkg_dependencies,
+            "length": len(pkg_scripts),
+            "scripts": pkg_scripts,
             "versions": pkg_versions
         }
         return res, 200
-
-
-class DependsBinPakageList(APIWorker):
-
-    def __init__(self, connection, pkghash, **kwargs):
-        self.conn = connection
-        self.pkghash = pkghash
-        self.args = kwargs
-        self.sql = sitesql
-        super().__init__()

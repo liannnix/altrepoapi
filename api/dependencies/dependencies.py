@@ -56,18 +56,18 @@ class routeDependsBinPakage(Resource):
 )
 class routePackageDepends(Resource):
     @ns.expect(pkgs_depends_args)
-    # @ns.marshal_with(package_dependencies_model)
+    @ns.marshal_with(package_dependencies_model)
     def get(self):
         args = pkgs_depends_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = PackagesDependence(g.connection, **args)
-        # if not wrk.check_params():
-        #     abort(
-        #         400,
-        #         message=f"Request parameters validation error",
-        #         args=args,
-        #         validation_message=wrk.validation_results,
-        #     )
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results,
+            )
         result, code = wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))

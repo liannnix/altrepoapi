@@ -1209,16 +1209,6 @@ WHERE pkgh_mmh IN {hshs}
     WHERE pkg_hash = {pkghash}
 """
 
-    get_pkgs_bin_depends = """
-    SELECT
-        dp_name,
-        dp_version,
-        dp_flag,
-        dp_type
-    FROM Depends
-    WHERE pkg_hash = {pkghash}    
-"""
-
     get_pkgs_name_and_arch = """
     SELECT
         pkg_name,
@@ -1388,6 +1378,16 @@ FROM last_packages
 WHERE pkgset_name = '{branch}'
     AND pkg_name = '{name}'
     AND pkg_sourcepackage = 0
+"""
+
+    get_bin_pkg_scripts = """
+SELECT
+    pkg_postin,
+    pkg_postun,
+    pkg_prein,
+    pkg_preun
+FROM Packages
+WHERE pkg_hash = {pkghash}
 """
 
 

@@ -78,7 +78,7 @@ depends_packages_model = ns.model(
         ),
         "branches": fields.Nested(
             all_pkgsets_el_model,
-            description="list of package sets with source package count",
+            description="list of package sets with binary package count",
             as_list=True
         ),
     },

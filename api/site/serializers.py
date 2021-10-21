@@ -689,3 +689,28 @@ pkgs_versions_from_tasks_model = ns.model(
         ),
     }
 )
+
+bin_package_scripts_el_model = ns.model(
+    "SiteBinPackageScriptsElementModel",
+    {
+        "postin": fields.String(description="post install script"),
+        "postun": fields.String(description="post uninstall script"),
+        "prein": fields.String(description="pre install script"),
+        "preun": fields.String(description="pre uninstall script"),
+    },
+)
+depends_packages_model = ns.model(
+    "SiteBinPackageScriptsModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of scripts found"),
+        "scripts": fields.Nested(
+            bin_package_scripts_el_model,
+            description="unpackaged directories information",
+            as_list=True,
+        ),
+        "versions": fields.Nested(
+            package_versions_el_model, as_list=True, description="all package versions"
+        ),
+    },
+)
