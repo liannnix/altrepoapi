@@ -1373,18 +1373,6 @@ LEFT JOIN
 ) AS PKG ON pkg_hash = titer_srcrpm_hash
 """
 
-    get_pkg_binary_versions = """
-SELECT DISTINCT
-    pkgset_name,
-    pkg_version,
-    pkg_release,
-    toString(pkg_hash)
-FROM last_packages
-WHERE pkg_name = '{name}'
-    AND pkg_arch = '{arch}'
-    AND pkg_sourcepackage = 0
-"""
-
     get_pkgs_binary_list = """
 SELECT DISTINCT
     pkg_hash,
@@ -1406,6 +1394,7 @@ SELECT
     pkg_preun
 FROM Packages
 WHERE pkg_hash = {pkghash}
+    AND pkg_sourcepackage = 0
 """
 
 
