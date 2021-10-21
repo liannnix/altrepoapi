@@ -16,4 +16,3 @@ pkgs_depends_args.add_argument(
     help="type of dependency [provide|require]",
     location="args",
 )
-
