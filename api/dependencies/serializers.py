@@ -4,7 +4,7 @@ from api.dependencies.dependencies import ns
 
 
 all_pkgsets_el_model = ns.model(
-    "SiteAllPackagasetsElementModel",
+    "DependenciesAllPackagasetsElementModel",
     {
         "branch": fields.String(description="package set name"),
         "count": fields.Integer(description="number of source packages"),
@@ -12,7 +12,7 @@ all_pkgsets_el_model = ns.model(
 )
 
 package_versions_el_model = ns.model(
-    "SitePackageVersionsElementModel",
+    "DependenciesPackageVersionsElementModel",
     {
         "branch": fields.String(description="package set name"),
         "version": fields.String(description="package version"),
@@ -22,7 +22,7 @@ package_versions_el_model = ns.model(
 )
 
 package_dependencies_el_model = ns.model(
-    "SitePackageDependenciesElementModel",
+    "DependenciesPackageDependenciesElementModel",
     {
         "name": fields.String(description="the name of the dependent package"),
         "version": fields.String(description="the version of the dependent package"),
@@ -32,7 +32,7 @@ package_dependencies_el_model = ns.model(
     }
 )
 package_dependencies_model = ns.model(
-    "SitePackageDependenciesModel",
+    "DependenciesPackageDependenciesModel",
     {
         "request_args": fields.Raw(description="request arguments"),
         "length": fields.Integer(description="number of dependencies found"),
@@ -48,7 +48,7 @@ package_dependencies_model = ns.model(
 )
 
 depends_packages_el_model = ns.model(
-    "SitePackagesElementModel",
+    "DependenciesPackagesElementModel",
     {
         "hash": fields.String(description="package hash UInt64 as string"),
         "name": fields.String(description="package name"),
@@ -60,11 +60,10 @@ depends_packages_el_model = ns.model(
         "buildtime": fields.Integer(description="package buildtime"),
         "category": fields.String(description="package category"),
         "maintainer": fields.String(description="package maintainer"),
-        "changelog": fields.String(description="package last changelog message"),
     },
 )
 depends_packages_model = ns.model(
-    "SitePackagesModel",
+    "DependenciesPackagesModel",
     {
         "request_args": fields.Raw(description="request arguments"),
         "length": fields.Integer(description="number of packages found"),

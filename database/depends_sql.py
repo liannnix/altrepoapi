@@ -60,16 +60,8 @@ SELECT DISTINCT
     pkg_buildtime,
     pkg_summary,
     pkg_packager_email,
-    pkg_group_,
-    CHLG.chlog_text
+    pkg_group_
 FROM last_packages
-LEFT JOIN
-(
-    SELECT
-        pkg_hash,
-        chlog_text
-    FROM mv_src_packages_last_changelog
-    ) AS CHLG ON CHLG.pkg_hash = last_packages.pkg_hash
 WHERE pkgset_name = '{branch}'
     AND pkg_hash IN (SELECT * FROM {tmp_table})
     AND pkg_buildtime >= 0

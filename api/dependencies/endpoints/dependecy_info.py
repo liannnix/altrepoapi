@@ -17,7 +17,9 @@ class DependsBinPackage(APIWorker):
         super().__init__()
 
     def get(self):
-        self.conn.request_line = self.sql.get_depends_bin_pkg.format(pkghash=self.pkghash)
+        self.conn.request_line = self.sql.get_depends_bin_pkg.format(
+            pkghash=self.pkghash
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -33,7 +35,9 @@ class DependsBinPackage(APIWorker):
             )
             return self.error
 
-        PkgDependencies = namedtuple("PkgDependencies", ["name", "version", "flag", "type"])
+        PkgDependencies = namedtuple(
+            "PkgDependencies", ["name", "version", "flag", "type"]
+        )
         pkg_dependencies = [PkgDependencies(*el)._asdict() for el in response]
 
         # change numeric flag on text
@@ -41,7 +45,9 @@ class DependsBinPackage(APIWorker):
             el["flag_decoded"] = dp_flags_decode(el["flag"], lut.rpmsense_flags)
 
         # get package name and arch
-        self.conn.request_line = self.sql.get_pkgs_name_and_arch.format(pkghash=self.pkghash)
+        self.conn.request_line = self.sql.get_pkgs_name_and_arch.format(
+            pkghash=self.pkghash
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -71,13 +77,12 @@ class DependsBinPackage(APIWorker):
             "request_args": self.pkghash,
             "length": len(pkg_dependencies),
             "dependencies": pkg_dependencies,
-            "versions": pkg_versions
+            "versions": pkg_versions,
         }
         return res, 200
 
 
 class PackagesDependence(APIWorker):
-
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
@@ -105,12 +110,14 @@ class PackagesDependence(APIWorker):
             return True
 
     def get(self):
-        dp_name = self.args['dp_name']
-        dp_type = self.args['dp_type']
-        branch = self.args['branch']
+        dp_name = self.args["dp_name"]
+        dp_type = self.args["dp_type"]
+        branch = self.args["branch"]
 
         self.conn.request_line = self.sql.get_pkgs_depends.format(
-            dp_name=dp_name, branch=branch, dp_type=dp_type,
+            dp_name=dp_name,
+            branch=branch,
+            dp_type=dp_type,
         )
         status, response = self.conn.send_request()
         if not status:
@@ -130,7 +137,9 @@ class PackagesDependence(APIWorker):
 
         # create temporary table with pkg_hash
         tmp_table = "tmp_pkghash"
-        self.conn.request_line = self.sql.create_tmp_table.format(tmp_table=tmp_table, columns="(pkg_hash UInt64)")
+        self.conn.request_line = self.sql.create_tmp_table.format(
+            tmp_table=tmp_table, columns="(pkg_hash UInt64)"
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -151,7 +160,9 @@ class PackagesDependence(APIWorker):
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
 
-        self.conn.request_line = self.sql.get_repo_packages.format(tmp_table=tmp_table, branch=branch)
+        self.conn.request_line = self.sql.get_repo_packages.format(
+            tmp_table=tmp_table, branch=branch
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -180,15 +191,14 @@ class PackagesDependence(APIWorker):
                 "summary",
                 "maintainer",
                 "category",
-                "changelog",
             ],
         )
 
         retval = [PkgMeta(*el)._asdict() for el in response]
 
         for el in retval:
-            if el['sourcepackage'] == 1:
-                el['arch'] = 'source'
+            if el["sourcepackage"] == 1:
+                el["arch"] = "source"
 
         # get pkgsetname dependency
         all_branches = []
@@ -205,5 +215,10 @@ class PackagesDependence(APIWorker):
         pkg_counts = {el[1]: el[0] for el in response}
         all_branches = [PkgCount(*(b, pkg_counts[b]))._asdict() for b in pkg_branches]
 
-        res = {"request_args": self.args, "length": len(retval), "packages": retval, "branches": all_branches}
+        res = {
+            "request_args": self.args,
+            "length": len(retval),
+            "packages": retval,
+            "branches": all_branches,
+        }
         return res, 200
