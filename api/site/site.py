@@ -9,8 +9,10 @@ from .endpoints.package_info import (
     DeletedPackageInfo,
     PackagesBinaryListInfo,
     BinaryPackageScripts,
+    LastPackagesWithCVEFix,
+    PackageDownloadLinks,
+    SourcePackageVersions,
 )
-from .endpoints.package_info import LastPackagesWithCVEFix, PackageDownloadLinks
 from .endpoints.pkgset_packages import (
     PackagesetPackages,
     PackagesetPackageHash,
@@ -50,6 +52,7 @@ from .parsers import (
     deleted_package_args,
     last_pkgs_branch_args,
     pkgs_versions_from_tasks_args,
+    src_pkgs_versions_args,
 )
 from .serializers import (
     pkgset_packages_model,
@@ -77,6 +80,7 @@ from .serializers import (
     last_packages_branch_model,
     pkgs_versions_from_tasks_model,
     depends_packages_model,
+    src_pkgs_versions_model,
 )
 
 logger = get_logger(__name__)
@@ -960,6 +964,35 @@ class routeBinPackageScripts(Resource):
                 400,
                 message=f"Request parameters validation error",
                 # args=args,
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+@ns.route(
+    "/source_package_versions",
+    doc={
+        "description": "Get source package versions from last branches",
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package not found in database",
+        },
+    },
+)
+class routeSourcePackageVersions(Resource):
+    @ns.expect(src_pkgs_versions_args)
+    @ns.marshal_with(src_pkgs_versions_model)
+    def get(self):
+        args = src_pkgs_versions_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        wrk = SourcePackageVersions(g.connection, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
                 validation_message=wrk.validation_results,
             )
         result, code = wrk.get()

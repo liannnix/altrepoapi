@@ -209,3 +209,8 @@ pkgs_binary_list_args.add_argument(
 pkgs_binary_list_args.add_argument(
     "name", type=str, required=True, help="binary package name", location="args"
 )
+
+src_pkgs_versions_args = reqparse.RequestParser()
+src_pkgs_versions_args.add_argument(
+    "name", type=str, required=True, help="source package name", location="args"
+)

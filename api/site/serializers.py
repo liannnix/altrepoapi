@@ -716,3 +716,15 @@ depends_packages_model = ns.model(
         ),
     },
 )
+
+src_pkgs_versions_model = ns.model(
+    "SiteSourcePackagesVersionsModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "versions": fields.Nested(
+            package_versions_el_model,
+            description="Packages downloads",
+            as_list=True,
+        ),
+    }
+)
