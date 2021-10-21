@@ -1139,6 +1139,7 @@ class BinaryPackageScripts(APIWorker):
         res = {
             "request_args": self.pkghash,
             "pkg_name": pkg_name,
+            "pkg_arch": pkg_arch,
             "length": len(pkg_scripts),
             "scripts": pkg_scripts,
             "versions": pkg_versions

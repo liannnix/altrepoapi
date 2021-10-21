@@ -704,6 +704,7 @@ depends_packages_model = ns.model(
     {
         "request_args": fields.Raw(description="request arguments"),
         "pkg_name": fields.String(description="package name"),
+        "pkg_arch": fields.String(description="package arch"),
         "length": fields.Integer(description="number of scripts found"),
         "scripts": fields.Nested(
             bin_package_scripts_el_model,
