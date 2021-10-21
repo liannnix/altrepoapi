@@ -181,7 +181,7 @@ class routePackageInfo(Resource):
 
 
 @ns.route(
-    "/packages_binary_list",
+    "/binary_package_archs_and_versions",
     doc={
         "description": "Get binary package archs and versions",
         "responses": {
