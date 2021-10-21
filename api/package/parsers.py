@@ -262,3 +262,11 @@ pkg_repocop_args.add_argument(
     help="packages type [source|binary]",
     location="args",
 )
+
+specfile_args = reqparse.RequestParser()
+specfile_args.add_argument(
+    "name", type=str, required=True, help="source package name", location="args"
+)
+specfile_args.add_argument(
+    "branch", type=str, required=True, help="name of packageset", location="args"
+)

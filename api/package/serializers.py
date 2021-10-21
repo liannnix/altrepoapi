@@ -362,3 +362,17 @@ repocop_json_get_list_model = ns.model(
         ),
     },
 )
+
+specfile_model = ns.model(
+    "PackageSpecfileModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "pkg_hash": fields.String(description="package hash UInt64 as string"),
+        "pkg_name": fields.String(description="source package name"),
+        "pkg_version": fields.String(description="source package version"),
+        "pkg_release": fields.String(description="source package release"),
+        "specfile_name": fields.String(description="spec file name"),
+        "specfile_date": fields.String(description="spec file mtime"),
+        "specfile_content": fields.String(description="spec file base64 encoded raw contents"),
+    },
+)

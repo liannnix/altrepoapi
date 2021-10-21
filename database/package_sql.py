@@ -951,5 +951,37 @@ ORDER BY
     pkg_arch ASC
 """
 
+    get_specfile_by_hash = """
+SELECT
+    pkg_hash,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    specfile_name,
+    specfile_date,
+    base64Encode(specfile_content)
+FROM Specfiles
+WHERE pkg_hash = {pkghash}
+"""
+
+    get_specfile_by_name = """
+SELECT
+    pkg_hash,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    specfile_name,
+    specfile_date,
+    base64Encode(specfile_content)
+FROM Specfiles
+WHERE pkg_hash IN
+(
+    SELECT pkg_hash
+    FROM static_last_packages
+    WHERE pkg_sourcepackage = 1
+        AND pkgset_name = '{branch}'
+        AND pkg_name = '{name}'
+)
+"""
 
 packagesql = SQL()
