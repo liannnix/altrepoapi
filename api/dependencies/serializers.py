@@ -61,9 +61,6 @@ depends_packages_el_model = ns.model(
         "category": fields.String(description="package category"),
         "maintainer": fields.String(description="package maintainer"),
         "changelog": fields.String(description="package last changelog message"),
-        "task_id": fields.Integer(description="package build task id"),
-        "subtask_id": fields.Integer(description="package build subtask id"),
-        "task_owner": fields.String(description="package build task owner"),
     },
 )
 depends_packages_model = ns.model(

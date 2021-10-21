@@ -85,6 +85,8 @@ class PackagesDependence(APIWorker):
         super().__init__()
 
     def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        self.validation_results = []
 
         if self.args["branch"] == "" or self.args["branch"] not in lut.known_branches:
             self.validation_results.append(

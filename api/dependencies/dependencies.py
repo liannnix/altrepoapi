@@ -8,9 +8,7 @@ from api.dependencies.endpoints.dependecy_info import DependsBinPackage, Package
 ns = Namespace("dependencies", description="dependencies information API")
 
 
-from api.dependencies.serializers import package_dependencies_model
-
-
+from api.dependencies.serializers import package_dependencies_model, depends_packages_model
 
 logger = get_logger(__name__)
 
@@ -56,7 +54,7 @@ class routeDependsBinPakage(Resource):
 )
 class routePackageDepends(Resource):
     @ns.expect(pkgs_depends_args)
-    @ns.marshal_with(package_dependencies_model)
+    @ns.marshal_with(depends_packages_model)
     def get(self):
         args = pkgs_depends_args.parse_args(strict=True)
         url_logging(logger, g.url)
