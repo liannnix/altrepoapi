@@ -1224,7 +1224,7 @@ WHERE pkgh_mmh IN {hshs}
         dp_flag,
         dp_type
     FROM Depends
-    WHERE pkg_hash = {pkghash}    
+    WHERE pkg_hash = {pkghash}
 """
 
     get_pkgs_name_and_arch = """
