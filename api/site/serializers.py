@@ -703,6 +703,7 @@ depends_packages_model = ns.model(
     "SiteBinPackageScriptsModel",
     {
         "request_args": fields.Raw(description="request arguments"),
+        "pkg_name": fields.String(description="package name"),
         "length": fields.Integer(description="number of scripts found"),
         "scripts": fields.Nested(
             bin_package_scripts_el_model,

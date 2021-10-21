@@ -1116,8 +1116,10 @@ class BinaryPackageScripts(APIWorker):
 
         # get package versions
         pkg_versions = []
+        pkg_name = response[0][0]
+        pkg_arch = response[0][1]
         self.conn.request_line = self.sql.get_pkg_binary_versions.format(
-            name=response[0][0], arch=response[0][1]
+            name=pkg_name, arch=pkg_arch
         )
         status, response = self.conn.send_request()
         if not status:
@@ -1136,6 +1138,7 @@ class BinaryPackageScripts(APIWorker):
 
         res = {
             "request_args": self.pkghash,
+            "pkg_name": pkg_name,
             "length": len(pkg_scripts),
             "scripts": pkg_scripts,
             "versions": pkg_versions
