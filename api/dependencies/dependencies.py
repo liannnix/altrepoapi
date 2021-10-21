@@ -1,22 +1,27 @@
 from flask import g
 from flask_restx import Resource, abort, Namespace
 
-from api.dependencies.parsers import pkgs_depends_args
 from utils import get_logger, url_logging, response_error_parser
-from api.dependencies.endpoints.dependecy_info import DependsBinPackage, PackagesDependence
+from api.dependencies.endpoints.dependecy_info import (
+    DependsBinPackage,
+    PackagesDependence,
+)
 
 ns = Namespace("dependencies", description="dependencies information API")
 
-
-from api.dependencies.serializers import package_dependencies_model, depends_packages_model
+from api.dependencies.parsers import pkgs_depends_args
+from api.dependencies.serializers import (
+    package_dependencies_model,
+    depends_packages_model,
+)
 
 logger = get_logger(__name__)
 
 
 @ns.route(
-    "/depends_binary_package/<int:pkghash>",
+    "/binary_package_dependencies/<int:pkghash>",
     doc={
-        "description": "Get binary package require or provide depends",
+        "description": "Get binary package dependencies",
         "responses": {
             400: "Request parameters validation error",
             404: "Package not found in database",
@@ -27,13 +32,14 @@ class routeDependsBinPakage(Resource):
     @ns.expect()
     @ns.marshal_with(package_dependencies_model)
     def get(self, pkghash):
+        args = {}
         url_logging(logger, g.url)
         wrk = DependsBinPackage(g.connection, pkghash)
         if not wrk.check_params():
             abort(
                 400,
                 message=f"Request parameters validation error",
-                # args=args,
+                args=args,
                 validation_message=wrk.validation_results,
             )
         result, code = wrk.get()
@@ -43,9 +49,9 @@ class routeDependsBinPakage(Resource):
 
 
 @ns.route(
-    "/packages_dependence",
+    "/packages_by_dependency",
     doc={
-        "description": "Get binary package require or provide depends",
+        "description": "Get binary packages by dependency name and type",
         "responses": {
             400: "Request parameters validation error",
             404: "Package not found in database",
