@@ -133,7 +133,7 @@ SELECT DISTINCT
     pkg_name,
     pkg_hash
 FROM Packages
-WHERE pkg_hash = (
+WHERE pkg_hash IN (
     SELECT pkg_srcrpm_hash
     FROM Packages
     WHERE pkg_hash = {pkghash}
