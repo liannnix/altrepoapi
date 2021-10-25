@@ -144,7 +144,7 @@ WHERE pkg_hash IN (
 
     get_pkg_acl = """
 SELECT acl_list
-FROM Acl
+FROM last_acl
 WHERE acl_for = '{name}'
     AND acl_branch = '{branch}'
 """
