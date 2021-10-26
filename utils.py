@@ -228,11 +228,15 @@ def sort_branches(branches):
         return int(serial_)
 
     for sk in sort_order_keys:
-        res += sorted(
-            [x for x in branches if x.startswith(sk[0])],
-            key=lambda k: _get_serial(k),
-            reverse=sk[1],
-        )
+        if sk[0] == 's':
+            # use regular sorting for sisyphus
+            res += sorted([x for x in branches if x.startswith(sk[0])], reverse=sk[1])
+        else:
+            res += sorted(
+                [x for x in branches if x.startswith(sk[0])],
+                key=lambda k: _get_serial(k),
+                reverse=sk[1],
+            )
 
     res += sorted([_ for _ in branches if _ not in res], reverse=True)
 
