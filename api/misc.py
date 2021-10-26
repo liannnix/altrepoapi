@@ -46,6 +46,7 @@ class LookupTables:
         "k6",
         "aarch64",
         "ppc64le",
+        "e2kv5",
         "e2kv4",
         "e2k",
         "mipsel",
