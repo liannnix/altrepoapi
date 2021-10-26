@@ -25,10 +25,11 @@ class LookupTables:
         "sisyphus",
         "sisyphus_mipsel",
         "sisyphus_riscv64",
+        "sisyphus_e2k",
         "t6",
         "t7",
     ]
-    taskless_branches = ["p9_mipsel", "sisyphus_mipsel", "sisyphus_riscv64"]
+    taskless_branches = ["p9_mipsel", "sisyphus_mipsel", "sisyphus_riscv64", "sisyphus_e2k"]
     known_archs = [
         "x86_64",
         "noarch",
