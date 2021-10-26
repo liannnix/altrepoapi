@@ -681,6 +681,14 @@ class PackageDownloadLinks(APIWorker):
     def get(self):
         self.branch = self.args["branch"]
         bin_pkgs = {}
+        # return no download links from sisyphus_e2k branch
+        if self.branch in lut.no_downloads_branches:
+            return {
+                "pkghash": str(self.pkghash),
+                "request_args": self.args,
+                "downloads": [],
+                "versions": [],
+            }, 200
         #  get package task info
         TaskInfo = namedtuple(
             "TaskInfo",
