@@ -1285,7 +1285,7 @@ SELECT * FROM
         pkg_release,
         pkg_summary,
         CHLG.chlog_name,
-        CHLG.chlog_nick as nickname,
+        CHLG.chlog_nick,
         CHLG.chlog_date,
         CHLG.chlog_text
     FROM Packages

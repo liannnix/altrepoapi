@@ -644,7 +644,7 @@ class LastBranchPackages(APIWorker):
         self.packages_limit = self.args["packages_limit"]
 
         if self.packager is not None:
-            packager_sub = f"AND nickname = '{self.packager}'"
+            packager_sub = f"AND pkg_packager_email LIKE '{self.packager}@%'"
         else:
             self.packager = ""
             packager_sub = ""
