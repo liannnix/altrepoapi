@@ -812,7 +812,7 @@ class PackageDownloadLinks(APIWorker):
         uniq_noarch_pkgs = set()
         for h in filenames:
             if filenames[h].arch == "noarch":
-                for arch in archs:
+                for arch in bin_pkgs.keys():
                     if h in bin_pkgs[arch] and not h in uniq_noarch_pkgs:
                         uniq_noarch_pkgs.add(h)
                     else:
