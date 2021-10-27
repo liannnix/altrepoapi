@@ -423,7 +423,10 @@ class AllPackagesets(APIWorker):
             counts[cnt.branch].append({"arch": cnt.arch, "count": cnt.count})
 
         # sort package counts by branch
-        res = [{"branch": br, "packages_count": counts[br]} for br in sort_branches(counts.keys())]
+        res = [
+            {"branch": br, "packages_count": counts[br]}
+            for br in sort_branches(counts.keys())
+        ]
 
         res = {"length": len(res), "branches": res}
         return res, 200
@@ -653,8 +656,7 @@ class LastBranchPackages(APIWorker):
             # get source packages diff from current branch state and previous one
             tmp_table = "tmp_srcpkg_hashes"
             self.conn.request_line = self.sql.get_last_branch_src_diff.format(
-                tmp_table=tmp_table,
-                branch=self.branch
+                tmp_table=tmp_table, branch=self.branch
             )
             status, response = self.conn.send_request()
             if not status:
@@ -670,15 +672,13 @@ class LastBranchPackages(APIWorker):
                     404,
                 )
         else:
-            tmp_table = self.sql.get_last_branch_hsh_source.format(
-                branch=self.branch
-            )
+            tmp_table = self.sql.get_last_branch_hsh_source.format(branch=self.branch)
         # get source and binary packages info by hashes from temporary table
         self.conn.request_line = self.sql.get_last_branch_pkgs_info.format(
             branch=self.branch,
             hsh_source=tmp_table,
             packager=packager_sub,
-            limit=self.packages_limit
+            limit=self.packages_limit,
         )
         status, response = self.conn.send_request()
         if not status:

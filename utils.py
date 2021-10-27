@@ -199,47 +199,45 @@ def datetime_to_iso(dt):
 
 
 def sort_branches(branches):
-    """Sort branch names by actuality
-
-    Args:
-        branches (list): list of branch names
-
-    Returns:
-        tuple: list of sorted branch names
-    """
-    # sort elements that starts with key in sort_order_keys
-    sort_order_keys = (("s", False), ("p", True), ("c", True), ("t", True))
+    """Use predefined sort list order for branch sorting."""
     res = []
-
-    def _get_serial(x):
-        # try to find number sequence from input string and return it as integer
-        # or return input value length
-        numbers = "0123456789"
-        numbers_pos = [x.find(n) for n in numbers]
-        if max(numbers_pos) == -1:
-            return len(x)
-        serial_ = ""
-        first_num = min([x for x in numbers_pos if x != -1])
-        for i in range(first_num, len(x)):
-            if x[i] in numbers:
-                serial_ += x[i]
-            else:
-                break
-        return int(serial_)
-
-    for sk in sort_order_keys:
-        if sk[0] == 's':
-            # use regular sorting for sisyphus
-            res += sorted([x for x in branches if x.startswith(sk[0])], reverse=sk[1])
-        else:
-            res += sorted(
-                [x for x in branches if x.startswith(sk[0])],
-                key=lambda k: _get_serial(k),
-                reverse=sk[1],
-            )
-
-    res += sorted([_ for _ in branches if _ not in res], reverse=True)
-
+    branches = set(branches)
+    sort_list = [
+        "sisyphus",
+        "sisyphus_e2k",
+        "sisyphus_mipsel",
+        "sisyphus_riscv64",
+        "p10",
+        "p9",
+        "p9_e2k",
+        "p9_mipsel",
+        "p8",
+        "p7",
+        "p6",
+        "p5",
+        "c9f2",
+        "c9f1",
+        "c9m2",
+        "c9m1",
+        "c8.1",
+        "c8",
+        "c7.1",
+        "c7",
+        "c6",
+        "t7",
+        "t6",
+        "5.1",
+        "5.0",
+        "4.1",
+        "4.0",
+    ]
+    # add branches to result in accordance to sort_list order
+    for branch in sort_list:
+        if branch in branches:
+            res.append(branch)
+    # fall back: add branches from input that are missing from sort_list
+    diff = branches - set(res)
+    res += sorted([x for x in diff], reverse=True)
     return tuple(res)
 
 
