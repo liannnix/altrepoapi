@@ -21,6 +21,7 @@ class LookupTables:
         "p8",
         "p9",
         "p9_mipsel",
+        "p9_e2k",
         "p10",
         "sisyphus",
         "sisyphus_mipsel",
