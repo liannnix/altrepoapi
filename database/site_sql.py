@@ -1317,6 +1317,13 @@ LEFT JOIN
         max(pkg_buildtime) AS last_build
     FROM Packages
     WHERE pkg_sourcepackage = 0
+        AND pkg_hash IN
+        (
+            SELECT pkg_hash
+            FROM static_last_packages
+            WHERE pkgset_name = '{branch}'
+                AND pkg_sourcepackage = 0
+        )
     GROUP BY pkg_srcrpm_hash
 ) AS BinLastBuild ON BinLastBuild.hash = RQ.pkg_hash
 ORDER BY last_build DESC

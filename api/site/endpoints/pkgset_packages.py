@@ -675,6 +675,7 @@ class LastBranchPackages(APIWorker):
             )
         # get source and binary packages info by hashes from temporary table
         self.conn.request_line = self.sql.get_last_branch_pkgs_info.format(
+            branch=self.branch,
             hsh_source=tmp_table,
             packager=packager_sub,
             limit=self.packages_limit
