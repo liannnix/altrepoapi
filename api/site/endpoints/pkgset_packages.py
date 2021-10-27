@@ -644,7 +644,7 @@ class LastBranchPackages(APIWorker):
         self.packages_limit = self.args["packages_limit"]
 
         if self.packager is not None:
-            packager_sub = f"AND pkg_packager_email LIKE '{self.packager}@%'"
+            packager_sub = f"AND nickname = '{self.packager}'"
         else:
             self.packager = ""
             packager_sub = ""
@@ -702,6 +702,7 @@ class LastBranchPackages(APIWorker):
                 "pkg_release",
                 "pkg_summary",
                 "changelog_name",
+                "changelog_nickname",
                 "changelog_date",
                 "changelog_text",
                 "hash",
@@ -725,7 +726,6 @@ class LastBranchPackages(APIWorker):
 
         for pkg in packages:
             pkg["changelog_date"] = datetime_to_iso(pkg["changelog_date"])
-            pkg["changelog_nickname"] = get_nickname_from_packager(pkg["changelog_name"])
             retval.append(pkg)
 
         res = {

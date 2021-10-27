@@ -1284,14 +1284,18 @@ SELECT * FROM
         pkg_version,
         pkg_release,
         pkg_summary,
-        pkg_changelog.name[1],
-        pkg_changelog.date[1],
+        CHLG.chlog_name,
+        CHLG.chlog_nick as nickname,
+        CHLG.chlog_date,
         CHLG.chlog_text
     FROM Packages
     LEFT JOIN
     (
         SELECT
             pkg_hash,
+            chlog_name,
+            chlog_nick,
+            chlog_date,
             chlog_text
         FROM mv_src_packages_last_changelog
         WHERE pkg_hash IN (
@@ -1305,7 +1309,6 @@ SELECT * FROM
             SELECT pkg_hash FROM {hsh_source}
         )
     {packager}
-    LIMIT {limit}
 ) AS RQ
 LEFT JOIN
 (
@@ -1317,6 +1320,7 @@ LEFT JOIN
     GROUP BY pkg_srcrpm_hash
 ) AS BinLastBuild ON BinLastBuild.hash = RQ.pkg_hash
 ORDER BY last_build DESC
+LIMIT {limit}
 """
 
     get_all_src_versions_from_tasks = """
