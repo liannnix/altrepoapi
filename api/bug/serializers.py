@@ -1,6 +1,6 @@
 from flask_restx import fields
 
-from api.package import ns
+from api.bug import ns
 
 bugzilla_info_el_model = ns.model(
     "BugzillaInfoElementModel",

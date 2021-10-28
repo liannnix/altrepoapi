@@ -3,10 +3,12 @@ from flask_restx import Resource, abort, Namespace
 
 from api.bug.endpoints.bugzilla_info import Bugzilla
 from utils import get_logger, url_logging, response_error_parser
+
+ns = Namespace("bug", description="bug information API")
+
 from api.bug.parsers import package_bugzilla_args, maintainer_bugzilla_args
 from api.bug.serializers import bugzilla_info_model
 
-ns = Namespace("bug", description="bug information API")
 logger = get_logger(__name__)
 
 
