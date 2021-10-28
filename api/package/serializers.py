@@ -376,3 +376,25 @@ specfile_model = ns.model(
         "specfile_content": fields.String(description="spec file base64 encoded raw contents"),
     },
 )
+
+package_files_el_model = ns.model(
+    "PackageFilesElementModel",
+    {
+        "file_name": fields.String(description="file name"),
+        "file_size": fields.String(description="human readable file size"),
+        "file_class": fields.String(description="file class"),
+        "symlink": fields.String(description="link path"),
+        "file_mtime": fields.DateTime(description="file modification time"),
+        "file_mode": fields.String(description="file permissions string representation")
+    }
+)
+package_files_model = ns.model(
+    "PackageFilesModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of files found"),
+        "files": fields.Nested(
+            package_files_el_model, description="package file list", as_list=True
+        ),
+    }
+)

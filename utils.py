@@ -268,3 +268,66 @@ def dp_flags_decode(dp_flag: int, dp_decode_table: list) -> List[str]:
         x = x >> 1
         pos += 1
     return res
+
+
+def full_file_permissions(file_type, file_mode):
+    res = ""
+    types = {
+        "file": "-",
+        "directory": "d",
+        "symlink": "l",
+        "socket": "s",
+        "block": "b",
+        "char": "c",
+        "fifo": "p"
+    }
+
+    def rwx(perms):
+        res = ""
+        if perms & 0x04:
+            res += "r"
+        else:
+            res += "-"
+        if perms & 0x02:
+            res += "w"
+        else:
+            res += "-"
+        if perms & 0x01:
+            res += "x"
+        else:
+            res += "-"
+        return res
+
+    def file_permissions(perms):
+        flags = (perms >> 9) & 0x07
+        res = ""
+        for i in range(3):
+            p = (perms >> (i * 3)) & 0x07
+            # execution bit
+            rwx_ = rwx(p)
+            x_ = rwx_[2]
+            # SUID
+            if i == 2 and (flags & 0x04):
+                x_ = "s" if p & 0x01 else "S"
+            # SGID
+            if i == 1 and (flags & 0x02):
+                x_ = "s" if p & 0x01 else "S"
+            # sticky bit
+            if i == 0 and (flags & 0x01):
+                x_ = "t" if p & 0x01 else "T"
+            res = rwx_[:2] + x_ + res
+        return res
+
+    res = file_permissions(file_mode)
+    res = types[file_type] + res
+
+    return res
+
+
+def bytes2human(size: int) -> str:
+    """Convert file size in bytes to human readable string representation."""
+    for unit in ["", "K", "M", "G", "T", "P", "E"]:
+        if abs(size) < 1024.0:
+            return f"{size:3.1f} {unit}B"
+        size /= 1024.0
+    return f"{size:.1f} ZB"

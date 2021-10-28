@@ -13,6 +13,7 @@ from .endpoints.pkg_build_dependency import PackageBuildDependency
 from .endpoints.misconflict_packages import PackageMisconflictPackages
 from .endpoints.build_dependency_set import PackageBuildDependencySet
 from .endpoints.specfile import SpecfileByPackageName, SpecfileByPackageHash
+from .endpoints.package_files import PackageFiles
 
 ns = Namespace("package", description="Packages information API")
 
@@ -39,6 +40,7 @@ from .serializers import (
     repocop_json_list_model,
     repocop_json_get_list_model,
     specfile_model,
+    package_files_model,
 )
 
 logger = get_logger(__name__)
@@ -415,6 +417,35 @@ class routeSpecfileByPackageName(Resource):
                 400,
                 message=f"Request parameters validation error",
                 args=args,
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route(
+    "/package_files/<int:pkghash>",
+    doc={
+        "description": "Get package files by hash",
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package not found in database",
+        },
+    },
+)
+class routeBinPackageFiles(Resource):
+    # @ns.expect()
+    @ns.marshal_with(package_files_model)
+    def get(self, pkghash):
+        url_logging(logger, g.url)
+        wrk = PackageFiles(g.connection, pkghash)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                # args=args,
                 validation_message=wrk.validation_results,
             )
         result, code = wrk.get()
