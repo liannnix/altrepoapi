@@ -1,8 +1,9 @@
 from flask import g
-from flask_restx import Resource, abort, Namespace
+from flask_restx import Resource, abort
 
 from utils import get_logger, url_logging, response_error_parser
 
+from .namespace import get_namespace
 from .endpoints.package_info import (
     PackageInfo,
     PackageChangelog,
@@ -30,9 +31,6 @@ from .endpoints.task_info import (
     TasksByMaintainer,
     PackageVersionsFromTasks,
 )
-
-ns = Namespace("site", description="web site API")
-
 from .parsers import (
     pkgset_packages_args,
     package_chlog_args,
@@ -82,6 +80,8 @@ from .serializers import (
     depends_packages_model,
     src_pkgs_versions_model,
 )
+
+ns = get_namespace()
 
 logger = get_logger(__name__)
 

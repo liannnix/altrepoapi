@@ -1,6 +1,8 @@
 from flask_restx import fields
 
-from api.site import ns
+from .namespace import get_namespace
+
+ns = get_namespace()
 
 package_info_changelog_el_model = ns.model(
     "SitePackageInfoChangelogElementModel",
