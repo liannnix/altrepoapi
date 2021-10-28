@@ -114,7 +114,7 @@ WHERE pkg_hash = {pkghash}
     get_binary_pkgs = """
 SELECT DISTINCT
     pkg_name,
-    groupUniqArray((pkg_arch, pkg_hash))
+    arrayReverseSort(groupUniqArray((pkg_arch, pkg_hash)))
 FROM Packages
 WHERE (pkg_srcrpm_hash = {pkghash})
     AND (pkg_sourcepackage = 0)
