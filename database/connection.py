@@ -3,7 +3,7 @@ from time import sleep
 from clickhouse_driver import Client, errors
 
 from settings import namespace as settings
-from utils import get_logger, exception_to_logger, json_str_error, print_statusbar, func_time
+from utils import get_logger, exception_to_logger, json_str_error, print_statusbar
 
 logger = get_logger(__name__)
 
