@@ -2,7 +2,7 @@ from collections import namedtuple
 
 from database.package_sql import packagesql
 from api.base import APIWorker
-from utils import full_file_permissions
+from utils import full_file_permissions, bytes2human
 
 
 class PackageFiles(APIWorker):
@@ -38,6 +38,7 @@ class PackageFiles(APIWorker):
 
         for elem in pkg_files:
             elem["file_mode"] = full_file_permissions(elem["file_class"], elem["file_mode"])
+            elem["file_size"] = bytes2human(elem["file_size"])
 
         res = {
             "request_args": self.pkghash,

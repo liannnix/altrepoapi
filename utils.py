@@ -267,6 +267,7 @@ def dp_flags_decode(dp_flag: int, dp_decode_table: list) -> List[str]:
         pos += 1
     return res
 
+
 def full_file_permissions(file_type, file_mode):
     res = ""
     types = {
@@ -319,3 +320,12 @@ def full_file_permissions(file_type, file_mode):
     res = types[file_type] + res
 
     return res
+
+
+def bytes2human(size: int) -> str:
+    """Convert file size in bytes to human readable string representation."""
+    for unit in ["", "K", "M", "G", "T", "P", "E"]:
+        if abs(size) < 1024.0:
+            return f"{size:3.1f} {unit}B"
+        size /= 1024.0
+    return f"{size:.1f} ZB"

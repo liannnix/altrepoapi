@@ -6,6 +6,7 @@ from utils import (
     sort_branches,
     get_nickname_from_packager,
     dp_flags_decode,
+    bytes2human,
 )
 
 from api.base import APIWorker
@@ -853,14 +854,6 @@ class PackageDownloadLinks(APIWorker):
                     filename,
                 )
             )
-
-        def bytes2human(size: int) -> str:
-            """Convert file size in bytes to human readable string representation."""
-            for unit in ["", "K", "M", "G", "T", "P", "E"]:
-                if abs(size) < 1024.0:
-                    return f"{size:3.1f} {unit}B"
-                size /= 1024.0
-            return f"{size:.1f} ZB"
 
         res = {}
 
