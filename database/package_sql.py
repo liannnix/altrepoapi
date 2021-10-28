@@ -984,4 +984,40 @@ WHERE pkg_hash IN
 )
 """
 
+    get_pkg_files = """
+WITH
+pkg_files AS
+(
+    SELECT DISTINCT
+        file_hashname,
+        file_size,
+        file_class,
+        file_linkto,
+        file_mtime,
+        file_mode
+    FROM Files
+    WHERE pkg_hash = {pkghash}
+)
+SELECT
+    FN.fn_name as filename,
+    PF.file_size,
+    PF.file_class,
+    PF.file_linkto,
+    PF.file_mtime,
+    PF.file_mode
+FROM
+(SELECT * FROM pkg_files) AS PF
+LEFT JOIN
+(
+    SELECT DISTINCT
+        fn_hash,
+        fn_name
+    FROM FileNames
+    WHERE fn_hash IN
+    (SELECT file_hashname FROM pkg_files)
+) AS FN ON FN.fn_hash = PF.file_hashname
+ORDER BY filename
+"""
+
+
 packagesql = SQL()
