@@ -64,7 +64,7 @@ package_dependencies_model = ns.model(
     },
 )
 package_info_archs_el_model = ns.model(
-    "",
+    "SitePackageInfoArchsModel",
     {
         "name": fields.String(description="package name"),
         "archs": fields.List(fields.String, description="package arches"),
