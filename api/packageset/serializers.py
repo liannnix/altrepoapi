@@ -1,6 +1,8 @@
 from flask_restx import fields
 
-from api.packageset import ns
+from .namespace import get_namespace
+
+ns = get_namespace()
 
 pkgset_compare_pkg_model = ns.model(
     "PackagesetComparePackageModel",

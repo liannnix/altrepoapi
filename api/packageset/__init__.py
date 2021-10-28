@@ -8,8 +8,7 @@ from .endpoints.pkgset_compare import PackagesetCompare
 from .endpoints.pkgset_packages import PackagesetPackages
 from .endpoints.pkgset_status import RepositoryStatus, ActivePackagesets
 
-ns = Namespace("packageset", description="Packageset information API")
-
+from .namespace import get_namespace
 from .parsers import pkgset_compare_args, pkgset_packages_args
 from .serializers import (
     pkgset_compare_model,
@@ -18,6 +17,8 @@ from .serializers import (
     pkgset_status_get_model,
     active_pkgsets_model,
 )
+
+ns = get_namespace()
 
 logger = get_logger(__name__)
 
