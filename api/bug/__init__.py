@@ -1,13 +1,14 @@
 from flask import g
-from flask_restx import Resource, abort, Namespace
+from flask_restx import Resource, abort
 
-from api.bug.endpoints.bugzilla_info import Bugzilla
 from utils import get_logger, url_logging, response_error_parser
 
-ns = Namespace("bug", description="bug information API")
+from .namespace import get_namespace
+from .parsers import package_bugzilla_args, maintainer_bugzilla_args
+from .serializers import bugzilla_info_model
+from .endpoints.bugzilla_info import Bugzilla
 
-from api.bug.parsers import package_bugzilla_args, maintainer_bugzilla_args
-from api.bug.serializers import bugzilla_info_model
+ns = get_namespace()
 
 logger = get_logger(__name__)
 

@@ -1,6 +1,8 @@
 from flask_restx import fields
 
-from api.bug import ns
+from .namespace import get_namespace
+
+ns = get_namespace()
 
 bugzilla_info_el_model = ns.model(
     "BugzillaInfoElementModel",
