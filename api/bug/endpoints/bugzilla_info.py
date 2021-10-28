@@ -2,6 +2,7 @@ from collections import namedtuple
 
 from api.base import APIWorker
 from database.bug_sql import bugsql
+from utils import datetime_to_iso
 
 
 class Bugzilla(APIWorker):
@@ -104,6 +105,8 @@ class Bugzilla(APIWorker):
         )
 
         res = [BugzillaInfo(*el)._asdict() for el in response]
+        for r in res:
+            r["ts"] = datetime_to_iso(r["ts"])
         res = {"request_args": self.args, "length": len(res), "bugs": res}
 
         return res, 200
@@ -144,6 +147,8 @@ class Bugzilla(APIWorker):
             ],
         )
         res = [BugzillaInfo(*el)._asdict() for el in response]
+        for r in res:
+            r["ts"] = datetime_to_iso(r["ts"])
         res = {"request_args": self.args, "length": len(res), "bugs": res}
 
         return res, 200
