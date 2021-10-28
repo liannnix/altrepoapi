@@ -1,42 +1,13 @@
-from flask import Flask, redirect, g, Blueprint, request
-from flask_restx import Resource, fields
+from flask import Flask, redirect, g, request
 
 from utils import get_logger
 from settings import namespace as settings
 
 from database.connection import Connection
-from api import api
-from api.auth.decorators import auth_required
+from api import blueprint as api_bp
 
 app = Flask(__name__)
 logger = get_logger(__name__)
-
-version_fields = api.model(
-    "APIVersion",
-    {
-        "name": fields.String(attribute="title", description="API name"),
-        "version": fields.String(description="API version"),
-        "description": fields.String(description="API description"),
-    },
-)
-
-
-@api.route("/version")
-class ApiVersion(Resource):
-    @api.doc("get API information")
-    @api.marshal_with(version_fields)
-    def get(self):
-        return api, 200
-
-
-@api.route("/ping")
-class ApiVersion(Resource):
-    @api.doc("API ping")
-    @api.doc(security="BasicAuth")
-    @auth_required
-    def get(self):
-        return {"message": "pong"}, 200
-
 
 @app.route("/")
 def hello():
@@ -54,20 +25,13 @@ def drop_connection(exception):
     g.connection.drop_connection()
 
 
-@api.errorhandler
+@app.errorhandler
 def default_error_handler(e):
     message = "An unhandled exception occurred."
     logger.exception(message)
 
     if not settings.FLASK_DEBUG:
         return {"message": message}, 500
-
-
-# @api.errorhandler(NoResultFound)
-# def database_not_found_error_handler(e):
-#     """No results found in database"""
-#     log.warning(traceback.format_exc())
-#     return {'message': 'A database result was required but none was found.'}, 404
 
 
 def configure_app(flask_app):
@@ -83,8 +47,6 @@ def initialize_app(flask_app):
     if not settings.ADMIN_PASSWORD:
         raise RuntimeError("API administration password should be specified")
     configure_app(flask_app)
-    api_bp = Blueprint("api", __name__, url_prefix="/api")
-    api.init_app(api_bp)
     flask_app.register_blueprint(api_bp)
 
 
