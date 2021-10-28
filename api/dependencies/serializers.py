@@ -1,6 +1,8 @@
 from flask_restx import fields
 
-from api.dependencies import ns
+from .namespace import get_namespace
+
+ns = get_namespace()
 
 
 all_pkgsets_el_model = ns.model(

@@ -1,19 +1,20 @@
 from flask import g
-from flask_restx import Resource, abort, Namespace
+from flask_restx import Resource, abort
 
 from utils import get_logger, url_logging, response_error_parser
-from api.dependencies.endpoints.dependecy_info import (
+
+from .namespace import get_namespace
+from .endpoints.dependecy_info import (
     DependsBinPackage,
     PackagesDependence,
 )
-
-ns = Namespace("dependencies", description="dependencies information API")
-
-from api.dependencies.parsers import pkgs_depends_args
-from api.dependencies.serializers import (
+from .parsers import pkgs_depends_args
+from .serializers import (
     package_dependencies_model,
     depends_packages_model,
 )
+
+ns = get_namespace()
 
 logger = get_logger(__name__)
 
