@@ -1,6 +1,8 @@
 from flask_restx import fields
 
-from api.task import ns
+from .namespace import get_namespace
+
+ns = get_namespace()
 
 task_repo_package_model = ns.model(
     "TaskRepoPackageModel",

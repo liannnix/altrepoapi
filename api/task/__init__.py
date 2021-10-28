@@ -3,6 +3,7 @@ from flask_restx import Resource, abort, Namespace
 
 from utils import get_logger, url_logging, response_error_parser
 
+from .namespace import get_namespace
 from .endpoints.task_diff import TaskDiff
 from .endpoints.task_info import TaskInfo
 from .endpoints.task_repo import TaskRepo
@@ -10,22 +11,25 @@ from .endpoints.find_packageset import FindPackageset
 from .endpoints.misconflict_packages import TaskMisconflictPackages
 from .endpoints.build_dependency_set import TaskBuildDependencySet
 from .endpoints.task_build_dependency import TaskBuildDependency
-
-ns = Namespace("task", description="Task's information API")
-
-from .parsers import task_info_args, task_repo_args, task_misconflict_args
-from .parsers import task_build_dep_args, task_find_pkgset_args, task_buid_dep_set_args
+from .parsers import (
+    task_info_args,
+    task_repo_args,
+    task_misconflict_args,
+    task_build_dep_args,
+    task_find_pkgset_args,
+    task_buid_dep_set_args,
+)
 from .serializers import (
     task_info_model,
     task_repo_model,
     task_diff_model,
     build_dep_set_model,
-)
-from .serializers import (
     task_build_dep_model,
     misconflict_pkgs_model,
     task_find_pkgset_model,
 )
+
+ns = get_namespace()
 
 logger = get_logger(__name__)
 
