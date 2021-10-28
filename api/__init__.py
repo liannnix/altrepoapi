@@ -4,12 +4,12 @@ from flask_restx import Resource, fields
 
 from api.auth.decorators import auth_required
 
-from .task.task import ns as task_ns
-from .package.package import ns as package_ns
-from .packageset.packageset import ns as packageset_ns
-from .site.site import ns as site_ns
-from .dependencies.dependencies import ns as dependencies_ns
-from .bug.bug import ns as bug_ns
+from .task import ns as task_ns
+from .package import ns as package_ns
+from .packageset import ns as packageset_ns
+from .site import ns as site_ns
+from .dependencies import ns as dependencies_ns
+from .bug import ns as bug_ns
 
 
 authorizations = {

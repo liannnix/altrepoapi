@@ -1,6 +1,6 @@
 from flask_restx import fields
 
-from api.dependencies.dependencies import ns
+from api.dependencies import ns
 
 
 all_pkgsets_el_model = ns.model(

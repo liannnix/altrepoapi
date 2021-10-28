@@ -1,6 +1,6 @@
 from flask_restx import fields
 
-from api.task.task import ns
+from api.task import ns
 
 task_repo_package_model = ns.model(
     "TaskRepoPackageModel",

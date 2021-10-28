@@ -1,6 +1,6 @@
 from flask_restx import fields
 
-from api.packageset.packageset import ns
+from api.packageset import ns
 
 pkgset_compare_pkg_model = ns.model(
     "PackagesetComparePackageModel",

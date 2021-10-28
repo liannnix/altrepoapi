@@ -1,6 +1,6 @@
 from flask_restx import fields
 
-from api.site.site import ns
+from api.site import ns
 
 package_info_changelog_el_model = ns.model(
     "SitePackageInfoChangelogElementModel",
