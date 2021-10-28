@@ -1,9 +1,10 @@
 from flask import g, request
-from flask_restx import Resource, abort, Namespace
+from flask_restx import Resource, abort
 
 from utils import get_logger, url_logging, response_error_parser
 from api.auth.decorators import auth_required
 
+from .namespace import get_namespace
 from .endpoints.repocop import Repocop
 from .endpoints.package_info import PackageInfo
 from .endpoints.find_packageset import FindPackageset
@@ -14,9 +15,6 @@ from .endpoints.misconflict_packages import PackageMisconflictPackages
 from .endpoints.build_dependency_set import PackageBuildDependencySet
 from .endpoints.specfile import SpecfileByPackageName, SpecfileByPackageHash
 from .endpoints.package_files import PackageFiles
-
-ns = Namespace("package", description="Packages information API")
-
 from .parsers import (
     package_info_args,
     pkg_build_dep_args,
@@ -42,6 +40,8 @@ from .serializers import (
     specfile_model,
     package_files_model,
 )
+
+ns = get_namespace()
 
 logger = get_logger(__name__)
 
