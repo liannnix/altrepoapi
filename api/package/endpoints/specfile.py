@@ -1,9 +1,10 @@
 from collections import namedtuple
 
 from utils import datetime_to_iso
+
 from api.base import APIWorker
 from api.misc import lut
-from database.package_sql import packagesql
+from ..sql import sql
 
 
 class SpecfileByPackageName(APIWorker):
@@ -12,7 +13,7 @@ class SpecfileByPackageName(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = packagesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
@@ -89,7 +90,7 @@ class SpecfileByPackageHash(APIWorker):
         self.pkghash = pkghash
         self.conn = connection
         self.args = kwargs
-        self.sql = packagesql
+        self.sql = sql
         super().__init__()
 
     def get(self):

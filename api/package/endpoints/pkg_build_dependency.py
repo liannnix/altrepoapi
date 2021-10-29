@@ -5,7 +5,7 @@ from utils import get_logger, tuplelist_to_dict, join_tuples
 
 from api.base import APIWorker
 from api.misc import lut
-from database.package_sql import packagesql
+from ..sql import sql
 from libs.dependency_sorting import SortList
 
 
@@ -29,7 +29,7 @@ class BuildDependency(APIWorker):
     ):
         self.conn = connection
         self.args = kwargs
-        self.sql = packagesql
+        self.sql = sql
         self.packages = packages
         self.branch = branch
         self.arch = archs

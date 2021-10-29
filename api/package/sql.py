@@ -1020,4 +1020,4 @@ ORDER BY filename
 """
 
 
-packagesql = SQL()
+sql = SQL()

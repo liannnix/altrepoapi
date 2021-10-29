@@ -4,7 +4,7 @@ from utils import get_logger, tuplelist_to_dict, remove_duplicate
 
 from api.base import APIWorker
 from api.misc import lut
-from database.package_sql import packagesql
+from ..sql import sql
 from libs.conflict_filter import ConflictFilter
 from libs.exceptions import SqlRequestError
 
@@ -15,7 +15,7 @@ class MisconflictPackages(APIWorker):
     def __init__(self, connection, packages, branch, archs, **kwargs) -> None:
         self.conn = connection
         self.args = kwargs
-        self.sql = packagesql
+        self.sql = sql
         self.packages = packages
         self.branch = branch
         self.archs = archs

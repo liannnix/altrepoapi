@@ -1,8 +1,9 @@
 from collections import namedtuple
 
-from database.package_sql import packagesql
-from api.base import APIWorker
 from utils import full_file_permissions, bytes2human
+
+from api.base import APIWorker
+from ..sql import sql
 
 
 class PackageFiles(APIWorker):
@@ -12,7 +13,7 @@ class PackageFiles(APIWorker):
         self.conn = connection
         self.pkghash = pkghash
         self.args = kwargs
-        self.sql = packagesql
+        self.sql = sql
         super().__init__()
 
     def get(self):

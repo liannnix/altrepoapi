@@ -2,7 +2,7 @@ from collections import namedtuple
 
 from api.base import APIWorker
 from api.misc import lut
-from database.package_sql import packagesql
+from ..sql import sql
 
 
 class UnpackagedDirs(APIWorker):
@@ -11,7 +11,7 @@ class UnpackagedDirs(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = packagesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):

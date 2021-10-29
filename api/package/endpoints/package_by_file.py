@@ -4,7 +4,7 @@ from utils import tuplelist_to_dict
 
 from api.base import APIWorker
 from api.misc import lut
-from database.package_sql import packagesql
+from ..sql import sql
 
 
 class PackageByFileName(APIWorker):
@@ -13,7 +13,7 @@ class PackageByFileName(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = packagesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
@@ -171,7 +171,7 @@ class PackageByFileMD5(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = packagesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):

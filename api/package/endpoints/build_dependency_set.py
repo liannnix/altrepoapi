@@ -2,7 +2,7 @@ from utils import get_logger, join_tuples
 
 from api.base import APIWorker
 from api.misc import lut
-from database.package_sql import packagesql
+from ..sql import sql
 from libs.package_dependencies import PackageDependencies
 from libs.exceptions import SqlRequestError
 
@@ -13,7 +13,7 @@ class BuildDependencySet(APIWorker):
     def __init__(self, connection, packages, branch, archs, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = packagesql
+        self.sql = sql
         self.packages = tuple(packages)
         self.branch = branch
         self.archs = archs
