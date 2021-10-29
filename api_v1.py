@@ -8,6 +8,7 @@ from api.task import ns as task_ns
 from api.package import ns as package_ns
 from api.packageset import ns as packageset_ns
 from api.site import ns as site_ns
+from api.site_package import ns as site_package_ns
 from api.dependencies import ns as dependencies_ns
 from api.bug import ns as bug_ns
 
@@ -38,6 +39,7 @@ api.add_namespace(packageset_ns)
 api.add_namespace(bug_ns)
 api.add_namespace(dependencies_ns)
 api.add_namespace(site_ns)
+api.add_namespace(site_package_ns)
 
 version_fields = api.model(
     "APIVersion",

@@ -553,7 +553,9 @@ class DeletedPackageInfo(APIWorker):
                 pkg_version = str(response[0][2])
                 pkg_release = str(response[0][3])
 
-            delete_task_info["task_changed"] = datetime_to_iso(delete_task_info["task_changed"])
+            delete_task_info["task_changed"] = datetime_to_iso(
+                delete_task_info["task_changed"]
+            )
 
             res = {
                 "package": self.name,
@@ -1089,7 +1091,9 @@ class BinaryPackageScripts(APIWorker):
         super().__init__()
 
     def get(self):
-        self.conn.request_line = self.sql.get_bin_pkg_scripts.format(pkghash=self.pkghash)
+        self.conn.request_line = self.sql.get_bin_pkg_scripts.format(
+            pkghash=self.pkghash
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -1109,7 +1113,9 @@ class BinaryPackageScripts(APIWorker):
         pkg_scripts = [PkgScripts(*el)._asdict() for el in response]
 
         # get package name and arch
-        self.conn.request_line = self.sql.get_pkgs_name_and_arch.format(pkghash=self.pkghash)
+        self.conn.request_line = self.sql.get_pkgs_name_and_arch.format(
+            pkghash=self.pkghash
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -1143,9 +1149,10 @@ class BinaryPackageScripts(APIWorker):
             "pkg_arch": pkg_arch,
             "length": len(pkg_scripts),
             "scripts": pkg_scripts,
-            "versions": pkg_versions
+            "versions": pkg_versions,
         }
         return res, 200
+
 
 class SourcePackageVersions(APIWorker):
     """Retrieves information about deleted package."""
@@ -1170,9 +1177,7 @@ class SourcePackageVersions(APIWorker):
 
     def get(self):
         self.name = self.args["name"]
-        self.conn.request_line = self.sql.get_pkg_versions.format(
-            name=self.name
-        )
+        self.conn.request_line = self.sql.get_pkg_versions.format(name=self.name)
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
