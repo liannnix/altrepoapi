@@ -36,8 +36,8 @@ api.add_namespace(task_ns)
 api.add_namespace(package_ns)
 api.add_namespace(packageset_ns)
 api.add_namespace(bug_ns)
-api.add_namespace(site_ns)
 api.add_namespace(dependencies_ns)
+api.add_namespace(site_ns)
 
 version_fields = api.model(
     "APIVersion",
