@@ -1,3 +1,4 @@
+import base64
 from collections import namedtuple
 
 from utils import datetime_to_iso
@@ -68,12 +69,17 @@ class SpecfileByPackageName(APIWorker):
                 "specfile_name",
                 "specfile_date",
                 "specfile_content",
+                "content_length",
             ],
         )
 
         specfile = SpecFile(*response[0])._asdict()
         specfile["pkg_hash"] = str(specfile["pkg_hash"])
         specfile["specfile_date"] = datetime_to_iso(specfile["specfile_date"])
+        # workaround for CH base64encode bug #30854
+        data = base64.b64decode(specfile["specfile_content"])
+        if len(data) != specfile["content_length"]:
+            specfile["specfile_content"] = base64.b64encode(data[:specfile["content_length"]])
 
         res = {
             "request_args": self.args,
@@ -122,12 +128,17 @@ class SpecfileByPackageHash(APIWorker):
                 "specfile_name",
                 "specfile_date",
                 "specfile_content",
+                "content_length",
             ],
         )
 
         specfile = SpecFile(*response[0])._asdict()
         specfile["pkg_hash"] = str(specfile["pkg_hash"])
         specfile["specfile_date"] = datetime_to_iso(specfile["specfile_date"])
+        # workaround for CH base64encode bug #30854
+        data = base64.b64decode(specfile["specfile_content"])
+        if len(data) != specfile["content_length"]:
+            specfile["specfile_content"] = base64.b64encode(data[:specfile["content_length"]])
 
         res = {
             "request_args": self.args,

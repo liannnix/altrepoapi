@@ -959,7 +959,8 @@ SELECT
     pkg_release,
     specfile_name,
     specfile_date,
-    base64Encode(specfile_content)
+    base64Encode(specfile_content),
+    length(specfile_content)
 FROM Specfiles
 WHERE pkg_hash = {pkghash}
 """
@@ -972,7 +973,8 @@ SELECT
     pkg_release,
     specfile_name,
     specfile_date,
-    base64Encode(specfile_content)
+    base64Encode(specfile_content),
+    length(specfile_content)
 FROM Specfiles
 WHERE pkg_hash IN
 (
