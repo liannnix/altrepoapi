@@ -79,4 +79,4 @@ group by pkgset_name
 """
 
 
-dependencysql = SQL()
+sql = SQL()

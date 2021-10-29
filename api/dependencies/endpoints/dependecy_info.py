@@ -2,7 +2,7 @@ from collections import namedtuple
 
 from api.base import APIWorker
 from api.misc import lut
-from database.depends_sql import dependencysql
+from ..sql import sql
 from utils import sort_branches, tuplelist_to_dict, dp_flags_decode
 
 
@@ -13,7 +13,7 @@ class DependsBinPackage(APIWorker):
         self.conn = connection
         self.pkghash = pkghash
         self.args = kwargs
-        self.sql = dependencysql
+        self.sql = sql
         super().__init__()
 
     def get(self):
@@ -86,7 +86,7 @@ class PackagesDependence(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = dependencysql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
