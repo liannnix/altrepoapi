@@ -93,4 +93,4 @@ WHERE bz_assignee IN (
 """
 
 
-bugsql = SQL()
+sql = SQL()

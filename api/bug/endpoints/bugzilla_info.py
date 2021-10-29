@@ -1,7 +1,7 @@
 from collections import namedtuple
 
 from api.base import APIWorker
-from database.bug_sql import bugsql
+from ..sql import sql
 from utils import datetime_to_iso
 
 
@@ -11,7 +11,7 @@ class Bugzilla(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = bugsql
+        self.sql = sql
         super().__init__()
 
     def check_params_maintainer(self):
