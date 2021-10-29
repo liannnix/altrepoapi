@@ -3,7 +3,7 @@ from collections import defaultdict
 from utils import join_tuples, mmhash
 
 from api.base import APIWorker
-from database.task_sql import tasksql
+from ..sql import sql
 
 
 class TaskRepoState(APIWorker):
@@ -12,7 +12,7 @@ class TaskRepoState(APIWorker):
     def __init__(self, connection: object, id: int, **kwargs) -> None:
         self.conn = connection
         self.args = kwargs
-        self.sql = tasksql
+        self.sql = sql
         self.task_id = id
         self.task_repo: str = ""
         self.task_diff_list: list[str] = list()
@@ -270,7 +270,7 @@ class TaskRepo(APIWorker):
     def __init__(self, connection, id, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = tasksql
+        self.sql = sql
         self.task_id = id
         self.repo = TaskRepoState(self.conn, self.task_id)
         self.last_repo_contents = None

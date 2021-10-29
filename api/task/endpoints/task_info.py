@@ -3,7 +3,7 @@ from collections import defaultdict, namedtuple
 from utils import datetime_to_iso, mmhash
 
 from api.base import APIWorker
-from database.task_sql import tasksql
+from ..sql import sql
 
 
 class TaskInfo(APIWorker):
@@ -14,7 +14,7 @@ class TaskInfo(APIWorker):
     def __init__(self, connection, id_, **kwargs) -> None:
         self.conn = connection
         self.args = kwargs
-        self.sql = tasksql
+        self.sql = sql
         self.task_id = id_
         self.task = defaultdict(lambda: None, key=None)
         super().__init__()

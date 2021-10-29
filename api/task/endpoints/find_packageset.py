@@ -4,7 +4,7 @@ from utils import join_tuples
 
 from api.base import APIWorker
 from api.misc import lut
-from database.task_sql import tasksql
+from ..sql import sql
 
 
 class FindPackageset(APIWorker):
@@ -13,7 +13,7 @@ class FindPackageset(APIWorker):
     def __init__(self, connection, id, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = tasksql
+        self.sql = sql
         self.task_id = id
         super().__init__()
 
