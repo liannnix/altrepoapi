@@ -58,6 +58,7 @@ class ApiVersion(Resource):
 
 
 @api.route("/ping")
+@api.doc(False)
 class ApiVersion(Resource):
     @api.doc("API ping")
     @api.doc(security="BasicAuth")
