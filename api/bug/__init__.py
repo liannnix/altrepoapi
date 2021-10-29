@@ -1,4 +1,4 @@
 from .namespace import get_namespace
-from .routes import *
+from . import routes
 
 ns = get_namespace()
