@@ -4,7 +4,7 @@ from utils import datetime_to_iso, get_nickname_from_packager
 
 from api.base import APIWorker
 from api.misc import lut
-from database.site_sql import sitesql
+from ..sql import sql
 
 
 class TasksByPackage(APIWorker):
@@ -13,7 +13,7 @@ class TasksByPackage(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
@@ -198,7 +198,7 @@ class LastTaskPackages(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
@@ -423,7 +423,7 @@ class TasksByMaintainer(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
@@ -575,7 +575,7 @@ class PackageVersionsFromTasks(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):

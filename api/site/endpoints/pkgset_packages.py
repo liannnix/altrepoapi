@@ -1,11 +1,10 @@
 from collections import namedtuple
 
 from utils import tuplelist_to_dict, sort_branches, datetime_to_iso
-from utils import get_nickname_from_packager
 
 from api.base import APIWorker
 from api.misc import lut
-from database.site_sql import sitesql
+from ..sql import sql
 
 
 class PackagesetPackages(APIWorker):
@@ -14,7 +13,7 @@ class PackagesetPackages(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
@@ -114,7 +113,7 @@ class PackagesetPackageHash(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
@@ -174,7 +173,7 @@ class PackagesetPackageBinaryHash(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
@@ -243,7 +242,7 @@ class PackagesetFindPackages(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
@@ -354,7 +353,7 @@ class AllPackagesets(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def get(self):
@@ -438,7 +437,7 @@ class PkgsetCategoriesCount(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
@@ -501,7 +500,7 @@ class AllPackagesetArchs(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
@@ -582,7 +581,7 @@ class AllPackagesetsByHash(APIWorker):
         self.pkghash = pkghash
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def get(self):
@@ -611,7 +610,7 @@ class LastBranchPackages(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):

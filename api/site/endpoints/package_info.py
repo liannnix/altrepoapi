@@ -11,7 +11,7 @@ from utils import (
 
 from api.base import APIWorker
 from api.misc import lut
-from database.site_sql import sitesql
+from ..sql import sql
 
 
 class PackageChangelog(APIWorker):
@@ -21,7 +21,7 @@ class PackageChangelog(APIWorker):
         self.pkghash = pkghash
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
@@ -79,7 +79,7 @@ class PackageInfo(APIWorker):
         self.pkghash = pkghash
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
@@ -421,7 +421,7 @@ class DeletedPackageInfo(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
@@ -587,7 +587,7 @@ class LastPackagesWithCVEFix(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
@@ -659,7 +659,7 @@ class PackageDownloadLinks(APIWorker):
         self.pkghash = pkghash
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
@@ -999,7 +999,7 @@ class PackagesBinaryListInfo(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
@@ -1085,7 +1085,7 @@ class BinaryPackageScripts(APIWorker):
         self.conn = connection
         self.pkghash = pkghash
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def get(self):
@@ -1153,7 +1153,7 @@ class SourcePackageVersions(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):

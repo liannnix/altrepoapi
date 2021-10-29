@@ -1409,4 +1409,4 @@ WHERE pkg_hash = {pkghash}
 """
 
 
-sitesql = SQL()
+sql = SQL()

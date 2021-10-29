@@ -1,9 +1,10 @@
 from collections import namedtuple
 
+from utils import sort_branches, datetime_to_iso
+
 from api.base import APIWorker
 from api.misc import lut
-from database.site_sql import sitesql
-from utils import sort_branches, datetime_to_iso
+from ..sql import sql
 
 
 class AllMaintainers(APIWorker):
@@ -12,7 +13,7 @@ class AllMaintainers(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
@@ -65,7 +66,7 @@ class MaintainerInfo(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
@@ -135,7 +136,7 @@ class MaintainerPackages(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
@@ -194,7 +195,7 @@ class MaintainerBranches(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
@@ -246,7 +247,7 @@ class RepocopByMaintainer(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
@@ -361,7 +362,7 @@ class MaintainerBeehiveErrors(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = sitesql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
