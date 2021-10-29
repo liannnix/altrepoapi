@@ -140,4 +140,4 @@ FROM
 WHERE show = 1
 """
 
-pkgsetsql = SQL()
+sql = SQL()

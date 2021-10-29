@@ -4,10 +4,11 @@ import datetime as dt
 import json
 from collections import namedtuple
 
-from api.base import APIWorker
-from database.packageset_sql import pkgsetsql
-from api.misc import lut
 from utils import sort_branches
+
+from api.base import APIWorker
+from api.misc import lut
+from ..sql import sql
 
 
 class RepositoryStatus(APIWorker):
@@ -18,7 +19,7 @@ class RepositoryStatus(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = pkgsetsql
+        self.sql = sql
         super().__init__()
 
     def check_params_post(self):
@@ -128,7 +129,7 @@ class ActivePackagesets(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = pkgsetsql
+        self.sql = sql
         super().__init__()
 
     def get(self):

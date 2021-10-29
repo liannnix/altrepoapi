@@ -2,7 +2,7 @@ from collections import namedtuple
 
 from api.base import APIWorker
 from api.misc import lut
-from database.packageset_sql import pkgsetsql
+from ..sql import sql
 
 
 class PackagesetPackages(APIWorker):
@@ -11,7 +11,7 @@ class PackagesetPackages(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.sql = pkgsetsql
+        self.sql = sql
         super().__init__()
 
     def check_params(self):
