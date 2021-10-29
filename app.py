@@ -4,7 +4,7 @@ from utils import get_logger
 from settings import namespace as settings
 
 from database.connection import Connection
-from api import blueprint as api_bp
+from api_v1 import blueprint as api_bp
 
 app = Flask(__name__)
 logger = get_logger(__name__)
