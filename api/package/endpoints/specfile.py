@@ -79,7 +79,7 @@ class SpecfileByPackageName(APIWorker):
         # workaround for CH base64encode bug #30854
         data = base64.b64decode(specfile["specfile_content"])
         if len(data) != specfile["content_length"]:
-            specfile["specfile_content"] = base64.b64encode(data[:specfile["content_length"]])
+            specfile["specfile_content"] = base64.b64encode(data[:specfile["content_length"]]).decode("utf-8")
 
         res = {
             "request_args": self.args,
@@ -138,7 +138,7 @@ class SpecfileByPackageHash(APIWorker):
         # workaround for CH base64encode bug #30854
         data = base64.b64decode(specfile["specfile_content"])
         if len(data) != specfile["content_length"]:
-            specfile["specfile_content"] = base64.b64encode(data[:specfile["content_length"]])
+            specfile["specfile_content"] = base64.b64encode(data[:specfile["content_length"]]).decode("utf-8")
 
         res = {
             "request_args": self.args,
