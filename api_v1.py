@@ -4,21 +4,17 @@ from flask_restx import Resource, fields
 
 from api.auth.decorators import auth_required
 
+from api.bug import ns as bug_ns
 from api.task import ns as task_ns
 from api.package import ns as package_ns
 from api.packageset import ns as packageset_ns
+from api.dependencies import ns as dependencies_ns
 from api.site import ns as site_ns
 from api.site_package import ns as site_package_ns
-from api.dependencies import ns as dependencies_ns
-from api.bug import ns as bug_ns
 
 
 authorizations = {
-    'BasicAuth': {
-        'type': 'basic',
-        'in': 'header',
-        'name': 'Authorization'
-    }
+    "BasicAuth": {"type": "basic", "in": "header", "name": "Authorization"}
 }
 
 blueprint = Blueprint("api", __name__, url_prefix="/api")
@@ -30,7 +26,7 @@ api = Api(
     description="altrepodb API v1",
     default="api",
     default_label="basic functions",
-    authorizations=authorizations
+    authorizations=authorizations,
 )
 
 api.add_namespace(task_ns)
