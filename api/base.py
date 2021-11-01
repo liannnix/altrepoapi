@@ -1,6 +1,6 @@
 from settings import namespace as settings
 from utils import get_logger, logger_level
-
+from database.connection import Connection
 
 class APIWorker:
     """Base API endpoint worker class."""
@@ -10,9 +10,10 @@ class APIWorker:
     def __init__(self):
         self.logger = get_logger(__name__)
         self.ll = logger_level
-        self.status = False
-        self.error = None
-        self.validation_results = None
+        self.status: bool = False
+        self.error: tuple
+        self.conn: Connection
+        self.validation_results: list
 
     def _log_error(self, severity):
         if severity == self.ll.CRITICAL:
