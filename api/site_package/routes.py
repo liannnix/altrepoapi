@@ -6,14 +6,14 @@ from utils import get_logger, url_logging, response_error_parser
 from .namespace import get_namespace
 from .endpoints.package_info import (
     PackageInfo,
-    PackageChangelog,
     DeletedPackageInfo,
     PackagesBinaryListInfo,
-    BinaryPackageScripts,
-    LastPackagesWithCVEFix,
-    PackageDownloadLinks,
-    SourcePackageVersions,
 )
+from .endpoints.changelog import PackageChangelog
+from .endpoints.downloads import PackageDownloadLinks
+from .endpoints.versions import SourcePackageVersions
+from .endpoints.scripts import BinaryPackageScripts
+from .endpoints.cve import LastPackagesWithCVEFix
 from .parsers import (
     all_archs_args,
     package_chlog_args,
