@@ -9,18 +9,18 @@ from ..sql import sql
 class TaskRepoState(APIWorker):
     """Builds package set state from task."""
 
-    def __init__(self, connection: object, id: int, **kwargs) -> None:
+    def __init__(self, connection, id: int, **kwargs) -> None:
         self.conn = connection
         self.args = kwargs
         self.sql = sql
-        self.task_id = id
+        self.task_id: int = id
         self.task_repo: str = ""
-        self.task_diff_list: list[str] = list()
-        self.task_add_pkgs: tuple[int] = tuple()
-        self.task_del_pkgs: tuple[int] = tuple()
-        self.task_repo_pkgs: tuple[int] = tuple()
-        self.task_base_repo_pkgs: tuple[int] = tuple()
-        self.have_plan = False
+        self.task_diff_list: list = list()
+        self.task_add_pkgs: tuple = tuple()
+        self.task_del_pkgs: tuple = tuple()
+        self.task_repo_pkgs: tuple = tuple()
+        self.task_base_repo_pkgs: tuple = tuple()
+        self.have_plan: bool = False
         super().__init__()
 
     def check_task_id(self) -> bool:
@@ -273,7 +273,7 @@ class TaskRepo(APIWorker):
         self.sql = sql
         self.task_id = id
         self.repo = TaskRepoState(self.conn, self.task_id)
-        self.last_repo_contents = None
+        self.last_repo_contents = []
         super().__init__()
 
     def check_task_id(self):
@@ -376,6 +376,7 @@ class TaskRepo(APIWorker):
         if status is False:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
+        repo_pkgs = defaultdict(list)
         if not response:
             if not response:
                 self._store_sql_error(
@@ -385,7 +386,6 @@ class TaskRepo(APIWorker):
                 )
                 return self.error
         else:
-            repo_pkgs = defaultdict(list)
             for el in response:
                 if el[5] == 1:
                     repo_pkgs["SRPM"].append(
