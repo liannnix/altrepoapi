@@ -252,7 +252,7 @@ class routeAllPackagesets(Resource):
         "responses": {404: "Data not found in database"},
     },
 )
-class routeAllPackagesets(Resource):
+class routeAllPackagesetsSourceCount(Resource):
     # @ns.expect()
     @ns.marshal_with(all_pkgsets_model)
     def get(self):
@@ -279,7 +279,7 @@ class routeAllPackagesets(Resource):
         "responses": {404: "Data not found in database"},
     },
 )
-class routeAllPackagesets(Resource):
+class routeAllPackagesetsSummary(Resource):
     # @ns.expect()
     @ns.marshal_with(all_pkgsets_summary_model)
     def get(self):
@@ -339,7 +339,7 @@ class routeAllPackagesetArchs(Resource):
         },
     },
 )
-class routeAllPackagesetArchs(Resource):
+class routeAllPackagesetArchsSourceCount(Resource):
     @ns.expect(all_archs_args)
     @ns.marshal_with(all_archs_model)
     def get(self):
