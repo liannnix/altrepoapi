@@ -107,7 +107,7 @@ class Repocop(APIWorker):
 
             if self.args["package_release"] is not None:
                 release_cond = f"AND rc_srcpkg_release = '{self.args['package_release']}'"
-        if source == 0:
+        else:
             name_cond = f"AND pkg_name = '{self.args['package_name']}'"
             if self.args["package_version"] is not None:
                 version_cond = f"AND pkg_version = '{self.args['package_version']}'"
