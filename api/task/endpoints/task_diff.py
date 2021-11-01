@@ -36,6 +36,14 @@ class TaskDiff(APIWorker):
         if not self.tr.status:
             return self.tr.error
 
+        if not self.tr.have_plan:
+            self._store_sql_error(
+                {"Error": f"No package plan for task {self.task_id}"},
+                self.ll.ERROR,
+                404,
+            )
+            return self.error
+
         repo_pkgs = self.tr.task_base_repo_pkgs
         task_add_pkgs = self.tr.task_add_pkgs
         task_del_pkgs = self.tr.task_del_pkgs
@@ -59,16 +67,16 @@ class TaskDiff(APIWorker):
 
         result_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
 
-        if task_del_pkgs:
-            # create tmp table with task del packages hashes
-            self.conn.request_line = self.sql.create_tmp_hshs_table.format(
-                table="tmpTaskDelHshs"
-            )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
-                return self.error
+        # create tmp table with task del packages hashes
+        self.conn.request_line = self.sql.create_tmp_hshs_table.format(
+            table="tmpTaskDelHshs"
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
 
+        if task_del_pkgs:
             self.conn.request_line = (
                 self.sql.insert_into_tmp_hshs_table.format(table="tmpTaskDelHshs"),
                 ({"pkghash": x} for x in task_del_pkgs),
@@ -94,16 +102,16 @@ class TaskDiff(APIWorker):
                     if p_fname not in result_dict[p_arch][p_name]["del"]:
                         result_dict[p_arch][p_name]["del"].append(p_fname)
 
-        if task_add_pkgs:
-            # create tmp table with task add packages hashes
-            self.conn.request_line = self.sql.create_tmp_hshs_table.format(
-                table="tmpTaskAddHshs"
-            )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
-                return self.error
+        # create tmp table with task add packages hashes
+        self.conn.request_line = self.sql.create_tmp_hshs_table.format(
+            table="tmpTaskAddHshs"
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
 
+        if task_add_pkgs:
             self.conn.request_line = (
                 self.sql.insert_into_tmp_hshs_table.format(table="tmpTaskAddHshs"),
                 ({"pkghash": x} for x in task_add_pkgs),
@@ -130,6 +138,19 @@ class TaskDiff(APIWorker):
                         result_dict[p_arch][p_name]["add"].append(p_fname)
 
         DepInfo = namedtuple("DepInfo", ["dp_name", "dp_flag", "dp_version"])
+        DepsKey = namedtuple("DepsKey", ["pkg_name", "dp_type", "arch"])
+
+        def build_depends_dict(depends, dp_type_skip=tuple()):
+            """Builds depends dictionary with tuple keys."""
+            res = {}
+            for el in depends:
+                key = DepsKey(*el[:3])
+                if key.dp_type in dp_type_skip:
+                    continue
+                if key not in res:
+                    res[key] = []
+                res[key] += el[3]
+            return res
 
         def decode_dp_flag(dp_flag: int) -> str:
             """Decodes version equality from dp_flag."""
@@ -150,104 +171,115 @@ class TaskDiff(APIWorker):
             )
             return result
 
-        if task_add_pkgs:
-            # get package hashes from repo by names from task_add_pkgs hashes
-            self.conn.request_line = self.sql.diff_repo_pkgs.format(
-                tmp_table1="tmpRepoHshs", tmp_table2="tmpTaskAddHshs"
-            )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
-                return self.error
+        # get package hashes from repo state by names from plan add/delete hashes
+        self.conn.request_line = self.sql.diff_repo_pkgs.format(
+            tmp_table1="tmpRepoHshs",
+            tmp_table2="tmpTaskAddHshs",
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
 
-            if not response:
-                self._store_sql_error(
+        if task_add_pkgs and task_del_pkgs and not response:
+            self._store_sql_error(
+                {
+                    "Error": f"Failed to get packages from last_packages for task {self.task_id} diff"
+                },
+                self.ll.ERROR,
+                500,
+            )
+            return self.error
+
+        repo_pkgs_filtered = join_tuples(response)
+
+        # get dependencies for packages from current repository state
+        self.conn.request_line = self.sql.truncate_tmp_table.format(table="tmpRepoHshs")
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+
+        self.conn.request_line = (
+            self.sql.insert_into_tmp_hshs_table.format(table="tmpRepoHshs"),
+            ({"pkghash": x} for x in repo_pkgs_filtered),
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+
+        self.conn.request_line = self.sql.diff_depends_by_hshs.format(
+            table="tmpRepoHshs"
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+
+        repo_deps = build_depends_dict(response)
+
+        # get depends for added packages from task
+        self.conn.request_line = self.sql.diff_depends_by_hshs.format(
+            table="tmpTaskAddHshs"
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+
+        task_deps_add = build_depends_dict(response)
+
+        # get depends for added packages from task
+        self.conn.request_line = self.sql.diff_depends_by_hshs.format(
+            table="tmpTaskDelHshs"
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+
+        # drop 'require' dependencies for deleted packages
+        task_deps_del = build_depends_dict(response, dp_type_skip=("require"))
+
+        for k, v in task_deps_add.items():
+            name_, type_, arch_ = k.pkg_name, k.dp_type, k.arch
+            task_set = set(v)
+            repo_set = set(repo_deps.get(k, []))
+
+            res_list_del = [
+                convert_dpinfo_to_string(DepInfo(*dep)) for dep in repo_set - task_set
+            ]
+            res_list_add = [
+                convert_dpinfo_to_string(DepInfo(*dep)) for dep in task_set - repo_set
+            ]
+
+            if res_list_del or res_list_add:
+                if result_dict[arch_][name_]["deps"] is None:
+                    result_dict[arch_][name_]["deps"] = []
+                result_dict[arch_][name_]["deps"].append(
                     {
-                        "Error": f"Failed to get packages add contents for task {self.task_id}"
-                    },
-                    self.ll.ERROR,
-                    500,
+                        "type": type_,
+                        "del": res_list_del,
+                        "add": res_list_add,
+                    }
                 )
-                return self.error
 
-            repo_pkgs_filtered = join_tuples(response)
+        for k, v in task_deps_del.items():
+            name_, type_, arch_ = k.pkg_name, k.dp_type, k.arch
+            task_set = set(v)
 
-            self.conn.request_line = self.sql.truncate_tmp_table.format(
-                table="tmpRepoHshs"
+            if result_dict[arch_][name_]["deps"] is None:
+                result_dict[arch_][name_]["deps"] = []
+            result_dict[arch_][name_]["deps"].append(
+                {
+                    "type": type_,
+                    "del": [
+                        convert_dpinfo_to_string(DepInfo(*dep)) for dep in task_set
+                    ],
+                    "add": [],
+                }
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
-                return self.error
-
-            self.conn.request_line = (
-                self.sql.insert_into_tmp_hshs_table.format(table="tmpRepoHshs"),
-                ({"pkghash": x} for x in repo_pkgs_filtered),
-            )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
-                return self.error
-
-            self.conn.request_line = self.sql.diff_depends_by_hshs.format(
-                table="tmpRepoHshs"
-            )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
-                return self.error
-
-            repo_deps = response
-
-            self.conn.request_line = self.sql.diff_depends_by_hshs.format(
-                table="tmpTaskAddHshs"
-            )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
-                return self.error
-
-            task_deps = response
-
-            uniq_repo_pkgs = remove_duplicate([i[0] for i in repo_deps])
-
-            base_struct = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-            for pkg in uniq_repo_pkgs:
-                for type_ in ["provide", "require", "obsolete", "conflict"]:
-                    for arch in lut.default_archs:
-                        base_struct[pkg][type_][arch] = []
-
-            def create_struct(deps):
-                struct = deepcopy(base_struct)
-                [
-                    struct[el[0]][el[1]][el[2]].__iadd__(el[3])
-                    for el in deps
-                    if el[0] in base_struct
-                ]
-                return struct
-
-            task_struct = create_struct(task_deps)
-            repo_struct = create_struct(repo_deps)
-
-            for name, type_dict in task_struct.items():
-                for type_, arch_dict in type_dict.items():
-                    for arch, value in arch_dict.items():
-                        task_set = set(value)
-                        repo_set = set(repo_struct[name][type_][arch])
-
-                        res_list_del = [convert_dpinfo_to_string(DepInfo(*dep)) for dep in repo_set - task_set]
-                        res_list_add = [convert_dpinfo_to_string(DepInfo(*dep)) for dep in task_set - repo_set]
-
-                        if res_list_del or res_list_add:
-                            if result_dict[arch][name]["deps"] is None:
-                                result_dict[arch][name]["deps"] = []
-                            result_dict[arch][name]["deps"].append(
-                                {
-                                    "type": type_,
-                                    "del": res_list_del,
-                                    "add": res_list_add,
-                                }
-                            )
 
         result_dict_2 = {"task_id": self.task_id, "task_diff": []}
 
