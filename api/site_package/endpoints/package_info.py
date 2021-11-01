@@ -711,6 +711,7 @@ class PackageDownloadLinks(APIWorker):
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
+        subtasks = []
         if response:
             #  use hashes from task
             use_task = True
