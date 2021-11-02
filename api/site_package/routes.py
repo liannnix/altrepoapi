@@ -15,7 +15,7 @@ from .endpoints.versions import SourcePackageVersions
 from .endpoints.scripts import BinaryPackageScripts
 from .endpoints.cve import LastPackagesWithCVEFix
 from .parsers import (
-    all_archs_args,
+    src_downloads_args,
     package_chlog_args,
     package_info_args,
     pkgs_with_cve_fix_args,
@@ -229,9 +229,10 @@ class routeLastPackagesWithCVEFix(Resource):
 
 @ns.route(
     "/package_downloads/<int:pkghash>",
+    "/package_downloads_src/<int:pkghash>",
     doc={
         "params": {"pkghash": "package hash"},
-        "description": "Get package download links by hash",
+        "description": "Get package download links by source package hash",
         "responses": {
             400: "Request parameters validation error",
             404: "Package not found in database",
@@ -241,10 +242,10 @@ class routeLastPackagesWithCVEFix(Resource):
 class routePackageDownloadLinks(Resource):
     pass
 
-    @ns.expect(all_archs_args)
+    @ns.expect(src_downloads_args)
     @ns.marshal_with(package_downloads_model)
     def get(self, pkghash):
-        args = all_archs_args.parse_args(strict=True)
+        args = src_downloads_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = PackageDownloadLinks(g.connection, pkghash, **args)
         if not wrk.check_params():
