@@ -10,12 +10,13 @@ from .endpoints.package_info import (
     PackagesBinaryListInfo,
 )
 from .endpoints.changelog import PackageChangelog
-from .endpoints.downloads import PackageDownloadLinks
+from .endpoints.downloads import PackageDownloadLinks, BinaryPackageDownloadLinks
 from .endpoints.versions import SourcePackageVersions
 from .endpoints.scripts import BinaryPackageScripts
 from .endpoints.cve import LastPackagesWithCVEFix
 from .parsers import (
     src_downloads_args,
+    bin_downloads_args,
     package_chlog_args,
     package_info_args,
     pkgs_with_cve_fix_args,
@@ -248,6 +249,39 @@ class routePackageDownloadLinks(Resource):
         args = src_downloads_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = PackageDownloadLinks(g.connection, pkghash, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route(
+    "/package_downloads_bin/<int:pkghash>",
+    doc={
+        "params": {"pkghash": "package hash"},
+        "description": "Get binary package download link",
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package not found in database",
+        },
+    },
+)
+class routeBinaryPackageDownloadLinks(Resource):
+    pass
+
+    @ns.expect(bin_downloads_args)
+    @ns.marshal_with(package_downloads_model)
+    def get(self, pkghash):
+        args = bin_downloads_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        wrk = BinaryPackageDownloadLinks(g.connection, pkghash, **args)
         if not wrk.check_params():
             abort(
                 400,

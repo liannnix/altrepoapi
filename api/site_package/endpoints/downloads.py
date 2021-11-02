@@ -12,7 +12,7 @@ from ..sql import sql
 
 
 class PackageDownloadLinks(APIWorker):
-    """Retrieves package info from DB."""
+    """Build source and binary packages downloads links."""
 
     def __init__(self, connection, pkghash, **kwargs):
         self.pkghash = pkghash
@@ -25,7 +25,7 @@ class PackageDownloadLinks(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["branch"] == "" or self.args["branch"] not in lut.known_branches:
+        if self.args["branch"] not in lut.known_branches:
             self.validation_results.append(
                 f"unknown package set name : {self.args['branch']}"
             )
@@ -113,7 +113,7 @@ class PackageDownloadLinks(APIWorker):
             if not response:
                 self._store_error(
                     {
-                        "message": f"No package fienames info found in DB",
+                        "message": f"No package filenames info found in DB",
                         "args": self.args,
                     },
                     self.ll.INFO,
@@ -340,6 +340,272 @@ class PackageDownloadLinks(APIWorker):
                                     "size": bytes2human(filenames[p].size),
                                 }
                             )
+
+        res = {
+            "pkghash": str(self.pkghash),
+            "request_args": self.args,
+            "downloads": [
+                {"arch": k, "packages": v} for k, v in res.items() if len(v) > 0
+            ],
+            "versions": pkg_versions,
+        }
+
+        return res, 200
+
+
+class BinaryPackageDownloadLinks(APIWorker):
+    """Build binary package downloads link."""
+
+    def __init__(self, connection, pkghash, **kwargs):
+        self.pkghash = pkghash
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        self.validation_results = []
+
+        if self.args["branch"] not in lut.known_branches:
+            self.validation_results.append(
+                f"unknown package set name : {self.args['branch']}"
+            )
+            self.validation_results.append(
+                f"allowed package set names are : {lut.known_branches}"
+            )
+
+        if self.args["arch"] not in lut.known_archs:
+            self.validation_results.append(
+                f"unknown package arch : {self.args['arch']}"
+            )
+            self.validation_results.append(f"allowed archs are : {lut.known_archs}")
+
+        if self.validation_results != []:
+            return False
+        else:
+            return True
+
+    def get(self):
+        self.branch = self.args["branch"]
+        self.arch = self.args["arch"]
+
+        # return no download links from sisyphus_e2k branch
+        if self.branch in lut.no_downloads_branches:
+            return {
+                "pkghash": str(self.pkghash),
+                "request_args": self.args,
+                "downloads": [],
+                "versions": [],
+            }, 200
+
+        #  get package task info
+        TaskInfo = namedtuple(
+            "TaskInfo",
+            [
+                "task_id",
+                "subtask_id",
+                "subtask_arch",
+                "titer_srcrpm_hash",
+                "titer_pkgs_hash",
+            ],
+        )
+        PkgInfo = namedtuple("PkgInfo", ["file", "arch", "size"])
+        self.conn.request_line = self.sql.get_build_task_by_bin_hash.format(
+            pkghash=self.pkghash, branch=self.branch
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        subtask = {}
+        if response:
+            #  use hashes from task
+            use_task = True
+            subtask = TaskInfo(*response[0])._asdict()
+            # get package file name
+            self.conn.request_line = self.sql.get_pkgs_filename_by_hshs.format(
+                hshs=(self.pkghash,)
+            )
+            status, response = self.conn.send_request()
+            if not status:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return self.error
+            if not response:
+                self._store_error(
+                    {
+                        "message": f"No package fienames info found in DB",
+                        "args": self.args,
+                    },
+                    self.ll.INFO,
+                    404,
+                )
+                return self.error
+            # store package file info
+            filename = PkgInfo(*response[0][1:])
+        else:
+            # no task found -> use ftp.altlinux.org
+            use_task = False
+            # get package hashes and archs from last_packages
+            self.conn.request_line = self.sql.get_bin_pkg_from_last.format(
+                pkghash=self.pkghash, branch=self.branch, arch=self.arch
+            )
+            status, response = self.conn.send_request()
+            if not status:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return self.error
+            if not response:
+                self._store_error(
+                    {
+                        "message": f"No package info found in DB",
+                        "args": self.args,
+                    },
+                    self.ll.INFO,
+                    404,
+                )
+                return self.error
+            # store package file info
+            filename = PkgInfo(*response[0][1:])
+
+        # get package files MD5 checksum
+        self.conn.request_line = self.sql.get_pkgs_md5_by_hshs.format(
+            hshs=(self.pkghash,)
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {
+                    "message": f"No package MD5 info found in DB",
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+        md5_sum = response[0][1]
+
+        # get package versions
+        pkg_versions = []
+        self.conn.request_line = self.sql.get_bin_pkg_versions_by_hash.format(
+            pkghash=self.pkghash, arch=self.arch
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        PkgVersions = namedtuple(
+            "PkgVersions", ["branch", "version", "release", "pkghash", "arch"]
+        )
+        # sort package versions by branch
+        pkg_branches = sort_branches([el[0] for el in response])
+        pkg_versions = tuplelist_to_dict(response, 4)
+        # workaround for multiple versions of returned for certain branch
+        pkg_versions = [
+            PkgVersions(*(b, *pkg_versions[b][-4:]))._asdict() for b in pkg_branches
+        ]
+
+        def make_link_to_task(base, task, subtask, arch, filename, is_src):
+            return "/".join(
+                (
+                    base,
+                    str(task),
+                    "build",
+                    str(subtask),
+                    arch,
+                    "srpm" if is_src else "rpms",
+                    filename,
+                )
+            )
+
+        def make_link_to_repo(base, branch, files, arch, filename, is_src):
+            return "/".join(
+                (
+                    base,
+                    branch,
+                    files,
+                    "" if is_src else arch,
+                    "SRPMS" if is_src else "RPMS",
+                    filename,
+                )
+            )
+
+        res = {}
+
+        if use_task:
+            # build links to task
+            task_base_ = "http://git.altlinux.org/tasks"
+
+            if filename.arch == "noarch":
+                # save noarch packages separatelly
+                res["noarch"] = []
+                res["noarch"].append(
+                    {
+                        "name": filename.file,
+                        "url": make_link_to_task(
+                            task_base_,
+                            subtask["task_id"],
+                            subtask["subtask_id"],
+                            subtask["subtask_arch"],
+                            filename.file,
+                            is_src=False,
+                        ),
+                        "md5": md5_sum,
+                        "size": bytes2human(filename.size),
+                    }
+                )
+            else:
+                res[subtask["subtask_arch"]] = []
+                res[subtask["subtask_arch"]].append(
+                    {
+                        "name": filename.file,
+                        "url": make_link_to_task(
+                            task_base_,
+                            subtask["task_id"],
+                            subtask["subtask_id"],
+                            subtask["subtask_arch"],
+                            filename.file,
+                            is_src=False,
+                        ),
+                        "md5": md5_sum,
+                        "size": bytes2human(filename.size),
+                    }
+                )
+        else:
+            #  build links to repo
+            repo_base_ = "http://ftp.altlinux.org/pub/distributions/ALTLinux"
+            if self.branch in lut.taskless_branches:
+                branch_, arch_ = self.branch.split("_")
+                files_ = "files"
+                repo_base_ += f"/ports/{arch_}"
+                if branch_ == "sisyphus":
+                    branch_ = "Sisyphus"
+
+            elif self.branch == "sisyphus":
+                branch_ = "Sisyphus"
+                files_ = "files"
+            else:
+                branch_ = self.branch
+                files_ = "branch/files"
+
+            res[self.arch] = []
+            res[self.arch].append(
+                {
+                    "name": filename.file,
+                    "url": make_link_to_repo(
+                        repo_base_,
+                        branch_,
+                        files_,
+                        self.arch,
+                        filename.file,
+                        is_src=False,
+                    ),
+                    "md5": md5_sum,
+                    "size": bytes2human(filename.size),
+                }
+            )
 
         res = {
             "pkghash": str(self.pkghash),

@@ -452,6 +452,33 @@ WHERE (task_id, task_changed) IN
     ) != 0
 """
 
+    get_build_task_by_bin_hash = """
+SELECT
+    task_id,
+    subtask_id,
+    subtask_arch,
+    titer_srcrpm_hash,
+    titer_pkgs_hash
+FROM TaskIterations
+WHERE (task_id, task_changed) IN (
+    SELECT
+        argMax(task_id, task_changed),
+        max(task_changed)
+    FROM TaskIterations
+    WHERE has(titer_pkgs_hash, {pkghash}) AND (task_id IN (
+        SELECT task_id
+        FROM TaskStates
+        WHERE task_state = 'DONE'
+    ))
+)
+    AND has(titer_pkgs_hash, {pkghash})
+    AND task_id IN (
+        SELECT task_id
+        FROM Tasks
+        WHERE task_repo = '{branch}'
+    )
+"""
+
     get_pkgs_filename_by_hshs = """
 SELECT
     pkg_hash,
@@ -472,6 +499,18 @@ FROM last_packages
 WHERE pkg_srcrpm_hash = {pkghash} AND pkgset_name = '{branch}'
 """
 
+    get_bin_pkg_from_last = """
+SELECT DISTINCT
+    pkg_hash,
+    pkg_filename,
+    pkg_arch,
+    pkg_filesize
+FROM last_packages
+WHERE pkg_hash = {pkghash}
+    AND pkgset_name = '{branch}'
+    AND pkg_arch = '{arch}'
+"""
+
     get_pkgs_md5_by_hshs = """
 SELECT
     pkgh_mmh,
@@ -490,10 +529,37 @@ FROM static_last_packages
 WHERE pkg_name = (
     SELECT DISTINCT pkg_name
     FROM static_last_packages
-    WHERE pkg_hash= {pkghash}
+    WHERE pkg_hash = {pkghash}
         AND pkg_sourcepackage = 1
 )
     AND pkg_sourcepackage = 1
+"""
+
+    get_bin_pkg_versions_by_hash = """
+WITH
+(
+    SELECT DISTINCT pkg_name
+    FROM static_last_packages
+    WHERE pkg_hash = {pkghash}
+        AND pkg_sourcepackage = 0
+) AS pkgname
+SELECT DISTINCT
+    pkgset_name,
+    pkg_version,
+    pkg_release,
+    toString(pkg_hash),
+    PA.pkg_arch
+FROM static_last_packages
+INNER JOIN
+(
+    SELECT pkg_hash, pkg_arch
+    FROM Packages
+    WHERE pkg_sourcepackage = 0
+        AND pkg_name = pkgname
+        AND pkg_arch = '{arch}' 
+) AS PA ON PA.pkg_hash  = static_last_packages.pkg_hash
+WHERE pkg_name = pkgname
+    AND pkg_sourcepackage = 0
 """
 
     get_pkgs_binary_list = """
