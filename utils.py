@@ -1,5 +1,5 @@
 import re
-from typing import List
+from typing import List, Union
 
 import mmh3
 import json
@@ -324,7 +324,7 @@ def full_file_permissions(file_type, file_mode):
     return res
 
 
-def bytes2human(size: int) -> str:
+def bytes2human(size: Union[int, float]) -> str:
     """Convert file size in bytes to human readable string representation."""
     for unit in ["", "K", "M", "G", "T", "P", "E"]:
         if abs(size) < 1024.0:
