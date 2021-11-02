@@ -42,7 +42,7 @@ pkg_type = parser.register_item(
 changelog = parser.register_item(
     "changelog_last",
     type=int,
-    default=1,
+    default=3,
     required=False,
     help="changelog history length",
     location="args",
