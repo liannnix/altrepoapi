@@ -1,3 +1,5 @@
+from flask_restx import reqparse
+
 from settings import namespace as settings
 from utils import get_logger, logger_level
 from database.connection import Connection
@@ -55,3 +57,31 @@ class APIWorker:
 
     def get(self):
         return "OK", 200
+
+
+class ParserFactory:
+    """Register reqparse arguments and builds request parsers by list of items."""
+
+    def __init__(self) -> None:
+            self.items: list = []
+            self.lindex: int = 0
+
+    def register_item(self, item_name: str, **kwargs) -> int:
+        """Store request parser item and return it index."""
+
+        self.items.append((item_name, kwargs))
+        self.lindex = len(self.items) - 1
+        return self.lindex
+
+    def build_parser(self, *items: int) -> reqparse.RequestParser:
+        """Build RequestParser instance from list of parser's items."""
+
+        parser = reqparse.RequestParser()
+        for item in items:
+            if item < 0 or item > self.lindex:
+                raise IndexError("Item index out of list")
+            name, kwargs = self.items[item]
+            parser.add_argument(name, **kwargs)
+        return parser
+
+parser = ParserFactory()
