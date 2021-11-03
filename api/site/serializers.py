@@ -63,6 +63,8 @@ task_by_name_pkg_model = ns.model(
     {
         "type": fields.String(description="subtask type [gear|srpm|delete|search]"),
         "name": fields.String(description="package name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
         "link": fields.String(description="package git link"),
     },
 )

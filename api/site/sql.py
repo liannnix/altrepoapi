@@ -176,13 +176,17 @@ ORDER BY task_changed DESC
 SELECT DISTINCT
     task_id,
     subtask_id,
-    pkg_name
+    pkg_name,
+    pkg_version,
+    pkg_release
 FROM TaskIterations
 LEFT JOIN
 (
     SELECT
         pkg_hash,
-        pkg_name
+        pkg_name,
+        pkg_version,
+        pkg_release
     FROM Packages
     WHERE pkg_sourcepackage = 1
 ) AS P ON (pkg_hash = titer_srcrpm_hash)

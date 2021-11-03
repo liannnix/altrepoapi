@@ -99,8 +99,7 @@ class TasksByPackage(APIWorker):
 
         for task in retval:
             for s in task["packages"]:
-                if s[5] != "" and not s[5].startswith("/gears/"):
-                    tasks_for_pkg_names_search.append((s[0], s[1]))
+                tasks_for_pkg_names_search.append((s[0], s[1]))
 
         if len(tasks_for_pkg_names_search) != 0:
             # create temporary table with task_id, subtask_id
@@ -133,7 +132,7 @@ class TasksByPackage(APIWorker):
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
             if response:
-                pkg_names = {(el[0], el[1]): el[2] for el in response if el[2] != ""}
+                pkg_names = {(el[0], el[1]): el[2:] for el in response if el[2] != ""}
 
         res = []
         SubtaskMeta = namedtuple(
@@ -158,24 +157,34 @@ class TasksByPackage(APIWorker):
             pkg_type = ""
             pkg_link = ""
             pkg_name = ""
+            pkg_version = ""
+            pkg_release = ""
             for s in task["packages"]:
                 subtask = SubtaskMeta(*s)._asdict()
+                pkg_name, pkg_version, pkg_release = pkg_names.get(
+                    (int(subtask["id"]), int(subtask["sub_id"])), ("", "", "")
+                )
                 if subtask["package"] != "":
                     pkg_name = subtask["package"]
                 elif subtask["srpm_name"] != "":
                     pkg_name = subtask["srpm_name"]
                 if subtask["dir"] != "" and not subtask["dir"].startswith("/gears/"):
-                    try:
-                        pkg_name = pkg_names[
-                            (int(subtask["id"]), int(subtask["sub_id"]))
-                        ]
+                    if pkg_name:
                         subtask["dir"] = f"/gears/{pkg_name[0]}/{pkg_name}.git"
-                    except KeyError:
+                    else:
                         pkg_name = subtask["dir"].split("/")[-1][:-4]
                 elif subtask["dir"].startswith("/gears/"):
                     pkg_name = subtask["dir"].split("/")[-1][:-4]
                 pkg_type, pkg_link = self._build_gear_link(subtask, lut.gitalt_base)
-                pkg_ls.append({"type": pkg_type, "link": pkg_link, "name": pkg_name})
+                pkg_ls.append(
+                    {
+                        "type": pkg_type,
+                        "link": pkg_link,
+                        "name": pkg_name,
+                        "version": pkg_version,
+                        "release": pkg_release,
+                    }
+                )
 
             res.append(
                 {
@@ -376,7 +385,9 @@ class LastTaskPackages(APIWorker):
                     self.logger.warning(f"No package info. Skip task {task_id}")
                     continue
                 pkg_info["changelog_date"] = datetime_to_iso(pkg_info["changelog_date"])
-                pkg_info["changelog_nickname"] = get_nickname_from_packager(pkg_info["changelog_name"])
+                pkg_info["changelog_nickname"] = get_nickname_from_packager(
+                    pkg_info["changelog_name"]
+                )
             else:
                 pkg_info["pkg_hash"] = ""
                 for k in ("subtask_package", "subtask_srpm_name"):
@@ -476,8 +487,7 @@ class TasksByMaintainer(APIWorker):
 
         for task in retval:
             for s in task["packages"]:
-                if s[5] != "" and not s[5].startswith("/gears/"):
-                    tasks_for_pkg_names_search.append((s[0], s[1]))
+                tasks_for_pkg_names_search.append((s[0], s[1]))
 
         if len(tasks_for_pkg_names_search) != 0:
             # create temporary table with task_id, subtask_id
@@ -510,7 +520,7 @@ class TasksByMaintainer(APIWorker):
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
             if response:
-                pkg_names = {(el[0], el[1]): el[2] for el in response if el[2] != ""}
+                pkg_names = {(el[0], el[1]): el[2:] for el in response if el[2] != ""}
 
         res = []
         SubtaskMeta = namedtuple(
@@ -532,27 +542,39 @@ class TasksByMaintainer(APIWorker):
         )
         for task in retval:
             pkg_ls = []
+            pkg_type = ""
+            pkg_link = ""
             pkg_name = ""
+            pkg_version = ""
+            pkg_release = ""
             for s in task["packages"]:
                 subtask = SubtaskMeta(*s)._asdict()
+                pkg_name, pkg_version, pkg_release = pkg_names.get(
+                    (int(subtask["id"]), int(subtask["sub_id"])), ("", "", "")
+                )
                 if subtask["package"] != "":
                     pkg_name = subtask["package"]
                 elif subtask["srpm_name"] != "":
                     pkg_name = subtask["srpm_name"]
                 if subtask["dir"] != "" and not subtask["dir"].startswith("/gears/"):
-                    try:
-                        pkg_name = pkg_names[
-                            (int(subtask["id"]), int(subtask["sub_id"]))
-                        ]
+                    if pkg_name:
                         subtask["dir"] = f"/gears/{pkg_name[0]}/{pkg_name}.git"
-                    except Exception as e:
+                    else:
                         pkg_name = subtask["dir"].split("/")[-1][:-4]
                 elif subtask["dir"].startswith("/gears/"):
                     pkg_name = subtask["dir"].split("/")[-1][:-4]
                 pkg_type, pkg_link = TasksByPackage._build_gear_link(
                     subtask, lut.gitalt_base
                 )
-                pkg_ls.append({"type": pkg_type, "link": pkg_link, "name": pkg_name})
+                pkg_ls.append(
+                    {
+                        "type": pkg_type,
+                        "link": pkg_link,
+                        "name": pkg_name,
+                        "version": pkg_version,
+                        "release": pkg_release,
+                    }
+                )
 
             res.append(
                 {
