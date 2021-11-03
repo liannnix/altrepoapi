@@ -9,12 +9,24 @@ from .endpoints.pkgset_packages import (
     PackagesetPackageHash,
     PackagesetPackageBinaryHash,
 )
-from .endpoints.packager_info import AllMaintainers, MaintainerInfo, MaintainerPackages
-from .endpoints.packager_info import MaintainerBranches, RepocopByMaintainer
-from .endpoints.packager_info import MaintainerBeehiveErrors
-from .endpoints.pkgset_packages import PackagesetFindPackages, AllPackagesets
-from .endpoints.pkgset_packages import PkgsetCategoriesCount, AllPackagesetArchs
-from .endpoints.pkgset_packages import AllPackagesetsByHash, LastBranchPackages
+from .endpoints.packager_info import (
+    AllMaintainers,
+    MaintainerInfo,
+    MaintainerPackages,
+    MaintainerBranches,
+    RepocopByMaintainer,
+    MaintainerBeehiveErrors,
+)
+from .endpoints.pkgset_info import (
+    AllPackagesets,
+    PkgsetCategoriesCount,
+    AllPackagesetArchs,
+)
+from .endpoints.pkgset_packages import (
+    PackagesetFindPackages,
+    AllPackagesetsByHash,
+    LastBranchPackages,
+)
 from .endpoints.task_info import (
     TasksByPackage,
     LastTaskPackages,
@@ -55,6 +67,7 @@ from .serializers import (
     beehive_by_maintainer_model,
     last_packages_branch_model,
     pkgs_versions_from_tasks_model,
+    pkgsets_summary_status_model,
 )
 
 ns = get_namespace()
@@ -300,6 +313,35 @@ class routeAllPackagesetsSummary(Resource):
 
 
 @ns.route(
+    "/pkgsets_summary_status",
+    doc={
+        "description": (
+            "Get package sets list with source packages count and status info"
+        ),
+        "responses": {404: "Data not found in database"},
+    },
+)
+class routePackagesetsSummaryStatus(Resource):
+    # @ns.expect()
+    @ns.marshal_with(pkgsets_summary_status_model)
+    def get(self):
+        args = {}
+        url_logging(logger, g.url)
+        wrk = AllPackagesets(g.connection, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get_summary_status()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route(
     "/all_pkgset_archs",
     doc={
         "description": "Get binary package archs list",
@@ -486,8 +528,7 @@ class routePackagsetsByHash(Resource):
 
 
 @ns.route(
-    "/all_maintainers",
-    doc={"description": "alias for /all_maintainers_with_nicknames"}
+    "/all_maintainers", doc={"description": "alias for /all_maintainers_with_nicknames"}
 )
 @ns.route("/all_maintainers_with_nicknames")
 @ns.doc(

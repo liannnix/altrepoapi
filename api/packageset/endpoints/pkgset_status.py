@@ -103,7 +103,7 @@ class RepositoryStatus(APIWorker):
             return self.error
 
         RepositoryStatusInfo = namedtuple(
-            "RepositoryStatusModel",
+            "RepositoryStatusInfo",
             [
                 "branch",
                 "start_date",

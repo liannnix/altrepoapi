@@ -863,5 +863,17 @@ LEFT JOIN
 ) AS PKG ON pkg_hash = titer_srcrpm_hash
 """
 
+    get_pkgset_status = """
+SELECT
+    pkgset_name,
+    argMax(rs_start_date, ts) AS start_date,
+    argMax(rs_end_date, ts) AS end_date,
+    argMax(rs_show, ts) AS show,
+    argMax(rs_description_ru, ts) AS desc_ru,
+    argMax(rs_description_en, ts) AS desc_en
+FROM RepositoryStatus
+GROUP BY pkgset_name
+"""
+
 
 sql = SQL()

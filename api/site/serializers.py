@@ -367,6 +367,34 @@ all_pkgsets_summary_model = ns.model(
     },
 )
 
+pkgsets_status_el_model = ns.model(
+    "SitePackagesetStatusElementModel",
+    {
+        "branch": fields.String(description="package set name"),
+        "start_date": fields.DateTime(description="support start date"),
+        "end_date": fields.DateTime(description="support end date"),
+        "show": fields.Integer(description="0 - hide branch, 1 - show branch"),
+        "description_ru": fields.String(description="html description in Russian"),
+        "description_en": fields.String(description="html description in English"),
+    }
+)
+pkgsets_summary_status_model = ns.model(
+    "SitePackagesetsSummaryStatusModel",
+    {
+        "length": fields.Integer(description="number of packages found"),
+        "branches": fields.Nested(
+            all_pkgsets_summary_branches_model,
+            description="list of branches with source packages count",
+            as_list=True,
+        ),
+        "status": fields.Nested(
+            pkgsets_status_el_model,
+            description="list of branches status",
+            as_list=True,
+        ),
+    },
+)
+
 beehive_by_maintainer_el_model = ns.model(
     "SiteBeehiveByMaintainerElementModel",
     {
