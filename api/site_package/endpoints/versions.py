@@ -10,7 +10,7 @@ from ..sql import sql
 
 
 class SourcePackageVersions(APIWorker):
-    """Retrieves information about deleted package."""
+    """Get source package versions from last package sets."""
 
     def __init__(self, connection, **kwargs):
         self.conn = connection
