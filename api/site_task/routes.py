@@ -4,12 +4,9 @@ from flask_restx import Resource, abort
 from utils import get_logger, url_logging, response_error_parser
 
 from .namespace import get_namespace
-from .endpoints.task_info import (
-    TasksByPackage,
-    LastTaskPackages,
-    TasksByMaintainer,
-    PackageVersionsFromTasks,
-)
+from .endpoints.last_packages import LastTaskPackages
+from .endpoints.versions import PackageVersionsFromTasks
+from .endpoints.task_info import TasksByPackage, TasksByMaintainer
 from .parsers import (
     last_pkgs_args,
     task_by_name_args,
