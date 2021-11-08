@@ -45,21 +45,6 @@ buildtime = parser.register_item(
     help="package buildtime",
     location="args",
 )
-task_limit = parser.register_item(
-    "tasks_limit",
-    type=int,
-    default=10,
-    required=True,
-    help="number of last tasks to get",
-    location="args",
-)
-task_owner = parser.register_item(
-    "task_owner",
-    type=str,
-    required=False,
-    help="task owner's nickname",
-    location="args",
-)
 maintainer_nick = parser.register_item(
     "maintainer_nickname",
     type=str,
@@ -87,13 +72,10 @@ pkgs_limit = parser.register_item(
 pkgset_packages_args = parser.build_parser(branch, package_type, group, buildtime)
 pkgset_pkghash_args = parser.build_parser(branch, name)
 pkgset_pkg_binary_hash_args = parser.build_parser(branch, name, arch)
-task_by_name_args = parser.build_parser(name)
 pkgs_by_name_args = parser.build_parser(name, branch_opt, arch_opt)
-last_pkgs_args = parser.build_parser(branch, task_limit, task_owner)
 pkgset_categories_args = parser.build_parser(branch, package_type)
 all_archs_args = parser.build_parser(branch)
 all_maintainers_args = parser.build_parser(branch)
 maintainer_info_args = parser.build_parser(branch, maintainer_nick)
 maintainer_branches_args = parser.build_parser(maintainer_nick)
 last_pkgs_branch_args = parser.build_parser(branch, pkgs_limit, packager)
-pkgs_versions_from_tasks_args = parser.build_parser(name, branch_opt)

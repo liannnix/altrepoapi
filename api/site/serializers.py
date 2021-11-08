@@ -58,40 +58,6 @@ pkgset_pkghash_model = ns.model(
 )
 
 
-task_by_name_pkg_model = ns.model(
-    "SiteTaskByNamePackageModel",
-    {
-        "type": fields.String(description="subtask type [gear|srpm|delete|search]"),
-        "name": fields.String(description="package name"),
-        "version": fields.String(description="package version"),
-        "release": fields.String(description="package release"),
-        "link": fields.String(description="package git link"),
-    },
-)
-task_by_name_task_model = ns.model(
-    "SiteTaskByNameTaskModel",
-    {
-        "id": fields.Integer(description="task id"),
-        "state": fields.String(description="task state"),
-        "branch": fields.String(description="task branch"),
-        "owner": fields.String(description="task owner nickname"),
-        "changed": fields.String(description="task last changed (ISO 8601 format)"),
-        "packages": fields.Nested(
-            task_by_name_pkg_model, description="task packages", as_list=True
-        ),
-    },
-)
-task_by_name_model = ns.model(
-    "SiteTaskByNameModel",
-    {
-        "request_args": fields.Raw(description="request arguments"),
-        "length": fields.Integer(description="number of tasks found"),
-        "tasks": fields.Nested(
-            task_by_name_task_model, description="tasks list", as_list=True
-        ),
-    },
-)
-
 fing_pkgs_by_name_pkg_model = ns.model(
     "SiteFingPackagesPackageModel",
     {
@@ -116,6 +82,7 @@ fing_pkgs_by_name_model = ns.model(
     },
 )
 
+
 all_pkgsets_el_model = ns.model(
     "SiteAllPackagasetsElementModel",
     {
@@ -134,6 +101,7 @@ all_pkgsets_model = ns.model(
         ),
     },
 )
+
 
 all_archs_el_model = ns.model(
     "SiteAllArchsElementModel",
@@ -154,6 +122,7 @@ all_archs_model = ns.model(
     },
 )
 
+
 pkgset_category_model = ns.model(
     "SitePackagesetCategoryElementModel",
     {
@@ -172,6 +141,7 @@ pkgset_categories_model = ns.model(
     },
 )
 
+
 pkgsets_by_hash_model = ns.model(
     "SitePackagesetsByHashModel",
     {
@@ -180,6 +150,7 @@ pkgsets_by_hash_model = ns.model(
         "branches": fields.List(fields.String, description="package sets"),
     },
 )
+
 
 all_maintainers_el_model = ns.model(
     "AllMaintainersElementModel",
@@ -200,6 +171,7 @@ all_maintainers_model = ns.model(
     },
 )
 
+
 maintainer_info_model = ns.model(
     "MaintainerInfoModel",
     {
@@ -209,6 +181,7 @@ maintainer_info_model = ns.model(
         ),
     },
 )
+
 
 maintainer_pkgs_el_model = ns.model(
     "MaintainerPackagesElementModel",
@@ -232,6 +205,7 @@ maintainer_pkgs_model = ns.model(
     },
 )
 
+
 maintainer_branches_model = ns.model(
     "MaintainerBranchesModel",
     {
@@ -244,6 +218,7 @@ maintainer_branches_model = ns.model(
         ),
     },
 )
+
 
 repocop_by_maintainer_el_model = ns.model(
     "RepocopByMaintainerElementModel",
@@ -270,69 +245,6 @@ repocop_by_maintainer_model = ns.model(
             description="repocop packages info",
             as_list=True,
         ),
-    },
-)
-
-last_packages_el_model = ns.model(
-    "SiteLastPackagesElementModel",
-    {
-        "subtask_id": fields.Integer(description="subtask id"),
-        "subtask_userid": fields.String(description="subtask created by"),
-        "subtask_type": fields.String(
-            description="subtask type [build|rebuild|delete]"
-        ),
-        "hash": fields.String(
-            attribute="pkg_hash", description="package hash UInt64 as string"
-        ),
-        "name": fields.String(attribute="pkg_name", description="package name"),
-        "version": fields.String(
-            attribute="pkg_version", description="package version"
-        ),
-        "release": fields.String(
-            attribute="pkg_release", description="package release"
-        ),
-        "summary": fields.String(
-            attribute="pkg_summary", description="package summary"
-        ),
-        "buildtime": fields.Integer(
-            attribute="pkg_buildtime", description="package buildtime"
-        ),
-        "changelog_name": fields.String(description="package last changelog name"),
-        "changelog_nickname": fields.String(
-            description="package last changelog nickname"
-        ),
-        "changelog_date": fields.String(
-            description="package last changelog message date"
-        ),
-        "changelog_text": fields.String(description="package last changelog message"),
-    },
-)
-last_packages_pkg_model = ns.model(
-    "SiteLastPackagesPackageModel",
-    {
-        "task_id": fields.Integer(description="task id"),
-        "task_owner": fields.String(description="task owner"),
-        "task_changed": fields.String(description="task completed at"),
-        "task_message": fields.String(description="task message"),
-        "packages": fields.Nested(
-            last_packages_el_model,
-            description="task subtasks packages information",
-            as_list=True,
-        ),
-    },
-)
-last_packages_model = ns.model(
-    "SiteLastPackagesModel",
-    {
-        "request_args": fields.Raw(description="request arguments"),
-        "length": fields.Integer(description="number of packages found"),
-        "tasks": fields.Nested(
-            last_packages_pkg_model,
-            description="last tasks packages information",
-            as_list=True,
-        ),
-        "last_branch_task": fields.Integer(description="last loaded branch task"),
-        "last_branch_date": fields.String(description="last loaded branch date"),
     },
 )
 
@@ -367,6 +279,7 @@ all_pkgsets_summary_model = ns.model(
     },
 )
 
+
 pkgsets_status_el_model = ns.model(
     "SitePackagesetStatusElementModel",
     {
@@ -394,6 +307,7 @@ pkgsets_summary_status_model = ns.model(
         ),
     },
 )
+
 
 beehive_by_maintainer_el_model = ns.model(
     "SiteBeehiveByMaintainerElementModel",
@@ -463,29 +377,5 @@ last_packages_branch_model = ns.model(
             as_list=True,
         ),
         "last_branch_date": fields.String(description="last loaded branch date"),
-    }
-)
-
-pkgs_versions_from_tasks_el_model = ns.model(
-    "SItePackagesVersionsFromTasksElementModel",
-    {
-        "branch": fields.String(description="package set name"),
-        "task": fields.Integer(description="package build task"),
-        "hash": fields.String(description="package hash UInt64 as string"),
-        "name": fields.String(description="package name"),
-        "version": fields.String(description="package version"),
-        "release": fields.String(description="package release"),
-    }
-)
-pkgs_versions_from_tasks_model = ns.model(
-    "SItePackagesVersionsFromTasksModel",
-    {
-        "request_args": fields.Raw(description="request arguments"),
-        "length": fields.Integer(description="number of versions found"),
-        "versions": fields.Nested(
-            pkgs_versions_from_tasks_el_model,
-            description="package versions list",
-            as_list=True,
-        ),
     }
 )
