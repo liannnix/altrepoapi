@@ -1,14 +1,13 @@
-from flask_restx import reqparse
+from api.base import parser
 
-package_bugzilla_args = reqparse.RequestParser()
-package_bugzilla_args.add_argument(
+package_name = parser.register_item(
     "package_name",
     type=str,
     required=True,
     help="source or binary package name",
     location="args",
 )
-package_bugzilla_args.add_argument(
+package_type_opt = parser.register_item(
     "package_type",
     type=str,
     choices=("source", "binary"),
@@ -17,12 +16,13 @@ package_bugzilla_args.add_argument(
     help="packages type [source|binary]",
     location="args",
 )
-
-maintainer_bugzilla_args = reqparse.RequestParser()
-maintainer_bugzilla_args.add_argument(
+maintainer_nickname = parser.register_item(
     "maintainer_nickname",
     type=str,
     required=True,
     help="maintainer nickname",
     location="args",
 )
+
+package_bugzilla_args = parser.build_parser(package_name, package_type_opt)
+maintainer_bugzilla_args = parser.build_parser(maintainer_nickname)
