@@ -4,11 +4,13 @@ from flask_restx import Resource, abort
 from utils import get_logger, url_logging, response_error_parser
 
 from .namespace import get_namespace
-from .endpoints.pkgset_packages import (
-    PackagesetPackages,
+from .endpoints.find_package import PackagesetFindPackages
+from .endpoints.package_hash import (
     PackagesetPackageHash,
     PackagesetPackageBinaryHash,
-    PackagesetFindPackages,
+)
+from .endpoints.pkgset_packages import (
+    PackagesetPackages,
     AllPackagesetsByHash,
     LastBranchPackages,
 )
@@ -36,7 +38,7 @@ logger = get_logger(__name__)
     "/repository_packages",
     doc={
         "description": (
-            "Get list of packageset packages in accordance " "to given parameters"
+            "Get list of packageset packages in accordance to given parameters"
         ),
         "responses": {
             400: "Request parameters validation error",
