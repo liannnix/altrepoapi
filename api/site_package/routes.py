@@ -11,7 +11,7 @@ from .endpoints.package_info import (
 )
 from .endpoints.changelog import PackageChangelog
 from .endpoints.downloads import PackageDownloadLinks, BinaryPackageDownloadLinks
-from .endpoints.versions import SourcePackageVersions
+from .endpoints.versions import SourcePackageVersions, PackageVersions
 from .endpoints.scripts import BinaryPackageScripts
 from .endpoints.cve import LastPackagesWithCVEFix
 from .parsers import (
@@ -23,6 +23,7 @@ from .parsers import (
     pkgs_binary_list_args,
     deleted_package_args,
     src_pkgs_versions_args,
+    pkgs_versions_args,
 )
 from .serializers import (
     package_chlog_model,
@@ -312,6 +313,36 @@ class routeSourcePackageVersions(Resource):
         args = src_pkgs_versions_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = SourcePackageVersions(g.connection, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route(
+    "/package_versions",
+    doc={
+        "description": "Get source or binary package versions from last branches",
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package not found in database",
+        },
+    },
+)
+class routePackageVersions(Resource):
+    @ns.expect(pkgs_versions_args)
+    @ns.marshal_with(src_pkgs_versions_model)
+    def get(self):
+        args = pkgs_versions_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        wrk = PackageVersions(g.connection, **args)
         if not wrk.check_params():
             abort(
                 400,
