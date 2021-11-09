@@ -1,13 +1,13 @@
-from flask_restx import reqparse
+# from flask_restx import reqparse
+from api.base import parser
 
-pkgs_depends_args = reqparse.RequestParser()
-pkgs_depends_args.add_argument(
-    "dp_name", type=str, required=True, help="dependency name", location="args"
-)
-pkgs_depends_args.add_argument(
+branch = parser.register_item(
     "branch", type=str, required=True, help="packageset name", location="args"
 )
-pkgs_depends_args.add_argument(
+dp_name = parser.register_item(
+    "dp_name", type=str, required=True, help="dependency name", location="args"
+)
+dp_type_opt = parser.register_item(
     "dp_type",
     type=str,
     choices=("provide", "require"),
@@ -16,3 +16,5 @@ pkgs_depends_args.add_argument(
     help="type of dependency [provide|require]",
     location="args",
 )
+
+pkgs_depends_args = parser.build_parser(branch, dp_name, dp_type_opt)
