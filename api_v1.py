@@ -12,6 +12,7 @@ from api.dependencies import ns as dependencies_ns
 from api.site import ns as site_ns
 from api.site_task import ns as site_task_ns
 from api.site_package import ns as site_package_ns
+from api.site_pkgset_info import ns as site_pkgset_info
 from api.site_maintainer import ns as site_maintainer_ns
 
 
@@ -39,6 +40,7 @@ api.add_namespace(dependencies_ns)
 api.add_namespace(site_ns)
 api.add_namespace(site_task_ns)
 api.add_namespace(site_package_ns)
+api.add_namespace(site_pkgset_info)
 api.add_namespace(site_maintainer_ns)
 
 version_fields = api.model(

@@ -1,4 +1,3 @@
-import json
 from collections import namedtuple
 
 from utils import sort_branches, datetime_to_iso

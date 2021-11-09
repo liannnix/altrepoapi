@@ -42,31 +42,6 @@ WHERE pkgset_name = %(branch)s
 ORDER BY pkg_name
 """
 
-    get_pkg_task_by_hash = """
-SELECT DISTINCT
-    task_id,
-    subtask_id
-FROM TaskIterations
-WHERE titer_srcrpm_hash = {pkghash}
-    AND task_id IN 
-    (
-        SELECT task_id
-        FROM Tasks
-        WHERE task_repo = '{branch}'
-    )
-ORDER BY task_changed DESC
-"""
-
-    get_task_gears_by_id = """
-SELECT DISTINCT
-    subtask_type,
-    subtask_dir,
-    subtask_srpm_name,
-    subtask_pkg_from
-FROM Tasks
-WHERE task_id = {task} AND subtask_id = {subtask}
-"""
-
     get_pkghash_by_name = """
 SELECT DISTINCT
     pkg_hash,
@@ -152,73 +127,10 @@ GROUP BY pkg_name
 ORDER BY pkg_name
 """
 
-    get_all_pkgset_names = """
-SELECT groupUniqArray(pkgset_name)
-FROM lv_pkgset_stat
-"""
-
-    get_all_pkgset_names_with_pkg_count = """
-SELECT
-    pkgset_name,
-    cnt
-FROM lv_pkgset_stat
-WHERE pkg_arch = 'srpm'
-"""
-
-    get_all_bin_pkg_archs = """
-SELECT groupUniqArray(pkg_arch)
-FROM lv_pkgset_stat
-WHERE pkgset_name = '{branch}'
-"""
-
-    get_all_src_cnt_by_bin_archs = """
-SELECT
-    pkg_arch,
-    cnt
-FROM lv_pkgset_stat
-WHERE pkgset_name = '{branch}'
-    AND pkg_arch NOT LIKE 'srpm'
-"""
-
-    get_all_pkgsets_with_src_cnt_by_bin_archs = """
-SELECT
-    pkgset_name,
-    pkg_arch,
-    cnt
-FROM lv_pkgset_stat
-"""
-
-    get_pkgset_stat = """
-SELECT
-    pkgset_name,
-    pkgset_date,
-    pkg_arch,
-    cnt
-FROM lv_pkgset_stat
-{where}
-"""
-
     get_last_branch_date = """
 SELECT DISTINCT pkgset_date
 FROM lv_pkgset_stat
 WHERE pkgset_name = '{branch}'
-"""
-
-    get_pkgset_groups_count = """
-SELECT
-    pkg_group_,
-    count(pkg_hash)
-FROM Packages
-WHERE pkg_hash IN
-(
-    SELECT pkg_hash
-    FROM static_last_packages
-    WHERE pkgset_name = '{branch}'
-        AND pkg_sourcepackage IN {sourcef}
-        AND pkg_name NOT LIKE '%%-debuginfo'
-)
-GROUP BY pkg_group_
-ORDER BY pkg_group_ ASC
 """
 
     get_all_pkgsets_by_hash = """
@@ -235,57 +147,6 @@ WHERE (pkgset_ruuid IN
         WHERE pkg_hash = {pkghash}
     )
 )) AND (pkgset_depth = 0)
-"""
-
-    get_last_scrpkg_hash_in_branch = """
-WITH
-all_src_hashes AS
-(
-    SELECT pkg_hash
-    FROM Packages
-    WHERE pkg_name like '{name}'
-        AND pkg_sourcepackage = 1
-)
-SELECT DISTINCT pkg_hash
-FROM PackageSet
-WHERE pkgset_uuid IN
-(
-    SELECT pkgset_uuid
-    FROM PackageSetName
-    WHERE pkgset_nodename = 'srpm'
-        AND pkgset_puuid IN
-        (
-            SELECT p_uuid FROM
-            (
-                SELECT
-                    pkgset_nodename, max(pkgset_date) as p_date, argMax(pkgset_uuid, pkgset_date) as p_uuid
-                FROM PackageSetName
-                WHERE pkgset_uuid IN
-                (
-                    SELECT pkgset_ruuid
-                    FROM PackageSetName
-                    WHERE pkgset_uuid IN
-                    (
-                        SELECT pkgset_uuid
-                        FROM PackageSet
-                        WHERE pkg_hash IN all_src_hashes
-                    )
-                )
-                    AND pkgset_nodename = '{branch}'
-                GROUP BY pkgset_nodename
-            )
-        )
-) AND pkg_hash IN all_src_hashes
-"""
-
-    get_pkgs_bin_depends = """
-    SELECT
-        dp_name,
-        dp_version,
-        dp_flag,
-        dp_type
-    FROM Depends
-    WHERE pkg_hash = {pkghash}
 """
 
     get_last_branch_src_diff = """
@@ -381,18 +242,6 @@ LEFT JOIN
 ) AS BinLastBuild ON BinLastBuild.hash = RQ.pkg_hash
 ORDER BY last_build DESC
 LIMIT {limit}
-"""
-
-    get_pkgset_status = """
-SELECT
-    pkgset_name,
-    argMax(rs_start_date, ts) AS start_date,
-    argMax(rs_end_date, ts) AS end_date,
-    argMax(rs_show, ts) AS show,
-    argMax(rs_description_ru, ts) AS desc_ru,
-    argMax(rs_description_en, ts) AS desc_en
-FROM RepositoryStatus
-GROUP BY pkgset_name
 """
 
 

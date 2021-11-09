@@ -57,6 +57,4 @@ pkgset_packages_args = parser.build_parser(branch, package_type, group, buildtim
 pkgset_pkghash_args = parser.build_parser(branch, name)
 pkgset_pkg_binary_hash_args = parser.build_parser(branch, name, arch)
 pkgs_by_name_args = parser.build_parser(name, branch_opt, arch_opt)
-pkgset_categories_args = parser.build_parser(branch, package_type)
-all_archs_args = parser.build_parser(branch)
 last_pkgs_branch_args = parser.build_parser(branch, pkgs_limit, packager)
