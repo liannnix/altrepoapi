@@ -591,8 +591,8 @@ class PackageBuildDependency:
                 f"allowed package set names are : {lut.known_branches}"
             )
 
-        if self.args["arch"]:
-            for arch in self.args["arch"]:
+        if self.args["archs"]:
+            for arch in self.args["archs"]:
                 if arch not in lut.known_archs:
                     self.validation_results.append(f"unknown package arch : {arch}")
 
@@ -624,7 +624,7 @@ class PackageBuildDependency:
             self.conn,
             self.args["packages"],
             self.args["branch"].lower(),
-            self.args["arch"],
+            self.args["archs"],
             self.args["leaf"],
             self.args["depth"],
             self.args["dptype"],
