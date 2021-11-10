@@ -1,15 +1,14 @@
-from flask_restx import reqparse, inputs
+from flask_restx import inputs
+from api.base import parser
 
-task_info_args = reqparse.RequestParser()
-task_info_args.add_argument(
+# register parser items
+try_opt = parser.register_item(
     "try", type=int, required=False, help="task try", location="args"
 )
-task_info_args.add_argument(
+iteration_opt = parser.register_item(
     "iteration", type=int, required=False, help="task iteration", location="args"
 )
-
-task_repo_args = reqparse.RequestParser()
-task_repo_args.add_argument(
+include_task_packages_opt = parser.register_item(
     "include_task_packages",
     type=inputs.boolean,
     required=False,
@@ -17,24 +16,30 @@ task_repo_args.add_argument(
     help="include task packages in repository state",
     location="args",
 )
-
-task_build_dep_args = reqparse.RequestParser()
-task_build_dep_args.add_argument(
-    "arch",
+arch_list_opt = parser.register_item(
+    "archs",
     type=str,
     action="split",
     required=False,
     help="list of packages architectures",
     location="args",
 )
-task_build_dep_args.add_argument(
+branch_list_opt = parser.register_item(
+    "branches",
+    type=str,
+    action="split",
+    required=False,
+    help="list of package sets to filter result",
+    location="args",
+)
+leaf_opt = parser.register_item(
     "leaf",
     type=str,
     required=False,
     help="assembly dependency chain package",
     location="args",
 )
-task_build_dep_args.add_argument(
+depth_opt = parser.register_item(
     "depth",
     type=int,
     default=1,
@@ -42,7 +47,7 @@ task_build_dep_args.add_argument(
     help="dependency depth",
     location="args",
 )
-task_build_dep_args.add_argument(
+dptype_opt = parser.register_item(
     "dptype",
     type=str,
     choices=("both", "source", "binary"),
@@ -51,7 +56,7 @@ task_build_dep_args.add_argument(
     help="dependency type [source|binary|both]",
     location="args",
 )
-task_build_dep_args.add_argument(
+filter_by_package_list_opt = parser.register_item(
     "filter_by_package",
     type=str,
     action="split",
@@ -59,14 +64,14 @@ task_build_dep_args.add_argument(
     help="filter result by dependency on binary packages",
     location="args",
 )
-task_build_dep_args.add_argument(
+filter_by_source_opt = parser.register_item(
     "filter_by_source",
     type=str,
     required=False,
     help="filter result by dependency on source package",
     location="args",
 )
-task_build_dep_args.add_argument(
+finite_package_opt = parser.register_item(
     "finite_package",
     type=inputs.boolean,
     default=False,
@@ -74,7 +79,7 @@ task_build_dep_args.add_argument(
     help="topological tree leaves packages",
     location="args",
 )
-task_build_dep_args.add_argument(
+oneandhalf_opt = parser.register_item(
     "oneandhalf",
     type=inputs.boolean,
     default=False,
@@ -83,32 +88,20 @@ task_build_dep_args.add_argument(
     location="args",
 )
 
-task_misconflict_args = reqparse.RequestParser()
-task_misconflict_args.add_argument(
-    "archs",
-    type=str,
-    action="split",
-    required=False,
-    help="list of packages architectures",
-    location="args",
-)
 
-task_find_pkgset_args = reqparse.RequestParser()
-task_find_pkgset_args.add_argument(
-    "branches",
-    type=str,
-    action="split",
-    required=False,
-    help="list of package sets to filter result",
-    location="args",
+# build parsers
+task_info_args = parser.build_parser(try_opt, iteration_opt)
+task_repo_args = parser.build_parser(include_task_packages_opt)
+task_build_dep_args = parser.build_parser(
+    depth_opt,
+    dptype_opt,
+    arch_list_opt,
+    leaf_opt,
+    finite_package_opt,
+    filter_by_package_list_opt,
+    filter_by_source_opt,
+    oneandhalf_opt,
 )
-
-task_buid_dep_set_args = reqparse.RequestParser()
-task_buid_dep_set_args.add_argument(
-    "archs",
-    type=str,
-    action="split",
-    required=False,
-    help="list of packages architectures",
-    location="args",
-)
+task_misconflict_args = parser.build_parser(arch_list_opt)
+task_find_pkgset_args = parser.build_parser(branch_list_opt)
+task_buid_dep_set_args = parser.build_parser(arch_list_opt)
