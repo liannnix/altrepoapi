@@ -29,12 +29,5 @@ arch_list_opt = parser.register_item(
 )
 
 # build parsers
-pkgset_compare_args = parser.build_parser(
-    packageset_1,
-    packageset_2
-)
-pkgset_packages_args = parser.build_parser(
-    branch,
-    package_type_opt,
-    arch_list_opt
-)
+pkgset_compare_args = parser.build_parser(packageset_1, packageset_2)
+pkgset_packages_args = parser.build_parser(branch, package_type_opt, arch_list_opt)
