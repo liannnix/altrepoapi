@@ -32,8 +32,8 @@ class TaskBuildDependency(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["arch"]:
-            for arch in self.args["arch"]:
+        if self.args["archs"]:
+            for arch in self.args["archs"]:
                 if arch not in lut.known_archs:
                     self.validation_results.append(f"unknown package arch : {arch}")
 
@@ -103,7 +103,7 @@ class TaskBuildDependency(APIWorker):
             self.conn,
             self.args["package"],
             self.args["branch"],
-            self.args["arch"],
+            self.args["archs"],
             self.args["leaf"],
             self.args["depth"],
             self.args["dptype"],
