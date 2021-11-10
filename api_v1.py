@@ -24,7 +24,7 @@ blueprint = Blueprint("api", __name__, url_prefix="/api")
 
 api = Api(
     blueprint,
-    version="1.3",
+    version="1.4",
     title="altrepodb",
     description="altrepodb API v1",
     default="api",
