@@ -9,7 +9,7 @@ branch = parser.register_item(
     help="name of packageset",
     location="args",
 )
-pkg_name =parser.register_item(
+pkg_name = parser.register_item(
     "name",
     type=str,
     required=True,
