@@ -198,9 +198,9 @@ package_info_args = parser.build_parser(
 pkg_build_dep_args = parser.build_parser(
     package_list,
     branch,
-    arch_list_opt,
     depth_opt,
     dptype_opt,
+    arch_list_opt,
     leaf_opt,
     finite_package_opt,
     filter_by_package_list_opt,
@@ -212,37 +212,18 @@ misconflict_pkg_args = parser.build_parser(
     branch,
     arch_list_opt,
 )
-pkg_find_pkgset_args = parser.build_parser(
-    package_list,
-    branch_list_opt
-)
-pkg_by_file_name_args = parser.build_parser(
-    file,
-    branch,
-    arch_opt
-)
-pkg_by_file_md5_args = parser.build_parser(
-    branch,
-    md5,
-    arch_opt
-)
-unpackaged_dirs_args = parser.build_parser(
-    branch,
-    packager,
-    arch_list_opt
-)
-build_dep_set_args = parser.build_parser(
-    branch,
-    package_list,
-    arch_list_opt
-)
+pkg_find_pkgset_args = parser.build_parser(package_list, branch_list_opt)
+pkg_by_file_name_args = parser.build_parser(file, branch, arch_opt)
+pkg_by_file_md5_args = parser.build_parser(branch, md5, arch_opt)
+unpackaged_dirs_args = parser.build_parser(branch, packager, arch_list_opt)
+build_dep_set_args = parser.build_parser(branch, package_list, arch_list_opt)
 pkg_repocop_args = parser.build_parser(
     branch,
     package_name,
     package_version_opt,
     package_release_opt,
     bin_package_arch_opt,
-    package_type_opt
+    package_type_opt,
 )
 specfile_args = parser.build_parser(
     branch,
