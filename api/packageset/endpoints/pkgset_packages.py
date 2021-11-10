@@ -47,7 +47,7 @@ class PackagesetPackages(APIWorker):
         self.archs = self.args["archs"]
         if self.archs:
             if "noarch" not in self.archs:
-                self.archs = self.archs.append("noarch")
+                self.archs.append("noarch")
         else:
             self.archs = lut.known_archs
         self.archs = tuple(self.archs)
