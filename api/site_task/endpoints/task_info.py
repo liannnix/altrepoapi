@@ -41,6 +41,12 @@ class TasksByPackage(APIWorker):
         Returns:
             tuple: return package type [gear|srpm|copy|delete] and link (git)
         """
+        def delete_epoch(evr):
+            #  delete epoch from evr
+            if ":" in evr:
+                return evr.split(":")[-1]
+            return evr
+
         type_ = ""
         link_ = ""
         if subtask["type"] == "copy":
@@ -54,7 +60,7 @@ class TasksByPackage(APIWorker):
             type_ = "srpm"
             link_ = f"{git_base_url}/srpms/{subtask['srpm_name'][0]}/{subtask['srpm_name']}.git"
             if subtask["srpm_evr"] != "":
-                link_ += f"?a=tree;hb={subtask['srpm_evr']}"
+                link_ += f"?a=tree;hb={delete_epoch(subtask['srpm_evr'])}"
         elif subtask["type"] == "delete":
             # 'delete' return only package name
             type_ = "delete"
@@ -70,7 +76,7 @@ class TasksByPackage(APIWorker):
             type_ = "srpm"
             link_ = f"{git_base_url}/srpms/{subtask['srpm_name'][0]}/{subtask['srpm_name']}.git"
             if subtask["srpm_evr"] != "":
-                link_ += f"?a=tree;hb={subtask['srpm_evr']}"
+                link_ += f"?a=tree;hb={delete_epoch(subtask['srpm_evr'])}"
 
         return type_, link_
 

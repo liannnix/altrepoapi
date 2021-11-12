@@ -57,6 +57,12 @@ class PackageInfo(APIWorker):
         Returns:
             str: link to Git repositroy
         """
+        def delete_epoch(evr):
+            #  delete epoch from evr
+            if ":" in evr:
+                return evr.split(":")[-1]
+            return evr
+
         link_ = ""
         if subtask["type"] == "copy":
             # 'copy' always has only 'subtask_package'
@@ -65,7 +71,7 @@ class PackageInfo(APIWorker):
             # TODO: bug workaround for girar changes @ e74d8067009d
             link_ = f"{git_base_url}/srpms/{pkgname[0]}/{pkgname}.git"
             if subtask["srpm_evr"] != "":
-                link_ += f"?a=tree;hb={subtask['srpm_evr']}"
+                link_ += f"?a=tree;hb={delete_epoch(subtask['srpm_evr'])}"
         elif subtask["type"] == "delete":
             # 'delete' return only package name
             link_ = pkgname
@@ -78,7 +84,7 @@ class PackageInfo(APIWorker):
             # 'srpm' and 'rebuild' + 'unknown' with srpm
             link_ = f"{git_base_url}/srpms/{pkgname[0]}/{pkgname}.git"
             if subtask["srpm_evr"] != "":
-                link_ += f"?a=tree;hb={subtask['srpm_evr']}"
+                link_ += f"?a=tree;hb={delete_epoch(subtask['srpm_evr'])}"
         return link_
 
     def get(self):
