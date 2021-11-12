@@ -175,6 +175,7 @@ class TaskDiff(APIWorker):
         self.conn.request_line = self.sql.diff_repo_pkgs.format(
             tmp_table1="tmpRepoHshs",
             tmp_table2="tmpTaskAddHshs",
+            tmp_table3="tmpTaskDelHshs",
         )
         status, response = self.conn.send_request()
         if status is False:
@@ -230,7 +231,7 @@ class TaskDiff(APIWorker):
 
         task_deps_add = build_depends_dict(response)
 
-        # get depends for added packages from task
+        # get depends for deleted packages from task
         self.conn.request_line = self.sql.diff_depends_by_hshs.format(
             table="tmpTaskDelHshs"
         )

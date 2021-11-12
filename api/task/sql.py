@@ -453,15 +453,28 @@ WHERE pkg_hash IN
 (
     SELECT * FROM {tmp_table1}
 )
-    AND pkg_name IN
+    AND
     (
-        SELECT DISTINCT pkg_name
-        FROM Packages
-        WHERE pkg_hash IN
+        pkg_name IN
         (
-            SELECT * FROM {tmp_table2}
+            SELECT DISTINCT pkg_name
+            FROM Packages
+            WHERE pkg_hash IN
+            (
+                SELECT * FROM {tmp_table2}
+            )
+                AND pkg_name NOT LIKE '%%-debuginfo'
         )
-            AND pkg_name NOT LIKE '%%-debuginfo'
+        OR pkg_name IN
+        (
+            SELECT DISTINCT pkg_name
+            FROM Packages
+            WHERE pkg_hash IN
+            (
+                SELECT * FROM {tmp_table3}
+            )
+                AND pkg_name NOT LIKE '%%-debuginfo'
+        )
     )
 """
 
