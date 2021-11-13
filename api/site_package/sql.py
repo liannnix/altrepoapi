@@ -27,8 +27,9 @@ WITH pkg_changelog AS
         FROM repodb.Packages
 ARRAY JOIN pkg_changelog
         WHERE pkg_hash = %(pkghash)s
+        LIMIT %(limit)s
     )
-SELECT
+SELECT DISTINCT
     pkg_hash,
     date,
     name,
@@ -49,7 +50,6 @@ LEFT JOIN
 ORDER BY
     date DESC,
     evr DESC
-LIMIT %(limit)s
 """
 
     get_pkg_info = """
