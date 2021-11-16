@@ -9,6 +9,7 @@ from .endpoints.package_info import (
     DeletedPackageInfo,
     PackagesBinaryListInfo,
 )
+from .endpoints.logs import BinaryPackageLog
 from .endpoints.changelog import PackageChangelog
 from .endpoints.downloads import PackageDownloadLinks, BinaryPackageDownloadLinks
 from .endpoints.versions import SourcePackageVersions, PackageVersions
@@ -34,6 +35,7 @@ from .serializers import (
     pkgs_binary_list_model,
     depends_packages_model,
     src_pkgs_versions_model,
+    bin_package_log_el_model,
 )
 
 ns = get_namespace()
@@ -343,6 +345,38 @@ class routePackageVersions(Resource):
         args = pkgs_versions_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = PackageVersions(g.connection, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route(
+    "/package_log_bin/<int:pkghash>",
+    doc={
+        "params": {"pkghash": "package hash"},
+        "description": "Get binary package build log link",
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package not found in database",
+        },
+    },
+)
+class routeBinaryPackageLog(Resource):
+
+    @ns.expect()
+    @ns.marshal_with(bin_package_log_el_model)
+    def get(self, pkghash):
+        args = {}
+        url_logging(logger, g.url)
+        wrk = BinaryPackageLog(g.connection, pkghash, **args)
         if not wrk.check_params():
             abort(
                 400,

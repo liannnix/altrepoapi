@@ -306,3 +306,16 @@ src_pkgs_versions_model = ns.model(
         ),
     },
 )
+
+
+bin_package_log_el_model = ns.model(
+    "BinPackageLogElementModel",
+    {
+        "pkg_hash": fields.String(description="binary package hash"),
+        "task_id": fields.Integer(description="task id"),
+        "subtask_id": fields.Integer(description="subtask id"),
+        "subtask_arch": fields.String(description="package architecture"),
+        "buildlog_hash": fields.String(description="hash of the log"),
+        "link": fields.String(description="link to the binary package build log")
+    }
+)

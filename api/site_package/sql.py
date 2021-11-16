@@ -608,5 +608,23 @@ WHERE pkg_hash = {pkghash}
     WHERE pkg_hash = {pkghash}
 """
 
+    get_bin_pkg_log = """
+    SELECT
+        task_id,
+        subtask_id,
+        subtask_arch,
+        titer_buildlog_hash
+    FROM TaskIterations
+    WHERE has(titer_pkgs_hash, {pkghash})
+        AND (task_id, task_changed) IN
+        (
+            SELECT
+                task_id,
+                task_changed
+            FROM TaskStates
+            WHERE task_state = 'DONE'
+        ) 
+"""
+
 
 sql = SQL()
