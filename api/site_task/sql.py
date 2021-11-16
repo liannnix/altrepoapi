@@ -322,6 +322,8 @@ SELECT DISTINCT
     pkg_tasks.task_id,
     toString(pkg_tasks.titer_srcrpm_hash),
     TSK.task_repo,
+    TSK.task_owner,
+    TSK.task_changed,
     PKG.pkg_name,
     PKG.pkg_version,
     PKG.pkg_release
@@ -330,7 +332,9 @@ INNER JOIN
 (
     SELECT
         task_id,
-        task_repo
+        task_repo,
+        task_owner,
+        task_changed
     FROM Tasks
     {branch_sub}
 ) AS TSK ON TSK.task_id = pkg_tasks.task_id

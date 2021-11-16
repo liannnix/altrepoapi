@@ -66,7 +66,7 @@ class PackageVersionsFromTasks(APIWorker):
             return self.error
 
         PkgVersions = namedtuple(
-            "PkgVersions", ["task", "hash", "branch", "name", "version", "release"]
+            "PkgVersions", ["task", "hash", "branch", "owner", "changed", "name", "version", "release"]
         )
         pkg_versions = [PkgVersions(*el)._asdict() for el in response]
         pkg_versions.sort(key=lambda val: val["task"], reverse=True)
