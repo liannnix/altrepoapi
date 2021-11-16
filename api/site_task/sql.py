@@ -321,9 +321,9 @@ pkg_tasks AS
 SELECT DISTINCT
     pkg_tasks.task_id,
     toString(pkg_tasks.titer_srcrpm_hash),
-    TSK.task_repo,
-    TSK.task_owner,
-    TSK.task_changed,
+    TSK.repo,
+    TSK.owner,
+    TSK.changed,
     PKG.pkg_name,
     PKG.pkg_version,
     PKG.pkg_release
@@ -332,11 +332,12 @@ INNER JOIN
 (
     SELECT
         task_id,
-        task_repo,
-        task_owner,
-        task_changed
+        any(task_repo) AS repo,
+        any(task_owner) AS owner,
+        max(task_changed) AS changed
     FROM Tasks
     {branch_sub}
+    GROUP BY task_id
 ) AS TSK ON TSK.task_id = pkg_tasks.task_id
 LEFT JOIN
 (
