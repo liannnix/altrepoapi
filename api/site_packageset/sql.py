@@ -42,6 +42,16 @@ WHERE pkgset_name = %(branch)s
 ORDER BY pkg_name
 """
 
+    get_group_subgroups = """
+SELECT DISTINCT pkg_group_
+FROM last_packages
+WHERE pkgset_name = %(branch)s
+    AND pkg_sourcepackage IN {src}
+    AND pkg_name NOT LIKE '%%-debuginfo'
+    AND pkg_group_ like '{group}%%'
+    AND pkg_group_ != '{group}'
+"""
+
     get_pkghash_by_name = """
 SELECT DISTINCT
     pkg_hash,

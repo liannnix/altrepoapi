@@ -112,12 +112,19 @@ class PackagesetPackages(APIWorker):
         )
 
         retval = [PkgMeta(*el)._asdict() for el in response]
+
         subcategories = []
-        for el in lut.pkg_groups:
-            if (
-                    el.startswith(self.args["group"]) and self.args["group"][-1] == "/"
-            ) or el.startswith(self.args["group"] + '/'):
-                subcategories.append(el)
+        self.conn.request_line = (
+            self.sql.get_group_subgroups.format(src=sourcef, group=self.group),
+            {"branch": self.branch},
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+
+        if response:
+            subcategories = [el[0] for el in response]
 
         res = {"request_args": self.args, "length": len(retval), "subcategories": subcategories, "packages": retval}
         return res, 200
