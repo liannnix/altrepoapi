@@ -38,6 +38,7 @@ pkgset_packages_model = ns.model(
     {
         "request_args": fields.Raw(description="request arguments"),
         "length": fields.Integer(description="number of packages found"),
+        "subcategories": fields.List(fields.String, description="list of subcategories"),
         "packages": fields.Nested(
             pkgset_packages_el_model,
             description="unpackaged directories information",

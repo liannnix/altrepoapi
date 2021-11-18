@@ -34,7 +34,17 @@ class PackagesetPackages(APIWorker):
             )
 
         if self.args["group"]:
+            match = False
             if self.args["group"] not in lut.pkg_groups:
+                for el in lut.pkg_groups:
+                    if (
+                            el.startswith(self.args["group"]) and self.args["group"][-1] == "/"
+                    ) or el.startswith(self.args["group"] + '/'):
+                        match = True
+                        break
+            else:
+                match = True
+            if not match:
                 self.validation_results.append(
                     f"unknown package category : {self.args['group']}"
                 )
@@ -59,7 +69,7 @@ class PackagesetPackages(APIWorker):
         self.buildtime = self.args["buildtime"]
 
         if self.group is not None:
-            group = f"AND pkg_group_ = %(group)s"
+            group = f"AND pkg_group_ LIKE '{self.group}%%'"
         else:
             group = ""
             self.group = ""
@@ -69,7 +79,7 @@ class PackagesetPackages(APIWorker):
 
         self.conn.request_line = (
             self.sql.get_repo_packages.format(src=sourcef, group=group),
-            {"buildtime": self.buildtime, "branch": self.branch, "group": self.group},
+            {"buildtime": self.buildtime, "branch": self.branch},
         )
         status, response = self.conn.send_request()
         if not status:
@@ -102,8 +112,14 @@ class PackagesetPackages(APIWorker):
         )
 
         retval = [PkgMeta(*el)._asdict() for el in response]
+        subcategories = []
+        for el in lut.pkg_groups:
+            if (
+                    el.startswith(self.args["group"]) and self.args["group"][-1] == "/"
+            ) or el.startswith(self.args["group"] + '/'):
+                subcategories.append(el)
 
-        res = {"request_args": self.args, "length": len(retval), "packages": retval}
+        res = {"request_args": self.args, "length": len(retval), "subcategories": subcategories, "packages": retval}
         return res, 200
 
 
