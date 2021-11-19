@@ -83,6 +83,25 @@ fing_pkgs_by_name_model = ns.model(
     },
 )
 
+fast_pkgs_search_el_model = ns.model(
+    "SiteFastPackagesSearchElementModel",
+    {
+        "name": fields.String(description="package name"),
+        "sourcepackage": fields.String(description="package type"),
+        "branches": fields.List(fields.String, description="list of package branches")
+    }
+)
+fast_pkgs_search_model = ns.model(
+    "SiteFastPackagesSearchModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "packages": fields.Nested(
+            fast_pkgs_search_el_model,
+            description="list of found packages",
+            as_list=True,)
+    }
+)
 
 pkgsets_by_hash_model = ns.model(
     "SitePackagesetsByHashModel",

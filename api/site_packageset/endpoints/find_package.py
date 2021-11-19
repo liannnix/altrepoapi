@@ -1,6 +1,6 @@
 from collections import namedtuple
 
-from utils import tuplelist_to_dict
+from utils import tuplelist_to_dict, sort_branches
 
 from api.base import APIWorker
 from api.misc import lut
@@ -111,6 +111,85 @@ class PackagesetFindPackages(APIWorker):
                     "summary": pkg[4],
                     "category": pkg[5],
                     "versions": [PkgMeta(*el)._asdict() for el in pkg[1]],
+                }
+            )
+
+        res = {"request_args": self.args, "length": len(res), "packages": res}
+        return res, 200
+
+
+class FastPackagesSearchLookup(APIWorker):
+    """Fast packages search lookup by name"""
+
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        self.validation_results = []
+
+        if self.args["branch"] is not None:
+            if (
+                    self.args["branch"] == ""
+                    or self.args["branch"] not in lut.known_branches
+            ):
+                self.validation_results.append(
+                    f"unknown package set name : {self.args['branch']}"
+                )
+                self.validation_results.append(
+                    f"allowed package set names are : {lut.known_branches}"
+                )
+
+        if self.args["name"] is None or self.args["name"] == "":
+            self.validation_results.append(f"package name should not be empty string")
+        elif len(self.args["name"]) < 2:
+            self.validation_results.append(
+                f"package name should be 2 characters at least"
+            )
+
+        if self.validation_results != []:
+            return False
+        else:
+            return True
+
+    def get(self):
+        self.name = self.args["name"]
+        self.branch = ""
+        if self.args["branch"] is not None:
+            self.branch = f"AND pkgset_name = '{self.args['branch']}'"
+
+        self.conn.request_line = self.sql.get_fast_search_packages_by_name.format(
+            branch=self.branch, name=self.name
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {
+                    "message": f"Packages like '{self.name}' not found in database",
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        res = []
+        for pkg in response:
+            if pkg[1] == 1:
+                sourcepackage = 'source'
+            else:
+                sourcepackage = 'binary'
+            res.append(
+                {
+                    "name": pkg[0],
+                    "sourcepackage": sourcepackage,
+                    "branches": sort_branches(pkg[2])
                 }
             )
 

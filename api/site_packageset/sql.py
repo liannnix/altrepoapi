@@ -137,6 +137,23 @@ GROUP BY pkg_name
 ORDER BY pkg_name
 """
 
+    get_fast_search_packages_by_name = """
+SELECT DISTINCT
+    pkg_name,
+    pkg_sourcepackage,
+    groupUniqArray(pkgset_name)
+FROM static_last_packages
+WHERE pkg_name LIKE '%{name}%'
+    AND pkg_name NOT LIKE '%-debuginfo'
+    {branch}
+GROUP BY
+    pkg_name,
+    pkg_sourcepackage
+ORDER BY
+    pkg_sourcepackage DESC,
+    pkg_name
+"""
+
     get_last_branch_date = """
 SELECT DISTINCT pkgset_date
 FROM lv_pkgset_stat

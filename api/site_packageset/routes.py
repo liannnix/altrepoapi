@@ -4,7 +4,7 @@ from flask_restx import Resource, abort
 from utils import get_logger, url_logging, response_error_parser
 
 from .namespace import get_namespace
-from .endpoints.find_package import PackagesetFindPackages
+from .endpoints.find_package import PackagesetFindPackages, FastPackagesSearchLookup
 from .endpoints.package_hash import (
     PackagesetPackageHash,
     PackagesetPackageBinaryHash,
@@ -20,6 +20,7 @@ from .parsers import (
     pkgset_packages_args,
     last_pkgs_branch_args,
     pkgset_pkg_binary_hash_args,
+    pkgs_search_by_name_args,
 )
 from .serializers import (
     pkgset_packages_model,
@@ -27,6 +28,7 @@ from .serializers import (
     fing_pkgs_by_name_model,
     pkgsets_by_hash_model,
     last_packages_branch_model,
+    fast_pkgs_search_model,
 )
 
 ns = get_namespace()
@@ -147,6 +149,36 @@ class routePackagesetFindPackages(Resource):
         args = pkgs_by_name_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = PackagesetFindPackages(g.connection, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route(
+    "/fast_packages_search_lookup",
+    doc={
+        "description": "Fast packages search by name",
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Data not found in database",
+        },
+    },
+)
+class routePackagesetFastPackagesSearch(Resource):
+    @ns.expect(pkgs_search_by_name_args)
+    @ns.marshal_with(fast_pkgs_search_model)
+    def get(self):
+        args = pkgs_by_name_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        wrk = FastPackagesSearchLookup(g.connection, **args)
         if not wrk.check_params():
             abort(
                 400,
