@@ -155,6 +155,24 @@ class FastPackagesSearchLookup(APIWorker):
         else:
             return True
 
+    @staticmethod
+    def _relevance_sort(pkgs_dict, pkg_name):
+        """Dumb sorting for package names by relevance."""
+
+        def relevance_weight(instr, substr):
+            return len(instr) + 100 * instr.find(substr)
+
+        l_in = []
+        l_out = []
+        for k in pkgs_dict.keys():
+            if k.lower().find(pkg_name.lower()) == -1:
+                l_out.append(k)
+            else:
+                l_in.append(k)
+        l_in.sort(key=lambda x: relevance_weight(x.lower(), pkg_name.lower()))
+        l_out.sort()
+        return [(name, *pkgs_dict[name]) for name in (l_in + l_out)]
+
     def get(self):
         self.name = self.args["name"]
         self.branch = ""
@@ -179,8 +197,10 @@ class FastPackagesSearchLookup(APIWorker):
             )
             return self.error
 
+        pkgs_sorted = self._relevance_sort(tuplelist_to_dict(response, 3), self.name)
+
         res = []
-        for pkg in response:
+        for pkg in pkgs_sorted:
             if pkg[1] == 1:
                 sourcepackage = 'source'
             else:
