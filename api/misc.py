@@ -234,8 +234,8 @@ class LookupTables:
         "x86_64",
     ]
 
-    gitalt_base = "http://git.altlinux.org"
-    beehive_base = "http://git.altlinux.org/beehive"
+    gitalt_base = "https://git.altlinux.org"
+    beehive_base = "https://git.altlinux.org/beehive"
 
     rpmsense_flags = [
         "RPMSENSE_ANY",
