@@ -28,11 +28,13 @@ class RepositoryStatus(APIWorker):
         self.input_params = []
         self.known_param = [
             "pkgset_name",
+            "rs_pkgset_name_bugzilla",
             "rs_start_date",
             "rs_end_date",
             "rs_show",
             "rs_description_ru",
             "rs_description_en",
+            "rs_mailing_list",
             "rs_mirrors_json",
         ]
 
@@ -106,11 +108,13 @@ class RepositoryStatus(APIWorker):
             "RepositoryStatusInfo",
             [
                 "branch",
+                "pkgset_name_bugzilla",
                 "start_date",
                 "end_date",
                 "show",
                 "description_ru",
                 "description_en",
+                "url_mailing_list",
                 "mirrors_json"
             ],
         )
