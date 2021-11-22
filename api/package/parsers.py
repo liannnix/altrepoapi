@@ -180,6 +180,14 @@ oneandhalf_opt = parser.register_item(
     help="use dependency depth 1.5",
     location="args",
 )
+use_last_tasks_opt = parser.register_item(
+    "use_last_tasks",
+    type=inputs.boolean,
+    default=False,
+    required=False,
+    help="use repo state including last done tasks",
+    location="args",
+)
 
 # build parsers
 package_info_args = parser.build_parser(
@@ -206,6 +214,7 @@ pkg_build_dep_args = parser.build_parser(
     filter_by_package_list_opt,
     filter_by_source_opt,
     oneandhalf_opt,
+    use_last_tasks_opt,
 )
 misconflict_pkg_args = parser.build_parser(
     package_list,

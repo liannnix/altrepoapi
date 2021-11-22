@@ -7,6 +7,7 @@ from api.base import APIWorker
 from api.misc import lut
 from ..sql import sql
 from libs.dependency_sorting import SortList
+from api.task.endpoints.task_repo import LastRepoStateFromTask
 
 
 class BuildDependency(APIWorker):
@@ -617,10 +618,8 @@ class PackageBuildDependency:
             return True
 
     def get(self):
-        # arguments processing
-        pass
         # init BuildDependency class with args
-        self.bd = BuildDependency(
+        bd = BuildDependency(
             self.conn,
             self.args["packages"],
             self.args["branch"].lower(),
@@ -635,16 +634,25 @@ class PackageBuildDependency:
         )
 
         # build result
-        self.bd.build_dependencies()
+        if self.args["use_last_tasks"]:
+            # get latest repo state including done tasks
+            ls = LastRepoStateFromTask(self.conn, self.args["branch"])
+            ls.build_repo_state()
+            if not ls.status:
+                return ls.error
+
+            bd.build_dependencies(task_repo_hashes=ls.task_repo_pkgs)  # type: ignore
+        else:
+            bd.build_dependencies()
 
         # format result
-        if self.bd.status:
+        if bd.status:
             # result processing
             res = {
                 "request_args": self.args,
-                "length": len(self.bd.result),
-                "dependencies": self.bd.result,
+                "length": len(bd.result),
+                "dependencies": bd.result,
             }
             return res, 200
         else:
-            return self.bd.error
+            return bd.error

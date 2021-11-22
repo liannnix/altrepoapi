@@ -422,3 +422,41 @@ class TaskRepo(APIWorker):
             res["archs"].append({"arch": k, "packages": v})
 
         return res, 200
+
+
+class LastRepoStateFromTask(APIWorker):
+    """Retrieves last branch state including all done tasks."""
+
+    def __init__(self, connection, branch: str, **kwargs) -> None:
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        self.branch = branch
+        self.task_repo_pkgs = None
+
+    def build_repo_state(self) -> None:
+        last_task_id = 0
+        # get list of done tasks from last branch state
+        self.conn.request_line = self.sql.repo_last_repo_tasks_diff_list.format(repo=self.branch)
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return None
+        if not response:
+            # if no tasks found from last repo state return 'None'
+            self.status = True
+            return None
+
+        last_task_id = int(response[0][0])
+
+        tr = TaskRepoState(self.conn, last_task_id)
+        tr.build_task_repo(keep_artefacts=False)
+        # something gone wrong during task repo build
+        if not tr.status:
+            self.error = tr.error
+            self.status = False
+            return None
+        # return latest repo state
+        self.status = True
+        self.task_repo_pkgs = tr.task_repo_pkgs
+        return None
