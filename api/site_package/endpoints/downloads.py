@@ -160,24 +160,17 @@ class PackageDownloadLinks(APIWorker):
             if arch in bin_pkgs and len(bin_pkgs[arch]) > 0:
                 src_arch = arch
                 break
-        # pop noarch binary packages for archs != src_arch
-        for k, v in bin_pkgs.items():
-            for p in v:
-                if (
-                    k != src_arch
-                    and filenames[p].arch == "noarch"
-                    and len(filenames) != 1
-                ):
-                    filenames.pop(p, None)
-        # remove duplicated noarch packages for archs in bin_pkgs
-        uniq_noarch_pkgs = set()
-        for h in filenames:
-            if filenames[h].arch == "noarch":
-                for arch in bin_pkgs.keys():
-                    if h in bin_pkgs[arch] and not h in uniq_noarch_pkgs:
-                        uniq_noarch_pkgs.add(h)
-                    else:
-                        bin_pkgs[arch] = [x for x in bin_pkgs[arch] if x != h]
+        # keep only 'noarch' packages from src_arch iteration
+        filenames_noarch = {k: v for k, v in filenames.items() if v.arch == 'noarch'}
+        filenames = {k: v for k, v in filenames.items() if v.arch != 'noarch'}
+        # append 'noarch' packages only from src_arch iteration
+        for p in bin_pkgs[src_arch]:
+            if p in filenames_noarch:
+                filenames[p] = filenames_noarch[p]
+        # remove 'noarch' packages form not src_arch iterations
+        for h in filenames_noarch:
+            for arch in [x for x in archs if x in bin_pkgs and x != src_arch]:
+                bin_pkgs[arch] = [x for x in bin_pkgs[arch] if x != h]
         # get package versions
         pkg_versions = []
         self.conn.request_line = self.sql.get_pkg_versions_by_hash.format(
