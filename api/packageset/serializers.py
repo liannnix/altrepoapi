@@ -70,6 +70,7 @@ pkgset_status_post_el_model = ns.model(
     "PackageSetStatusPostElementModel",
     {
         "pkgset_name": fields.String(description="package set name"),
+        "rs_pkgset_name_bugzilla": fields.String(description="package set name for bugzilla"),
         "rs_start_date": fields.DateTime(description="support start date"),
         "rs_end_date": fields.DateTime(description="support end date"),
         "rs_show": fields.Integer(description="0 - hide branch, 1 - show branch"),
@@ -79,6 +80,7 @@ pkgset_status_post_el_model = ns.model(
         "rs_description_en": fields.String(
             description="html description in English in Base64 format"
         ),
+        "rs_mailing_list": fields.String(description="link to mailing list"),
         "rs_mirrors_json": fields.List(fields.Raw, description="packageset mirror's auxilary info as JSON substructure"),
     },
 )
@@ -95,11 +97,13 @@ pkgset_status_get_el_model = ns.model(
     "PackageSetStatusGetElementModel",
     {
         "branch": fields.String(description="package set name"),
+        "pkgset_name_bugzilla": fields.String(description="package set name for bugzilla"),
         "start_date": fields.DateTime(description="support start date"),
         "end_date": fields.DateTime(description="support end date"),
         "show": fields.Integer(description="0 - hide branch, 1 - show branch"),
         "description_ru": fields.String(description="html description in Russian"),
         "description_en": fields.String(description="html description in English"),
+        "url_mailing_list": fields.String(description="link to mailing list"),
         "mirrors_json": fields.Raw(description="packageset mirror's auxilary info as JSON substructure"),
     },
 )

@@ -117,11 +117,13 @@ INSERT INTO RepositoryStatus (*) VALUES
     get_pkgset_status = """
 SELECT
     pkgset_name,
+    argMax(rs_pkgset_name_bugzilla, ts) AS pkgset_name_bugzilla,
     argMax(rs_start_date, ts) AS start_date,
     argMax(rs_end_date, ts) AS end_date,
     argMax(rs_show, ts) AS show,
     argMax(rs_description_ru, ts) AS desc_ru,
     argMax(rs_description_en, ts) AS desc_en,
+    argMax(rs_mailing_list, ts) AS mailing_list,
     argMax(rs_mirrors_json, ts) AS mirrors_json
 FROM RepositoryStatus
 GROUP BY pkgset_name
