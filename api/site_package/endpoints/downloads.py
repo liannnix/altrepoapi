@@ -229,7 +229,7 @@ class PackageDownloadLinks(APIWorker):
             # build links to task
             task_ = subtasks[0]["task_id"]
             subtask_ = subtasks[0]["subtask_id"]
-            task_base_ = "https://git.altlinux.org/tasks"
+            task_base_ = lut.gitalt_tasks_base
 
             res["src"] = [
                 {
@@ -536,7 +536,7 @@ class BinaryPackageDownloadLinks(APIWorker):
 
         if use_task:
             # build links to task
-            task_base_ = "https://git.altlinux.org/tasks"
+            task_base_ = lut.gitalt_tasks_base
 
             if filename.arch == "noarch":
                 # save noarch packages separatelly
