@@ -69,7 +69,7 @@ class PackageVersionsFromTasks(APIWorker):
             "PkgVersions", ["task", "hash", "branch", "owner", "changed", "name", "version", "release"]
         )
         pkg_versions = [PkgVersions(*el)._asdict() for el in response]
-        pkg_versions.sort(key=lambda val: val["task"], reverse=True)
+        pkg_versions.sort(key=lambda val: val["changed"], reverse=True)
 
         res = {
             "request_args": self.args,
