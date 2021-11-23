@@ -24,7 +24,7 @@ WITH pkg_changelog AS
             pkg_changelog.name as name,
             pkg_changelog.evr AS evr,
             pkg_changelog.hash AS hash
-        FROM repodb.Packages
+        FROM Packages
 ARRAY JOIN pkg_changelog
         WHERE pkg_hash = %(pkghash)s
         LIMIT %(limit)s
@@ -41,7 +41,7 @@ LEFT JOIN
     SELECT DISTINCT
         chlog_hash AS hash,
         chlog_text
-    FROM repodb.Changelog_buffer
+    FROM Changelog_buffer
     WHERE chlog_hash IN (
         SELECT hash
         FROM pkg_changelog
