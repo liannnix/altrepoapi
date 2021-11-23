@@ -5,9 +5,10 @@ from api.base import parser
 
 by_acl_opt = parser.register_item(
     "by_acl",
-    type=inputs.boolean,
+    type=str,
+    choices=("none", "by_nick", "by_nick_leader", "by_nick_or_group", "by_nick_leader_and_group"),
+    default="none",
     required=False,
-    default=False,
     help="search maintainer's packages by ACL",
     location="args",
 )
