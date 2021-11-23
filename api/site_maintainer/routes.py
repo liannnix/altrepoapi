@@ -15,6 +15,7 @@ from .parsers import (
     all_maintainers_args,
     maintainer_info_args,
     maintainer_branches_args,
+    maintainer_packages_args,
 )
 from .serializers import (
     all_maintainers_model,
@@ -102,10 +103,10 @@ class routeMaintainersInfo(Resource):
     },
 )
 class routeMaintainerPackages(Resource):
-    @ns.expect(maintainer_info_args)
+    @ns.expect(maintainer_packages_args)
     @ns.marshal_list_with(maintainer_pkgs_model)
     def get(self):
-        args = maintainer_info_args.parse_args(strict=True)
+        args = maintainer_packages_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = MaintainerPackages(g.connection, **args)
         if not wrk.check_params():

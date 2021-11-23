@@ -38,10 +38,16 @@ class MaintainerPackages(APIWorker):
 
     def get(self):
         maintainer_nickname = self.args["maintainer_nickname"]
+        by_acl = self.args['by_acl']
         branch = self.args["branch"]
-        self.conn.request_line = self.sql.get_maintainer_pkg.format(
-            maintainer_nickname=maintainer_nickname, branch=branch
-        )
+        if by_acl:
+            self.conn.request_line = self.sql.get_maintainer_pkg_by_acl.format(
+                maintainer_nickname=maintainer_nickname, branch=branch
+            )
+        else:
+            self.conn.request_line = self.sql.get_maintainer_pkg.format(
+                maintainer_nickname=maintainer_nickname, branch=branch
+            )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)

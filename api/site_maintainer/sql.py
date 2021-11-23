@@ -169,5 +169,41 @@ GROUP BY
 ORDER BY pkg_buildtime DESC
 """
 
+    get_maintainer_pkg_by_acl = """
+WITH
+(
+    SELECT groupUniqArray(acl_for)
+    FROM Acl
+    WHERE has(acl_list, '{maintainer_nickname}')
+        AND acl_for LIKE ('@%')
+        AND acl_branch = '{branch}'
+) AS acl_group
+SELECT
+    pkg_name,
+    pkg_buildtime,
+    pkg_url,
+    pkg_summary,
+    pkg_version,
+    pkg_release
+FROM last_packages
+WHERE pkg_sourcepackage = 1
+      AND pkgset_name = '{branch}'
+      AND pkg_name IN (
+        SELECT acl_for
+        FROM last_acl
+        WHERE acl_branch = '{branch}'
+          AND (has(acl_list, '{maintainer_nickname}')
+          OR hasAny(acl_list, acl_group))
+    )
+GROUP BY
+    pkg_name,
+    pkg_buildtime,
+    pkg_url,
+    pkg_summary,
+    pkg_version,
+    pkg_release
+ORDER BY pkg_buildtime DESC
+"""
+
 
 sql = SQL()
