@@ -173,7 +173,7 @@ ORDER BY pkg_buildtime DESC
 WITH
 (
     SELECT groupUniqArray(acl_for)
-    FROM Acl
+    FROM last_acl
     WHERE has(acl_list, '{maintainer_nickname}')
         AND acl_for LIKE ('@%')
         AND acl_branch = '{branch}'
