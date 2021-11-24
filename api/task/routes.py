@@ -4,7 +4,7 @@ from flask_restx import Resource, abort, Namespace
 from utils import get_logger, url_logging, response_error_parser
 
 from .namespace import get_namespace
-from .endpoints.task_diff import TaskDiff
+from .endpoints.task_diff import TaskDiff, TaskHistory
 from .endpoints.task_info import TaskInfo
 from .endpoints.task_repo import TaskRepo
 from .endpoints.find_packageset import FindPackageset
@@ -18,6 +18,7 @@ from .parsers import (
     task_build_dep_args,
     task_find_pkgset_args,
     task_buid_dep_set_args,
+    task_history_args,
 )
 from .serializers import (
     task_info_model,
@@ -27,6 +28,7 @@ from .serializers import (
     task_build_dep_model,
     misconflict_pkgs_model,
     task_find_pkgset_model,
+    task_history_model,
 )
 
 ns = get_namespace()
@@ -257,6 +259,36 @@ class routeTaskBuildDependencySet(Resource):
             )
         if not wrk.check_task_id():
             abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
+        result, code = wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route(
+    "/task_history",
+    doc={
+        "description": "Get done tasks history for branch",
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Requested data not found in database",
+        },
+    },
+)
+class routeTaskHistory(Resource):
+    @ns.expect(task_history_args)
+    @ns.marshal_with(task_history_model)
+    def get(self):
+        args = task_history_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        wrk = TaskHistory(g.connection, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results,
+            )
         result, code = wrk.get()
         if code != 200:
             abort(code, **response_error_parser(result))

@@ -315,3 +315,24 @@ build_dep_set_model = ns.model(
         ),
     },
 )
+
+task_history_el_model = ns.model(
+    "TaskHistoryElementModel",
+    {
+        "task_id": fields.Integer(description="task id"),
+        "task_commited": fields.String(description="task commited date in ISO8601 format"),
+        "branch_commited": fields.String(description="branch commited date in ISO8601 format"),
+    }
+)
+task_history_model = ns.model(
+    "TaskHistoryModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "tasks": fields.Nested(
+            task_history_el_model,
+            description="build requirements packages information",
+            as_list=True,
+        ),
+    },
+)
