@@ -1,7 +1,7 @@
-from copy import deepcopy
 from collections import defaultdict, namedtuple
+import datetime
 
-from utils import join_tuples, remove_duplicate
+from utils import join_tuples, datetime_to_iso
 
 from api.base import APIWorker
 from api.misc import lut
@@ -301,3 +301,210 @@ class TaskDiff(APIWorker):
         result_dict_2["task_have_plan"] = self.tr.have_plan
 
         return result_dict_2, 200
+
+
+class TaskHistory(APIWorker):
+    """Retrieves task by given parameters."""
+
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        self.validation_results = []
+
+        if self.args["branch"] not in lut.known_branches:
+            self.validation_results.append(
+                f"unknown package set name : {self.args['branch']}"
+            )
+            self.validation_results.append(
+                f"allowed package set names are : {lut.known_branches}"
+            )
+
+        if (self.args["start_task"] == 0 and self.args["start_date"] is None) or (
+            self.args["start_task"] != 0 and self.args["start_date"] is not None
+        ):
+            self.validation_results.append(
+                f"one and only one start condition argument should be specified"
+            )
+
+        if (self.args["end_task"] == 0 and self.args["end_date"] is None) or (
+            self.args["end_task"] != 0 and self.args["end_date"] is not None
+        ):
+            self.validation_results.append(
+                f"one and only one end condition argument should be specified"
+            )
+
+        if self.validation_results != []:
+            return False
+        else:
+            return True
+
+    def _check_task_id(self, task_id, branch):
+        self.conn.request_line = self.sql.check_task_in_branch.format(
+            id=task_id, branch=branch
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.INFO, 500)
+            return False
+
+        if response[0][0] == 0:
+            return False
+        return True
+
+    def _check_branch_has_tasks(self, branch):
+        self.conn.request_line = self.sql.check_branch_has_tasks.format(branch=branch)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.INFO, 500)
+            return False
+
+        if response[0][0] == 0:
+            return False
+        return True
+
+    def get(self):
+        branch = self.args["branch"]
+        start_task = self.args["start_task"]
+        end_task = self.args["end_task"]
+        start_date = self.args["start_date"]
+        end_date = self.args["end_date"]
+        # convert dates and check if it is consistent
+        if start_date is not None:
+            try:
+                start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+            except ValueError:
+                self._store_error(
+                    {"Error": f"'start_date' is not valid date ({start_date})"},
+                    self.ll.ERROR,
+                    400,
+                )
+                return self.error
+
+        if end_date is not None:
+            try:
+                end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d")
+            except ValueError:
+                self._store_error(
+                    {"Error": f"'end_date' is not valid date ({end_date})"},
+                    self.ll.ERROR,
+                    400,
+                )
+                return self.error
+
+        if (
+            self.args["start_date"] is not None
+            and self.args["end_date"] is not None
+            and self.args["start_date"] >= self.args["end_date"]
+        ):
+            self._store_error(
+                {
+                    "Error": f"end date ({end_date}) should be greater than start date ({start_date})"
+                },
+                self.ll.ERROR,
+                400,
+            )
+            return self.error
+        # check if branch has tasks
+        if not self._check_branch_has_tasks(branch):
+            self._store_error(
+                {"Error": f"Branch '{branch}' has no task history"}, self.ll.ERROR, 400
+            )
+            return self.error
+        #  check if start and end tasks is in DB
+        for task in (start_task, end_task):
+            if task != 0:
+                if not self._check_task_id(task, branch):
+                    self._store_error(
+                        {
+                            "Error": f"Task #{task} not found in DB for branch '{branch}'"
+                        },
+                        self.ll.ERROR,
+                        400,
+                    )
+                    return self.error
+
+        # build task history by given arguments
+        # get start date from task
+        if start_date is None:
+            self.conn.request_line = self.sql.done_task_last_changed.format(
+                id=start_task
+            )
+            status, response = self.conn.send_request()
+            if not status:
+                self._store_sql_error(response, self.ll.INFO, 500)
+                return self.error
+            if not response:
+                self._store_sql_error(
+                    {"Error": f"Failed to get data for task {start_task}"},
+                    self.ll.ERROR,
+                    500,
+                )
+                return self.error
+
+            start_date = response[0][0]
+        # get end date from task
+        if end_date is None:
+            self.conn.request_line = self.sql.done_task_last_changed.format(id=end_task)
+            status, response = self.conn.send_request()
+            if not status:
+                self._store_sql_error(response, self.ll.INFO, 500)
+                return self.error
+            if not response:
+                self._store_sql_error(
+                    {"Error": f"Failed to get data for task {end_task}"},
+                    self.ll.ERROR,
+                    500,
+                )
+                return self.error
+
+            end_date = response[0][0]
+        else:
+            end_date = end_date.replace(hour=23, minute=59, second=59)
+
+        if start_date >= end_date:  # type: ignore
+            self._store_error(
+                {"Error": f"Task history end date should be greater than start date"},
+                self.ll.ERROR,
+                400,
+            )
+            return self.error
+
+        # get task history list
+        self.conn.request_line = self.sql.get_task_history.format(
+            branch=branch, t1_changed=start_date, t2_changed=end_date
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.INFO, 500)
+            return self.error
+        if not response:
+            self._store_sql_error(
+                {"Error": f"Failed to get task history"},
+                self.ll.ERROR,
+                500,
+            )
+            return self.error
+
+        TaskInfo = namedtuple(
+            "TaskInfo", ["task_id", "changed", "pkgset_date", "pkgset_task"]
+        )
+        task_list = [TaskInfo(*el) for el in response]
+
+        res = {"request_args": self.args, "length": len(task_list), "tasks": []}
+
+        for task in task_list:
+            t = {
+                "task_id": task.task_id,
+                "task_commited": datetime_to_iso(task.changed),
+                "branch_commited": "",
+            }
+            if task.pkgset_task != 0:
+                t["branch_commited"] = datetime_to_iso(task.pkgset_date)
+            res["tasks"].append(t)
+
+        return res, 200

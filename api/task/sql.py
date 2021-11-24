@@ -9,6 +9,24 @@ FROM TaskStates
 WHERE task_id = {id}
 """
 
+    check_task_in_branch = """
+SELECT count(task_id)
+FROM TaskStates
+WHERE task_id = {id}
+    AND task_id IN
+    (
+        SELECT task_id
+        FROM Tasks
+        WHERE task_repo = '{branch}'
+    )
+"""
+
+    check_branch_has_tasks = """
+SELECT count(task_id)
+FROM Tasks
+WHERE task_repo = '{branch}'
+"""
+
     task_repo = """
 SELECT any(task_repo)
 FROM Tasks
@@ -19,6 +37,12 @@ WHERE task_id = {id}
 SELECT argMax(task_state, task_changed)
 FROM TaskStates
 WHERE task_id = {id}
+"""
+
+    done_task_last_changed = """
+SELECT max(task_changed)
+FROM TaskStates
+WHERE task_state = 'DONE' AND task_id = {id}
 """
 
     task_repo_owner = """
@@ -608,6 +632,41 @@ FROM
     WHERE task_id = {id}
         AND task_changed = last_changed
 )
+"""
+
+    get_task_history = """
+WITH
+pkgset_history AS
+(
+    SELECT
+        pkgset_date,
+        toUInt32(pkgset_kv.v[indexOf(pkgset_kv.k, 'task')]) AS pkgset_task
+    FROM PackageSetName
+    WHERE pkgset_nodename = '{branch}'
+        AND pkgset_depth = 0
+        AND pkgset_date >= '{t1_changed}'
+        AND pkgset_date <= '{t2_changed}'
+)
+SELECT DISTINCT
+    task_id,
+    max(task_changed) AS changed,
+    any(B.pkgset_date),
+    any(B.pkgset_task)
+FROM TaskStates
+LEFT JOIN
+(
+    SELECT pkgset_date, pkgset_task
+    FROM pkgset_history
+) AS B ON B.pkgset_task = TaskStates.task_id
+WHERE task_id IN
+(
+    SELECT task_id FROM Tasks WHERE task_repo = '{branch}'
+)
+    AND task_state = 'DONE'
+    AND task_changed >= '{t1_changed}'
+    AND task_changed <= '{t2_changed}'
+GROUP BY task_id
+ORDER BY changed DESC
 """
 
 

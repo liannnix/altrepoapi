@@ -87,7 +87,45 @@ oneandhalf_opt = parser.register_item(
     help="use dependency depth 1.5",
     location="args",
 )
-
+branch = parser.register_item(
+    "branch",
+    type=str,
+    required=True,
+    help="name of packageset",
+    location="args",
+)
+start_task_opt = parser.register_item(
+    "start_task",
+    type=int,
+    default=0,
+    required=False,
+    help="start task ID",
+    location="args",
+)
+end_task_opt = parser.register_item(
+    "end_task",
+    type=int,
+    default=0,
+    required=False,
+    help="end task ID",
+    location="args",
+)
+start_date_opt = parser.register_item(
+    "start_date",
+    type=str,
+    default=None,
+    required=False,
+    help="task history start date (YYYY-MM-DD)",
+    location="args",
+)
+end_date_opt = parser.register_item(
+    "end_date",
+    type=str,
+    default=None,
+    required=False,
+    help="task history end date (YYYY-MM-DD)",
+    location="args",
+)
 
 # build parsers
 task_info_args = parser.build_parser(try_opt, iteration_opt)
@@ -105,3 +143,6 @@ task_build_dep_args = parser.build_parser(
 task_misconflict_args = parser.build_parser(arch_list_opt)
 task_find_pkgset_args = parser.build_parser(branch_list_opt)
 task_buid_dep_set_args = parser.build_parser(arch_list_opt)
+task_history_args = parser.build_parser(
+    branch, start_task_opt, end_task_opt, start_date_opt, end_date_opt
+)
