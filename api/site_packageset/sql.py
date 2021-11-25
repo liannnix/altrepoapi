@@ -143,7 +143,7 @@ SELECT DISTINCT
     pkg_sourcepackage,
     groupUniqArray(pkgset_name)
 FROM static_last_packages
-WHERE pkg_name LIKE '%{name}%'
+WHERE pkg_name ILIKE '%{name}%'
     AND pkg_name NOT LIKE '%-debuginfo'
     {branch}
 GROUP BY
