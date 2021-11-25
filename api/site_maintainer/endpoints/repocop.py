@@ -39,49 +39,7 @@ class RepocopByMaintainer(APIWorker):
     def get(self):
         maintainer_nickname = self.args["maintainer_nickname"]
         branch = self.args["branch"]
-        self.conn.request_line = self.sql.get_src_pkg_ver_rel_maintainer.format(
-            maintainer_nickname=maintainer_nickname, branch=branch
-        )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
-        if not response:
-            self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
-                self.ll.INFO,
-                404,
-            )
-            return self.error
-        scr_packages = response
-
-        # create temporary table with task_id, subtask_id
-        tmp_table = "tmp_repocop_src"
-        self.conn.request_line = self.sql.create_tmp_table.format(
-            tmp_table=tmp_table,
-            columns="(rc_srcpkg_name String, rc_srcpkg_version String, rc_srcpkg_release String, pkgset_name String)",
-        )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
-        # insert task_id, subtask_id into temporary table
-        self.conn.request_line = (
-            self.sql.insert_into_tmp_table.format(tmp_table=tmp_table),
-            (
-                {
-                    "pkgset_name": el[0],
-                    "rc_srcpkg_name": el[1],
-                    "rc_srcpkg_version": el[2],
-                    "rc_srcpkg_release": el[3],
-                }
-                for el in scr_packages
-            ),
-        )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
+        order_g = ""
 
         MaintainerRepocop = namedtuple(
             "MaintainerRepocop",
@@ -99,9 +57,27 @@ class RepocopByMaintainer(APIWorker):
             ],
         )
 
-        self.conn.request_line = self.sql.get_repocop_by_maintainer.format(
-            tmp_table=tmp_table
-        )
+        if self.args['by_acl'] == 'by_nick_leader_and_group':
+            self.conn.request_line = self.sql.get_repocop_by_last_acl_with_group.format(
+                maintainer_nickname=maintainer_nickname, branch=branch, order_g=order_g
+            )
+        if self.args['by_acl'] == 'by_nick_leader':
+            order_g = "AND order_g=0"
+            self.conn.request_line = self.sql.get_repocop_by_last_acl_with_group.format(
+                maintainer_nickname=maintainer_nickname, branch=branch, order_g=order_g
+            )
+        if self.args['by_acl'] == 'by_nick':
+            self.conn.request_line = self.sql.get_repocop_by_nick_acl.format(
+                maintainer_nickname=maintainer_nickname, branch=branch
+            )
+        if self.args['by_acl'] == 'by_nick_or_group':
+            self.conn.request_line = self.sql.get_repocop_by_nick_or_group_acl.format(
+                maintainer_nickname=maintainer_nickname, branch=branch
+            )
+        if self.args['by_acl'] == 'none':
+            self.conn.request_line = self.sql.get_maintainer_repocop.format(
+                maintainer_nickname=maintainer_nickname, branch=branch
+            )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)

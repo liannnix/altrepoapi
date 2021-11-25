@@ -15,26 +15,7 @@ SELECT * FROM {tmp_table}
 INSERT INTO {tmp_table} (*) VALUES
 """
 
-    get_src_pkg_ver_rel_maintainer = """
-SELECT
-    pkgset_name,
-    pkg_name,
-    pkg_version,
-    pkg_release
-FROM last_packages
-WHERE (pkg_packager_email LIKE '{maintainer_nickname}@%' 
-    OR pkg_packager_email LIKE '{maintainer_nickname} at%'
-    OR pkg_packager LIKE '%{maintainer_nickname}@%')
-    and pkgset_name = '{branch}'
-    and pkg_sourcepackage = 1
-GROUP BY
-    pkgset_name,
-    pkg_name,
-    pkg_version,
-    pkg_release
-"""
-
-    get_repocop_by_maintainer = """
+    get_maintainer_repocop = """
 SELECT
     pkg_name,
     pkg_version,
@@ -48,8 +29,19 @@ SELECT
     max(rc_test_date)
 FROM PackagesRepocop
 WHERE rc_test_status NOT IN ('ok', 'skip')
-    AND (rc_srcpkg_name, rc_srcpkg_version, rc_srcpkg_release, pkgset_name) IN 
-(SELECT * FROM {tmp_table})
+    AND (rc_srcpkg_name, rc_srcpkg_version, rc_srcpkg_release, pkgset_name) IN
+(SELECT DISTINCT
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkgset_name
+FROM last_packages
+WHERE pkgset_name = '{branch}'
+    AND pkg_sourcepackage = 1
+    AND (pkg_packager_email LIKE '{maintainer_nickname}@%'
+    OR pkg_packager_email LIKE '{maintainer_nickname} at%'
+    OR pkg_packager LIKE '%{maintainer_nickname}@%')
+)
 GROUP BY
     pkg_name,
     pkg_version,
@@ -60,7 +52,147 @@ GROUP BY
     rc_test_name
 ORDER BY
     pkg_name ASC,
-    pkg_arch ASC    
+    pkg_arch ASC
+"""
+
+    get_repocop_by_last_acl_with_group = """
+SELECT
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_arch,
+    rc_srcpkg_name,
+    pkgset_name,
+    rc_test_name,
+    argMax(rc_test_status, rc_test_date),
+    argMax(rc_test_message, rc_test_date),
+    max(rc_test_date)
+FROM PackagesRepocop
+WHERE rc_test_status NOT IN ('ok', 'skip')
+    AND (rc_srcpkg_name, rc_srcpkg_version, rc_srcpkg_release, pkgset_name) IN
+(SELECT DISTINCT
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkgset_name
+FROM last_packages
+WHERE pkgset_name = '{branch}'
+    AND pkg_sourcepackage = 1
+    AND pkg_name IN (
+        SELECT pkgname
+            FROM last_acl_with_groups
+            WHERE acl_user = '{maintainer_nickname}'
+                AND acl_branch = '{branch}'
+                AND order_u = 1
+                {order_g}
+    )
+)
+GROUP BY
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_arch,
+    rc_srcpkg_name,
+    pkgset_name,
+    rc_test_name
+ORDER BY
+    pkg_name ASC,
+    pkg_arch ASC
+"""
+
+    get_repocop_by_nick_acl = """
+    SELECT
+        pkg_name,
+        pkg_version,
+        pkg_release,
+        pkg_arch,
+        rc_srcpkg_name,
+        pkgset_name,
+        rc_test_name,
+        argMax(rc_test_status, rc_test_date),
+        argMax(rc_test_message, rc_test_date),
+        max(rc_test_date)
+    FROM PackagesRepocop
+    WHERE rc_test_status NOT IN ('ok', 'skip')
+        AND (rc_srcpkg_name, rc_srcpkg_version, rc_srcpkg_release, pkgset_name) IN
+    (SELECT DISTINCT
+        pkg_name,
+        pkg_version,
+        pkg_release,
+        pkgset_name
+    FROM last_packages
+    WHERE pkgset_name = '{branch}'
+        AND pkg_sourcepackage = 1
+        AND pkg_name IN (
+            SELECT acl_for
+                FROM last_acl
+                WHERE acl_branch = '{branch}'
+                    AND has(acl_list, '{maintainer_nickname}')
+        )
+    )
+    GROUP BY
+        pkg_name,
+        pkg_version,
+        pkg_release,
+        pkg_arch,
+        rc_srcpkg_name,
+        pkgset_name,
+        rc_test_name
+    ORDER BY
+        pkg_name ASC,
+        pkg_arch ASC
+    """
+
+    get_repocop_by_nick_or_group_acl = """
+WITH
+(
+    SELECT groupUniqArray(acl_for)
+    FROM last_acl
+    WHERE has(acl_list, '{maintainer_nickname}')
+        AND acl_for LIKE ('@%')
+        AND acl_branch = '{branch}'
+) AS acl_group
+SELECT
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_arch,
+    rc_srcpkg_name,
+    pkgset_name,
+    rc_test_name,
+    argMax(rc_test_status, rc_test_date),
+    argMax(rc_test_message, rc_test_date),
+    max(rc_test_date)
+FROM PackagesRepocop
+WHERE rc_test_status NOT IN ('ok', 'skip')
+    AND (rc_srcpkg_name, rc_srcpkg_version, rc_srcpkg_release, pkgset_name) IN
+(SELECT DISTINCT
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkgset_name
+FROM last_packages
+WHERE pkgset_name = '{branch}'
+    and pkg_sourcepackage = 1
+    and pkg_name in (
+        SELECT acl_for
+            FROM last_acl
+            WHERE acl_branch = '{branch}'
+                AND (has(acl_list, '{maintainer_nickname}')
+                OR hasAny(acl_list, acl_group))
+    )
+)
+GROUP BY
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_arch,
+    rc_srcpkg_name,
+    pkgset_name,
+    rc_test_name
+ORDER BY
+    pkg_name ASC,
+    pkg_arch ASC
 """
 
     get_beehive_errors_by_maintainer = """
