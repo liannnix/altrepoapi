@@ -167,7 +167,7 @@ class BuildDependency(APIWorker):
         if status is False:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return
-        # proceed with last_packages_with_source
+        # proceed with last_depends
         # 1. create shdowing temporary table
         self.conn.request_line = self.sql.create_shadow_last_dependss
         status, response = self.conn.send_request()

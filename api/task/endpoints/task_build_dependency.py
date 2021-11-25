@@ -94,12 +94,12 @@ class TaskBuildDependency(APIWorker):
             return self.error
         self.args["package"] = list({pkg[0] for pkg in response})
         # get task repo state
-        self.tr = TaskRepoState(self.conn, self.task_id)
-        self.tr.build_task_repo(keep_artefacts=False)
-        if not self.tr.status:
-            return self.tr.error
+        tr = TaskRepoState(self.conn, self.task_id)
+        tr.build_task_repo(keep_artefacts=False)
+        if not tr.status:
+            return tr.error
         # init BuildDependency class with args
-        self.bd = BuildDependency(
+        bd = BuildDependency(
             self.conn,
             self.args["package"],
             self.args["branch"],
@@ -114,20 +114,20 @@ class TaskBuildDependency(APIWorker):
         )
 
         # build result
-        self.bd.build_dependencies(task_repo_hashes=self.tr.task_repo_pkgs)
+        bd.build_dependencies(task_repo_hashes=tr.task_repo_pkgs)
 
         # set flag if task plan is applied to repository state
-        self.args["task_plan_applied"] = self.tr.have_plan
+        self.args["task_plan_applied"] = tr.have_plan
 
         # format result
-        if self.bd.status:
+        if bd.status:
             # result processing
             res = {
                 "id": self.task_id,
                 "request_args": self.args,
-                "length": len(self.bd.result),
-                "dependencies": self.bd.result,
+                "length": len(bd.result),
+                "dependencies": bd.result,
             }
             return res, 200
         else:
-            return self.bd.error
+            return bd.error
