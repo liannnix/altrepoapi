@@ -22,7 +22,7 @@ class MisconflictPackages(APIWorker):
         self.result = {}
         super().__init__()
 
-    def build_dependencies(self, pkg_hashes=None):
+    def find_conflicts(self, pkg_hashes: tuple[int] = None, task_repo_hashes: tuple[int] = None):
         # do all kind of black magic here
         self.packages = tuple(self.packages)
         if self.archs:
@@ -77,10 +77,77 @@ class MisconflictPackages(APIWorker):
         else:
             input_pkg_hshs = tuple(pkg_hashes)
 
+        # create temporary table with repository state hashes
+        tmp_repo_state = "tmp_repo_state_hshs"
+        self.conn.request_line = self.sql.create_tmp_table.format(
+            tmp_table=tmp_repo_state, columns="(pkg_hash UInt64)"
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return
+        if task_repo_hashes is not None:
+            # use repository hashes from task
+            self.conn.request_line = (
+                self.sql.insert_into_tmp_table.format(
+                    tmp_table=tmp_repo_state
+                ),
+                ((hsh,) for hsh in task_repo_hashes)
+            )
+            status, response = self.conn.send_request()
+            if status is False:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return
+        else:
+            # fill it from last_packages
+            self.conn.request_line = self.sql.insert_last_packages_hashes.format(
+                tmp_table=tmp_repo_state, branch=self.branch
+            )
+            status, response = self.conn.send_request()
+            if status is False:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return
+        # delete unused binary packages arch hashes and '*-debuginfo' package hashes
+        tmp_repo_state_filtered = "tmp_repo_state_hshs_filtered"
+        self.conn.request_line = self.sql.create_tmp_table.format(
+            tmp_table=tmp_repo_state_filtered, columns="(pkg_hash UInt64)"
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return
+        # insert source packages hashes
+        self.conn.request_line = self.sql.insert_pkgs_hshs_filtered_src.format(
+            tmp_table=tmp_repo_state_filtered,
+            tmp_table2=tmp_repo_state
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return
+        # insert binary packages hashes
+        self.conn.request_line = self.sql.insert_pkgs_hshs_filtered_bin.format(
+            tmp_table=tmp_repo_state_filtered,
+            tmp_table2=tmp_repo_state,
+            arch=tuple(self.archs)
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return
+        # drop initial repo state hashes temporary table
+        self.conn.request_line = self.sql.drop_tmp_table.format(
+            tmp_table=tmp_repo_state
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return
+        tmp_repo_state = tmp_repo_state_filtered
+
         # get list of (input package | conflict package | conflict files)
-        self.conn.request_line = (
-            self.sql.misconflict_get_pkgs_with_conflict,
-            {"hshs": input_pkg_hshs, "branch": self.branch, "arch": self.archs},
+        self.conn.request_line = self.sql.misconflict_get_pkgs_with_conflict.format(
+            tmp_table=tmp_repo_state, hshs=input_pkg_hshs
         )
         status, response = self.conn.send_request()
         if status is False:
@@ -116,7 +183,7 @@ class MisconflictPackages(APIWorker):
         f_hashnames = {}
         for r in response:
             f_hashnames[r[0]] = r[1]
-        # 3. replase hashes by names in result
+        # 3. replace hashes by names in result
         new_hshs_files = []
         for el in hshs_files:
             new_hshs_files.append((*el[:2], [f_hashnames[x] for x in el[2]], *el[3:]))
@@ -187,9 +254,8 @@ class MisconflictPackages(APIWorker):
         confl_pkgs = remove_duplicate([pkg[1] for pkg in result_dict_cleanup.keys()])
 
         # get main information of packages by package hashes
-        self.conn.request_line = (
-            self.sql.misconflict_get_meta_by_hshs,
-            {"pkgs": tuple(confl_pkgs), "branch": self.branch, "arch": self.archs},
+        self.conn.request_line = self.sql.misconflict_get_meta_by_hshs.format(
+            tmp_table=tmp_repo_state, pkgs=tuple(confl_pkgs)
         )
         status, response = self.conn.send_request()
         if status is False:
@@ -270,7 +336,7 @@ class PackageMisconflictPackages:
         # arguments processing
         pass
         # init BuildDependency class with args
-        self.mp = MisconflictPackages(
+        mp = MisconflictPackages(
             self.conn,
             self.args["packages"],
             self.args["branch"].lower(),
@@ -278,16 +344,16 @@ class PackageMisconflictPackages:
         )
 
         # build result
-        self.mp.build_dependencies()
+        mp.find_conflicts()
 
         # format result
-        if self.mp.status:
+        if mp.status:
             # result processing
             res = {
                 "request_args": self.args,
-                "length": len(self.mp.result),
-                "conflicts": self.mp.result,
+                "length": len(mp.result),
+                "conflicts": mp.result,
             }
             return res, 200
         else:
-            return self.mp.error
+            return mp.error

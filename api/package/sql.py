@@ -598,17 +598,18 @@ FROM
             (
                 SELECT file_hashname
                 FROM Files
-                WHERE pkg_hash IN %(hshs)s AND file_class != 'directory'
+                WHERE pkg_hash IN {hshs} AND file_class != 'directory'
             )
                 AND pkg_hash IN
                 (
                     SELECT pkg_hash
-                    FROM last_packages
-                    WHERE pkg_hash NOT IN %(hshs)s
-                        AND pkgset_name= %(branch)s
+                    FROM Packages
+                    WHERE pkg_hash NOT IN {hshs}
+                        AND pkg_hash IN
+                        (
+                            SELECT pkg_hash FROM {tmp_table}
+                        )
                         AND pkg_sourcepackage = 0
-                        AND pkg_name NOT LIKE '%%-debuginfo'
-                        AND pkg_arch IN %(arch)s
                 )
             ) AS LeftPkg
             LEFT JOIN
@@ -617,7 +618,7 @@ FROM
                     pkg_hash,
                     file_hashname
                 FROM Files
-                WHERE pkg_hash IN %(hshs)s AND file_class != 'directory'
+                WHERE pkg_hash IN {hshs} AND file_class != 'directory'
             ) AS InPkg USING file_hashname
         GROUP BY (InPkg.pkg_hash, pkg_hash)
     ) AS Sel1
@@ -664,11 +665,13 @@ SELECT
     pkg_release,
     pkg_epoch,
     groupUniqArray(pkg_arch)
-FROM last_packages
-WHERE pkg_name IN %(pkgs)s
-    AND pkgset_name = %(branch)s
+FROM Packages
+WHERE pkg_name IN {pkgs}
+    AND pkg_hash IN
+    (
+        SELECT pkg_hash FROM {tmp_table}
+    )
     AND pkg_sourcepackage = 0
-    AND pkg_arch IN %(arch)s
 GROUP BY 
 (
     pkg_name,

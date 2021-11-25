@@ -1,6 +1,7 @@
 from api.base import APIWorker
 from api.misc import lut
 from ..sql import sql
+from .task_repo import TaskRepoState
 from api.package.endpoints.misconflict_packages import MisconflictPackages
 
 
@@ -76,8 +77,13 @@ class TaskMisconflictPackages(APIWorker):
             return self.error
         self.args["packages"] = tuple({pkg[0] for pkg in response})
         pkg_hashes = tuple({pkg[1] for pkg in response})
+        # get task repo state
+        tr = TaskRepoState(self.conn, self.task_id)
+        tr.build_task_repo(keep_artefacts=False)
+        if not tr.status:
+            return tr.error
         # init MisconflictPackages class with args
-        self.mp = MisconflictPackages(
+        mp = MisconflictPackages(
             self.conn,
             self.args["packages"],
             self.args["branch"].lower(),
@@ -85,17 +91,17 @@ class TaskMisconflictPackages(APIWorker):
         )
 
         # build result
-        self.mp.build_dependencies(pkg_hashes=pkg_hashes)
+        mp.find_conflicts(pkg_hashes=pkg_hashes, task_repo_hashes=tr.task_repo_pkgs)
 
         # format result
-        if self.mp.status:
+        if mp.status:
             # result processing
             res = {
                 "id": self.task_id,
                 "request_args": self.args,
-                "length": len(self.mp.result),
-                "conflicts": self.mp.result,
+                "length": len(mp.result),
+                "conflicts": mp.result,
             }
             return res, 200
         else:
-            return self.mp.error
+            return mp.error
