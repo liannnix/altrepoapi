@@ -1,12 +1,16 @@
-# ALTRepo API (clickhouse database)
+# altrepodb API
 
-ALTRepo API is a REST API for the repository database of ALT
-distribution. ALTRepo API allows users to get the necessary information 
+altrepodb API is a REST API for the repository database of ALT
+distribution. altrepodb API allows users to get the necessary information 
 regards to the repository by GET requests.
 
 API documentation is available by Swagger web-interface at
 
 http://altrepo.api.address/api/
+
+# License
+
+GNU AGPLv3
 
 ## Dependencies
 
@@ -24,7 +28,8 @@ http://altrepo.api.address/api/
 * run_app.py - module for launching the application and processing
 input parameters
 * utils.py - contains auxiliary functions used in application
-* database/* - contains modules and data structures to work with ClickHouse database
+* database/* - contains modules and data structures to work with
+ClickHouse database
 * api/* - contains all API logic split by routes and endpoints
 * libs/* - special modules for working with mathematics, data,
 data structure are used in the application
@@ -92,15 +97,15 @@ Configuration file usually contains next sections
     PASSWORD = test        # database password
 
     [Application]
-    HOST = 127.0.0.1    # application host
-    PORT = 5000         # port
-    PROCESSES = 1       # number of worker processes
-    TIMEOUT = 30        # worker timeout in seconds
+    HOST = 127.0.0.1        # application host
+    PORT = 5000             # port
+    PROCESSES = 1           # number of worker processes
+    TIMEOUT = 30            # worker timeout in seconds
 
     [Other]
     LOGFILE = /home/`user`/altrepo_server.log   # path to logfile
-    ADMIN_USER = admin                      # API authorized user login
-    ADMIN_PASSWORD = admin_password_sha512  # API authorized user password SHA512 hash
+    ADMIN_USER = admin                          # API authorized user login
+    ADMIN_PASSWORD = admin_password_sha512      # API authorized user password SHA512 hash
 
 Also you can set launch options use keys. For more information use -h.
 
@@ -127,5 +132,5 @@ The response from the server is returned as json data, for their
 formatted mapping is convenient to use jq utility.
 
 All API endpoints and response models are described in Swagger web-interface at: 
-    http://localhost/api/ 
+    http://altrepo.api.address/api/ 
 (* replace API address or domain name in accordance to web-server configuration)
