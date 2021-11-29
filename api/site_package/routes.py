@@ -55,8 +55,6 @@ logger = get_logger(__name__)
     },
 )
 class routePackageInfo(Resource):
-    pass
-
     @ns.expect(package_info_args)
     @ns.marshal_with(package_info_model)
     def get(self, pkghash):
