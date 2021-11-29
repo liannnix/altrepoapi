@@ -14,7 +14,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from flask import Blueprint
+import os
+from flask import Blueprint, send_from_directory
 from flask_restx import Api
 from flask_restx import Resource, fields
 
@@ -74,8 +75,8 @@ version_fields = api.model(
 
 
 @api.route("/version")
+@api.doc(description="get API version")
 class ApiVersion(Resource):
-    @api.doc("get API information")
     @api.marshal_with(version_fields)
     def get(self):
         return api, 200
@@ -84,8 +85,19 @@ class ApiVersion(Resource):
 @api.route("/ping")
 @api.doc(False)
 class ApiPing(Resource):
-    @api.doc("API ping")
+    @api.doc(description="API authorization check")
     @api.doc(security="BasicAuth")
     @auth_required
     def get(self):
         return {"message": "pong"}, 200
+
+
+@api.route("/license")
+@api.doc(description="get license")
+class ApiLicense(Resource):
+    @api.produces(["text/plain"])
+    def get(self):
+        licenseFile = "LICENSE"
+        return send_from_directory(
+            os.getcwd(), licenseFile, as_attachment=False, mimetype="text/plain"
+        )
