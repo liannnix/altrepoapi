@@ -14,6 +14,7 @@ from api.site_package import ns as site_package_ns
 from api.site_pkgset_info import ns as site_pkgset_info
 from api.site_maintainer import ns as site_maintainer_ns
 from api.site_packageset import ns as site_packageset_ns
+from api.export import ns as export_ns
 
 
 authorizations = {
@@ -42,6 +43,7 @@ api.add_namespace(site_package_ns)
 api.add_namespace(site_pkgset_info)
 api.add_namespace(site_maintainer_ns)
 api.add_namespace(site_packageset_ns)
+api.add_namespace(export_ns)
 
 version_fields = api.model(
     "APIVersion",

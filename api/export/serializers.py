@@ -1,0 +1,64 @@
+from flask_restx import fields
+
+from .namespace import get_namespace
+
+ns = get_namespace()
+
+
+repology_export_branch_stat_el_model = ns.model(
+    "RepologyExportBranchStatElementModel",
+    {
+        "arch": fields.String(description="source package arch"),
+        "count": fields.Integer(
+            attribute="cnt",
+            description="count of source packages by binary packages arch",
+        ),
+    },
+)
+repology_export_bin_pkg_el_model = ns.model(
+    "RepologyExportBranchBinaryPackageElementModel",
+    {
+        "name": fields.String(description="package name"),
+        "version": fields.String(description="package version"),
+        "summary": fields.String(description="package summary"),
+        "archs": fields.List(fields.String, description="package archs"),
+    },
+)
+repology_export_src_pkg_el_model = ns.model(
+    "RepologyExportBranchSourcePackageElementModel",
+    {
+        "name": fields.String(description="package name"),
+        "version": fields.String(description="package version"),
+        "url": fields.String(description="package upstream URL"),
+        "license": fields.String(description="package license"),
+        "category": fields.String(description="package category"),
+        "summary": fields.String(description="package summary"),
+        "packager": fields.String(description="packager email"),
+        "homepage": fields.String(description="package homepage"),
+        "recipe": fields.String(description="package spec file"),
+        "bugzilla": fields.String(description="package bugs"),
+        "CPE": fields.String(description="package CPE"),
+        "binaries": fields.Nested(
+            repology_export_bin_pkg_el_model,
+            description="binary packages info",
+            as_list=True,
+        ),
+    },
+)
+repology_export_model = ns.model(
+    "RepologyExportModel",
+    {
+        "branch": fields.String(description="package set name"),
+        "date": fields.String(description="package set commit date"),
+        "stats": fields.Nested(
+            repology_export_branch_stat_el_model,
+            description="package set stats",
+            as_list=True,
+        ),
+        "packages": fields.Nested(
+            repology_export_src_pkg_el_model,
+            description="source packages info",
+            as_list=True,
+        ),
+    },
+)
