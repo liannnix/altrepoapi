@@ -98,7 +98,7 @@ WHERE pkgset_name = '{branch}'
         SELECT pkgname
             FROM last_acl_with_groups
             WHERE acl_user = '{maintainer_nickname}'
-                AND acl_branch = '{branch}'
+                AND acl_branch = 'sisyphus'
                 AND order_u = 1
                 {order_g}
     )
@@ -141,8 +141,8 @@ ORDER BY
         AND pkg_sourcepackage = 1
         AND pkg_name IN (
             SELECT acl_for
-                FROM last_acl
-                WHERE acl_branch = '{branch}'
+                FROM last_acl_stage1
+                WHERE acl_branch = 'sisyphus'
                     AND has(acl_list, '{maintainer_nickname}')
         )
     )
@@ -163,10 +163,10 @@ ORDER BY
 WITH
 (
     SELECT groupUniqArray(acl_for)
-    FROM last_acl
+    FROM last_acl_stage1
     WHERE has(acl_list, '{maintainer_nickname}')
         AND acl_for LIKE ('@%')
-        AND acl_branch = '{branch}'
+        AND acl_branch = 'sisyphus'
 ) AS acl_group
 SELECT
     pkg_name,
@@ -192,8 +192,8 @@ WHERE pkgset_name = '{branch}'
     and pkg_sourcepackage = 1
     and pkg_name in (
         SELECT acl_for
-            FROM last_acl
-            WHERE acl_branch = '{branch}'
+            FROM last_acl_stage1
+            WHERE acl_branch = 'sisyphus'
                 AND (has(acl_list, '{maintainer_nickname}')
                 OR hasAny(acl_list, acl_group))
     )
@@ -321,10 +321,10 @@ ORDER BY pkg_buildtime DESC
 WITH
 (
     SELECT groupUniqArray(acl_for)
-    FROM last_acl
+    FROM last_acl_stage1
     WHERE has(acl_list, '{maintainer_nickname}')
         AND acl_for LIKE ('@%')
-        AND acl_branch = '{branch}'
+        AND acl_branch = 'sisyphus'
 ) AS acl_group
 SELECT
     pkg_name,
@@ -338,8 +338,8 @@ WHERE pkg_sourcepackage = 1
       AND pkgset_name = '{branch}'
       AND pkg_name IN (
         SELECT acl_for
-        FROM last_acl
-        WHERE acl_branch = '{branch}'
+        FROM last_acl_stage1
+        WHERE acl_branch = 'sisyphus'
           AND (has(acl_list, '{maintainer_nickname}')
           OR hasAny(acl_list, acl_group))
     )
@@ -367,7 +367,7 @@ WHERE pkg_sourcepackage = 1
       AND pkg_name IN (
         SELECT pkgname
         FROM last_acl_with_groups
-        WHERE acl_branch = '{branch}'
+        WHERE acl_branch = 'sisyphus'
           AND acl_user = '{maintainer_nickname}'
           AND order_u = 1
           AND order_g = 0
@@ -395,8 +395,8 @@ WHERE pkg_sourcepackage = 1
       AND pkgset_name = '{branch}'
       AND pkg_name IN (
         SELECT acl_for
-        FROM last_acl
-        WHERE acl_branch = '{branch}'
+        FROM last_acl_stage1
+        WHERE acl_branch = 'sisyphus'
           AND has(acl_list, '{maintainer_nickname}')
     )
 GROUP BY
@@ -424,7 +424,7 @@ WHERE pkg_sourcepackage = 1
         SELECT pkgname
         FROM last_acl_with_groups
         WHERE acl_user = '{maintainer_nickname}'
-            AND acl_branch = '{branch}'
+            AND acl_branch = 'sisyphus'
             AND order_u = 1
 )
 GROUP BY
