@@ -182,6 +182,8 @@ class Bugzilla(APIWorker):
                 "reporter",
                 "summary",
                 "ts",
+                "source_package_name",
+                "binary_package_name",
             ],
         )
         res = [BugzillaInfo(*el)._asdict() for el in response]

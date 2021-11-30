@@ -89,7 +89,7 @@ FROM
         argMax(bz_resolution, ts),
         argMax(bz_severity, ts),
         argMax(bz_product, ts),
-        argMax(bz_component, ts),
+        argMax(bz_component, ts) AS bz_cmp,
         argMax(bz_assignee, ts) AS bz_assignee,
         argMax(bz_reporter, ts),
         argMax(bz_summary, ts),
@@ -101,11 +101,18 @@ FROM
     )
     GROUP BY bz_id
     ORDER BY bz_id DESC
-)
+) AS bugzilla
+LEFT JOIN
+(
+    SELECT
+        src_pkg_name,
+        bin_pkg_name
+    FROM PackagesSourceAndBinaries
+) AS TT ON TT.bin_pkg_name = bugzilla.bz_cmp
 WHERE bz_assignee IN (
     SELECT bz_assignee
     FROM bugs
-)
+) 
 """
 
     get_bugzilla_info_by_last_acl_with_group = """
@@ -131,7 +138,7 @@ FROM
         argMax(bz_resolution, ts),
         argMax(bz_severity, ts),
         argMax(bz_product, ts),
-        argMax(bz_component, ts),
+        argMax(bz_component, ts) AS bz_cmp,
         argMax(bz_assignee, ts) AS bz_assignee,
         argMax(bz_reporter, ts),
         argMax(bz_summary, ts),
@@ -143,7 +150,14 @@ FROM
     )
     GROUP BY bz_id
     ORDER BY bz_id DESC
-)
+) AS bugzilla
+LEFT JOIN
+(
+    SELECT
+        src_pkg_name,
+        bin_pkg_name
+    FROM PackagesSourceAndBinaries
+) AS TT ON TT.bin_pkg_name = bugzilla.bz_cmp
 """
 
     get_beehive_errors_by_nick_or_group_acl = """
@@ -167,7 +181,7 @@ FROM
         argMax(bz_resolution, ts),
         argMax(bz_severity, ts),
         argMax(bz_product, ts),
-        argMax(bz_component, ts),
+        argMax(bz_component, ts) AS bz_cmp,
         argMax(bz_assignee, ts) AS bz_assignee,
         argMax(bz_reporter, ts),
         argMax(bz_summary, ts),
@@ -179,7 +193,14 @@ FROM
     )
     GROUP BY bz_id
     ORDER BY bz_id DESC
-)
+) AS bugzilla
+LEFT JOIN
+(
+    SELECT
+        src_pkg_name,
+        bin_pkg_name
+    FROM PackagesSourceAndBinaries
+) AS TT ON TT.bin_pkg_name = bugzilla.bz_cmp
 """
 
     get_bugzilla_info_by_nick_acl = """
@@ -211,7 +232,7 @@ FROM
         argMax(bz_resolution, ts),
         argMax(bz_severity, ts),
         argMax(bz_product, ts),
-        argMax(bz_component, ts),
+        argMax(bz_component, ts) AS bz_cmp,
         argMax(bz_assignee, ts) AS bz_assignee,
         argMax(bz_reporter, ts),
         argMax(bz_summary, ts),
@@ -223,7 +244,14 @@ FROM
     )
     GROUP BY bz_id
     ORDER BY bz_id DESC
-)
+) AS bugzilla
+LEFT JOIN
+(
+    SELECT
+        src_pkg_name,
+        bin_pkg_name
+    FROM PackagesSourceAndBinaries
+) AS TT ON TT.bin_pkg_name = bugzilla.bz_cmp
 """
 
 
