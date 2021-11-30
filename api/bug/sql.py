@@ -108,5 +108,123 @@ WHERE bz_assignee IN (
 )
 """
 
+    get_bugzilla_info_by_last_acl_with_group = """
+WITH acl_package AS 
+(
+SELECT DISTINCT bin_pkg_name
+FROM PackagesSourceAndBinaries
+WHERE src_pkg_name IN (
+    SELECT pkgname
+    FROM last_acl_with_groups
+    WHERE acl_branch = 'sisyphus'
+        AND acl_user = '{maintainer_nickname}'
+        AND order_u = 1
+        {order_g}
+    )
+)
+SELECT *
+FROM
+(
+    SELECT
+        bz_id,
+        argMax(bz_status, ts),
+        argMax(bz_resolution, ts),
+        argMax(bz_severity, ts),
+        argMax(bz_product, ts),
+        argMax(bz_component, ts),
+        argMax(bz_assignee, ts) AS bz_assignee,
+        argMax(bz_reporter, ts),
+        argMax(bz_summary, ts),
+        max(ts)
+    FROM Bugzilla
+    WHERE bz_component IN (
+        SELECT bin_pkg_name
+        FROM acl_package
+    )
+    GROUP BY bz_id
+    ORDER BY bz_id DESC
+)
+"""
+
+    get_beehive_errors_by_nick_or_group_acl = """
+WITH acl_package AS
+(
+SELECT DISTINCT bin_pkg_name
+FROM PackagesSourceAndBinaries
+WHERE src_pkg_name IN (
+    SELECT acl_for
+    FROM last_acl_stage1
+    WHERE acl_branch = 'sisyphus'
+        AND has(acl_list, '{maintainer_nickname}')
+    )
+)
+SELECT *
+FROM
+(
+    SELECT
+        bz_id,
+        argMax(bz_status, ts),
+        argMax(bz_resolution, ts),
+        argMax(bz_severity, ts),
+        argMax(bz_product, ts),
+        argMax(bz_component, ts),
+        argMax(bz_assignee, ts) AS bz_assignee,
+        argMax(bz_reporter, ts),
+        argMax(bz_summary, ts),
+        max(ts)
+    FROM Bugzilla
+    WHERE bz_component IN (
+        SELECT bin_pkg_name
+        FROM acl_package
+    )
+    GROUP BY bz_id
+    ORDER BY bz_id DESC
+)
+"""
+
+    get_bugzilla_info_by_nick_acl = """
+WITH
+(
+    SELECT groupUniqArray(acl_for)
+    FROM last_acl_stage1
+    WHERE has(acl_list, '{maintainer_nickname}')
+        AND acl_for LIKE ('@%')
+        AND acl_branch = 'sisyphus'
+) AS acl_group,
+acl_package AS (
+    SELECT DISTINCT bin_pkg_name
+    FROM PackagesSourceAndBinaries
+    WHERE src_pkg_name IN (
+        SELECT acl_for
+            FROM last_acl_stage1
+            WHERE acl_branch = 'sisyphus'
+                AND (has(acl_list, '{maintainer_nickname}')
+                OR hasAny(acl_list, acl_group))
+        )
+)
+SELECT *
+FROM
+(
+    SELECT
+        bz_id,
+        argMax(bz_status, ts),
+        argMax(bz_resolution, ts),
+        argMax(bz_severity, ts),
+        argMax(bz_product, ts),
+        argMax(bz_component, ts),
+        argMax(bz_assignee, ts) AS bz_assignee,
+        argMax(bz_reporter, ts),
+        argMax(bz_summary, ts),
+        max(ts)
+    FROM Bugzilla
+    WHERE bz_component IN (
+        SELECT bin_pkg_name
+        FROM acl_package
+    )
+    GROUP BY bz_id
+    ORDER BY bz_id DESC
+)
+"""
+
 
 sql = SQL()

@@ -16,6 +16,15 @@
 
 from api.base import parser
 
+by_acl_opt = parser.register_item(
+    "by_acl",
+    type=str,
+    choices=("none", "by_nick", "by_nick_leader", "by_nick_or_group", "by_nick_leader_and_group"),
+    default="none",
+    required=False,
+    help="search maintainer's packages by ACL",
+    location="args",
+)
 package_name = parser.register_item(
     "package_name",
     type=str,
@@ -41,4 +50,4 @@ maintainer_nickname = parser.register_item(
 )
 
 package_bugzilla_args = parser.build_parser(package_name, package_type_opt)
-maintainer_bugzilla_args = parser.build_parser(maintainer_nickname)
+maintainer_bugzilla_args = parser.build_parser(maintainer_nickname, by_acl_opt)
