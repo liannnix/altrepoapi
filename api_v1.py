@@ -1,4 +1,4 @@
-# altrepodb API
+# ALTRepo API
 # Copyright (C) 2021  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
@@ -14,11 +14,11 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
 from flask import Blueprint, send_from_directory
 from flask_restx import Api
 from flask_restx import Resource, fields
 
+from settings import namespace as settings
 from api.auth.decorators import auth_required
 
 from api.bug import ns as bug_ns
@@ -43,10 +43,10 @@ blueprint = Blueprint("api", __name__, url_prefix="/api")
 api = Api(
     blueprint,
     version="1.4",
-    title="altrepodb API",
+    title="ALTRepo API",
     license="GNU AGPLv3",
     license_url="https://www.gnu.org/licenses/agpl-3.0.en.html",
-    description="altrepodb API v1",
+    description="altrepo API v1",
     default="api",
     default_label="basic functions",
     authorizations=authorizations,
@@ -99,5 +99,8 @@ class ApiLicense(Resource):
     def get(self):
         licenseFile = "LICENSE"
         return send_from_directory(
-            os.getcwd(), licenseFile, as_attachment=False, mimetype="text/plain"
+            settings.PROJECT_DIR,
+            licenseFile,
+            as_attachment=False,
+            mimetype="text/plain",
         )

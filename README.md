@@ -1,7 +1,7 @@
-# altrepodb API
+# ALTRepo API
 
-altrepodb API is a REST API for the repository database of ALT
-distribution. altrepodb API allows users to get the necessary information 
+ALTRepo API is a REST API for the repository database of ALT
+distribution.ALTRepo API allows users to get the necessary information 
 regards to the repository by GET requests.
 
 API documentation is available by Swagger web-interface at

@@ -1,4 +1,4 @@
-# altrepodb API
+# ALTRepo API
 # Copyright (C) 2021  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify

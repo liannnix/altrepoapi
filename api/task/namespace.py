@@ -1,4 +1,4 @@
-# altrepodb API
+# ALTRepo API
 # Copyright (C) 2021  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
 
 from flask_restx import Namespace
 
-namespace = Namespace("task", description="Task's information API")
+namespace = Namespace("task", description="tasks information API")
 
 def get_namespace():
     return namespace
