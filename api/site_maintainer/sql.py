@@ -262,6 +262,183 @@ WHERE pkgset_name = '{branch}'
 ORDER BY pkg_name
 """
 
+    get_beehive_errors_by_nick_acl = """
+WITH
+last_bh_updated AS
+(
+    SELECT
+        pkgset_name,
+        bh_arch as arch,
+        max(bh_updated) AS updated
+    FROM BeehiveStatus
+    WHERE pkgset_name = '{branch}'
+    GROUP BY
+        pkgset_name,
+        bh_arch
+),
+maintainer_packages AS
+(
+    SELECT
+        pkg_hash,
+        pkg_epoch
+    FROM last_packages
+    WHERE pkg_sourcepackage = 1
+        AND pkgset_name = '{branch}'
+        AND pkg_name IN (
+    SELECT acl_for
+    FROM last_acl_stage1
+    WHERE acl_branch = 'sisyphus'
+        AND has(acl_list, '{maintainer_nickname}'))
+)
+SELECT
+    pkg_hash,
+    pkgset_name,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    bh_arch,
+    bh_build_time,
+    bh_updated,
+    bh_ftbfs_since,
+    Pkg.pkg_epoch
+FROM BeehiveStatus
+LEFT JOIN
+(SELECT pkg_hash, pkg_epoch FROM maintainer_packages) AS Pkg USING (pkg_hash)
+WHERE pkgset_name = '{branch}'
+    AND bh_status = 'error'
+    AND (bh_arch, bh_updated) IN
+    (
+        SELECT arch, updated FROM last_bh_updated
+    )
+    AND pkg_hash IN
+    (
+        SELECT pkg_hash FROM maintainer_packages
+    )
+ORDER BY pkg_name
+"""
+
+    get_beehive_errors_by_last_acl_with_group = """
+WITH
+last_bh_updated AS
+(
+    SELECT
+        pkgset_name,
+        bh_arch as arch,
+        max(bh_updated) AS updated
+    FROM BeehiveStatus
+    WHERE pkgset_name = '{branch}'
+    GROUP BY
+        pkgset_name,
+        bh_arch
+),
+maintainer_packages AS
+(
+    SELECT
+        pkg_hash,
+        pkg_epoch
+    FROM last_packages
+    WHERE pkg_sourcepackage = 1
+        AND pkgset_name = '{branch}'
+        AND pkg_name IN (
+            SELECT pkgname
+            FROM last_acl_with_groups
+            WHERE acl_branch = 'sisyphus'
+                AND acl_user = '{maintainer_nickname}'
+                AND order_u = 1
+                {order_g}
+            )
+)
+SELECT
+    pkg_hash,
+    pkgset_name,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    bh_arch,
+    bh_build_time,
+    bh_updated,
+    bh_ftbfs_since,
+    Pkg.pkg_epoch
+FROM BeehiveStatus
+LEFT JOIN
+(SELECT pkg_hash, pkg_epoch FROM maintainer_packages) AS Pkg USING (pkg_hash)
+WHERE pkgset_name = '{branch}'
+    AND bh_status = 'error'
+    AND (bh_arch, bh_updated) IN
+    (
+        SELECT arch, updated FROM last_bh_updated
+    )
+    AND pkg_hash IN
+    (
+        SELECT pkg_hash FROM maintainer_packages
+    )
+ORDER BY pkg_name
+"""
+
+    get_beehive_errors_by_nick_or_group_acl = """
+WITH
+last_bh_updated AS
+(
+    SELECT
+        pkgset_name,
+        bh_arch as arch,
+        max(bh_updated) AS updated
+    FROM BeehiveStatus
+    WHERE pkgset_name = '{branch}'
+    GROUP BY
+        pkgset_name,
+        bh_arch
+),
+(
+    SELECT groupUniqArray(acl_for)
+    FROM last_acl_stage1
+    WHERE has(acl_list, '{maintainer_nickname}')
+        AND acl_for LIKE ('@%')
+        AND acl_branch = 'sisyphus'
+) AS acl_group,
+maintainer_packages AS
+(
+    SELECT
+        pkg_hash,
+        pkg_epoch
+    FROM last_packages
+    WHERE pkg_sourcepackage = 1
+        AND pkgset_name = '{branch}'
+        AND pkg_name IN (
+            SELECT acl_for
+            FROM last_acl_stage1
+            WHERE acl_branch = 'sisyphus'
+                AND (has(acl_list, '{maintainer_nickname}')
+                OR hasAny(acl_list, acl_group))
+        )
+)
+SELECT
+    pkg_hash,
+    pkgset_name,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    bh_arch,
+    bh_build_time,
+    bh_updated,
+    bh_ftbfs_since,
+    Pkg.pkg_epoch
+FROM BeehiveStatus
+LEFT JOIN
+(SELECT pkg_hash, pkg_epoch FROM maintainer_packages) AS Pkg USING (pkg_hash)
+WHERE pkgset_name = '{branch}'
+    AND bh_status = 'error'
+    AND (bh_arch, bh_updated) IN
+    (
+        SELECT arch, updated FROM last_bh_updated
+    )
+    AND pkg_hash IN
+    (
+        SELECT pkg_hash FROM maintainer_packages
+    )
+ORDER BY pkg_name
+"""
+
     get_all_maintaners = """
 SELECT
     argMax(pkg_packager, cnt) AS name,

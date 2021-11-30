@@ -208,10 +208,10 @@ class routeRepocopByMaintainer(Resource):
     },
 )
 class routeBeehiveByMaintainer(Resource):
-    @ns.expect(maintainer_info_args)
+    @ns.expect(maintainer_packages_args)
     @ns.marshal_list_with(beehive_by_maintainer_model)
     def get(self):
-        args = maintainer_info_args.parse_args(strict=True)
+        args = maintainer_packages_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = MaintainerBeehiveErrors(g.connection, **args)
         if not wrk.check_params():
