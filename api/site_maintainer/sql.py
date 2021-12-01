@@ -628,7 +628,6 @@ WHERE pkg_name IN (
     WHERE acl_user = '{maintainer_nickname}'
         AND acl_branch = 'sisyphus'
         AND order_u = 1
-        AND order_g = 0
     )
 GROUP BY
     pkg_name,
