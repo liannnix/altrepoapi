@@ -31,7 +31,7 @@ CREATE TEMPORARY TABLE {tmp_table} (hsh UInt64)
 """
 
     select_from_tmp_table = """
-SELECT hsh FROM {tmp_table}
+(SELECT hsh FROM {tmp_table})
 """
 
     drop_tmp_table = """
@@ -51,11 +51,8 @@ FROM
     SELECT
         pkg_hash AS srchsh,
         dp_name
-    FROM Depends_buffer
-    WHERE pkg_hash IN
-    (
-        {pkgs}
-    )
+    FROM Depends
+    WHERE pkg_hash IN {pkgs}
         AND dp_type = 'require'
 ) AS sourceDep
 INNER JOIN
@@ -67,7 +64,7 @@ INNER JOIN
     WHERE dp_type = 'provide'
         AND pkgset_name = '{branch}'
         AND pkg_sourcepackage = 0
-        AND pkg_arch IN ({archs})
+        AND pkg_arch IN {archs}
 ) AS binaryDeps USING dp_name
 GROUP BY srchsh
 """
@@ -80,7 +77,7 @@ SELECT
     pkg_release,
     pkg_epoch,
     groupUniqArray(pkg_arch)
-FROM Packages_buffer
+FROM Packages
 WHERE pkg_hash IN
 (
     SELECT hsh

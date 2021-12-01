@@ -932,7 +932,7 @@ ORDER BY pkg_packager_email
     get_pkg_hshs = """
 SELECT pkg_hash
 FROM last_packages
-WHERE pkg_name IN ({pkgs})
+WHERE pkg_name IN {pkgs}
     AND pkgset_name = '{branch}'
     AND pkg_sourcepackage = 1
 """
