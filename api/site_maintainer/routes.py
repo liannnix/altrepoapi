@@ -26,11 +26,13 @@ from .endpoints.package import MaintainerPackages
 from .endpoints.packageset import MaintainerBranches
 from .endpoints.repocop import RepocopByMaintainer
 from .endpoints.beehive import MaintainerBeehiveErrors
+from .endpoints.watch import WatchByMaintainer
 from .parsers import (
     all_maintainers_args,
     maintainer_info_args,
     maintainer_branches_args,
     maintainer_packages_args,
+    maintainer_watch_args,
 )
 from .serializers import (
     all_maintainers_model,
@@ -39,6 +41,7 @@ from .serializers import (
     maintainer_branches_model,
     repocop_by_maintainer_model,
     beehive_by_maintainer_model,
+    watch_by_maintainer_model,
 )
 
 ns = get_namespace()
@@ -214,6 +217,35 @@ class routeBeehiveByMaintainer(Resource):
         args = maintainer_packages_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = MaintainerBeehiveErrors(g.connection, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+@ns.route(
+    "/watch_by_maintainer",
+    doc={
+        "description": "Get watch packages by the maintainer's nickname",
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package not found in database",
+        },
+    },
+)
+class routeWatchByMaintainer(Resource):
+    @ns.expect(maintainer_watch_args)
+    @ns.marshal_list_with(watch_by_maintainer_model)
+    def get(self):
+        args = maintainer_watch_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        wrk = WatchByMaintainer(g.connection, **args)
         if not wrk.check_params():
             abort(
                 400,

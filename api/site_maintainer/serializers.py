@@ -152,3 +152,27 @@ beehive_by_maintainer_model = ns.model(
         ),
     },
 )
+
+
+watch_by_maintainer_el_model = ns.model(
+    "SiteWatchByMaintainerElementModel",
+    {
+        "pkg_name": fields.String(description="package name"),
+        "old_version": fields.String(description="old package version"),
+        "new_version": fields.String(description="new package version"),
+        "url": fields.String(description="url for download src"),
+        "date_update": fields.String(description="Watch update date"),
+    },
+)
+watch_by_maintainer_model = ns.model(
+    "SiteWatchByMaintainerModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "packages": fields.Nested(
+            watch_by_maintainer_el_model,
+            description="found packages",
+            as_list=True,
+        ),
+    },
+)

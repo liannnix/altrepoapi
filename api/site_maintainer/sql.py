@@ -614,5 +614,124 @@ GROUP BY
 ORDER BY pkg_buildtime DESC
 """
 
+    get_watch_by_last_acl_with_group = """
+SELECT
+    argMax(pkg_name, date_update),
+    argMax(old_version, date_update),
+    argMax(new_version, date_update),
+    argMax(url, date_update),
+    max(date_update)
+FROM PackagesWatch
+WHERE pkg_name IN (
+    SELECT pkgname
+    FROM last_acl_with_groups
+    WHERE acl_user = '{maintainer_nickname}'
+        AND acl_branch = 'sisyphus'
+        AND order_u = 1
+        AND order_g = 0
+    )
+GROUP BY
+    pkg_name,
+    old_version,
+    new_version,
+    url
+ORDER BY pkg_name ASC
+"""
+
+    get_watch_by_last_acl = """
+SELECT
+    argMax(pkg_name, date_update),
+    argMax(old_version, date_update),
+    argMax(new_version, date_update),
+    argMax(url, date_update),
+    max(date_update)
+FROM PackagesWatch
+WHERE acl = '{maintainer_nickname}'
+GROUP BY
+    pkg_name,
+    old_version,
+    new_version,
+    url
+ORDER BY pkg_name ASC
+"""
+
+    get_watch_by_nick_acl = """
+SELECT
+    argMax(pkg_name, date_update),
+    argMax(old_version, date_update),
+    argMax(new_version, date_update),
+    argMax(url, date_update),
+    max(date_update)
+FROM PackagesWatch
+WHERE pkg_name IN (
+    SELECT acl_for
+    FROM last_acl_stage1
+    WHERE acl_branch = 'sisyphus'
+        AND has(acl_list, '{maintainer_nickname}')
+    )
+GROUP BY
+    pkg_name,
+    old_version,
+    new_version,
+    url
+ORDER BY pkg_name ASC
+"""
+
+    get_watch_by_nick_or_group_acl = """
+WITH
+(
+    SELECT groupUniqArray(acl_for)
+    FROM last_acl_stage1
+    WHERE has(acl_list, '{maintainer_nickname}')
+        AND acl_for LIKE ('@%')
+        AND acl_branch = 'sisyphus'
+) AS acl_group
+SELECT
+    argMax(pkg_name, date_update),
+    argMax(old_version, date_update),
+    argMax(new_version, date_update),
+    argMax(url, date_update),
+    max(date_update)
+FROM PackagesWatch
+WHERE pkg_name IN (
+    SELECT acl_for
+    FROM last_acl_stage1
+    WHERE acl_branch = 'sisyphus'
+        AND (has(acl_list, '{maintainer_nickname}')
+        OR hasAny(acl_list, acl_group))
+    )
+GROUP BY
+    pkg_name,
+    old_version,
+    new_version,
+    url
+ORDER BY pkg_name ASC
+"""
+
+    get_watch_by_packager = """
+SELECT
+    pkg_name,
+    old_version,
+    new_version,
+    url,
+    max(date_update)
+FROM PackagesWatch
+WHERE pkg_name IN (
+    SELECT pkg_name
+    FROM last_packages
+    WHERE pkgset_name = 'sisyphus'
+        AND pkg_sourcepackage = 1
+        AND (pkg_packager_email LIKE '{maintainer_nickname}@%'
+            OR pkg_packager_email LIKE '{maintainer_nickname} at%'
+            OR pkg_packager LIKE '%{maintainer_nickname}@%')
+    )
+GROUP BY
+    pkg_name,
+    old_version,
+    new_version,
+    url
+ORDER BY pkg_name ASC
+"""
+
 
 sql = SQL()
