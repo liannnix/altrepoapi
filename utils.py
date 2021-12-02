@@ -23,8 +23,6 @@ import time
 import logging
 from logging import handlers
 import datetime
-import argparse
-import configparser
 from collections import defaultdict
 from urllib.parse import unquote
 from dataclasses import dataclass
@@ -55,32 +53,37 @@ def get_logger(name):
     root_logger.setLevel(settings.LOG_LEVEL)
 
     if not len(root_logger.handlers):
-        # syslog handler config
-        if settings.LOG_LEVEL == logging.DEBUG:
-            fmt = logging.Formatter(
-                ": %(levelname)-9s%(name)s %(module)s %(funcName)s %(lineno)d\t%(message)s"
+        if settings.LOG_TO_SYSLOG:
+            # syslog handler config
+            if settings.LOG_LEVEL == logging.DEBUG:
+                fmt = logging.Formatter(
+                    ": %(levelname)-9s%(name)s %(module)s %(funcName)s %(lineno)d\t%(message)s"
+                )
+            else:
+                fmt = logging.Formatter(": %(levelname)-9s%(message)s")
+
+            syslog_handler = handlers.SysLogHandler(
+                address="/dev/log", facility=handlers.SysLogHandler.LOG_DAEMON
             )
-        else:
-            fmt = logging.Formatter(": %(levelname)-9s%(message)s")
+            syslog_handler.ident = settings.PROJECT_NAME
+            syslog_handler.setFormatter(fmt)
 
-        syslog_handler = handlers.SysLogHandler(
-            address="/dev/log", facility=handlers.SysLogHandler.LOG_DAEMON
-        )
-        syslog_handler.ident = settings.PROJECT_NAME
-        syslog_handler.setFormatter(fmt)
+            root_logger.addHandler(syslog_handler)
 
-        # file handler config
-        fmt = logging.Formatter(
-            "%(asctime)s\t%(levelname)s\t%(name)s %(module)s %(funcName)s %(lineno)d\t%(message)s"
-        )
+        if settings.LOG_TO_FILE:
+            # file handler config
+            fmt = logging.Formatter(
+                "%(asctime)s\t%(levelname)s\t%(name)s %(module)s %(funcName)s %(lineno)d\t%(message)s"
+            )
 
-        file_handler = handlers.RotatingFileHandler(
-            filename=settings.LOG_FILE, maxBytes=2 ** 26, backupCount=10
-        )
-        file_handler.setFormatter(fmt)
+            file_handler = handlers.RotatingFileHandler(
+                filename=settings.LOG_FILE, maxBytes=2 ** 26, backupCount=10
+            )
+            file_handler.setFormatter(fmt)
 
-        root_logger.addHandler(syslog_handler)
-        root_logger.addHandler(file_handler)
+            root_logger.addHandler(file_handler)
+        # pass if not logging handlers enabled
+        pass
 
     logger_name = ".".join((settings.PROJECT_NAME, name))
     logger = logging.getLogger(logger_name)
@@ -90,15 +93,6 @@ def get_logger(name):
 
 def exception_to_logger(exception):
     return exception.args[0].split("\n")[0]
-
-
-def read_config(config_file):
-    config = configparser.ConfigParser(inline_comment_prefixes="#")
-
-    if config.read(config_file):
-        return config
-
-    return False
 
 
 def url_logging(logger, url):
@@ -165,15 +159,6 @@ def print_statusbar(message_list):
         print(
             "[ALTREPO SERVER]{type_}: {msg}" "".format(type_=types[msg[1]], msg=msg[0])
         )
-
-
-def make_argument_parser(arg_list, desc=None):
-    parser = argparse.ArgumentParser(description=desc)
-
-    for arg in arg_list:
-        parser.add_argument(arg[0], type=arg[1], default=arg[2], help=arg[3])
-
-    return parser.parse_args()
 
 
 # convert tuple or list of tuples to dict by set keys

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# This file need for start altrepo-server project.
+# This file need for start ALTRepo API project.
 
 from run_app import start
 

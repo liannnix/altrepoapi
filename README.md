@@ -103,28 +103,33 @@ Configuration file usually contains next sections
     TIMEOUT = 30            # worker timeout in seconds
 
     [Other]
-    LOGFILE = /home/`user`/altrepo_server.log   # path to logfile
-    ADMIN_USER = admin                          # API authorized user login
-    ADMIN_PASSWORD = admin_password_sha512      # API authorized user password SHA512 hash
+    ADMIN_USER = admin                              # API authorized user login
+    ADMIN_PASSWORD = password_SHA512                # API authorized user password SHA512 hash
+    LOGFILE = /var/log/altrepo_api/altrepo_api.log  # path to logfile
+    LOG_LEVEL = 3           # 0 : critical, 1 : error, 2 : warning, 3 : info, 4 : debug
+    SQL_DEBUG = false       # print detailed SQL requests
+    LOG_TO_FILE = true      # log to file
+    LOG_TO_SYSLOG = false   # log to syslog
 
-Also you can set launch options use keys. For more information use -h.
+Configuration file could be provided by command line argument or
+environment variable (ALTREPO_API_CONFIG) or default value (/etc/altrepo_api/api.conf)
+from settings.py in order of priority:
+Command line argument -> environment variable -> default.
 
 ### Starting application
 
 For start application using module run_app. For set app configuration
 can be using config file ex.:
 
-    ./altrepo-server --config /path/to/config/file.conf
+    $> ./altrepo-api /path/to/config/file.conf
 
-or use launch keys, for more information
+or use environment variable
 
-    ./altrepo-server --help
+    $> ALTREPO_API_CONFIG=/path/to/config/file.conf ./altrepo-api
 
-Start application from git catalog
+or use default config file location (/etc/altrepo_api/api.conf)
 
-    ./altrepo-server `allow_options` &
-
-..after the application will run in the background.
+    $> ./altrepo-api
 
 ## Examples of query
 

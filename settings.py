@@ -24,8 +24,9 @@ from dataclasses import dataclass
 class BasePathNamespace:
     PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
     # configuration parameters
+    CONFIG_ENV_VAR = "ALTREPO_API_CONFIG"
     PROJECT_NAME = "altrepo_api"
-    CONFIG_FILE = "/etc/{}/dbconfig.conf".format(PROJECT_NAME)
+    CONFIG_FILE = "/etc/{}/api.conf".format(PROJECT_NAME)
     LOG_FILE = "/home/{}/{}.log".format(getpass.getuser(), PROJECT_NAME)
     # application launch parameters
     DEFAULT_HOST = "127.0.0.1"
@@ -44,6 +45,8 @@ class BasePathNamespace:
     SQL_DEBUG = False
     # logging settings
     LOG_LEVEL = logging.INFO
+    LOG_TO_FILE = True
+    LOG_TO_SYSLOG = False
     # misc settings
     DEPENDENCY_MAX_DEPTH = 5
     # API admin credentials

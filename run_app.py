@@ -14,111 +14,102 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
 import sys
-from collections import defaultdict
+import logging
+import configparser
 from gunicorn.app.wsgiapp import run
 
-import utils
 from settings import namespace as settings
+
+# dictionary of config arguments
+PARAMS = {
+    "database": {
+        "host": ("DATABASE_HOST", "str"),
+        "name": ("DATABASE_NAME", "str"),
+        "try_numbers": ("TRY_CONNECTION_NUMBER", "int"),
+        "try_timeout": ("TRY_TIMEOUT", "int"),
+        "user": ("DATABASE_USER", "str"),
+        "password": ("DATABASE_PASS", "str"),
+    },
+    "application": {
+        "host": ("DEFAULT_HOST", "str"),
+        "port": ("DEFAULT_PORT", "int"),
+        "processes": ("WORKER_PROCESSES", "str"),
+        "timeout": ("WORKER_TIMEOUT", "str"),
+    },
+    "other": {
+        "admin_user": ("ADMIN_USER", "str"),
+        "admin_password": ("ADMIN_PASSWORD", "str"),
+        "log_file": ("LOG_FILE", "str"),
+        "log_level": ("LOG_LEVEL", "log_level"),
+        "sql_debug": ("SQL_DEBUG", "bool"),
+        "log_to_file": ("LOG_TO_FILE", "bool"),
+        "log_to_syslog": ("LOG_TO_SYSLOG", "bool"),            
+    },
+}
+
+
+def read_config(config_file: str, params: dict, namespace: object) -> bool:
+    config = configparser.ConfigParser(inline_comment_prefixes="#")
+
+    if not config.read(config_file):
+        return False
+
+    def _log_level(section, option):
+        ll = config.getint(section, option)
+        if ll is None :
+            return None
+        if ll == 0:
+            return logging.CRITICAL
+        elif ll == 1:
+            return logging.ERROR
+        elif ll == 2:
+            return logging.WARNING
+        elif ll == 3:
+            return logging.INFO
+        elif ll == 4:
+            return logging.DEBUG
+        else:
+            return logging.INFO
+
+    conv = {
+        "str": config.get,
+        "int": config.getint,
+        "bool": config.getboolean,
+        "log_level": _log_level
+    }
+
+    # update settings with values from config file
+    for section in config.sections():
+        for option in config.options(section):
+            param = params.get(section.lower(), {}).get(option, None)
+            if param is None:
+                continue
+            val = conv.get(param[1], config.get)(section, option)
+            if val is not None:
+                namespace.__setattr__(param[0], val)
+
+    return True
 
 
 def start():
     assert sys.version_info >= (3, 7), "Pyhton version 3.7 or newer is required!"
 
-    launch_props = [
-        ("DATABASE_HOST", str),
-        ("DATABASE_NAME", str),
-        ("TRY_CONNECTION_NUMBER", int),
-        ("TRY_TIMEOUT", int),
-        ("DATABASE_USER", str),
-        ("DATABASE_PASS", str),
-        ("DEFAULT_HOST", str),
-        ("DEFAULT_PORT", int),
-        ("WORKER_PROCESSES", str),
-        ("WORKER_TIMEOUT", str),
-        ("LOG_FILE", str),
-        ("ADMIN_USER", str),
-        ("ADMIN_PASSWORD", str),
-    ]
+    cfg_file_env = os.getenv(settings.CONFIG_ENV_VAR)
 
-    pars_args = [
-        ("--host", str, None, "host to start application"),
-        ("--port", int, None, "port to start application"),
-        ("--dbhost", str, None, "database host"),
-        ("--dbname", str, None, "database name"),
-        ("--dbuser", str, None, "database user"),
-        ("--dbpassword", str, None, "database password"),
-        ("--config", str, settings.CONFIG_FILE, "path to db config file"),
-        ("--prcs", str, None, "number of worker processes"),
-        ("--timeout", str, None, "worker timeout"),
-        ("--logs", str, None, "path to log files"),
-    ]
+    if len(sys.argv) >= 2 and os.path.isfile(sys.argv[1]):
+        cfg_file = sys.argv[1]
+    elif cfg_file_env is not None and os.path.isfile(cfg_file_env):
+        cfg_file = cfg_file_env
+    else:
+        cfg_file = settings.CONFIG_FILE
 
-    parser = utils.make_argument_parser(pars_args)
-
-    config = utils.read_config(parser.config)
-
-    if config:
-
-        args_dict = defaultdict(dict)
-        for section in config.sections():
-            for option in config.options(section):
-                args_dict[section.lower()][option] = config.get(section, option)
-
-        params = {
-            "database": [
-                ("host", settings.DATABASE_HOST),
-                ("name", settings.DATABASE_NAME),
-                ("try_numbers", settings.TRY_CONNECTION_NUMBER),
-                ("try_timeout", settings.TRY_TIMEOUT),
-                ("user", settings.DATABASE_USER),
-                ("password", settings.DATABASE_PASS),
-            ],
-            "application": [
-                ("host", settings.DEFAULT_HOST),
-                ("port", settings.DEFAULT_PORT),
-                ("processes", settings.WORKER_PROCESSES),
-                ("timeout", settings.WORKER_TIMEOUT),
-            ],
-            "other": [
-                ("logfiles", settings.LOG_FILE),
-                ("admin_user", settings.ADMIN_USER),
-                ("admin_password", settings.ADMIN_PASSWORD),
-            ],
-        }
-
-        val_list = []
-        for section, items in params.items():
-            for line in items:
-                value = args_dict.get(section)
-                val_list.append(value.get(line[0]) if value else line[1])
-
-        for i, val in enumerate(val_list):
-            if val:
-                settings.__setattr__(
-                    launch_props[i][0], launch_props[i][1](val)
-                )
-
-    parser_keys = [
-        "dbhost",
-        "dbname",
-        "",
-        "",
-        "dbuser",
-        "dbpassword",
-        "host",
-        "port",
-        "prcs",
-        "timeout"
-        "logs",
-    ]
-
-    for i, parser_key in enumerate(parser_keys):
-        if parser.__contains__(parser_key):
-            pars_val = parser.__getattribute__(parser_key)
-
-            if pars_val:
-                settings.__setattr__(launch_props[i][0], launch_props[i][1](pars_val))
+    # update settings with values from config file
+    if read_config(cfg_file, PARAMS, settings):
+        print(f"*** Run ALTRepo API with config from {cfg_file} ***")
+    else:
+        raise RuntimeError("Failed to read configuration from {0}".format(cfg_file))
 
     sys.argv = [
         sys.argv[0],
