@@ -15,7 +15,7 @@ TIMEOUT = 30
 [OTHER]
 ADMIN_USER = admin
 ADMIN_PASSWORD = 
-LOG_FILE = /var/log/altrepo_api/altrepo_api.log
+LOG_FILE = /var/log/altrepo-api/api.log
 LOG_LEVEL = 3     # 0 : critical, 1 : error, 2 : warning, 3 : info, 4 : debug
 SQL_DEBUG = false
 LOG_TO_FILE = true

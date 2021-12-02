@@ -1,7 +1,7 @@
 # ALTRepo API
 
 ALTRepo API is a REST API for the repository database of ALT
-distribution.ALTRepo API allows users to get the necessary information 
+distribution. ALTRepo API allows users to get the necessary information 
 regards to the repository by GET requests.
 
 API documentation is available by Swagger web-interface at
