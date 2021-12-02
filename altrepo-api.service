@@ -1,10 +1,13 @@
 [Unit]
 Description=ALTRepo API daemon
-After=network.target
+Requires=network-online.target
+After=network-online.target
 
 [Service]
 User=_altrepo_api
 Group=_altrepo_api
+Restart=always
+RestartSec=10
 WorkingDirectory=/usr/share/altrepo_api
 ExecStart=/usr/bin/altrepo-api
 
