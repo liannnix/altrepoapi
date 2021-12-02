@@ -96,8 +96,15 @@ def read_config(config_file: str, params: dict, namespace: object) -> bool:
 def start():
     assert sys.version_info >= (3, 7), "Pyhton version 3.7 or newer is required!"
 
+    # abort to run as root
+    if os.geteuid() == 0:
+        raise RuntimeError("It is not allowed to run application as root user!")
+
+    # try to get config file name from environment variable
     cfg_file_env = os.getenv(settings.CONFIG_ENV_VAR)
 
+    # try to read config file in order of priority:
+    # command_line_argument -> environment_variable -> default
     if len(sys.argv) >= 2 and os.path.isfile(sys.argv[1]):
         cfg_file = sys.argv[1]
     elif cfg_file_env is not None and os.path.isfile(cfg_file_env):
