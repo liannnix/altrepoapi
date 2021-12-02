@@ -1,0 +1,12 @@
+[Unit]
+Description=ALTRepo API daemon
+After=network.target
+
+[Service]
+User=_altrepo_api
+Group=_altrepo_api
+WorkingDirectory=/usr/share/altrepo_api
+ExecStart=/usr/bin/altrepo-api
+
+[Install]
+WantedBy=multi-user.target
