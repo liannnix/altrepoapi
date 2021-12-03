@@ -631,8 +631,6 @@ WHERE pkg_name IN (
     )
 GROUP BY
     pkg_name,
-    old_version,
-    new_version,
     url
 ORDER BY pkg_name ASC
 """
@@ -648,8 +646,6 @@ FROM PackagesWatch
 WHERE acl = '{maintainer_nickname}'
 GROUP BY
     pkg_name,
-    old_version,
-    new_version,
     url
 ORDER BY pkg_name ASC
 """
@@ -670,8 +666,6 @@ WHERE pkg_name IN (
     )
 GROUP BY
     pkg_name,
-    old_version,
-    new_version,
     url
 ORDER BY pkg_name ASC
 """
@@ -701,18 +695,16 @@ WHERE pkg_name IN (
     )
 GROUP BY
     pkg_name,
-    old_version,
-    new_version,
     url
 ORDER BY pkg_name ASC
 """
 
     get_watch_by_packager = """
 SELECT
-    pkg_name,
-    old_version,
-    new_version,
-    url,
+    argMax(pkg_name, date_update),
+    argMax(old_version, date_update),
+    argMax(new_version, date_update),
+    argMax(url, date_update),
     max(date_update)
 FROM PackagesWatch
 WHERE pkg_name IN (
@@ -726,8 +718,6 @@ WHERE pkg_name IN (
     )
 GROUP BY
     pkg_name,
-    old_version,
-    new_version,
     url
 ORDER BY pkg_name ASC
 """
