@@ -105,9 +105,10 @@ FROM
 LEFT JOIN
 (
     SELECT
-        src_pkg_name,
+        argMax(src_pkg_name, buildtime),
         bin_pkg_name
     FROM PackagesSourceAndBinaries
+    GROUP BY bin_pkg_name
 ) AS TT ON TT.bin_pkg_name = bugzilla.bz_cmp
 WHERE bz_assignee IN (
     SELECT bz_assignee
@@ -154,9 +155,10 @@ FROM
 LEFT JOIN
 (
     SELECT
-        src_pkg_name,
+        argMax(src_pkg_name, buildtime),
         bin_pkg_name
     FROM PackagesSourceAndBinaries
+    GROUP BY bin_pkg_name
 ) AS TT ON TT.bin_pkg_name = bugzilla.bz_cmp
 """
 
@@ -197,9 +199,10 @@ FROM
 LEFT JOIN
 (
     SELECT
-        src_pkg_name,
+        argMax(src_pkg_name, buildtime),
         bin_pkg_name
     FROM PackagesSourceAndBinaries
+    GROUP BY bin_pkg_name
 ) AS TT ON TT.bin_pkg_name = bugzilla.bz_cmp
 """
 
@@ -248,9 +251,10 @@ FROM
 LEFT JOIN
 (
     SELECT
-        src_pkg_name,
+        argMax(src_pkg_name, buildtime),
         bin_pkg_name
     FROM PackagesSourceAndBinaries
+    GROUP BY bin_pkg_name
 ) AS TT ON TT.bin_pkg_name = bugzilla.bz_cmp
 """
 
