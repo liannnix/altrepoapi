@@ -1,0 +1,6 @@
+include AUTHORS.txt
+include README.md
+include CHANGELOG.md
+include LICENSE.txt
+recursive-include altrepo_api/static *
+include requirements.txt
