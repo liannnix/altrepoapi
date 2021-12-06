@@ -1,7 +1,58 @@
 #!/usr/bin/env python3
 # This file need for start ALTRepo API project.
 
-from altrepo_api_run_app import start
+import os
+import sys
+from gunicorn.app.wsgiapp import run
+
+import altrepo_api
+from altrepo_api.settings import namespace as settings
+
+usage = """
+Run ALTRepo API standalone server.
+
+API configuration file could be provided through command
+line argument or using ALTREPO_API_CONFIG environment variable.
+
+Default configuration file location is /etc/altrepo_api/api.conf.
+
+Usage:
+    altrepo-api [config_file_name]
+
+-h, --help  Display this message
+"""
+
 
 if __name__ == '__main__':
-    start()
+    path = os.path.dirname(altrepo_api.__file__)
+
+    # print usage
+    if len(sys.argv) >= 2:
+        if not os.path.isfile(sys.argv[1]):
+            print(usage)
+            os._exit(0)
+        else:
+            pass
+    elif (os.getenv(settings.CONFIG_ENV_VAR) is None and
+        not os.path.isfile(settings.CONFIG_FILE)):
+        print("\n\033[91m* No ALTRepo API configuration file found *\033[0m\n")
+        print(usage)
+        os._exit(0)
+
+    # import application and run
+    from altrepo_api.app import app
+
+    sys.argv = [
+        sys.argv[0],
+        "-b",
+        "{}:{:d}".format(settings.DEFAULT_HOST, settings.DEFAULT_PORT),
+        "-w",
+        settings.WORKER_PROCESSES,
+        "--chdir",
+        path,
+        "app:app",
+        "--timeout",
+        settings.WORKER_TIMEOUT,
+    ]
+
+    run()
