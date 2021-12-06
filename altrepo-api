@@ -8,8 +8,8 @@ from gunicorn.app.wsgiapp import run
 import altrepo_api
 from altrepo_api.settings import namespace as settings
 
-usage = """
-Run ALTRepo API standalone server.
+usage = f"""
+Run ALTRepo API v{altrepo_api.__version__} standalone server.
 
 API configuration file could be provided through command
 line argument or using ALTREPO_API_CONFIG environment variable.

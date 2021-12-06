@@ -18,6 +18,7 @@ from flask import Blueprint, send_from_directory
 from flask_restx import Api
 from flask_restx import Resource, fields
 
+from altrepo_api.version import __version__
 from altrepo_api.settings import namespace as settings
 from altrepo_api.api.auth.decorators import auth_required
 
@@ -42,7 +43,7 @@ blueprint = Blueprint("api", __name__, url_prefix="/api")
 
 api = Api(
     blueprint,
-    version="1.4",
+    version=__version__,
     title="ALTRepo API",
     license="GNU AGPLv3",
     license_url="https://www.gnu.org/licenses/agpl-3.0.en.html",
