@@ -20,75 +20,26 @@ GNU AGPLv3
 * python3-module-rpm
 * python3-module-gunicorn
 
-## Components
-
-* altrepo-server - executable file to run the project
-* app.py - main module of application
-* settings.py - provides configuration namespace for application
-* run_app.py - module for launching the application and processing
-input parameters
-* utils.py - contains auxiliary functions used in application
-* database/* - contains modules and data structures to work with
-ClickHouse database
-* api/* - contains all API logic split by routes and endpoints
-* libs/* - special modules for working with mathematics, data,
-data structure are used in the application
-* tests/* - test related files
-
 ## Starting application
 
-Best to use a bunch of nginx and gunicorn servers to run.
+API could be run using 'altrepo-api' binary to run application with
+Gunicorn server.
+
 
 First step
 
 	git clone `git_project_repository`
 	git checkout `last_tag_or_master`
 
-### Simple example of nginx setting
-
-Make file
-
-	/etc/nginx/sites-available.d/altrepo_server.conf 
-
-..with next content
-
-    server {
-        listen PORT;
-        server_name HOST;
-        
-        root /PATH/TO/altrepo_server;
-        
-        access_log /PATH/TO/logs/access.log;
-        error_log /PATH/TO/logs/error.log;
-        
-        location / {
-            proxy_set_header X-Forward-For $proxy_add_x_forwarded_for;
-            proxy_set_header Host $http_host;
-            proxy_redirect off;
-            if (!-f $request_filename) {
-                proxy_pass http://127.0.0.1:8000;
-                break;
-            }
-        }
-    }
-
-..make symlink
-
-	/etc/nginx/sites-enabled.d/altrepo_server.conf
-	->
-	/etc/nginx/sites-available.d/altrepo_server.conf
-
-### Configuration file of database
+### Configuration file
 
 Path to default configuration file
 
-	/etc/altrepo_server/dbconfig.conf
-
-but you can override it use option --config for launch application.
+    /etc/altrepo-api/api.conf
 
 Configuration file usually contains next sections
 
-	[DataBase]
+    [DataBase]
     HOST = 10.0.0.1        # database host
     NAME = database_name   # database name
     TRY_NUMBERS = 5        # number of connection attempts
@@ -96,10 +47,10 @@ Configuration file usually contains next sections
     USER = test            # database user
     PASSWORD = test        # database password
 
-    [Application]
+    [Application]           # Used when API run with Gunicorn
     HOST = 127.0.0.1        # application host
     PORT = 5000             # port
-    PROCESSES = 1           # number of worker processes
+    PROCESSES = 0           # number of worker processes, 0 - AUTO
     TIMEOUT = 30            # worker timeout in seconds
 
     [Other]
@@ -118,18 +69,35 @@ Command line argument -> environment variable -> default.
 
 ### Starting application
 
-For start application using module run_app. For set app configuration
-can be using config file ex.:
+API configuration could be provided by command line argument or through environment
+variable ALTREPO_API_CONFIG.
+If not provided the default API configuration file (/etc/altrepo-api/api.conf) is used.
 
-    $> ./altrepo-api /path/to/config/file.conf
+When installed from RPM package ALTRepo API could be started as follows:
 
-or use environment variable
+$> altrepo-api /path/to/config.file
+or
+$> ALTREPO_API_CONFIG=/path/to/config.file altrepo-api
+or
+$> altrepo-api [-h, --help]
 
-    $> ALTREPO_API_CONFIG=/path/to/config/file.conf ./altrepo-api
+For development purpose API could be started from cloned Git repository as follows:
 
-or use default config file location (/etc/altrepo_api/api.conf)
+$> python3 -m altrepo_api /path/to/config.file
 
-    $> ./altrepo-api
+### Deploy ALTRepo API for production purpose
+
+AltrepoAPI application could be deployed with 
+
+Systemd unit files and Nginx configuration files examples could be found in
+/usr/share/doc/altrepo-api-%EVR%/examples directory.
+
+Provided configuration examples for:
+1. Guncorn (application server) + Nginx (proxy server)
+2. uWSGI (application server) + Nginx (proxy server)
+
+You could use another application servers (Nginx Unit, Apache2 + mod_wsgi etc.)
+using /usr/share/altrepo-api/wsgi.py as application entry point.
 
 ## Examples of query
 
