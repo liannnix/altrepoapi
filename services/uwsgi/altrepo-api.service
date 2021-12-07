@@ -11,7 +11,7 @@ RestartSec=10
 # Default config file location is /etc/altrepo-api/api.conf
 #Environment="ALTREPO_API_CONFIG=/path/to/config/file.conf"
 WorkingDirectory=/usr/share/altrepo-api
-ExecStart=/usr/sbin/uwsgi --ini /usr/share/altrepo-api/uwsgi.ini
+ExecStart=/usr/bin/uwsgi --ini /usr/share/altrepo-api/uwsgi.ini
 
 [Install]
 WantedBy=multi-user.target
