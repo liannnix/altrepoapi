@@ -15,7 +15,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-import getpass
 import logging
 from dataclasses import dataclass
 
@@ -27,7 +26,7 @@ class BasePathNamespace:
     CONFIG_ENV_VAR = "ALTREPO_API_CONFIG"
     PROJECT_NAME = "altrepo_api"
     CONFIG_FILE = "/etc/{}/api.conf".format(PROJECT_NAME)
-    LOG_FILE = "/home/{}/{}.log".format(getpass.getuser(), PROJECT_NAME)
+    LOG_FILE = "/var/log/{}/log".format(PROJECT_NAME)
     # application launch parameters
     DEFAULT_HOST = "127.0.0.1"
     DEFAULT_PORT = 5000
