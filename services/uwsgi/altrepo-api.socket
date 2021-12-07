@@ -1,0 +1,8 @@
+[Unit]
+Description=uWSGI socket for ALTRepo API
+
+[Socket]
+ListenStream=/run/altrepo-api.sock
+
+[Install]
+WantedBy=sockets.target

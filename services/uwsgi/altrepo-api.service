@@ -1,0 +1,17 @@
+[Unit]
+Description=uWSGI instance to serve ALTRepo API
+After=network.target
+Requires=altrepo-api.socket
+
+[Service]
+User=_altrepo_api
+Group=_altrepo_api
+Restart=always
+RestartSec=10
+# Default config file location is /etc/altrepo-api/api.conf
+#Environment="ALTREPO_API_CONFIG=/path/to/config/file.conf"
+WorkingDirectory=/usr/share/altrepo-api
+ExecStart=/usr/sbin/uwsgi --ini /usr/share/altrepo-api/uwsgi.ini
+
+[Install]
+WantedBy=multi-user.target
