@@ -1,0 +1,5 @@
+spec: .gear/altrepo-api.spec
+tar: v@version@:.
+diff: v@version@:. .
+
+
