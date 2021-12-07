@@ -253,7 +253,7 @@ class LookupTables:
     gitalt_base = "https://git.altlinux.org"
     beehive_base = "https://git.altlinux.org/beehive"
     gitalt_tasks_base = "https://git.altlinux.org/tasks"
-    packages_base = "https://beta.packages.altlinux.org/en"
+    packages_base = "https://packages.altlinux.org/en"
     bugzilla_base = "https://bugzilla.altlinux.org"
 
     rpmsense_flags = [
