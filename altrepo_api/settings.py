@@ -24,7 +24,7 @@ class BasePathNamespace:
     PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
     # configuration parameters
     CONFIG_ENV_VAR = "ALTREPO_API_CONFIG"
-    PROJECT_NAME = "altrepo_api"
+    PROJECT_NAME = "altrepo-api"
     CONFIG_FILE = "/etc/{}/api.conf".format(PROJECT_NAME)
     LOG_FILE = "/var/log/{}/log".format(PROJECT_NAME)
     # application launch parameters
