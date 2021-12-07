@@ -3,6 +3,7 @@
 
 import os
 import sys
+import multiprocessing
 from gunicorn.app.wsgiapp import run
 
 import altrepo_api
@@ -42,12 +43,18 @@ if __name__ == '__main__':
     # import application and run
     from altrepo_api.app import app
 
+    # set workers number as 2*CPU_CORES + 1 if not set in config
+    if int(settings.WORKER_PROCESSES) <= 0:
+        num_of_workers = str(multiprocessing.cpu_count()*2 + 1)
+    else:
+        num_of_workers = settings.WORKER_PROCESSES
+
     sys.argv = [
         sys.argv[0],
         "-b",
         "{}:{:d}".format(settings.DEFAULT_HOST, settings.DEFAULT_PORT),
         "-w",
-        settings.WORKER_PROCESSES,
+        num_of_workers,
         "--chdir",
         path,
         "app:app",

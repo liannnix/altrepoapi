@@ -30,8 +30,8 @@ class BasePathNamespace:
     # application launch parameters
     DEFAULT_HOST = "127.0.0.1"
     DEFAULT_PORT = 5000
-    WORKER_PROCESSES = "4"
-    WORKER_TIMEOUT = "120"
+    WORKER_PROCESSES = "1"
+    WORKER_TIMEOUT = "30"
     # database parameters
     DATABASE_HOST = "127.0.0.1"
     DATABASE_NAME = "default"
