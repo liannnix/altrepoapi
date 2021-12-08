@@ -1,0 +1,6 @@
+object f3850e9389085fa89b68ad230c8d88705acf35b5
+type commit
+tag v1.5.1
+tagger Danil Shein <dshein@altlinux.org> 1638965082 +0300
+
+release 1.5.1
