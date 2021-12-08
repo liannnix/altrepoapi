@@ -10,7 +10,7 @@ Release: alt1
 Summary: ALTRepo API is a REST API for the repository database of ALT distribution
 License: AGPL-3.0
 Group: System/Servers
-URL: http://git.altlinux.org/gears/a/altrepo-api.git
+URL: https://git.altlinux.org/gears/a/altrepo-api.git
 
 BuildArch: noarch
 

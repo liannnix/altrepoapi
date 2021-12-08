@@ -20,7 +20,7 @@ setup(
     author_email="dshein@altlinux.org",
     python_requires=">=3.7",
     packages=find_packages(),
-    url="http://git.altlinux.org/gears/a/altrepo-api.git",
+    url="https://git.altlinux.org/gears/a/altrepo-api.git",
     license="GNU AGPLv3",
     description="ALTRepo REST API",
     include_package_data=True,
