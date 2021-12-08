@@ -35,7 +35,9 @@ repology_export_bin_pkg_el_model = ns.model(
     "RepologyExportBranchBinaryPackageElementModel",
     {
         "name": fields.String(description="package name"),
+        "epoch": fields.Integer(description="package epoch"),
         "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
         "summary": fields.String(description="package summary"),
         "archs": fields.List(fields.String, description="package archs"),
     },
@@ -44,7 +46,9 @@ repology_export_src_pkg_el_model = ns.model(
     "RepologyExportBranchSourcePackageElementModel",
     {
         "name": fields.String(description="package name"),
+        "epoch": fields.Integer(description="package epoch"),
         "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
         "url": fields.String(description="package upstream URL"),
         "license": fields.String(description="package license"),
         "category": fields.String(description="package category"),

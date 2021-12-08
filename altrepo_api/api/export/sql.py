@@ -75,18 +75,22 @@ bin_packages AS
     SELECT
         pkg_srcrpm_hash AS hash,
         pkg_name AS name,
+        pkg_epoch AS epoch,
         pkg_version AS version,
+        pkg_release AS release,
         any(pkg_summary) AS summary,
         groupUniqArray(pkg_arch) AS archs
     FROM Packages
     WHERE pkg_sourcepackage = 0
         AND pkg_arch IN (SELECT * FROM bin_archs)
         AND pkg_srcrpm_hash IN (SELECT * FROM src_hashes)
-    GROUP BY pkg_srcrpm_hash, pkg_name, pkg_version
+    GROUP BY pkg_srcrpm_hash, pkg_name, pkg_epoch, pkg_version, pkg_release
 )
 SELECT DISTINCT
     pkg_name,
+    pkg_epoch,
     pkg_version,
+    pkg_release,
     pkg_group_,
     pkg_url,
     pkg_summary,
@@ -104,7 +108,7 @@ LEFT JOIN
 (
     SELECT
         hash,
-        groupArray((name, version, summary, archs)) AS bin_pkgs
+        groupArray((name, epoch, version, release, summary, archs)) AS bin_pkgs
     FROM bin_packages
     GROUP BY hash
 ) AS BPKG ON BPKG.hash = Packages.pkg_hash

@@ -88,8 +88,25 @@ class RepologyExport(APIWorker):
             )
             return self.error
 
-        SrcPkgInfo = namedtuple("SrcPkgInfo", ["name", "version", "category", "url", "summary", "license", "packager", "recipe", "binaries"])
-        BinPkgInfo = namedtuple("BinPkgInfo", ["name", "version", "summary", "archs"])
+        SrcPkgInfo = namedtuple(
+            "SrcPkgInfo",
+            [
+                "name",
+                "epoch",
+                "version",
+                "release",
+                "category",
+                "url",
+                "summary",
+                "license",
+                "packager",
+                "recipe",
+                "binaries",
+            ],
+        )
+        BinPkgInfo = namedtuple(
+            "BinPkgInfo", ["name", "epoch", "version", "release", "summary", "archs"]
+        )
         src_packages = [SrcPkgInfo(*el)._asdict() for el in response]
 
         # build result packages dictionary
@@ -102,7 +119,7 @@ class RepologyExport(APIWorker):
 
         res = {
             "branch": self.branch,
-            "date" : datetime_to_iso(repo_date),
+            "date": datetime_to_iso(repo_date),
             "stats": repo_stat,
             "packages": src_packages,
         }
