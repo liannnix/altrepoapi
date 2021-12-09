@@ -16,7 +16,7 @@
 
 from flask_restx import inputs
 
-from altrepo_api.api.base import parser
+from altrepo_api.api.base import parser, pkg_name_type
 
 # register parser items
 branch = parser.register_item(
@@ -37,7 +37,7 @@ file = parser.register_item(
     "file", type=str, required=True, help="file name", location="args"
 )
 src_package_name = parser.register_item(
-    "name", type=str, required=True, help="source package name", location="args"
+    "name", type=pkg_name_type, required=True, help="source package name", location="args"
 )
 version_opt = parser.register_item(
     "version", type=str, required=False, help="package version", location="args"
@@ -58,13 +58,13 @@ arch_list_opt = parser.register_item(
 )
 package_name = parser.register_item(
     "package_name",
-    type=str,
+    type=pkg_name_type,
     required=True,
     help="source or binary package name",
     location="args",
 )
 package_name_opt = parser.register_item(
-    "name", type=str, required=False, help="package name", location="args"
+    "name", type=pkg_name_type, required=False, help="package name", location="args"
 )
 package_list = parser.register_item(
     "packages",

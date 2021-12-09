@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from altrepo_api.api.base import parser
+from altrepo_api.api.base import parser, pkg_name_type
 
 by_acl_opt = parser.register_item(
     "by_acl",
@@ -27,7 +27,7 @@ by_acl_opt = parser.register_item(
 )
 package_name = parser.register_item(
     "package_name",
-    type=str,
+    type=pkg_name_type,
     required=True,
     help="source or binary package name",
     location="args",

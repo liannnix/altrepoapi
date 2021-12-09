@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from altrepo_api.api.base import parser
+from altrepo_api.api.base import parser, pkg_name_type
 
 
 # base arg parser items
@@ -27,21 +27,21 @@ branch = parser.register_item(
 )
 pkg_name = parser.register_item(
     "name",
-    type=str,
+    type=pkg_name_type,
     required=True,
     help="package name",
     location="args",
 )
 bin_pkg_name = parser.register_item(
     "name",
-    type=str,
+    type=pkg_name_type,
     required=True,
     help="binary package name",
     location="args",
 )
 src_pkg_name = parser.register_item(
     "name",
-    type=str,
+    type=pkg_name_type,
     required=True,
     help="source package name",
     location="args",

@@ -20,6 +20,7 @@ from altrepo_api.settings import namespace as settings
 from altrepo_api.utils import get_logger, logger_level
 from altrepo_api.database.connection import Connection
 
+
 class APIWorker:
     """Base API endpoint worker class."""
 
@@ -101,3 +102,22 @@ class ParserFactory:
         return parser
 
 parser = ParserFactory()
+
+
+def pkg_name_type(value: str) -> str:
+    """Package name validator type."""
+
+    _allowed_characters = (
+        "abcdefghijklmnopqrstuvwxyz"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "0123456789-._+"
+    )
+
+    if isinstance(value, str) and value != "" and len(value) >= 2:
+        for c in value:
+            if c not in _allowed_characters:
+                raise ValueError("Invalid package name: {0}".format(value))
+        return value
+    raise ValueError("Package name should be valid and 2 characters long at least")
+
+pkg_name_type.__schema__ = {"type": "string", "format": "valid package name"}
