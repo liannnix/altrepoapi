@@ -113,7 +113,9 @@ class RepologyExport(APIWorker):
         for src in src_packages:
             src["binaries"] = [BinPkgInfo(*el)._asdict() for el in src["binaries"]]
             src["homepage"] = f'{lut.packages_base}/{self.branch}/srpms/{src["name"]}'
-            src["recipe"] = f'{lut.packages_base}/{self.branch}/srpms/{src["name"]}/specfiles/{src["recipe"]}'
+            _specfile = src["recipe"]
+            src["recipe"] = f'{lut.packages_base}/{self.branch}/srpms/{src["name"]}/specfiles'
+            src["recipe_raw"] = f'{lut.packages_base}/{self.branch}/srpms/{src["name"]}/specfiles/{_specfile}'
             src["CPE"] = ""  # TODO: add CPE info for packages when ready
             src["bugzilla"] = f'{lut.bugzilla_base}/buglist.cgi?quicksearch={src["name"]}'
 

@@ -56,6 +56,7 @@ repology_export_src_pkg_el_model = ns.model(
         "packager": fields.String(description="packager email"),
         "homepage": fields.String(description="package homepage"),
         "recipe": fields.String(description="package spec file"),
+        "recipe_raw": fields.String(description="package spec file raw"),
         "bugzilla": fields.String(description="package bugs"),
         "CPE": fields.String(description="package CPE"),
         "binaries": fields.Nested(
