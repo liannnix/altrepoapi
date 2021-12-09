@@ -73,6 +73,7 @@ class PackageInfo(APIWorker):
         Returns:
             str: link to Git repositroy
         """
+
         def delete_epoch(evr):
             #  delete epoch from evr
             if ":" in evr:
@@ -84,7 +85,7 @@ class PackageInfo(APIWorker):
             # 'copy' always has only 'subtask_package'
             link_ = pkgname
         elif subtask["type"] == "delete" and subtask["srpm_name"] != "":
-            # TODO: bug workaround for girar changes @ e74d8067009d
+            # XXX: bug workaround for girar changes @ e74d8067009d
             link_ = f"{git_base_url}/srpms/{pkgname[0]}/{pkgname}.git"
             if subtask["srpm_evr"] != "":
                 link_ += f"?a=tree;hb={delete_epoch(subtask['srpm_evr'])}"
@@ -151,11 +152,22 @@ class PackageInfo(APIWorker):
         # get package task
         pkg_task = 0
         pkg_tasks = []
+        pkg_task_date = None
         gear_link = ""
 
         SubtaskMeta = namedtuple(
             "SubtaskMeta",
-            ["repo", "id", "sub_id", "type", "dir", "tag_id", "srpm_name", "srpm_evr"],
+            [
+                "repo",
+                "id",
+                "sub_id",
+                "type",
+                "dir",
+                "tag_id",
+                "srpm_name",
+                "srpm_evr",
+                "changed",
+            ],
         )
 
         self.conn.request_line = self.sql.get_task_gears_by_hash.format(
@@ -166,30 +178,38 @@ class PackageInfo(APIWorker):
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
         if response:
-            tasks_list = [SubtaskMeta(*el)._asdict() for el in response]
-            for task in tasks_list:
+            for task in [SubtaskMeta(*el)._asdict() for el in response]:
                 if task["repo"] == self.branch:
                     pkg_task = task["id"]
+                    pkg_task_date = datetime_to_iso(task["changed"])
                     if task["type"] != "copy":
-                        pkg_tasks.append({"type": "build", "id": pkg_task})
                         gear_link = self._parse_task_gear(
                             pkg_info["name"], task, lut.gitalt_base
+                        )
+                        pkg_tasks.append(
+                            {"type": "build", "id": pkg_task, "date": pkg_task_date}
                         )
                         break
                     else:
-                        pkg_tasks.append({"type": "copy", "id": pkg_task})
+                        pkg_tasks.append(
+                            {"type": "copy", "id": pkg_task, "date": pkg_task_date}
+                        )
                 else:
                     if task["type"] != "copy":
                         pkg_task = task["id"]
+                        pkg_task_date = datetime_to_iso(task["changed"])
                         gear_link = self._parse_task_gear(
                             pkg_info["name"], task, lut.gitalt_base
                         )
-                        pkg_tasks.append({"type": "build", "id": pkg_task})
+                        pkg_tasks.append(
+                            {"type": "build", "id": pkg_task, "date": pkg_task_date}
+                        )
                         break
         # clear pkg_tasks fro taskless branches
         if self.branch in lut.taskless_branches:
             pkg_task = 0
             pkg_tasks = []
+            pkg_task_date = None
         # get package maintainers from changelog
         pkg_maintainers = []
         self.conn.request_line = self.sql.get_pkg_maintainers.format(
@@ -274,6 +294,7 @@ class PackageInfo(APIWorker):
 
         if response:
             if source:
+                pkg_info["buildtime"] = response[0][2]
                 for elem in response:
                     package_archs[elem[0]] = {el[0]: str(el[1]) for el in elem[1]}
             else:
@@ -364,6 +385,7 @@ class PackageInfo(APIWorker):
             "request_args": self.args,
             **pkg_info,
             "task": pkg_task,
+            "task_date": pkg_task_date if pkg_task_date is not None else "",
             "gear": gear_link,
             "tasks": pkg_tasks,
             "package_archs": res_package_archs,

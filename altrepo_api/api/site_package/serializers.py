@@ -55,7 +55,8 @@ package_info_tasks_el_model = ns.model(
     "SitePackageTasksElementModel",
     {
         "type": fields.String(description="task type"),
-        "id": fields.String(description="task id"),
+        "id": fields.Integer(description="task id"),
+        "date": fields.String(description="task build date (ISO 8601 format)"),
     },
 )
 package_dependencies_el_model = ns.model(
@@ -106,6 +107,7 @@ package_info_model = ns.model(
         "arch": fields.String(description="package arch"),
         "buildtime": fields.Integer(description="package build time"),
         "task": fields.Integer(description="package build task"),
+        "task_date": fields.String(description="task build date (ISO 8601 format)"),
         "gear": fields.String(description="package task gear type"),
         "license": fields.String(description="package license"),
         "category": fields.String(description="package group"),

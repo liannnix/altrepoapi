@@ -97,7 +97,8 @@ SELECT DISTINCT
     subtask_dir,
     subtask_tag_id,
     subtask_srpm_name,
-    subtask_srpm_evr
+    subtask_srpm_evr,
+    task_changed
 FROM Tasks
 WHERE (task_id, subtask_id) IN
 (
@@ -165,7 +166,8 @@ WHERE pkg_hash = {pkghash}
     get_binary_pkgs = """
 SELECT DISTINCT
     pkg_name,
-    arrayReverseSort(groupUniqArray((pkg_arch, pkg_hash)))
+    arrayReverseSort(groupUniqArray((pkg_arch, pkg_hash))),
+    max(pkg_buildtime)
 FROM Packages
 WHERE (pkg_srcrpm_hash = {pkghash})
     AND (pkg_sourcepackage = 0)
