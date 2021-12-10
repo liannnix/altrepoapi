@@ -16,7 +16,7 @@
 
 from flask_restx import inputs
 
-from altrepo_api.api.base import parser
+from altrepo_api.api.parser import parser, branch_name_type, maintainer_nick_type
 
 
 by_acl_opt = parser.register_item(
@@ -29,11 +29,11 @@ by_acl_opt = parser.register_item(
     location="args",
 )
 branch = parser.register_item(
-    "branch", type=str, required=True, help="name of packageset", location="args"
+    "branch", type=branch_name_type, required=True, help="name of packageset", location="args"
 )
 maintainer_nick = parser.register_item(
     "maintainer_nickname",
-    type=str,
+    type=maintainer_nick_type,
     required=True,
     help="nickname of maintainer",
     location="args",

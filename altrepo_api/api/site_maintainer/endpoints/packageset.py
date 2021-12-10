@@ -34,17 +34,7 @@ class MaintainerBranches(APIWorker):
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
-        self.validation_results = []
-
-        if self.args["maintainer_nickname"] == "":
-            self.validation_results.append(
-                f"maintainer nickname should not be empty string"
-            )
-
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return True
 
     def get(self):
         maintainer_nickname = self.args["maintainer_nickname"]
