@@ -30,33 +30,9 @@ class Bugzilla(APIWorker):
         self.sql = sql
         super().__init__()
 
-    def check_params_maintainer(self):
+    def check_params(self):
         self.logger.debug(f"args : {self.args}")
-        self.validation_results = []
-
-        if self.args["maintainer_nickname"] == "":
-            self.validation_results.append(
-                f"maintainer nickname should not be empty string"
-            )
-
-        if self.validation_results != []:
-            return False
-        else:
-            return True
-
-    def check_params_srcpkg(self):
-        self.logger.debug(f"args : {self.args}")
-        self.validation_results = []
-
-        if self.args["package_name"] == "":
-            self.validation_results.append(
-                f"Source package name should not be empty string"
-            )
-
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return True
 
     def get_bug_by_package(self):
         package_name = self.args["package_name"]

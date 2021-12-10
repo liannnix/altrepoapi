@@ -46,7 +46,7 @@ class routeBugzillaByPackage(Resource):
         args = package_bugzilla_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = Bugzilla(g.connection, **args)
-        if not wrk.check_params_srcpkg():
+        if not wrk.check_params():
             abort(
                 400,
                 message=f"Request parameters validation error",
@@ -76,7 +76,7 @@ class routeBugzillaByMaintainer(Resource):
         args = maintainer_bugzilla_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = Bugzilla(g.connection, **args)
-        if not wrk.check_params_maintainer():
+        if not wrk.check_params():
             abort(
                 400,
                 message=f"Request parameters validation error",
