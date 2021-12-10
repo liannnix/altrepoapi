@@ -32,28 +32,7 @@ class PackagesetCompare(APIWorker):
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
-        self.validation_results = []
-
-        if self.args["pkgset1"] == "" or self.args["pkgset1"] not in lut.known_branches:
-            self.validation_results.append(
-                f"unknown package set name : {self.args['pkgset1']}"
-            )
-            self.validation_results.append(
-                f"allowed package set names are : {lut.known_branches}"
-            )
-
-        if self.args["pkgset2"] == "" or self.args["pkgset2"] not in lut.known_branches:
-            self.validation_results.append(
-                f"unknown package set name : {self.args['pkgset2']}"
-            )
-            self.validation_results.append(
-                f"allowed package set names are : {lut.known_branches}"
-            )
-
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return True
 
     def get(self):
         self.pkgset1 = self.args["pkgset1"]

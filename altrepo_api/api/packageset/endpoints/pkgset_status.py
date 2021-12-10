@@ -166,6 +166,6 @@ class ActivePackagesets(APIWorker):
         else:
             res = {"packagesets": sort_branches([el[0] for el in response])}
 
-        res["length"] = len(res["packagesets"])
+        res["length"] = len(res["packagesets"])  # type: ignore
 
         return res, 200

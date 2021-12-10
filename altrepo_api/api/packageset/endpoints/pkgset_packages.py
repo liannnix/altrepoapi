@@ -32,30 +32,7 @@ class PackagesetPackages(APIWorker):
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
-        self.validation_results = []
-
-        if self.args["branch"] == "" or self.args["branch"] not in lut.known_branches:
-            self.validation_results.append(
-                f"unknown package set name : {self.args['branch']}"
-            )
-            self.validation_results.append(
-                f"allowed package set names are : {lut.known_branches}"
-            )
-
-        if self.args["package_type"] not in ("source", "binary", "all"):
-            self.validation_results.append(
-                f"package type should be one of 'source', 'binary' or 'all' not '{self.args['package_type']}'"
-            )
-
-        if self.args["archs"]:
-            for arch in self.args["archs"]:
-                if arch not in lut.known_archs:
-                    self.validation_results.append(f"unknown package arch : {arch}")
-
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return True
 
     def get(self):
         self.pkg_type = self.args["package_type"]
