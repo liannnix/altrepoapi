@@ -43,14 +43,6 @@ class PackageInfo(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["branch"] == "" or self.args["branch"] not in lut.known_branches:
-            self.validation_results.append(
-                f"unknown package set name : {self.args['branch']}"
-            )
-            self.validation_results.append(
-                f"allowed package set names are : {lut.known_branches}"
-            )
-
         if self.args["changelog_last"] < 1:
             self.validation_results.append(
                 f"changelog history length should be not less than 1"
@@ -413,17 +405,6 @@ class DeletedPackageInfo(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["branch"] == "" or self.args["branch"] not in lut.known_branches:
-            self.validation_results.append(
-                f"unknown package set name : {self.args['branch']}"
-            )
-            self.validation_results.append(
-                f"allowed package set names are : {lut.known_branches}"
-            )
-
-        if self.args["name"] == "":
-            self.validation_results.append(f"package name should not be empty string")
-
         if self.args["package_type"] == "binary":
             if self.args["arch"] not in lut.known_archs:
                 self.validation_results.append(
@@ -579,23 +560,7 @@ class PackagesBinaryListInfo(APIWorker):
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
-        self.validation_results = []
-
-        if self.args["branch"] == "" or self.args["branch"] not in lut.known_branches:
-            self.validation_results.append(
-                f"unknown package set name : {self.args['branch']}"
-            )
-            self.validation_results.append(
-                f"allowed package set names are : {lut.known_branches}"
-            )
-
-        if self.args["name"] == "":
-            self.validation_results.append(f"package name should not be empty string")
-
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return True
 
     def get(self):
         self.branch = self.args["branch"]

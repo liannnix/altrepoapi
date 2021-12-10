@@ -37,15 +37,7 @@ class SourcePackageVersions(APIWorker):
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
-        self.validation_results = []
-
-        if self.args["name"] == "":
-            self.validation_results.append(f"package name should not be empty string")
-
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return True
 
     def get(self):
         self.name = self.args["name"]
@@ -97,18 +89,9 @@ class PackageVersions(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["name"] == "":
-            self.validation_results.append(f"package name should not be empty string")
-
         if self.args["package_type"] == 'binary' and self.args["arch"] is None:
             self.validation_results.append(
                 f"package architecture should be specified for binary package"
-            )
-            self.validation_results.append(f"allowed archs are : {lut.known_archs}")
-
-        if self.args["arch"] is not None and self.args["arch"] not in lut.known_archs:
-            self.validation_results.append(
-                f"unknown package arch : {self.args['arch']}"
             )
             self.validation_results.append(f"allowed archs are : {lut.known_archs}")
 
