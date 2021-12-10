@@ -14,13 +14,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from altrepo_api.api.base import parser
+from altrepo_api.api.parser import parser, branch_name_type, dp_name_type
 
 branch = parser.register_item(
-    "branch", type=str, required=True, help="packageset name", location="args"
+    "branch", type=branch_name_type, required=True, help="packageset name", location="args"
 )
 dp_name = parser.register_item(
-    "dp_name", type=str, required=True, help="dependency name", location="args"
+    "dp_name", type=dp_name_type, required=True, help="dependency name", location="args"
 )
 dp_type_opt = parser.register_item(
     "dp_type",
