@@ -48,6 +48,7 @@ class LookupTables:
     ]
     taskless_branches = ["p9_mipsel", "sisyphus_mipsel", "sisyphus_riscv64", "sisyphus_e2k"]
     no_downloads_branches = ["sisyphus_e2k", "p9_e2k"]
+    repology_export_branches = ["sisyphus", "p9", "p10"]
     known_archs = [
         "x86_64",
         "noarch",

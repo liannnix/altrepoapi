@@ -37,12 +37,12 @@ class RepologyExport(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.branch == "" or self.branch not in lut.known_branches:
+        if self.branch == "" or self.branch not in lut.repology_export_branches:
             self.validation_results.append(
                 f"unknown package set name : {self.branch}"
             )
             self.validation_results.append(
-                f"allowed package set names are : {lut.known_branches}"
+                f"allowed package set names are : {lut.repology_export_branches}"
             )
 
         if self.validation_results != []:
