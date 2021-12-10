@@ -77,7 +77,7 @@ def pkg_name_type(value: str) -> str:
         return value
     raise ValueError("Package name should be string 2 characters long at least")
 
-pkg_name_type.__schema__ = {"type": "string"}
+pkg_name_type.__schema__ = {"type": "string", "pattern": __pkg_name_match.pattern}
 
 
 def pkg_version_type(value: str) -> str:
@@ -89,7 +89,7 @@ def pkg_version_type(value: str) -> str:
         return value
     raise ValueError("Package version should be string")
 
-pkg_version_type.__schema__ = {"type": "string"}
+pkg_version_type.__schema__ = {"type": "string", "pattern": __pkg_VR_match.pattern}
 
 
 def pkg_release_type(value: str) -> str:
@@ -101,7 +101,7 @@ def pkg_release_type(value: str) -> str:
         return value
     raise ValueError("Package release should be string")
 
-pkg_release_type.__schema__ = {"type": "string"}
+pkg_release_type.__schema__ = {"type": "string", "pattern": __pkg_VR_match.pattern}
 
 
 def branch_name_type(value: str) -> str:
@@ -137,7 +137,7 @@ def pkg_groups_type(value: str) -> str:
         return value
     raise ValueError("Package category should be string")
 
-pkg_groups_type.__schema__ = {"type": "string"}
+pkg_groups_type.__schema__ = {"type": "string", "pattern": __pkg_groups_match.pattern}
 
 
 def packager_email_type(value: str) -> str:
@@ -149,7 +149,7 @@ def packager_email_type(value: str) -> str:
         return value
     raise ValueError("Packager email should be string")
 
-packager_email_type.__schema__ = {"type": "string", "format": "email"}
+packager_email_type.__schema__ = {"type": "string", "pattern": __packager_email_match.pattern}
 
 
 def packager_name_type(value: str) -> str:
@@ -161,7 +161,7 @@ def packager_name_type(value: str) -> str:
         return value
     raise ValueError("Packager name should be string")
 
-packager_name_type.__schema__ = {"type": "string", "format": "email"}
+packager_name_type.__schema__ = {"type": "string", "pattern": __packager_name_match.pattern}
 
 
 def packager_nick_type(value: str) -> str:
@@ -173,7 +173,7 @@ def packager_nick_type(value: str) -> str:
         return value
     raise ValueError("Packager nickname should be string")
 
-packager_nick_type.__schema__ = {"type": "string", "format": "nickname"}
+packager_nick_type.__schema__ = {"type": "string", "pattern": __packager_nickname_match.pattern}
 
 
 def checksum_type(value: str) -> str:
@@ -185,7 +185,7 @@ def checksum_type(value: str) -> str:
         return value
     raise ValueError("Checksum should be hexadecimal string")
 
-checksum_type.__schema__ = {"type": "string", "format": "hexadecimal"}
+checksum_type.__schema__ = {"type": "string", "pattern": __pkg_cs_match.pattern}
 
 
 def disttag_type(value: str) -> str:
@@ -197,7 +197,7 @@ def disttag_type(value: str) -> str:
         return value
     raise ValueError("Disttag should be string")
 
-disttag_type.__schema__ = {"type": "string", "format": "disttag"}
+disttag_type.__schema__ = {"type": "string", "pattern": __pkg_disttag_match.pattern}
 
 
 def file_name_wc_type(value: str) -> str:
@@ -209,7 +209,7 @@ def file_name_wc_type(value: str) -> str:
         return value
     raise ValueError("File name should be string")
 
-file_name_wc_type.__schema__ = {"type": "string"}
+file_name_wc_type.__schema__ = {"type": "string", "pattern": __file_name_wc_match.pattern}
 
 
 def dp_name_type(value: str) -> str:
@@ -221,4 +221,4 @@ def dp_name_type(value: str) -> str:
         return value
     raise ValueError("Dependency name should be string")
 
-dp_name_type.__schema__ = {"type": "string", "format": "dependency name"}
+dp_name_type.__schema__ = {"type": "string", "pattern": __dp_name_match.pattern}
