@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from collections import defaultdict
+from typing import Tuple, List
 
 from altrepo_api.utils import join_tuples, mmhash
 
@@ -31,11 +32,11 @@ class TaskRepoState(APIWorker):
         self.sql = sql
         self.task_id: int = id
         self.task_repo: str = ""
-        self.task_diff_list: list = list()
-        self.task_add_pkgs: tuple = tuple()
-        self.task_del_pkgs: tuple = tuple()
-        self.task_repo_pkgs: tuple = tuple()
-        self.task_base_repo_pkgs: tuple = tuple()
+        self.task_diff_list: List[int] = list()
+        self.task_add_pkgs: Tuple[int, ...] = tuple()
+        self.task_del_pkgs: Tuple[int, ...] = tuple()
+        self.task_repo_pkgs: Tuple[int, ...] = tuple()
+        self.task_base_repo_pkgs: Tuple[int, ...] = tuple()
         self.have_plan: bool = False
         super().__init__()
 
@@ -305,19 +306,7 @@ class TaskRepo(APIWorker):
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
-        self.validation_results = []
-
-        if self.args["include_task_packages"] is not None and self.args[
-            "include_task_packages"
-        ] not in (True, False):
-            self.validation_results.append(
-                f"'include_task_packages' argument should be one of [0|1|true|false]"
-            )
-
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return True
 
     def build_task_repo(self):
         if not self.check_task_id():
@@ -427,7 +416,7 @@ class TaskRepo(APIWorker):
             "task_id": self.task_id,
             "base_repository": {
                 "name": self.last_repo_contents[0],
-                "date": self.last_repo_contents[1].isoformat(),
+                "date": self.last_repo_contents[1].isoformat(),  # type: ignore
                 "tag":self.last_repo_contents[2],
             },
             "task_diff_list": self.repo.task_diff_list,

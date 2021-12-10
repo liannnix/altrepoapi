@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from collections import namedtuple
+from typing import Tuple
 
 from altrepo_api.settings import namespace as settings
 from altrepo_api.utils import get_logger, tuplelist_to_dict, join_tuples
@@ -60,7 +61,7 @@ class BuildDependency(APIWorker):
         self.result = {}
         super().__init__()
 
-    def build_dependencies(self, task_repo_hashes: tuple[int] = None):
+    def build_dependencies(self, task_repo_hashes: Tuple[int, ...] = None):
         # do all kind of black magic here
         input_pkgs = self.packages
         depends_type_to_sql = {"source": (1,), "binary": (0,), "both": (1, 0)}
@@ -492,7 +493,7 @@ class BuildDependency(APIWorker):
                         pkg_acl_dict[pkg] = []
 
                     pkg_info_list.append(
-                        info
+                        info        # type: ignore
                         + (c_deps,)
                         + (pkgs_to_sort_dict[pkg],)
                         + (pkg_acl_dict[pkg],)
@@ -560,10 +561,10 @@ class BuildDependency(APIWorker):
                 if pkg_name in v:
                     new_el = (*el, k)
                     break
-            result.append(new_el)
+            result.append(new_el)  # type: ignore
 
         if self.finitepkg:
-            result = [pkg for pkg in result if pkg[0] in filter_by_tops]
+            result = [pkg for pkg in result if pkg[0] in filter_by_tops]  # type: ignore
         # magic ends here
         PackageDependencies = namedtuple(
             "PackageDependencies",

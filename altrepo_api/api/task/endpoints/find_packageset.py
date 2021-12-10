@@ -46,21 +46,7 @@ class FindPackageset(APIWorker):
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
-        self.validation_results = []
-
-        if self.args["branches"]:
-            for br in self.args["branches"]:
-                if br not in lut.known_branches:
-                    self.validation_results.append(f"unknown package set name : {br}")
-                    self.validation_results.append(
-                        f"allowed package set names are : {lut.known_branches}"
-                    )
-                    break
-
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return True
 
     def get(self):
         self.conn.request_line = self.sql.task_src_packages.format(id=self.task_id)

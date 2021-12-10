@@ -16,7 +16,13 @@
 
 from flask_restx import inputs
 
-from altrepo_api.api.base import parser
+from altrepo_api.api.parser import (
+    parser,
+    arch_name_type,
+    branch_name_type,
+    pkg_name_type,
+    date_string_type,
+)
 
 # register parser items
 try_opt = parser.register_item(
@@ -35,7 +41,7 @@ include_task_packages_opt = parser.register_item(
 )
 arch_list_opt = parser.register_item(
     "archs",
-    type=str,
+    type=arch_name_type,
     action="split",
     required=False,
     help="list of packages architectures",
@@ -43,7 +49,7 @@ arch_list_opt = parser.register_item(
 )
 branch_list_opt = parser.register_item(
     "branches",
-    type=str,
+    type=branch_name_type,
     action="split",
     required=False,
     help="list of package sets to filter result",
@@ -51,7 +57,7 @@ branch_list_opt = parser.register_item(
 )
 leaf_opt = parser.register_item(
     "leaf",
-    type=str,
+    type=pkg_name_type,
     required=False,
     help="assembly dependency chain package",
     location="args",
@@ -75,7 +81,7 @@ dptype_opt = parser.register_item(
 )
 filter_by_package_list_opt = parser.register_item(
     "filter_by_package",
-    type=str,
+    type=pkg_name_type,
     action="split",
     required=False,
     help="filter result by dependency on binary packages",
@@ -83,7 +89,7 @@ filter_by_package_list_opt = parser.register_item(
 )
 filter_by_source_opt = parser.register_item(
     "filter_by_source",
-    type=str,
+    type=pkg_name_type,
     required=False,
     help="filter result by dependency on source package",
     location="args",
@@ -106,7 +112,7 @@ oneandhalf_opt = parser.register_item(
 )
 branch = parser.register_item(
     "branch",
-    type=str,
+    type=branch_name_type,
     required=True,
     help="name of packageset",
     location="args",
@@ -129,7 +135,7 @@ end_task_opt = parser.register_item(
 )
 start_date_opt = parser.register_item(
     "start_date",
-    type=str,
+    type=date_string_type,
     default=None,
     required=False,
     help="task history start date (YYYY-MM-DD)",
@@ -137,7 +143,7 @@ start_date_opt = parser.register_item(
 )
 end_date_opt = parser.register_item(
     "end_date",
-    type=str,
+    type=date_string_type,
     default=None,
     required=False,
     help="task history end date (YYYY-MM-DD)",

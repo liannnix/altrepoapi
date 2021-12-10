@@ -44,17 +44,7 @@ class TaskBuildDependencySet(APIWorker):
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
-        self.validation_results = []
-
-        if self.args["archs"]:
-            for arch in self.args["archs"]:
-                if arch not in lut.known_archs:
-                    self.validation_results.append(f"unknown package arch : {arch}")
-
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return True
 
     def get(self):
         # arguments processing

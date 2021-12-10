@@ -332,14 +332,6 @@ class TaskHistory(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["branch"] not in lut.known_branches:
-            self.validation_results.append(
-                f"unknown package set name : {self.args['branch']}"
-            )
-            self.validation_results.append(
-                f"allowed package set names are : {lut.known_branches}"
-            )
-
         if (self.args["start_task"] == 0 and self.args["start_date"] is None) or (
             self.args["start_task"] != 0 and self.args["start_date"] is not None
         ):
@@ -389,28 +381,6 @@ class TaskHistory(APIWorker):
         end_task = self.args["end_task"]
         start_date = self.args["start_date"]
         end_date = self.args["end_date"]
-        # convert dates and check if it is consistent
-        if start_date is not None:
-            try:
-                start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
-            except ValueError:
-                self._store_error(
-                    {"Error": f"'start_date' is not valid date ({start_date})"},
-                    self.ll.ERROR,
-                    400,
-                )
-                return self.error
-
-        if end_date is not None:
-            try:
-                end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d")
-            except ValueError:
-                self._store_error(
-                    {"Error": f"'end_date' is not valid date ({end_date})"},
-                    self.ll.ERROR,
-                    400,
-                )
-                return self.error
 
         if (
             self.args["start_date"] is not None
@@ -510,6 +480,12 @@ class TaskHistory(APIWorker):
             "TaskInfo", ["task_id", "changed", "pkgset_date", "pkgset_task"]
         )
         task_list = [TaskInfo(*el) for el in response]
+
+        # make request args serializable
+        if self.args["start_date"] is not None:
+            self.args["start_date"] = datetime_to_iso(self.args["start_date"])
+        if self.args["end_date"] is not None:
+            self.args["end_date"] = datetime_to_iso(self.args["end_date"])
 
         res = {"request_args": self.args, "length": len(task_list), "tasks": []}
 
