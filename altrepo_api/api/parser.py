@@ -145,7 +145,7 @@ def packager_email_type(value: str) -> str:
 
     if isinstance(value, str):
         if not __packager_email_match.search(value):
-            raise ValueError("Invalid package's email: {0}".format(value))
+            raise ValueError("Invalid packager's email: {0}".format(value))
         return value
     raise ValueError("Packager email should be string")
 
@@ -157,7 +157,7 @@ def packager_name_type(value: str) -> str:
 
     if isinstance(value, str):
         if not __packager_name_match.search(value):
-            raise ValueError("Invalid package's name: {0}".format(value))
+            raise ValueError("Invalid packager's name: {0}".format(value))
         return value
     raise ValueError("Packager name should be string")
 
@@ -169,11 +169,23 @@ def packager_nick_type(value: str) -> str:
 
     if isinstance(value, str):
         if not __packager_nickname_match.search(value):
-            raise ValueError("Invalid package's nickname: {0}".format(value))
+            raise ValueError("Invalid packager's nickname: {0}".format(value))
         return value
     raise ValueError("Packager nickname should be string")
 
 packager_nick_type.__schema__ = {"type": "string", "pattern": __packager_nickname_match.pattern}
+
+
+def maintainer_nick_type(value: str) -> str:
+    """Maintainer nickname validator."""
+
+    if isinstance(value, str):
+        if not __packager_nickname_match.search(value):
+            raise ValueError("Invalid maintainer's nickname: {0}".format(value))
+        return value
+    raise ValueError("Maintainer nickname should be string")
+
+maintainer_nick_type.__schema__ = {"type": "string", "pattern": __packager_nickname_match.pattern}
 
 
 def checksum_type(value: str) -> str:
