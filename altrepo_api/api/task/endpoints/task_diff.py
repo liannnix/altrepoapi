@@ -481,12 +481,6 @@ class TaskHistory(APIWorker):
         )
         task_list = [TaskInfo(*el) for el in response]
 
-        # make request args serializable
-        if self.args["start_date"] is not None:
-            self.args["start_date"] = datetime_to_iso(self.args["start_date"])
-        if self.args["end_date"] is not None:
-            self.args["end_date"] = datetime_to_iso(self.args["end_date"])
-
         res = {"request_args": self.args, "length": len(task_list), "tasks": []}
 
         for task in task_list:
