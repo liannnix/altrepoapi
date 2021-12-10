@@ -40,6 +40,16 @@ class logger_level:
     CRITICAL = logging.CRITICAL
 
 
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        # convert datetime to ISO string representation
+        if isinstance(obj, datetime.datetime):
+            return obj.isoformat()
+
+        # return super(JsonDateTimeEncoder, self).default(o)
+        return json.JSONEncoder.default(self, obj)
+
+
 def mmhash(val):
     a, b = mmh3.hash64(val, signed=False)
     return a ^ b

@@ -17,10 +17,11 @@
 from flask import Flask, redirect, g, request
 
 from altrepo_api import read_config
-from altrepo_api.utils import get_logger
+from altrepo_api.utils import get_logger, CustomJSONEncoder
 
 from altrepo_api.database.connection import Connection
 from altrepo_api.api_v1 import blueprint as api_bp
+
 
 app = Flask(__name__)
 logger = get_logger(__name__)
@@ -57,6 +58,7 @@ def configure_app(flask_app):
     flask_app.config["ERROR_404_HELP"] = False
     flask_app.config["RESTX_MASK_SWAGGER"] = False
     flask_app.config["BUNDLE_ERRORS"] = True
+    flask_app.config["RESTX_JSON"] = {"cls": CustomJSONEncoder}
 
 
 def initialize_app(flask_app):
