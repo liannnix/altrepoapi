@@ -63,36 +63,7 @@ class Repocop(APIWorker):
 
     def check_params_get(self):
         self.logger.debug(f"args : {self.args}")
-        self.validation_results = []
-
-        if self.args["branch"] and self.args["branch"] not in lut.known_branches:
-            self.validation_results.append(
-                f"unknown package set name : {self.args['branch']}"
-            )
-            self.validation_results.append(
-                f"allowed package set names are : {lut.known_branches}"
-            )
-
-        if (
-            self.args["package_version"] is not None
-            and self.args["package_version"] == ""
-        ):
-            self.validation_results.append("srcpkg_version cannot be empty")
-        if (
-            self.args["package_release"] is not None
-            and self.args["package_release"] == ""
-        ):
-            self.validation_results.append("srcpkg_release cannot be empty")
-        if (
-            self.args["bin_package_arch"] is not None
-            and self.args["bin_package_arch"] == ""
-        ):
-            self.validation_results.append("bin_package_arch cannot be empty")
-
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return True
 
     def post(self):
         json_ = self.args["json_data"]["packages"]

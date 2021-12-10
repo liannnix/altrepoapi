@@ -600,27 +600,10 @@ class PackageBuildDependency:
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
-        if self.args["branch"] not in lut.known_branches:
-            self.validation_results.append(
-                f"unknown package set name : {self.args['branch']}"
-            )
-            self.validation_results.append(
-                f"allowed package set names are : {lut.known_branches}"
-            )
-
-        if self.args["archs"]:
-            for arch in self.args["archs"]:
-                if arch not in lut.known_archs:
-                    self.validation_results.append(f"unknown package arch : {arch}")
 
         if self.args["depth"] < 1 or self.args["depth"] > settings.DEPENDENCY_MAX_DEPTH:
             self.validation_results.append(
                 f"dependency depth should be in range (1...{settings.DEPENDENCY_MAX_DEPTH})"
-            )
-
-        if self.args["dptype"] not in ("source", "binary", "both"):
-            self.validation_results.append(
-                f"dependency type should be one of 'source', 'binary' or 'both' not '{self.args['dptype']}'"
             )
 
         if None not in (self.args["filter_by_source"], self.args["filter_by_package"]):

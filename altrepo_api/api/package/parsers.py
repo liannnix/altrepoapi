@@ -16,41 +16,77 @@
 
 from flask_restx import inputs
 
-from altrepo_api.api.base import parser, pkg_name_type
+from altrepo_api.api.parser import (
+    parser,
+    arch_name_type,
+    branch_name_type,
+    disttag_type,
+    checksum_type,
+    pkg_name_type,
+    pkg_release_type,
+    pkg_version_type,
+    file_name_wc_type,
+    packager_name_type,
+    packager_email_type,
+)
 
 # register parser items
 branch = parser.register_item(
-    "branch", type=str, required=True, help="name of packageset", location="args"
+    "branch",
+    type=branch_name_type,
+    required=True,
+    help="name of packageset",
+    location="args",
 )
 branch_opt = parser.register_item(
-    "branch", type=str, required=False, help="name of packageset", location="args"
+    "branch",
+    type=branch_name_type,
+    required=False,
+    help="name of packageset",
+    location="args",
 )
 branch_list_opt = parser.register_item(
     "branches",
-    type=str,
+    type=branch_name_type,
     action="split",
     required=False,
     help="list of package sets to filter result",
     location="args",
 )
 file = parser.register_item(
-    "file", type=str, required=True, help="file name", location="args"
+    "file", type=file_name_wc_type, required=True, help="file name", location="args"
 )
 src_package_name = parser.register_item(
-    "name", type=pkg_name_type, required=True, help="source package name", location="args"
+    "name",
+    type=pkg_name_type,
+    required=True,
+    help="source package name",
+    location="args",
 )
 version_opt = parser.register_item(
-    "version", type=str, required=False, help="package version", location="args"
+    "version",
+    type=pkg_version_type,
+    required=False,
+    help="package version",
+    location="args",
 )
 release_opt = parser.register_item(
-    "release", type=str, required=False, help="package release", location="args"
+    "release",
+    type=pkg_release_type,
+    required=False,
+    help="package release",
+    location="args",
 )
 arch_opt = parser.register_item(
-    "arch", type=str, required=False, help="package architecture", location="args"
+    "arch",
+    type=arch_name_type,
+    required=False,
+    help="package architecture",
+    location="args",
 )
 arch_list_opt = parser.register_item(
     "archs",
-    type=str,
+    type=arch_name_type,
     action="split",
     required=False,
     help="list of packages architectures",
@@ -68,7 +104,7 @@ package_name_opt = parser.register_item(
 )
 package_list = parser.register_item(
     "packages",
-    type=str,
+    type=pkg_name_type,
     action="split",
     required=True,
     help="package or list of packages",
@@ -85,21 +121,21 @@ package_type_opt = parser.register_item(
 )
 package_version_opt = parser.register_item(
     "package_version",
-    type=str,
+    type=pkg_version_type,
     required=False,
     help="source or binary package version",
     location="args",
 )
 package_release_opt = parser.register_item(
     "package_release",
-    type=str,
+    type=pkg_release_type,
     required=False,
     help="source or binary package release",
     location="args",
 )
 bin_package_arch_opt = parser.register_item(
     "bin_package_arch",
-    type=str,
+    type=arch_name_type,
     required=False,
     help="binary package arch",
     location="args",
@@ -113,26 +149,42 @@ source_opt = parser.register_item(
     location="args",
 )
 packager = parser.register_item(
-    "packager", type=str, required=True, help="maintainer nickname", location="args"
+    "packager",
+    type=packager_name_type,
+    required=True,
+    help="maintainer nickname",
+    location="args",
 )
 packager_opt = parser.register_item(
-    "packager", type=str, required=False, help="package packager name", location="args"
+    "packager",
+    type=packager_name_type,
+    required=False,
+    help="package packager name",
+    location="args",
 )
 packager_email_opt = parser.register_item(
     "packager_email",
-    type=str,
+    type=packager_email_type,
     required=False,
     help="package packager email",
     location="args",
 )
 md5 = parser.register_item(
-    "md5", type=str, required=True, help="file MD5 checksum", location="args"
+    "md5", type=checksum_type, required=True, help="file MD5 checksum", location="args"
 )
 sha1_opt = parser.register_item(
-    "sha1", type=str, required=False, help="package SHA1 checksum", location="args"
+    "sha1",
+    type=checksum_type,
+    required=False,
+    help="package SHA1 checksum",
+    location="args",
 )
 disttag_opt = parser.register_item(
-    "disttag", type=str, required=False, help="package disttag", location="args"
+    "disttag",
+    type=disttag_type,
+    required=False,
+    help="package disttag",
+    location="args",
 )
 full_opt = parser.register_item(
     "full",
@@ -144,7 +196,7 @@ full_opt = parser.register_item(
 )
 leaf_opt = parser.register_item(
     "leaf",
-    type=str,
+    type=pkg_name_type,
     required=False,
     help="assembly dependency chain package",
     location="args",
@@ -168,7 +220,7 @@ dptype_opt = parser.register_item(
 )
 filter_by_package_list_opt = parser.register_item(
     "filter_by_package",
-    type=str,
+    type=pkg_name_type,
     action="split",
     required=False,
     help="filter result by dependency on binary packages",
@@ -176,7 +228,7 @@ filter_by_package_list_opt = parser.register_item(
 )
 filter_by_source_opt = parser.register_item(
     "filter_by_source",
-    type=str,
+    type=pkg_name_type,
     required=False,
     help="filter result by dependency on source package",
     location="args",
