@@ -34,15 +34,7 @@ class TasksByPackage(APIWorker):
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
-        self.validation_results = []
-
-        if self.args["name"] == "":
-            self.validation_results.append(f"package name should not be empty string")
-
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return True
 
     @staticmethod
     def _build_gear_link(subtask, git_base_url):
@@ -234,25 +226,7 @@ class TasksByMaintainer(APIWorker):
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
-        self.validation_results = []
-
-        if self.args["branch"] == "" or self.args["branch"] not in lut.known_branches:
-            self.validation_results.append(
-                f"unknown package set name : {self.args['branch']}"
-            )
-            self.validation_results.append(
-                f"allowed package set names are : {lut.known_branches}"
-            )
-
-        if self.args["maintainer_nickname"] == "":
-            self.validation_results.append(
-                f"maintainer nickname should not be empty string"
-            )
-
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return True
 
     def get(self):
         maintainer_nickname = self.args["maintainer_nickname"]

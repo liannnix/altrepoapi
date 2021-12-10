@@ -36,19 +36,6 @@ class LastTaskPackages(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["task_owner"] == "":
-            self.validation_results.append(
-                f"task owner's nickname should not be empty string"
-            )
-
-        if self.args["branch"] == "" or self.args["branch"] not in lut.known_branches:
-            self.validation_results.append(
-                f"unknown package set name : {self.args['branch']}"
-            )
-            self.validation_results.append(
-                f"allowed package set names are : {lut.known_branches}"
-            )
-
         if self.args["tasks_limit"] and self.args["tasks_limit"] < 1:
             self.validation_results.append(
                 f"last tasks limit should be greater or equal to 1"
