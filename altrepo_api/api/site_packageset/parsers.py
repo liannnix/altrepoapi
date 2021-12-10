@@ -14,7 +14,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from altrepo_api.api.base import parser, pkg_name_type
+from altrepo_api.api.parser import (
+    parser,
+    pkg_name_type,
+    pkg_groups_type,
+    packager_nick_type,
+)
 
 
 name = parser.register_item(
@@ -42,7 +47,11 @@ package_type = parser.register_item(
     location="args",
 )
 group = parser.register_item(
-    "group", type=str, required=False, help="package category", location="args"
+    "group",
+    type=pkg_groups_type,
+    required=False,
+    help="package category",
+    location="args",
 )
 buildtime = parser.register_item(
     "buildtime",
@@ -54,7 +63,7 @@ buildtime = parser.register_item(
 )
 packager = parser.register_item(
     "packager",
-    type=str,
+    type=packager_nick_type,
     required=False,
     help="package packager's nickname",
     location="args",

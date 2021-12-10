@@ -34,38 +34,7 @@ class PackagesetFindPackages(APIWorker):
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
-        self.validation_results = []
-
-        if self.args["branch"] is not None:
-            if (
-                self.args["branch"] == ""
-                or self.args["branch"] not in lut.known_branches
-            ):
-                self.validation_results.append(
-                    f"unknown package set name : {self.args['branch']}"
-                )
-                self.validation_results.append(
-                    f"allowed package set names are : {lut.known_branches}"
-                )
-
-        if self.args["arch"] is not None:
-            if self.args["arch"] not in lut.known_archs:
-                self.validation_results.append(
-                    f"unknown package arch : {self.args['arch']}"
-                )
-                self.validation_results.append(f"allowed archs are : {lut.known_archs}")
-
-        if self.args["name"] is None or self.args["name"] == "":
-            self.validation_results.append(f"package name should not be empty string")
-        elif len(self.args["name"]) < 2:
-            self.validation_results.append(
-                f"package name should be 2 characters at least"
-            )
-
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return True
 
     @staticmethod
     def _relevance_sort(pkgs_dict, pkg_name):
@@ -145,31 +114,7 @@ class FastPackagesSearchLookup(APIWorker):
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
-        self.validation_results = []
-
-        if self.args["branch"] is not None:
-            if (
-                    self.args["branch"] == ""
-                    or self.args["branch"] not in lut.known_branches
-            ):
-                self.validation_results.append(
-                    f"unknown package set name : {self.args['branch']}"
-                )
-                self.validation_results.append(
-                    f"allowed package set names are : {lut.known_branches}"
-                )
-
-        if self.args["name"] is None or self.args["name"] == "":
-            self.validation_results.append(f"package name should not be empty string")
-        elif len(self.args["name"]) < 2:
-            self.validation_results.append(
-                f"package name should be 2 characters at least"
-            )
-
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return True
 
     @staticmethod
     def _relevance_sort(pkgs_dict, pkg_name):

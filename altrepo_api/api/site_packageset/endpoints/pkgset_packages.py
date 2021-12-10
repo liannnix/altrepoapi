@@ -36,26 +36,14 @@ class PackagesetPackages(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["branch"] == "" or self.args["branch"] not in lut.known_branches:
-            self.validation_results.append(
-                f"unknown package set name : {self.args['branch']}"
-            )
-            self.validation_results.append(
-                f"allowed package set names are : {lut.known_branches}"
-            )
-
-        if self.args["package_type"] not in ("source", "binary", "all"):
-            self.validation_results.append(
-                f"package type should be one of 'source', 'binary' or 'all' not '{self.args['package_type']}'"
-            )
-
         if self.args["group"]:
             match = False
             if self.args["group"] not in lut.pkg_groups:
                 for el in lut.pkg_groups:
                     if (
-                            el.startswith(self.args["group"]) and self.args["group"][-1] == "/"
-                    ) or el.startswith(self.args["group"] + '/'):
+                        (el.startswith(self.args["group"]) and self.args["group"][-1] == "/")
+                        or el.startswith(self.args["group"] + '/')
+                    ):
                         match = True
                         break
             else:
@@ -188,19 +176,6 @@ class LastBranchPackages(APIWorker):
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
-
-        if self.args["packager"] == "":
-            self.validation_results.append(
-                f"packager's nickname should not be empty string"
-            )
-
-        if self.args["branch"] == "" or self.args["branch"] not in lut.known_branches:
-            self.validation_results.append(
-                f"unknown package set name : {self.args['branch']}"
-            )
-            self.validation_results.append(
-                f"allowed package set names are : {lut.known_branches}"
-            )
 
         if self.args["packages_limit"] and self.args["packages_limit"] < 1:
             self.validation_results.append(
