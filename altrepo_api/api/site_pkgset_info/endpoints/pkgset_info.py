@@ -186,29 +186,7 @@ class PkgsetCategoriesCount(APIWorker):
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
-        self.validation_results = []
-
-        if self.args["branch"] is not None:
-            if (
-                self.args["branch"] == ""
-                or self.args["branch"] not in lut.known_branches
-            ):
-                self.validation_results.append(
-                    f"unknown package set name : {self.args['branch']}"
-                )
-                self.validation_results.append(
-                    f"allowed package set names are : {lut.known_branches}"
-                )
-
-        if self.args["package_type"] not in ("source", "binary", "all"):
-            self.validation_results.append(
-                f"package type should be one of 'source', 'binary' or 'all' not '{self.args['package_type']}'"
-            )
-
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return True
 
     def get(self):
         self.branch = self.args["branch"]
@@ -249,20 +227,7 @@ class AllPackagesetArchs(APIWorker):
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
-        self.validation_results = []
-
-        if self.args["branch"] == "" or self.args["branch"] not in lut.known_branches:
-            self.validation_results.append(
-                f"unknown package set name : {self.args['branch']}"
-            )
-            self.validation_results.append(
-                f"allowed package set names are : {lut.known_branches}"
-            )
-
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return True
 
     def get(self):
         self.branch = self.args["branch"]
