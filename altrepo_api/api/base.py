@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from flask_restx import reqparse
+from typing import Any, Tuple
 
 from altrepo_api.settings import namespace as settings
 from altrepo_api.utils import get_logger, logger_level
@@ -26,15 +26,15 @@ class APIWorker:
 
     DEBUG = settings.SQL_DEBUG
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = get_logger(__name__)
         self.ll = logger_level
         self.status: bool = False
-        self.error: tuple
+        self.error: Tuple[Any, int]
         self.conn: Connection
-        self.validation_results: list
+        self.validation_results: list = []
 
-    def _log_error(self, severity):
+    def _log_error(self, severity: int) -> None:
         if severity == self.ll.CRITICAL:
             self.logger.critical(self.error)
         elif severity == self.ll.ERROR:
@@ -46,7 +46,7 @@ class APIWorker:
         else:
             self.logger.debug(self.error)
 
-    def _build_sql_error_response(self, response: dict, code: int):
+    def _build_sql_error_response(self, response: dict, code: int) -> Tuple[Any, int]:
         """Add SQL request details from class to response dictionary if debug is enabled."""
         if self.DEBUG:
             response["module"] = self.__class__.__name__
@@ -59,18 +59,18 @@ class APIWorker:
                 response["sql_request"] = [_ for _ in requestline.split("\n")]
         return response, code
 
-    def _store_sql_error(self, message, severity, http_code):
+    def _store_sql_error(self, message: Any, severity: int, http_code: int) -> None:
         self.error = self._build_sql_error_response(message, http_code)
         self._log_error(severity)
         self.status = False
 
-    def _store_error(self, message, severity, http_code):
+    def _store_error(self, message: Any, severity: int, http_code: int) -> None:
         self.error = message, http_code
         self._log_error(severity)
         self.status = False
 
-    def check_params(self):
+    def check_params(self) -> bool:
         return True
 
-    def get(self):
+    def get(self) -> Any:
         return "OK", 200
