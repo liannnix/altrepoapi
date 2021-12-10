@@ -65,6 +65,7 @@ __packager_email_match = re.compile("^[\w\.\-]+@[\w\.\-]+$")  # type: ignore
 __packager_nickname_match = re.compile("^[\w]{2,}$")  # type: ignore
 # file name match allows '*' wildcard symbol
 __file_name_wc_match = re.compile("^[\w\-. \*]{2,}$")  # type: ignore
+__dp_name_match = re.compile("^[\w\/\(\)\.\-]{2,}$")  # type: ignore
 
 # custom validators
 def pkg_name_type(value: str) -> str:
@@ -209,3 +210,15 @@ def file_name_wc_type(value: str) -> str:
     raise ValueError("File name should be string")
 
 file_name_wc_type.__schema__ = {"type": "string"}
+
+
+def dp_name_type(value: str) -> str:
+    """Dependency name validator."""
+
+    if isinstance(value, str):
+        if not __dp_name_match.search(value):
+            raise ValueError("Invalid dependency name: {0}".format(value))
+        return value
+    raise ValueError("Dependency name should be string")
+
+dp_name_type.__schema__ = {"type": "string", "format": "dependency name"}
