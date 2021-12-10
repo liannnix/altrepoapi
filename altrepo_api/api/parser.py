@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
+import datetime
 from flask_restx import reqparse
 
 from altrepo_api.api.misc import lut
@@ -234,3 +235,17 @@ def dp_name_type(value: str) -> str:
     raise ValueError("Dependency name should be string")
 
 dp_name_type.__schema__ = {"type": "string", "pattern": __dp_name_match.pattern}
+
+
+def date_string_type(value: str) -> datetime.datetime:
+    """Date as YYYY-MM-DD string validator."""
+
+    if isinstance(value, str):
+        try:
+            as_date = datetime.datetime.strptime(value, "%Y-%m-%d")
+            return as_date
+        except ValueError:
+            raise ValueError("Invalid date: {0}".format(value))
+    raise ValueError("Dependency name should be string")
+
+date_string_type.__schema__ = {"type": "string", "format": "date"}
