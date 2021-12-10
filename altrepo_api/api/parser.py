@@ -17,6 +17,7 @@
 import re
 import datetime
 from flask_restx import reqparse
+from typing import Any
 
 from altrepo_api.api.misc import lut
 
@@ -69,183 +70,175 @@ __file_name_wc_match = re.compile("^[\w\-. \*]{2,}$")  # type: ignore
 __dp_name_match = re.compile("^[\w\/\(\)\.\-]{2,}$")  # type: ignore
 
 # custom validators
-def pkg_name_type(value: str) -> str:
+def __get_string(value: Any) -> str:
+    try:
+        return str(value)
+    except (TypeError, ValueError):
+        raise ValueError("{0} is not a valid string".format(value))
+
+
+def pkg_name_type(value: Any) -> str:
     """Package name validator."""
 
-    if isinstance(value, str):
-        if not __pkg_name_match.search(value):
-            raise ValueError("Invalid package name: {0}".format(value))
-        return value
-    raise ValueError("Package name should be string 2 characters long at least")
+    value = __get_string(value)
+    if not __pkg_name_match.search(value):
+        raise ValueError("Invalid package name: {0}".format(value))
+    return value
 
 pkg_name_type.__schema__ = {"type": "string", "pattern": __pkg_name_match.pattern}
 
 
-def pkg_version_type(value: str) -> str:
+def pkg_version_type(value: Any) -> str:
     """Package version validator."""
 
-    if isinstance(value, str):
-        if not __pkg_VR_match.search(value):
-            raise ValueError("Invalid package version: {0}".format(value))
-        return value
-    raise ValueError("Package version should be string")
+    value = __get_string(value)
+    if not __pkg_VR_match.search(value):
+        raise ValueError("Invalid package version: {0}".format(value))
+    return value
 
 pkg_version_type.__schema__ = {"type": "string", "pattern": __pkg_VR_match.pattern}
 
 
-def pkg_release_type(value: str) -> str:
+def pkg_release_type(value: Any) -> str:
     """Package release validator."""
 
-    if isinstance(value, str):
-        if not __pkg_VR_match.search(value):
-            raise ValueError("Invalid package release: {0}".format(value))
-        return value
-    raise ValueError("Package release should be string")
+    value = __get_string(value)
+    if not __pkg_VR_match.search(value):
+        raise ValueError("Invalid package release: {0}".format(value))
+    return value
 
 pkg_release_type.__schema__ = {"type": "string", "pattern": __pkg_VR_match.pattern}
 
 
-def branch_name_type(value: str) -> str:
+def branch_name_type(value: Any) -> str:
     """Branch name validator."""
 
-    if isinstance(value, str):
-        if value not in __known_branches:
-            raise ValueError("Invalid branch name: {0}".format(value))
-        return value
-    raise ValueError("Branch name should be string")
+    value = __get_string(value)
+    if value not in __known_branches:
+        raise ValueError("Invalid branch name: {0}".format(value))
+    return value
 
 branch_name_type.__schema__ = {"type": "string"}
 
 
-def arch_name_type(value: str) -> str:
+def arch_name_type(value: Any) -> str:
     """Architecture name validator."""
 
-    if isinstance(value, str):
-        if value not in __known_archs:
-            raise ValueError("Invalid architecure name: {0}".format(value))
-        return value
-    raise ValueError("Architecture name should be string")
+    value = __get_string(value)
+    if value not in __known_archs:
+        raise ValueError("Invalid architecure name: {0}".format(value))
+    return value
 
 arch_name_type.__schema__ = {"type": "string"}
 
 
-def pkg_groups_type(value: str) -> str:
+def pkg_groups_type(value: Any) -> str:
     """Package category validator."""
 
-    if isinstance(value, str):
-        if not __pkg_groups_match.search(value):
-            raise ValueError("Invalid package category: {0}".format(value))
-        return value
-    raise ValueError("Package category should be string")
+    value = __get_string(value)
+    if not __pkg_groups_match.search(value):
+        raise ValueError("Invalid package category: {0}".format(value))
+    return value
 
 pkg_groups_type.__schema__ = {"type": "string", "pattern": __pkg_groups_match.pattern}
 
 
-def packager_email_type(value: str) -> str:
+def packager_email_type(value: Any) -> str:
     """Packager email validator."""
 
-    if isinstance(value, str):
-        if not __packager_email_match.search(value):
-            raise ValueError("Invalid packager's email: {0}".format(value))
-        return value
-    raise ValueError("Packager email should be string")
+    value = __get_string(value)
+    if not __packager_email_match.search(value):
+        raise ValueError("Invalid packager's email: {0}".format(value))
+    return value
 
 packager_email_type.__schema__ = {"type": "string", "pattern": __packager_email_match.pattern}
 
 
-def packager_name_type(value: str) -> str:
+def packager_name_type(value: Any) -> str:
     """Packager name validator."""
 
-    if isinstance(value, str):
-        if not __packager_name_match.search(value):
-            raise ValueError("Invalid packager's name: {0}".format(value))
-        return value
-    raise ValueError("Packager name should be string")
+    value = __get_string(value)
+    if not __packager_name_match.search(value):
+        raise ValueError("Invalid packager's name: {0}".format(value))
+    return value
 
 packager_name_type.__schema__ = {"type": "string", "pattern": __packager_name_match.pattern}
 
 
-def packager_nick_type(value: str) -> str:
+def packager_nick_type(value: Any) -> str:
     """Packager nickname validator."""
 
-    if isinstance(value, str):
-        if not __packager_nickname_match.search(value):
-            raise ValueError("Invalid packager's nickname: {0}".format(value))
-        return value
-    raise ValueError("Packager nickname should be string")
+    value = __get_string(value)
+    if not __packager_nickname_match.search(value):
+        raise ValueError("Invalid packager's nickname: {0}".format(value))
+    return value
 
 packager_nick_type.__schema__ = {"type": "string", "pattern": __packager_nickname_match.pattern}
 
 
-def maintainer_nick_type(value: str) -> str:
+def maintainer_nick_type(value: Any) -> str:
     """Maintainer nickname validator."""
 
-    if isinstance(value, str):
-        if not __packager_nickname_match.search(value):
-            raise ValueError("Invalid maintainer's nickname: {0}".format(value))
-        return value
-    raise ValueError("Maintainer nickname should be string")
+    value = __get_string(value)
+    if not __packager_nickname_match.search(value):
+        raise ValueError("Invalid maintainer's nickname: {0}".format(value))
+    return value
 
 maintainer_nick_type.__schema__ = {"type": "string", "pattern": __packager_nickname_match.pattern}
 
 
-def checksum_type(value: str) -> str:
+def checksum_type(value: Any) -> str:
     """Checksum hexadecimal string validator."""
 
-    if isinstance(value, str):
-        if not __pkg_cs_match.search(value):
-            raise ValueError("Invalid checksum hexadecimal string: {0}".format(value))
-        return value
-    raise ValueError("Checksum should be hexadecimal string")
+    value = __get_string(value)
+    if not __pkg_cs_match.search(value):
+        raise ValueError("Invalid checksum hexadecimal string: {0}".format(value))
+    return value
 
 checksum_type.__schema__ = {"type": "string", "pattern": __pkg_cs_match.pattern}
 
 
-def disttag_type(value: str) -> str:
+def disttag_type(value: Any) -> str:
     """Disttag string validator."""
 
-    if isinstance(value, str):
-        if not __pkg_disttag_match.search(value):
-            raise ValueError("Invalid Disttag string: {0}".format(value))
-        return value
-    raise ValueError("Disttag should be string")
+    value = __get_string(value)
+    if not __pkg_disttag_match.search(value):
+        raise ValueError("Invalid Disttag string: {0}".format(value))
+    return value
 
 disttag_type.__schema__ = {"type": "string", "pattern": __pkg_disttag_match.pattern}
 
 
-def file_name_wc_type(value: str) -> str:
+def file_name_wc_type(value: Any) -> str:
     """File name with wildcards validator."""
 
-    if isinstance(value, str):
-        if not __file_name_wc_match.search(value):
-            raise ValueError("Invalid file name: {0}".format(value))
-        return value
-    raise ValueError("File name should be string")
+    value = __get_string(value)
+    if not __file_name_wc_match.search(value):
+        raise ValueError("Invalid file name: {0}".format(value))
+    return value
 
 file_name_wc_type.__schema__ = {"type": "string", "pattern": __file_name_wc_match.pattern}
 
 
-def dp_name_type(value: str) -> str:
+def dp_name_type(value: Any) -> str:
     """Dependency name validator."""
 
-    if isinstance(value, str):
-        if not __dp_name_match.search(value):
-            raise ValueError("Invalid dependency name: {0}".format(value))
-        return value
-    raise ValueError("Dependency name should be string")
+    value = __get_string(value)
+    if not __dp_name_match.search(value):
+        raise ValueError("Invalid dependency name: {0}".format(value))
+    return value
 
 dp_name_type.__schema__ = {"type": "string", "pattern": __dp_name_match.pattern}
 
 
-def date_string_type(value: str) -> datetime.datetime:
+def date_string_type(value: Any) -> datetime.datetime:
     """Date as YYYY-MM-DD string validator."""
 
-    if isinstance(value, str):
-        try:
-            as_date = datetime.datetime.strptime(value, "%Y-%m-%d")
-            return as_date
-        except ValueError:
-            raise ValueError("Invalid date: {0}".format(value))
-    raise ValueError("Dependency name should be string")
+    value = __get_string(value)
+    try:
+        as_date = datetime.datetime.strptime(value, "%Y-%m-%d")
+        return as_date
+    except ValueError:
+        raise ValueError("Invalid date: {0}".format(value))
 
 date_string_type.__schema__ = {"type": "string", "format": "date"}
