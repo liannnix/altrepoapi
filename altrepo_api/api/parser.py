@@ -61,7 +61,8 @@ __pkg_VR_match = re.compile("^[\w\.]+$")  # type: ignore
 __pkg_groups_match = re.compile("^[A-Z][a-zA-Z0-9\+\ \/-]+$")  # type: ignore
 __pkg_disttag_match = re.compile("^[a-z0-9\+\.]+$")  # type: ignore
 __packager_name_match = re.compile("^[a-zA-Z]+[\w\.\ \-\@]*$")  # type: ignore
-__packager_email_match = re.compile("^^[\w\.\-]+@[\w\.\-]+$$")  # type: ignore
+__packager_email_match = re.compile("^[\w\.\-]+@[\w\.\-]+$")  # type: ignore
+__packager_nickname_match = re.compile("^[\w]{2,}$")  # type: ignore
 # file name match allows '*' wildcard symbol
 __file_name_wc_match = re.compile("^[\w\-. \*]{2,}$")  # type: ignore
 
@@ -75,7 +76,6 @@ def pkg_name_type(value: str) -> str:
         return value
     raise ValueError("Package name should be string 2 characters long at least")
 
-
 pkg_name_type.__schema__ = {"type": "string"}
 
 
@@ -87,7 +87,6 @@ def pkg_version_type(value: str) -> str:
             raise ValueError("Invalid package version: {0}".format(value))
         return value
     raise ValueError("Package version should be string")
-
 
 pkg_version_type.__schema__ = {"type": "string"}
 
@@ -101,7 +100,6 @@ def pkg_release_type(value: str) -> str:
         return value
     raise ValueError("Package release should be string")
 
-
 pkg_release_type.__schema__ = {"type": "string"}
 
 
@@ -113,7 +111,6 @@ def branch_name_type(value: str) -> str:
             raise ValueError("Invalid branch name: {0}".format(value))
         return value
     raise ValueError("Branch name should be string")
-
 
 branch_name_type.__schema__ = {"type": "string"}
 
@@ -127,7 +124,6 @@ def arch_name_type(value: str) -> str:
         return value
     raise ValueError("Architecture name should be string")
 
-
 arch_name_type.__schema__ = {"type": "string"}
 
 
@@ -139,7 +135,6 @@ def pkg_groups_type(value: str) -> str:
             raise ValueError("Invalid package category: {0}".format(value))
         return value
     raise ValueError("Package category should be string")
-
 
 pkg_groups_type.__schema__ = {"type": "string"}
 
@@ -153,7 +148,6 @@ def packager_email_type(value: str) -> str:
         return value
     raise ValueError("Packager email should be string")
 
-
 packager_email_type.__schema__ = {"type": "string", "format": "email"}
 
 
@@ -166,8 +160,19 @@ def packager_name_type(value: str) -> str:
         return value
     raise ValueError("Packager name should be string")
 
-
 packager_name_type.__schema__ = {"type": "string", "format": "email"}
+
+
+def packager_nick_type(value: str) -> str:
+    """Packager nickname validator."""
+
+    if isinstance(value, str):
+        if not __packager_nickname_match.search(value):
+            raise ValueError("Invalid package's nickname: {0}".format(value))
+        return value
+    raise ValueError("Packager nickname should be string")
+
+packager_nick_type.__schema__ = {"type": "string", "format": "nickname"}
 
 
 def checksum_type(value: str) -> str:
@@ -178,7 +183,6 @@ def checksum_type(value: str) -> str:
             raise ValueError("Invalid checksum hexadecimal string: {0}".format(value))
         return value
     raise ValueError("Checksum should be hexadecimal string")
-
 
 checksum_type.__schema__ = {"type": "string", "format": "hexadecimal"}
 
@@ -192,7 +196,6 @@ def disttag_type(value: str) -> str:
         return value
     raise ValueError("Disttag should be string")
 
-
 disttag_type.__schema__ = {"type": "string", "format": "disttag"}
 
 
@@ -204,6 +207,5 @@ def file_name_wc_type(value: str) -> str:
             raise ValueError("Invalid file name: {0}".format(value))
         return value
     raise ValueError("File name should be string")
-
 
 file_name_wc_type.__schema__ = {"type": "string"}
