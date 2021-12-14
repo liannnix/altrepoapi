@@ -11,7 +11,7 @@ services:
       - config:/config
       - log:/log
     ports:
-      - 5000:5000
+      - ${APP_PORT_EXT}:5000
 volumes:
   config:
   log:
