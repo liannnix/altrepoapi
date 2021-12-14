@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  app:
+    environment:
+      - TZ=Europe/Moscow
+    build: .
+    restart: unless-stopped
+    command: ./run-api /config/api.conf
+    volumes:
+      - config:/config
+      - log:/log
+    ports:
+      - 5000:5000
+volumes:
+  config:
+  log:

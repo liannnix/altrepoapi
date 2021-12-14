@@ -1,0 +1,14 @@
+.git
+.gear
+.venv
+*.in
+*.md
+*.txt
+*.log
+*.example
+*.conf
+docker
+services
+setup.*
+!LICENSE.txt
+!AUTHORS.txt

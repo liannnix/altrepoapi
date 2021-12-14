@@ -15,6 +15,7 @@ GNU AGPLv3
 * python3-module-flask-restx
 * python3-module-flask
 * python3-module-clickhouse-driver
+* python3-module-mmh3
 * python3-module-rpm
 * python3-module-gunicorn
 
@@ -89,6 +90,66 @@ Provided configuration examples for:
 
 You could use another application servers (Nginx Unit, Apache2 + mod_wsgi etc.)
 using `/usr/share/altrepo-api/wsgi.py` as application entry point.
+
+# Run API with Docker container
+
+You can build and run ALTRepo API Docker container using alt:p10 base image.
+
+## Build Docker image
+
+Building ALTRepo API container is quite easy with docker-compose:
+
+    [root@host]# docker-compose build
+
+Or you could just start the container with
+
+    [root@host]# docker-compose up
+
+and it will be built automatically.
+
+## Docker container persistent data
+
+Containered API uses two volumes to store persistent data for configuration and log files. By default it is located at: 
+
+    /var/lib/docker/volumes/altrepo-api_config/_data/api.conf
+    /var/lib/docker/volumes/altrepo-api_log/_data/api.log
+
+## Run Docker container
+
+At first run the container to initialize persistent volumes:
+
+    [root@host]# docker-compose up
+
+API will fail due to default configuration has to be filled with actual settings. AT least you should configure DB connection and API administrator password.
+Stop the container with command:
+
+    [root@host]# docker-compose down
+
+Then edit API config file in
+
+    [root@host]# nano /var/lib/docker/volumes/altrepo-api_config/_data/api.conf
+
+with actual DB connection data, administartor password and logging options. You could change Gunicorn workers number here as well (`0` value means auto).
+
+When ready run the container as daemon with:
+
+    [root@host]# docker-compose up -d
+
+Now ALTrepo API should be available at `http://{your.docker.host.ip}:5000/api`
+
+## Stop Docker container
+
+To stop the running API container, use:
+
+    [root@host]# docker-compose down
+### Usefull Docker commands
+
+    docker-compose logs [-f]    # view container stdout
+    docker ps [-a]              # list containers
+    docker image [ls | rm]      # list or remove images
+    docker volume [ls | rm]     # list or remove volumes
+    docker image prune          # cleaun up images ! use it with care !
+    docker volume prune         # cleaun up images ! use it with care !
 
 # Examples of query
 
