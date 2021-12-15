@@ -219,6 +219,7 @@ def sort_branches(branches):
         "sisyphus_mipsel",
         "sisyphus_riscv64",
         "p10",
+        "p10_e2k",
         "p9",
         "p9_e2k",
         "p9_mipsel",
