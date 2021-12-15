@@ -97,7 +97,13 @@ You can build and run ALTRepo API Docker container using alt:p10 base image.
 
 ## Build Docker image
 
-Building ALTRepo API container is quite easy with docker-compose:
+
+Copy `.env.example`  file to `.env` and edit application external port environment variable.
+
+    $ cp .env.example .env
+    $ nano .env
+
+Build ALTRepo API container with docker-compose:
 
     [root@host]# docker-compose build
 
@@ -137,6 +143,15 @@ When ready run the container as daemon with:
 
 Now ALTrepo API should be available at `http://{your.docker.host.ip}:5000/api`
 
+Add `--build` option to `docker-compose up` command to force container rebuid if code is updated.
+
+### Run multiple API instances
+
+For production purpose you can run multiple API containers to work
+behind load balancer with port range difined in `.env` file:
+
+    [root@host]# docker-compose up -d --scale app=NUM_OF_INSTANCES
+
 ## Stop Docker container
 
 To stop the running API container, use:
@@ -144,12 +159,13 @@ To stop the running API container, use:
     [root@host]# docker-compose down
 ### Usefull Docker commands
 
-    docker-compose logs [-f]    # view container stdout
-    docker ps [-a]              # list containers
-    docker image [ls | rm]      # list or remove images
-    docker volume [ls | rm]     # list or remove volumes
-    docker image prune          # cleaun up images ! use it with care !
-    docker volume prune         # cleaun up images ! use it with care !
+    docker-compose logs [-f]        # view container stdout
+    docker ps [-a]                  # list containers
+    docker image [ls | rm]          # list or remove images
+    docker volume [ls | rm]         # list or remove volumes
+    docker image prune              # cleaun up images ! use it with care !
+    docker volume prune             # cleaun up images ! use it with care !
+    docker rm -f $(docker ps -aq)   # remove all stopped images and it's volumes
 
 # Examples of query
 

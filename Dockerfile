@@ -8,12 +8,12 @@ ENV UNAME=api
 ENV APP_HOME=/home/$UNAME/app
 
 RUN \
-    # TODO: remove packages from task #291581 
-    # after approval for p10 branch
-    apt-get update \
-    && yes | apt-get install apt-repo \
-    && apt-repo add 291581 \
-    # install required packages
+    # fix Apt source lists
+    rm -f /etc/apt/sources.list.d/*.list \
+    && echo "rpm [p10] http://ftp.altlinux.org/pub/distributions/ALTLinux p10/branch/x86_64 classic" > /etc/apt/sources.list.d/alt.list \
+    && echo "rpm [p10] http://ftp.altlinux.org/pub/distributions/ALTLinux p10/branch/x86_64-i586 classic" >> /etc/apt/sources.list.d/alt.list \
+    && echo "rpm [p10] http://ftp.altlinux.org/pub/distributions/ALTLinux p10/branch/noarch classic" >> /etc/apt/sources.list.d/alt.list \
+    # installing packages
     && apt-get update \
     && yes | apt-get dist-upgrade \
     && yes | apt-get install \
@@ -23,11 +23,11 @@ RUN \
         python3-module-mmh3 \
         python3-module-clickhouse-driver \
         python3-module-gunicorn \
-    # clean-up apt cache
+    # clean-up Apt caches
     && rm -f /var/cache/apt/archives/*.rpm \
         /var/cache/apt/*.bin \
         /var/lib/apt/lists/*.* \
-    # create user and directories 
+    # create user and directories
     && groupadd -g $GID -o $UNAME \
     && useradd -m -u $UID -g $GID -o -s /bin/bash $UNAME \
     && mkdir -p /config && mkdir -p /log \
