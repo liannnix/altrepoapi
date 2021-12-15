@@ -11,7 +11,6 @@ RUN \
     # fix Apt source lists
     rm -f /etc/apt/sources.list.d/*.list \
     && echo "rpm [p10] http://ftp.altlinux.org/pub/distributions/ALTLinux p10/branch/x86_64 classic" > /etc/apt/sources.list.d/alt.list \
-    && echo "rpm [p10] http://ftp.altlinux.org/pub/distributions/ALTLinux p10/branch/x86_64-i586 classic" >> /etc/apt/sources.list.d/alt.list \
     && echo "rpm [p10] http://ftp.altlinux.org/pub/distributions/ALTLinux p10/branch/noarch classic" >> /etc/apt/sources.list.d/alt.list \
     # installing packages
     && apt-get update \
