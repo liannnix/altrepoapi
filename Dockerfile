@@ -22,6 +22,7 @@ RUN \
         python3-module-mmh3 \
         python3-module-clickhouse-driver \
         python3-module-gunicorn \
+        tzdata \
     # clean-up Apt caches
     && rm -f /var/cache/apt/archives/*.rpm \
         /var/cache/apt/*.bin \
