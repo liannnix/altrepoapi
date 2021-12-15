@@ -287,5 +287,28 @@ ORDER BY last_build DESC
 LIMIT {limit}
 """
 
+    get_pkghash_by_BVR = """
+SELECT max(pkg_hash)
+FROM PackageSet
+WHERE pkgset_uuid IN (
+    SELECT pkgset_uuid
+    FROM PackageSetName
+    WHERE pkgset_depth = 1 AND pkgset_nodename = 'srpm'
+        AND pkgset_ruuid IN (
+            SELECT pkgset_uuid
+            FROM PackageSetName
+            WHERE pkgset_depth = 0
+                AND pkgset_nodename = '{branch}'
+        )
+) AND pkg_hash IN (
+    SELECT pkg_hash
+    FROM Packages
+    WHERE pkg_name = '{name}'
+        AND pkg_sourcepackage = 1
+        AND pkg_version = '{version}'
+        AND pkg_release = '{release}'
+)
+"""
+
 
 sql = SQL()

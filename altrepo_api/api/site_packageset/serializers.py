@@ -171,3 +171,13 @@ last_packages_branch_model = ns.model(
         "last_branch_date": fields.String(description="last loaded branch date"),
     }
 )
+
+pkgset_pkghash_by_nvr_model = ns.model(
+    "SitePackagesetPackageHashByNameVersionRelease",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "pkghash": fields.String(
+            description="package hash UInt64 as string"
+        ),
+    }
+)

@@ -18,6 +18,8 @@ from altrepo_api.api.parser import (
     parser,
     pkg_name_type,
     pkg_groups_type,
+    pkg_version_type,
+    pkg_release_type,
     packager_nick_type,
 )
 
@@ -76,7 +78,20 @@ pkgs_limit = parser.register_item(
     help="number of last packages to get",
     location="args",
 )
-
+package_version = parser.register_item(
+    "version",
+    type=pkg_version_type,
+    required=True,
+    help="source package version",
+    location="args",
+)
+package_release = parser.register_item(
+    "release",
+    type=pkg_release_type,
+    required=True,
+    help="source package release",
+    location="args",
+)
 
 pkgset_packages_args = parser.build_parser(branch, package_type, group, buildtime)
 pkgset_pkghash_args = parser.build_parser(branch, name)
@@ -84,3 +99,4 @@ pkgset_pkg_binary_hash_args = parser.build_parser(branch, name, arch)
 pkgs_by_name_args = parser.build_parser(name, branch_opt, arch_opt)
 pkgs_search_by_name_args = parser.build_parser(name, branch_opt)
 last_pkgs_branch_args = parser.build_parser(branch, pkgs_limit, packager)
+pkgset_pkghash_by_nvr = parser.build_parser(name, branch, package_version, package_release)

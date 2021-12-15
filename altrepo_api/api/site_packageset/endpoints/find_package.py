@@ -163,16 +163,62 @@ class FastPackagesSearchLookup(APIWorker):
         res = []
         for pkg in pkgs_sorted:
             if pkg[1] == 1:
-                sourcepackage = 'source'
+                sourcepackage = "source"
             else:
-                sourcepackage = 'binary'
+                sourcepackage = "binary"
             res.append(
                 {
                     "name": pkg[0],
                     "sourcepackage": sourcepackage,
-                    "branches": sort_branches(pkg[2])
+                    "branches": sort_branches(pkg[2]),
                 }
             )
 
         res = {"request_args": self.args, "length": len(res), "packages": res}
         return res, 200
+
+
+class PackagesetPkghashByNVR(APIWorker):
+    """Finds package hash in given package set by name, version and release."""
+
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        return True
+
+    def get(self):
+        self.name = self.args["name"]
+        self.branch = self.args["branch"]
+        self.version = self.args["version"]
+        self.release = self.args["release"]
+
+        self.conn.request_line = self.sql.get_pkghash_by_BVR.format(
+            branch=self.branch,
+            name=self.name,
+            version=self.version,
+            release=self.release,
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response or response[0][0] == 0:
+            self._store_error(
+                {
+                    "message": (
+                        f"Package '{self.name}-{self.version}-{self.release}' "
+                        f"not found in database for branch {self.branch}"
+                    ),
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        return {"request_args": self.args, "pkghash": str(response[0][0])}, 200
