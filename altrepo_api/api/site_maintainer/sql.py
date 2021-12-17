@@ -615,6 +615,10 @@ ORDER BY pkg_buildtime DESC
 """
 
     get_watch_by_last_acl_with_group = """
+WITH (
+    SELECT max(toDate(date_update))
+    FROM PackagesWatch
+) AS max_watch_date
 SELECT
     argMax(pkg_name, date_update),
     argMax(old_version, date_update),
@@ -629,6 +633,7 @@ WHERE pkg_name IN (
         AND acl_branch = 'sisyphus'
         AND order_u = 1
     )
+    AND toDate(date_update) = max_watch_date
 GROUP BY
     pkg_name,
     url
@@ -636,6 +641,10 @@ ORDER BY pkg_name ASC
 """
 
     get_watch_by_last_acl = """
+WITH (
+    SELECT max(toDate(date_update))
+    FROM PackagesWatch
+) AS max_watch_date
 SELECT
     argMax(pkg_name, date_update),
     argMax(old_version, date_update),
@@ -644,6 +653,7 @@ SELECT
     max(date_update)
 FROM PackagesWatch
 WHERE acl = '{maintainer_nickname}'
+    AND toDate(date_update) = max_watch_date
 GROUP BY
     pkg_name,
     url
@@ -651,6 +661,10 @@ ORDER BY pkg_name ASC
 """
 
     get_watch_by_nick_acl = """
+WITH (
+    SELECT max(toDate(date_update))
+    FROM PackagesWatch
+) AS max_watch_date
 SELECT
     argMax(pkg_name, date_update),
     argMax(old_version, date_update),
@@ -664,6 +678,7 @@ WHERE pkg_name IN (
     WHERE acl_branch = 'sisyphus'
         AND has(acl_list, '{maintainer_nickname}')
     )
+    AND toDate(date_update) = max_watch_date
 GROUP BY
     pkg_name,
     url
@@ -678,7 +693,11 @@ WITH
     WHERE has(acl_list, '{maintainer_nickname}')
         AND acl_for LIKE ('@%')
         AND acl_branch = 'sisyphus'
-) AS acl_group
+) AS acl_group,
+(
+    SELECT max(toDate(date_update))
+    FROM PackagesWatch
+) AS max_watch_date
 SELECT
     argMax(pkg_name, date_update),
     argMax(old_version, date_update),
@@ -693,6 +712,7 @@ WHERE pkg_name IN (
         AND (has(acl_list, '{maintainer_nickname}')
         OR hasAny(acl_list, acl_group))
     )
+    AND toDate(date_update) = max_watch_date
 GROUP BY
     pkg_name,
     url
@@ -700,6 +720,10 @@ ORDER BY pkg_name ASC
 """
 
     get_watch_by_packager = """
+WITH (
+    SELECT max(toDate(date_update))
+    FROM PackagesWatch
+) AS max_watch_date
 SELECT
     argMax(pkg_name, date_update),
     argMax(old_version, date_update),
@@ -716,6 +740,7 @@ WHERE pkg_name IN (
             OR pkg_packager_email LIKE '{maintainer_nickname} at%'
             OR pkg_packager LIKE '%{maintainer_nickname}@%')
     )
+    AND toDate(date_update) = max_watch_date
 GROUP BY
     pkg_name,
     url
