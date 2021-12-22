@@ -99,7 +99,7 @@ class DBConnection:
             else:
                 response = self.clickhouse_client.execute(self.db_query)
             response_status = True
-            logger.debug(f"SQL request elapsed {self.clickhouse_client.last_query.elapsed:.3f} seconds")
+            logger.debug(f"SQL request elapsed {self.clickhouse_client.last_query.elapsed:.3f} seconds")  # type: ignore
         except Exception as error:
             if issubclass(error.__class__, errors.Error):
                 logger.error(exception_to_logger(error))
