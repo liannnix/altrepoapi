@@ -116,5 +116,14 @@ WHERE pkg_sourcepackage = 1
     AND pkg_hash IN (SELECT * FROM src_hashes) 
 """
 
+    get_branch_source_packages = """
+SELECT
+    toString(pkg_hash),
+    pkg_name
+FROM static_last_packages
+WHERE pkgset_name = '{branch}'
+    AND pkg_sourcepackage = 1
+"""
+
 
 sql = SQL()

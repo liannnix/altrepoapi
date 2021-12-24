@@ -83,3 +83,22 @@ repology_export_model = ns.model(
         ),
     },
 )
+
+sitemap_packages_el_model = ns.model(
+    "SitemapPackagesElementModel",
+    {
+        "pkghash": fields.String(description="package hash UInt64 as string"),
+        "name": fields.String(description="package name"),
+    },
+)
+sitemap_packages_export_model = ns.model(
+    "SitemapPackagesExportModel",
+    {
+        "branch": fields.String(description="package set name"),
+        "packages": fields.Nested(
+            sitemap_packages_el_model,
+            description="source packages info",
+            as_list=True,
+        ),
+    },
+)
