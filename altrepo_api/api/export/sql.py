@@ -119,10 +119,15 @@ WHERE pkg_sourcepackage = 1
     get_branch_source_packages = """
 SELECT
     toString(pkg_hash),
-    pkg_name
-FROM static_last_packages
-WHERE pkgset_name = '{branch}'
-    AND pkg_sourcepackage = 1
+    pkg_name,
+    pkg_buildtime
+FROM Packages
+WHERE pkg_hash IN (
+    SELECT pkg_hash
+    FROM static_last_packages
+    WHERE pkgset_name = '{branch}'
+      AND pkg_sourcepackage = 1
+)
 """
 
 

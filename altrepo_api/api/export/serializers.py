@@ -89,6 +89,7 @@ sitemap_packages_el_model = ns.model(
     {
         "pkghash": fields.String(description="package hash UInt64 as string"),
         "name": fields.String(description="package name"),
+        "buildtime": fields.Integer(description="package buildtime"),
     },
 )
 sitemap_packages_export_model = ns.model(

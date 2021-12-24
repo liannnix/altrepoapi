@@ -68,7 +68,7 @@ class SitemapPackages(APIWorker):
             )
             return self.error
 
-        SrcPkg = namedtuple("SrcPkg", ["hash", "name"])
+        SrcPkg = namedtuple("SrcPkg", ["pkghash", "name", "buildtime"])
         src_packages = [SrcPkg(*el)._asdict() for el in response]
 
         res = {
