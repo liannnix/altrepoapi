@@ -64,7 +64,7 @@ __pkg_groups_match = re.compile("^[A-Z][a-zA-Z0-9\+\ \/-]+$")  # type: ignore
 __pkg_disttag_match = re.compile("^[a-z0-9\+\.]+$")  # type: ignore
 __packager_name_match = re.compile("^[a-zA-Z]+[\w\.\ \-\@]*$")  # type: ignore
 __packager_email_match = re.compile("^[\w\.\-]+@[\w\.\-]+$")  # type: ignore
-__packager_nickname_match = re.compile("^[\w]{2,}$")  # type: ignore
+__packager_nickname_match = re.compile("^[\w\-]{2,}$")  # type: ignore
 # file name match allows '*' wildcard symbol
 __file_name_wc_match = re.compile("^[\w\-. \*]{2,}$")  # type: ignore
 __dp_name_match = re.compile("^[\w\/\(\)\.\-]{2,}$")  # type: ignore
