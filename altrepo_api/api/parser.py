@@ -67,7 +67,7 @@ __packager_email_match = re.compile("^[\w\.\-]+@[\w\.\-]+$")  # type: ignore
 __packager_nickname_match = re.compile("^[\w\-]{2,}$")  # type: ignore
 # file name match allows '*' wildcard symbol
 __file_name_wc_match = re.compile("^[\w\-. \*]{2,}$")  # type: ignore
-__dp_name_match = re.compile("^[\w\/\(\)\.\-]{2,}$")  # type: ignore
+__dp_name_match = re.compile("^[\w\/\(\)\.\:\-]{2,}$")  # type: ignore
 
 # custom validators
 def __get_string(value: Any) -> str:
