@@ -21,6 +21,7 @@ from dataclasses import dataclass
 class SQL:
     get_repo_packages = """
 SELECT
+    pkg_hash,
     pkg_name,
     pkg_version,
     pkg_release,
@@ -45,6 +46,7 @@ WHERE pkgset_name = '{branch}'
     AND pkg_arch IN {archs}
     AND pkg_name NOT LIKE '%%-debuginfo'
 GROUP BY
+    pkg_hash,
     pkg_name,
     pkg_version,
     pkg_release,

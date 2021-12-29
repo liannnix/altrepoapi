@@ -57,6 +57,7 @@ pkgset_compare_model = ns.model(
 pkgset_packages_el_model = ns.model(
     "PackagesetPackagesElementModel",
     {
+        "hash": fields.String(description="package hash UInt64 as string"),
         "name": fields.String(description="package name"),
         "version": fields.String(description="package version"),
         "release": fields.String(description="package release"),

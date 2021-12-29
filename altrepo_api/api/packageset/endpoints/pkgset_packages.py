@@ -71,6 +71,7 @@ class PackagesetPackages(APIWorker):
         PkgMeta = namedtuple(
             "PkgMeta",
             [
+                "hash",
                 "name",
                 "version",
                 "release",
