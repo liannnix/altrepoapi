@@ -30,14 +30,14 @@ class ParserFactory:
         self.lindex: int = 0
 
     def register_item(self, item_name: str, **kwargs) -> int:
-        """Store request parser item and return it index."""
+        """Stores request parser item and returns it's index."""
 
         self.items.append((item_name, kwargs))
         self.lindex = len(self.items) - 1
         return self.lindex
 
     def build_parser(self, *items: int) -> reqparse.RequestParser:
-        """Build RequestParser instance from list of parser's items."""
+        """Builds RequestParser instance from list of parser's items."""
 
         parser = reqparse.RequestParser()
         for item in items:
@@ -126,7 +126,7 @@ def arch_name_type(value: Any) -> str:
 
     value = __get_string(value)
     if value not in __known_archs:
-        raise ValueError("Invalid architecure name: {0}".format(value))
+        raise ValueError("Invalid architecture name: {0}".format(value))
     return value
 
 arch_name_type.__schema__ = {"type": "string"}
