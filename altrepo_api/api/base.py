@@ -53,10 +53,10 @@ class APIWorker:
             requestline = self.conn.request_line
             if isinstance(requestline, tuple):
                 response["sql_request"] = [
-                    _ for _ in requestline[0].split("\n") if len(_) > 0
+                    x for x in requestline[0].split("\n") if len(x) > 0
                 ]
             else:
-                response["sql_request"] = [_ for _ in requestline.split("\n")]  # type: ignore
+                response["sql_request"] = [x for x in requestline.split("\n")]  # type: ignore
         return response, code
 
     def _store_sql_error(self, message: Any, severity: int, http_code: int) -> None:
