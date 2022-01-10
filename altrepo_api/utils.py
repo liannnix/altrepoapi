@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
-from typing import List, Union
+from typing import Any, Iterable, Union
 
 import mmh3
 import json
@@ -46,16 +46,15 @@ class CustomJSONEncoder(json.JSONEncoder):
         if isinstance(obj, datetime.datetime):
             return obj.isoformat()
 
-        # return super(JsonDateTimeEncoder, self).default(o)
         return json.JSONEncoder.default(self, obj)
 
 
-def mmhash(val):
+def mmhash(val: Any) -> int:
     a, b = mmh3.hash64(val, signed=False)
     return a ^ b
 
 
-def get_logger(name):
+def get_logger(name: str) -> logging.Logger:
     """Get logger instance with specific name as child of root logger.
     Creates root logger if it doesn't exists."""
 
@@ -92,7 +91,7 @@ def get_logger(name):
             file_handler.setFormatter(fmt)
 
             root_logger.addHandler(file_handler)
-        # pass if not logging handlers enabled
+        # pass if no logging handlers enabled
         pass
 
     logger_name = ".".join((settings.PROJECT_NAME, name))
@@ -101,20 +100,20 @@ def get_logger(name):
     return logger
 
 
-def exception_to_logger(exception):
+def exception_to_logger(exception: Exception) -> str:
     return exception.args[0].split("\n")[0]
 
 
-def url_logging(logger, url):
+def url_logging(logger: logging.Logger, url: str) -> None:
     logger.info(unquote(url))
 
 
 # return error message as json format
-def json_str_error(error):
+def json_str_error(error: Any) -> dict[str, Any]:
     return {"Error": error}
 
 
-def response_error_parser(response):
+def response_error_parser(response: Any) -> dict[str, Any]:
     try:
         msg = response.get("message")
         if not msg:
@@ -129,7 +128,7 @@ def response_error_parser(response):
         return {"message": response}
 
 
-def convert_to_dict(keys, values):
+def convert_to_dict(keys: list, values: list) -> dict:
     res = {}
 
     for i in range(len(values)):
@@ -138,7 +137,7 @@ def convert_to_dict(keys, values):
     return res
 
 
-def convert_to_json(keys, values, sort=False):
+def convert_to_json(keys: list, values: list, sort: bool = False) -> str:
     js = {}
 
     for i in range(len(values)):
@@ -153,11 +152,11 @@ def convert_to_json(keys, values, sort=False):
     return json.dumps(js, sort_keys=sort)
 
 
-def join_tuples(tuple_list):
+def join_tuples(tuple_list: list) -> tuple:
     return tuple([tuple_[0] for tuple_ in tuple_list])
 
 
-def print_statusbar(message_list):
+def print_statusbar(message_list: list) -> None:
     types = {
         "i": "[INFO]",
         "w": "[WARNING]",
@@ -172,7 +171,7 @@ def print_statusbar(message_list):
 
 
 # convert tuple or list of tuples to dict by set keys
-def tuplelist_to_dict(tuplelist, num):
+def tuplelist_to_dict(tuplelist: list, num: int) -> dict:
     result_dict = defaultdict(list)
     for tuple_ in tuplelist:
         count = tuple_[1] if num == 1 else tuple_[1 : num + 1]
@@ -187,11 +186,11 @@ def tuplelist_to_dict(tuplelist, num):
     return result_dict
 
 
-def remove_duplicate(list_):
+def remove_duplicate(list_: list) -> list:
     return list(set(list_))
 
 
-def func_time(logger):
+def func_time(logger: logging.Logger):
     def decorator(function):
         def wrapper(*args, **kwargs):
             start = time.time()
@@ -205,11 +204,11 @@ def func_time(logger):
     return decorator
 
 
-def datetime_to_iso(dt):
+def datetime_to_iso(dt: datetime.datetime) -> str:
     return dt.isoformat()
 
 
-def sort_branches(branches):
+def sort_branches(branches: Iterable) -> tuple:
     """Use predefined sort list order for branch sorting."""
     res = []
     branches = set(branches)
@@ -253,7 +252,7 @@ def sort_branches(branches):
     return tuple(res)
 
 
-def get_nickname_from_packager(packager):
+def get_nickname_from_packager(packager: str) -> str:
     email_match = re.compile("(<.+@?.+>)+")
     m = email_match.search(packager)
     if m is None:
@@ -265,7 +264,7 @@ def get_nickname_from_packager(packager):
     return nickname
 
 
-def dp_flags_decode(dp_flag: int, dp_decode_table: list) -> List[str]:
+def dp_flags_decode(dp_flag: int, dp_decode_table: list) -> list[str]:
     res = []
     if dp_flag < 0:
         return []
@@ -282,7 +281,7 @@ def dp_flags_decode(dp_flag: int, dp_decode_table: list) -> List[str]:
     return res
 
 
-def full_file_permissions(file_type, file_mode):
+def full_file_permissions(file_type: str, file_mode: int) -> str:
     res = ""
     types = {
         "file": "-",
