@@ -6,6 +6,36 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.5.4] - 2022-01-10
+
+Regular API code updates and fixes.
+
+### Added
+- 'export/sitemap_packages' route
+
+### Changed
+- added tailing slashes in 'export/repology' route to avoid redirects
+- modified regular expressions in custom validators
+
+### Fixed
+- mistypes and spelling
+- type hints
+
+## [1.5.3] - 2021-12-17
+
+Regular API code updates and fixes.
+
+### Added
+- p10_e2k branch support
+- 'site/pkghash_by_nvr' route
+
+### Changed
+
+### Fixed
+- missing tzdata package in Docker file
+- removed x86_64-i586 repository from Docker file
+- packages watch by ACL to use latest data 
+
 ## [1.5.2] - 2021-12-14
 
 Improved API security and stability with custom query arguments validators.
