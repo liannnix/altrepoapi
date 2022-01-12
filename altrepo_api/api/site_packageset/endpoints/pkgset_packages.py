@@ -267,7 +267,7 @@ class LastBranchPackages(APIWorker):
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
-        last_branch_date = datetime_to_iso(response[0][0])
+        last_branch_date = datetime_to_iso(response[0][0])  # type: ignore
 
         retval = []
 
