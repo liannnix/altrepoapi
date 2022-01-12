@@ -16,6 +16,8 @@
 
 from altrepo_api.api.parser import (
     parser,
+    arch_name_type,
+    branch_name_type,
     pkg_name_type,
     pkg_groups_type,
     pkg_version_type,
@@ -28,16 +30,16 @@ name = parser.register_item(
     "name", type=pkg_name_type, required=True, help="package name", location="args"
 )
 branch = parser.register_item(
-    "branch", type=str, required=True, help="name of packageset", location="args"
+    "branch", type=branch_name_type, required=True, help="name of packageset", location="args"
 )
 branch_opt = parser.register_item(
-    "branch", type=str, required=False, help="name of packageset", location="args"
+    "branch", type=branch_name_type, required=False, help="name of packageset", location="args"
 )
 arch = parser.register_item(
-    "arch", type=str, required=True, help="package arch", location="args"
+    "arch", type=arch_name_type, required=True, help="package arch", location="args"
 )
 arch_opt = parser.register_item(
-    "arch", type=str, required=False, help="binary package arch", location="args"
+    "arch", type=arch_name_type, required=False, help="binary package arch", location="args"
 )
 package_type = parser.register_item(
     "package_type",
