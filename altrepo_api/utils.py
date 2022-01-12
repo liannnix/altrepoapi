@@ -104,7 +104,7 @@ def exception_to_logger(exception: Exception) -> str:
     return exception.args[0].split("\n")[0]
 
 
-def url_logging(logger: logging.Logger, url: str) -> None:
+def url_logging(logger: logging.Logger, url: Any) -> None:
     logger.info(unquote(url))
 
 
