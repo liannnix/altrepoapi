@@ -34,6 +34,7 @@ INSERT INTO {tmp_table} (*) VALUES
     get_all_pkgset_names = """
 SELECT groupUniqArray(pkgset_name)
 FROM lv_pkgset_stat
+WHERE pkgset_name NOT LIKE '%:%'
 """
 
     get_all_pkgset_names_with_pkg_count = """
@@ -42,6 +43,7 @@ SELECT
     cnt
 FROM lv_pkgset_stat
 WHERE pkg_arch = 'srpm'
+    AND pkgset_name NOT LIKE '%:%'
 """
 
     get_all_pkgsets_with_src_cnt_by_bin_archs = """
@@ -50,6 +52,7 @@ SELECT
     pkg_arch,
     cnt
 FROM lv_pkgset_stat
+WHERE pkgset_name NOT LIKE '%:%'
 """
 
     get_pkgset_status = """
