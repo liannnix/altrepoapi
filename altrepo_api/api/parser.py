@@ -54,6 +54,11 @@ parser = ParserFactory()
 # __pkg_groups = set(lut.pkg_groups)
 __known_archs = set(lut.known_archs)
 __known_branches = set(lut.known_branches)
+__known_iso_archs = set(lut.known_iso_image_archs)
+__known_iso_editions = set(lut.known_iso_image_editions)
+__known_iso_releases = set(lut.known_iso_image_releases)
+__known_iso_variants = set(lut.known_iso_image_variants)
+__known_iso_components = set(lut.known_iso_image_components)
 
 
 # regex patterns
@@ -65,9 +70,13 @@ __pkg_disttag_match = re.compile("^[a-z0-9\+\.]+$")  # type: ignore
 __packager_name_match = re.compile("^[a-zA-Z]+[\w\.\ \-\@]*$")  # type: ignore
 __packager_email_match = re.compile("^[\w\.\-]+@[\w\.\-]+$")  # type: ignore
 __packager_nickname_match = re.compile("^[\w\-]{2,}$")  # type: ignore
-# file name match allows '*' wildcard symbol
+## file name match allows '*' wildcard symbol
 __file_name_wc_match = re.compile("^[\w\-. \*]{2,}$")  # type: ignore
 __dp_name_match = re.compile("^[\w\/\(\)\.\:\-]{2,}$")  # type: ignore
+## image name
+__uuid_string_match = re.compile("^[0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12}$")  # type: ignore
+__image_name_match = re.compile("^[a-zA-Z0-9\-\.\_:]+:[a-z]+$")  # type: ignore
+__image_version_match = re.compile("^[0-9]+\.[0-9]\.[0-9]$")  # type: ignore
 
 # custom validators
 def __get_string(value: Any) -> str:
@@ -242,3 +251,91 @@ def date_string_type(value: Any) -> datetime.datetime:
         raise ValueError("Invalid date: {0}".format(value))
 
 date_string_type.__schema__ = {"type": "string", "format": "date"}
+
+
+def uuid_type(value: Any) -> str:
+    """UUID string validator."""
+
+    value = __get_string(value)
+    if not __uuid_string_match.search(value):
+        raise ValueError("Invalid UUID string: {0}".format(value))
+    return value
+
+uuid_type.__schema__ = {"type": "string", "pattern": __uuid_string_match.pattern}
+
+
+def image_name_type(value: Any) -> str:
+    """Image name validator."""
+
+    value = __get_string(value)
+    if not __image_name_match.search(value):
+        raise ValueError("Invalid image name: {0}".format(value))
+    return value
+
+image_name_type.__schema__ = {"type": "string", "pattern": __image_name_match.pattern}
+
+
+def image_version_type(value: Any) -> str:
+    """Image version validator."""
+
+    value = __get_string(value)
+    if not __image_version_match.search(value):
+        raise ValueError("Invalid image version: {0}".format(value))
+    return value
+
+image_version_type.__schema__ = {"type": "string", "pattern": __image_version_match.pattern}
+
+
+def iso_edition_type(value: Any) -> str:
+    """ISO image edition validator."""
+
+    value = __get_string(value)
+    if value not in __known_iso_editions:
+        raise ValueError("Invalid ISO image edition: {0}".format(value))
+    return value
+
+iso_edition_type.__schema__ = {"type": "string"}
+
+
+def iso_arch_type(value: Any) -> str:
+    """ISO image architecture validator."""
+
+    value = __get_string(value)
+    if value not in __known_iso_archs:
+        raise ValueError("Invalid ISO image architecture: {0}".format(value))
+    return value
+
+iso_arch_type.__schema__ = {"type": "string"}
+
+
+def iso_variant_type(value: Any) -> str:
+    """ISO image variant validator."""
+
+    value = __get_string(value)
+    if value not in __known_iso_variants:
+        raise ValueError("Invalid ISO image variant: {0}".format(value))
+    return value
+
+iso_variant_type.__schema__ = {"type": "string"}
+
+
+def iso_component_type(value: Any) -> str:
+    """ISO image component validator."""
+
+    value = __get_string(value)
+    if value not in __known_iso_components:
+        raise ValueError("Invalid ISO image component: {0}".format(value))
+    return value
+
+iso_component_type.__schema__ = {"type": "string"}
+
+
+def iso_release_type(value: Any) -> str:
+    """ISO image release validator."""
+
+    value = __get_string(value)
+    if value not in __known_iso_releases:
+        raise ValueError("Invalid ISO image release: {0}".format(value))
+    return value
+
+iso_release_type.__schema__ = {"type": "string"}
