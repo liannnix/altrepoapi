@@ -33,6 +33,7 @@ from altrepo_api.api.site_pkgset_info import ns as site_pkgset_info
 from altrepo_api.api.site_maintainer import ns as site_maintainer_ns
 from altrepo_api.api.site_packageset import ns as site_packageset_ns
 from altrepo_api.api.export import ns as export_ns
+from altrepo_api.api.site_image import ns as image_ns
 
 
 authorizations = {
@@ -64,6 +65,7 @@ api.add_namespace(site_pkgset_info)
 api.add_namespace(site_maintainer_ns)
 api.add_namespace(site_packageset_ns)
 api.add_namespace(export_ns)
+api.add_namespace(image_ns)
 
 version_fields = api.model(
     "APIVersion",
