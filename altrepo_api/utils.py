@@ -16,6 +16,7 @@
 
 import re
 from typing import Any, Iterable, Union
+from uuid import UUID
 
 import mmh3
 import json
@@ -45,6 +46,9 @@ class CustomJSONEncoder(json.JSONEncoder):
         # convert datetime to ISO string representation
         if isinstance(obj, datetime.datetime):
             return obj.isoformat()
+        # convert UUID to string
+        if isinstance(obj, UUID):
+            return str(obj)
 
         return json.JSONEncoder.default(self, obj)
 
