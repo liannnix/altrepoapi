@@ -33,7 +33,7 @@ from altrepo_api.api.site_pkgset_info import ns as site_pkgset_info
 from altrepo_api.api.site_maintainer import ns as site_maintainer_ns
 from altrepo_api.api.site_packageset import ns as site_packageset_ns
 from altrepo_api.api.export import ns as export_ns
-from altrepo_api.api.site_image import ns as image_ns
+from altrepo_api.api.image import ns as image_ns
 
 
 authorizations = {
