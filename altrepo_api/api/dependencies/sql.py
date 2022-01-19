@@ -27,6 +27,18 @@ CREATE TEMPORARY TABLE {tmp_table} {columns}
 INSERT INTO {tmp_table} (*) VALUES
 """
 
+    select_all_tmp_table = """
+SELECT * FROM {tmp_table}
+"""
+
+    truncate_tmp_table = """
+TRUNCATE TABLE {tmp_table}
+"""
+
+    drop_tmp_table = """
+DROP TABLE {tmp_table}
+"""
+
     get_pkg_binary_versions = """
 SELECT DISTINCT
     pkgset_name,
@@ -49,10 +61,56 @@ FROM Depends
 WHERE pkg_hash = {pkghash}
 """
 
+    make_src_depends_tmp = """
+CREATE TEMPORARY TABLE {tmp_table} AS
+SELECT
+    dp_name,
+    dp_version,
+    dp_flag
+FROM Depends
+WHERE pkg_hash = {pkghash}
+    AND dp_type = 'require'
+"""
+
+    get_src_by_bin_deps = """
+SELECT DISTINCT
+    pkg_hash,
+    pkg_name,
+    pkg_version,
+    pkg_release
+FROM static_last_packages
+WHERE pkg_sourcepackage = 1
+    AND pkgset_name = '{branch}'
+    AND pkg_hash IN
+    (
+        SELECT pkg_srcrpm_hash
+        FROM Packages
+        WHERE pkg_hash IN
+        (
+            SELECT pkg_hash
+            FROM Depends
+            WHERE dp_type = 'provide'
+                AND dp_name IN
+                (SELECT dp_name FROM {tmp_table})
+        )
+    )
+"""
+
     get_pkgs_name_and_arch = """
 SELECT
     pkg_name,
     pkg_arch
+FROM Packages
+WHERE pkg_hash = {pkghash}
+"""
+
+    get_pkg_info = """
+SELECT
+    pkg_name,
+    pkg_epoch,
+    pkg_version,
+    pkg_release,
+    pkg_buildtime
 FROM Packages
 WHERE pkg_hash = {pkghash}
 """

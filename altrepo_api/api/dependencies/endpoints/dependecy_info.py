@@ -23,7 +23,7 @@ from altrepo_api.utils import sort_branches, tuplelist_to_dict, dp_flags_decode
 
 
 class DependsBinPackage(APIWorker):
-    """Dependencies of the binary package"""
+    """Dependencies of the binary package."""
 
     def __init__(self, connection, pkghash, **kwargs):
         self.conn = connection
@@ -83,7 +83,7 @@ class DependsBinPackage(APIWorker):
         )
         # sort package versions by branch
         pkg_branches = sort_branches([el[0] for el in response])
-        pkg_versions = tuplelist_to_dict(response, 3)
+        pkg_versions = tuplelist_to_dict(response, 3)  # type: ignore
 
         pkg_versions = [
             PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
@@ -99,6 +99,8 @@ class DependsBinPackage(APIWorker):
 
 
 class PackagesDependence(APIWorker):
+    """Retrieves binary packages by dependency name and type."""
+
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
@@ -220,5 +222,111 @@ class PackagesDependence(APIWorker):
             "length": len(retval),
             "packages": retval,
             "branches": all_branches,
+        }
+        return res, 200
+
+
+class DependsSrcPackage(APIWorker):
+    """Dependencies of the source package."""
+
+    def __init__(self, connection, pkghash, **kwargs):
+        self.pkghash = pkghash
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        self.validation_results = []
+
+        if self.args["depth"] is not None and self.args["depth"] != 1:
+            self.validation_results.append(
+                f"Depth level other than 1 is not supported yet"
+            )
+
+        if self.validation_results != []:
+            return False
+        else:
+            return True
+
+    def get(self):
+        branch = self.args["branch"]
+        depth = self.args["depth"]
+        if depth is None:
+            depth = 1
+
+        # get package info
+        self.conn.request_line = self.sql.get_pkg_info.format(pkghash=self.pkghash)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {
+                    "message": f"No data found in database for given parameters",
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        PkgInfo = namedtuple(
+            "PkgInfo", ["name", "epoch", "version", "release", "buildtime"]
+        )
+
+        pkg_info = PkgInfo(*response[0])
+
+        # build dependencies
+        tmp_table = "_TmpSrcDepends"
+        self.conn.request_line = self.sql.make_src_depends_tmp.format(
+            tmp_table=tmp_table, pkghash=self.pkghash
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+
+        # read binary dependencies
+        self.conn.request_line = self.sql.select_all_tmp_table.format(tmp_table=tmp_table)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+
+        PkgDependencies = namedtuple("PkgDependencies", ["name", "version", "flag"])
+        pkg_dependencies = [PkgDependencies(*el)._asdict() for el in response]
+
+        for el in pkg_dependencies:
+            el["type"] = "require"
+            el["flag_decoded"] = dp_flags_decode(el["flag"], lut.rpmsense_flags)
+
+        # get source packages from last branch state by dependency names
+        self.conn.request_line = self.sql.get_src_by_bin_deps.format(branch=branch, tmp_table=tmp_table)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+
+        SrcPkgInfo = namedtuple("SrcPkgInfo", ["pkghash", "name", "version", "release"])
+        src_pkg_dependencies = [SrcPkgInfo(*el)._asdict() for el in response]
+        for pkg in src_pkg_dependencies:
+            pkg["pkghash"] = str(pkg["pkghash"])
+
+        # drop temporary table
+        self.conn.request_line = self.sql.drop_tmp_table.format(tmp_table=tmp_table)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+
+        res = {
+            "request_args": self.args,
+            "length": len(src_pkg_dependencies),
+            "package_info": pkg_info._asdict(),
+            "dependencies": pkg_dependencies,
+            "provided_by_src": src_pkg_dependencies,
         }
         return res, 200

@@ -23,11 +23,13 @@ from .namespace import get_namespace
 from .endpoints.dependecy_info import (
     DependsBinPackage,
     PackagesDependence,
+    DependsSrcPackage,
 )
-from .parsers import pkgs_depends_args
+from .parsers import pkgs_depends_args, src_pkg_depends_args
 from .serializers import (
     package_dependencies_model,
     depends_packages_model,
+    package_build_deps_model,
 )
 
 ns = get_namespace()
@@ -38,6 +40,7 @@ logger = get_logger(__name__)
 @ns.route(
     "/binary_package_dependencies/<int:pkghash>",
     doc={
+        "params": {"pkghash": "package hash"},
         "description": "Get binary package dependencies",
         "responses": {
             400: "Request parameters validation error",
@@ -82,6 +85,37 @@ class routePackageDepends(Resource):
         args = pkgs_depends_args.parse_args(strict=True)
         url_logging(logger, g.url)
         wrk = PackagesDependence(g.connection, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route(
+    "/source_package_dependencies/<int:pkghash>",
+    doc={
+        "params": {"pkghash": "package hash"},
+        "description": "Get source package build dependencies",
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Package not found in database",
+        },
+    },
+)
+class routeDependsSrcPackage(Resource):
+    @ns.expect(src_pkg_depends_args)
+    @ns.marshal_with(package_build_deps_model)
+    def get(self, pkghash):
+        args = src_pkg_depends_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        wrk = DependsSrcPackage(g.connection, pkghash, **args)
         if not wrk.check_params():
             abort(
                 400,

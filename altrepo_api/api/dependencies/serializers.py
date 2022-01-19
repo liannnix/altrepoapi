@@ -46,8 +46,10 @@ package_dependencies_el_model = ns.model(
         "version": fields.String(description="the version of the dependent package"),
         "type": fields.String(description="dependency type"),
         "flag": fields.Integer(description="dependency flag"),
-        "flag_decoded": fields.List(fields.String, description="decoded dependency flag"),
-    }
+        "flag_decoded": fields.List(
+            fields.String, description="decoded dependency flag"
+        ),
+    },
 )
 package_dependencies_model = ns.model(
     "DependenciesPackageDependenciesModel",
@@ -56,7 +58,7 @@ package_dependencies_model = ns.model(
         "length": fields.Integer(description="number of dependencies found"),
         "dependencies": fields.Nested(
             package_dependencies_el_model,
-            description="unpackaged directories information",
+            description="package dependencies list",
             as_list=True,
         ),
         "versions": fields.Nested(
@@ -87,13 +89,54 @@ depends_packages_model = ns.model(
         "length": fields.Integer(description="number of packages found"),
         "packages": fields.Nested(
             depends_packages_el_model,
-            description="unpackaged directories information",
+            description="package dependencies list",
             as_list=True,
         ),
         "branches": fields.Nested(
             all_pkgsets_el_model,
             description="list of package sets with binary package count",
-            as_list=True
+            as_list=True,
+        ),
+    },
+)
+
+pkg_info_model = ns.model(
+    "PackageInfoModel",
+    {
+        "name": fields.String(description="package name"),
+        "epoch": fields.Integer(description="package epoch"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "buildtime": fields.Integer(description="package buildtime"),
+    },
+)
+
+package_info_el_model = ns.model(
+    "DependenciesPackageInfoElementModel",
+    {
+        "name": fields.String(description="package name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "pkghash": fields.String(description="package hash UInt64 as string"),
+    },
+)
+package_build_deps_model = ns.model(
+    "DependenciesPackageBuildDependenciesModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "package_info": fields.Nested(
+            pkg_info_model, description="source package info"
+        ),
+        "dependencies": fields.Nested(
+            package_dependencies_el_model,
+            description="package dependencies list",
+            as_list=True,
+        ),
+        "provided_by_src": fields.Nested(
+            package_info_el_model,
+            description="list of source packages of binary packages that provides required dependencies",
+            as_list=True,
         ),
     },
 )

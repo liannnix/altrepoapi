@@ -31,5 +31,14 @@ dp_type_opt = parser.register_item(
     help="type of dependency [provide|require]",
     location="args",
 )
+depends_depth_opt = parser.register_item(
+    "depth",
+    type=int,
+    default=1,
+    required=False,
+    help="dependency level limit",
+    location="args",
+)
 
 pkgs_depends_args = parser.build_parser(branch, dp_name, dp_type_opt)
+src_pkg_depends_args = parser.build_parser(branch, depends_depth_opt)
