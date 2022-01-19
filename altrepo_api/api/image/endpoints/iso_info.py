@@ -19,7 +19,6 @@ import datetime
 from collections import namedtuple
 from dataclasses import dataclass, asdict
 from uuid import UUID
-from typing import Any
 
 from altrepo_api.utils import bytes2human
 from altrepo_api.api.base import APIWorker
@@ -36,7 +35,7 @@ class AllISOImages(APIWorker):
         super().__init__()
 
     def get(self):
-        self.conn.request_line = self.sql.get_all_iso_names
+        self.conn.request_line = self.sql.get_all_iso_images
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -49,35 +48,13 @@ class AllISOImages(APIWorker):
             )
             return self.error
 
-        iso = [
-            {"uuid": x[0], "name": x[1], "date": x[2]}
-            for x in sorted(response, key=lambda x: x[1])
-            if len(x) == 3
-        ]
+        ImageInfo = namedtuple(
+            "ImageInfo", ["branch", "name", "tag", "file", "uuid", "date"]
+        )
+        images = [ImageInfo(*r)._asdict() for r in response]
 
-        res = {"length": len(iso), "images": iso}
+        res = {"length": len(images), "images": images}
         return res, 200
-
-
-_ImageRaw = namedtuple(
-    "_ImageRaw", ["ruuid", "rname", "date", "depth", "uuid", "name", "k", "v"]
-)
-
-
-@dataclass
-class ImageInfo:
-    iso_uuid: UUID
-    iso_name: str
-    iso_date: datetime.datetime
-    uuid: UUID
-    depth: int
-    date: datetime.datetime
-    json: dict[str, Any]
-    type_: str = ""
-    class_: str = ""
-    name: str = ""
-    size: int = 0
-    size_readable: str = "0"
 
 
 class ISOImageInfo(APIWorker):
@@ -89,54 +66,25 @@ class ISOImageInfo(APIWorker):
         self.sql = sql
         super().__init__()
 
-    def _process_image_info(self, img: _ImageRaw) -> ImageInfo:
-        # unpack image record
-        res = ImageInfo(
-            iso_uuid=img.ruuid,
-            iso_name=img.rname,
-            iso_date=img.date,
-            uuid=img.uuid,
-            depth=img.depth,
-            date=img.date,
-            name=img.name,
-            json={},
-        )
+    def _parse_version(self, version: str) -> tuple[int, int, int]:
+        try:
+            major_ = minor_ = sub_ = 0
+            s = version.strip().split(".")
+            major_ = int(s[0])
 
-        t = {k: v for k, v in zip(img.k, img.v)}
+            if len(s) >= 2:
+                minor_ = int(s[1])
+            if len(s) == 3:
+                sub_ = int(s[2])
+            if len(s) > 3:
+                raise ValueError
 
-        type_ = t.get("type", "unknown")
-        if type_ not in ("iso", "rpms", "squashfs"):
-            raise ValueError(f"Unsupported image type: {type_}")
-        # process 'kv' dictionary
-        if type_ == "iso":
-            res.type_ = "iso"
-            res.name = "iso"
-            res.class_ = "iso"
-            res.size = int(t["size"])
-            res.size_readable = bytes2human(int(t["size"]))
-            res.date = datetime.datetime.strptime(t["date"], "%Y%m%d")
-            res.json = json.loads(t["json"])
-            res.json["info"] = t["info"]
-            res.json["isoinfo"] = t["isoinfo"]
-            res.json["commit"] = t["commit"].split("\n")
-        elif type_ == "rpms":
-            res.type_ = t["type"]
-            res.class_ = "iso"
-            res.size = int(t["size"])
-            res.size_readable = f'{t["size"]} packages'
-            res.date = res.iso_date
-        elif type_ == "squashfs":
-            res.type_ = t["type"]
-            res.class_ = "iso"
-            res.size = int(t["image_size"])
-            res.size_readable = bytes2human(int(t["image_size"]))
-            res.date = datetime.datetime.fromisoformat(t["mtime"])
-            res.json["packages"] = int(t["size"])
-            res.json["orphaned_files"] = int(t["orphaned_files"])
-            res.json["hash"] = t["hash"]
-            res.json["sha1"] = t["sha1"]
+            return major_, minor_, sub_
+        except ValueError:
+            msg = "Failed to parse version: '{0}'.".format(version)
+            raise ValueError(msg)
 
-        return res
+        return tuple()
 
     def get(self):
         # get ISO images info
@@ -148,28 +96,25 @@ class ISOImageInfo(APIWorker):
         variant = self.args["variant"]
         component = self.args["component"]
 
-        image_clause = f" AND startsWith(pkgset_name, '{branch}:')"
+        image_clause = f" AND img_branch = '{branch}'"
 
         if arch:
-            image_clause += f" AND position(pkgset_name, ':{arch}:') != 0"
+            image_clause += f" AND img_arch = '{arch}'"
         if edition:
-            image_clause += f" AND position(pkgset_name, ':{edition}:') != 0"
+            image_clause += f" AND img_edition = '{edition}'"
         if version:
-            image_clause += f" AND position(pkgset_name, '.{version}:') != 0"
+            v = self._parse_version(version)
+            image_clause += (
+                f" AND (img_version_major, img_version_minor, img_version_sub) = {v}"
+            )
         if release:
-            image_clause += f" AND position(pkgset_name, ':{release}.') != 0"
+            image_clause += f" AND img_release = '{release}'"
         if variant:
-            image_clause += f" AND position(pkgset_name, ':{variant}:') != 0"
+            image_clause += f" AND img_variant = '{variant}'"
 
-        component_clause = ""
-        if component:
-            if component == "iso":
-                component_clause = f" AND pkgset_depth = 0"
-            else:
-                component_clause = f" AND pkgset_nodename = '{component}'"
-
-        self.conn.request_line = self.sql.get_all_iso_info.format(
-            image_clause=image_clause, component_clause=component_clause
+        # get iso roots info
+        self.conn.request_line = self.sql.get_iso_root_info.format(
+            image_clause=image_clause
         )
         status, response = self.conn.send_request()
         if not status:
@@ -183,22 +128,93 @@ class ISOImageInfo(APIWorker):
             )
             return self.error
 
-        images: list[ImageInfo] = [
-            self._process_image_info(_ImageRaw(*r)) for r in response
-        ]
+        ImageRaw = namedtuple(
+            "ImageRaw",
+            [
+                "uuid",
+                "date",
+                "tag",
+                "branch",
+                "edition",
+                "flavor",
+                "platform",
+                "release",
+                "version_major",
+                "version_minor",
+                "version_sub",
+                "arch",
+                "variant",
+                "type",
+                "kv",
+            ],
+        )
+        images: dict[UUID, ImageRaw] = {r[0]: ImageRaw(*r) for r in response}  # type: ignore
+        ruuids = [str(i.uuid) for i in images.values()]
 
-        res = {}
-        for img in sorted(images, key=lambda x: (x.iso_name, x.depth)):
-            ruuid = str(img.iso_uuid)
-            if ruuid not in res:
-                res[ruuid] = {
-                    "name": img.iso_name,
-                    "date": img.iso_date,
-                    "uuid": img.iso_uuid,
-                    "components": [],
-                }
-            res[ruuid]["components"].append(asdict(img))
+        # get components info
+        component_clause = ""
+        if component is not None and component != "iso":
+            component_clause = f" AND pkgset_nodename = '{component}'"
 
-        res = [v for v in res.values()]
+        self.conn.request_line = self.sql.get_iso_image_components.format(
+            ruuids=ruuids, component_clause=component_clause
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {"message": f"No data not found in database", "args": self.args},
+                self.ll.INFO,
+                404,
+            )
+            return self.error
 
-        return {"length": len(res), "images": res}, 200
+        Component = namedtuple("Component", ["ruuid", "uuid", "name", "kv"])
+
+        def _process_components(comps: list[Component]) -> list[dict]:
+            res = []
+            for c in comps:
+                d = c._asdict()
+                if c.name == "iso":
+                    d["image_size"] = bytes2human(int(c.kv["size"]))
+                    d["pkg_count"] = 0
+                elif "image_size" in c.kv:
+                    d["image_size"] = bytes2human(int(c.kv["image_size"]))
+                    d["pkg_count"] = int(c.kv["size"])
+                else:
+                    d["image_size"] = ""
+                    d["pkg_count"] = int(c.kv["size"])
+                res.append(d)
+            return res
+
+        # build 'iso' component from ISO root info
+        isos: dict[UUID, list[Component]] = {}
+        for uuid, i in images.items():
+            isos[uuid] = []
+            isos[uuid].append(Component(ruuid=i.uuid, uuid=i.uuid, name="iso", kv=i.kv))
+
+        for comp in [Component(*r) for r in response]:
+            isos[comp.ruuid].append(comp)
+
+        res: list[dict] = []
+        for ruuid in isos:
+            image = images[ruuid]._asdict()
+            image["file"] = image["kv"]["file"]
+            del image["kv"]
+
+            if component is not None:
+                components = _process_components(
+                    [c for c in isos[ruuid] if c.name == component]
+                )
+            else:
+                components = _process_components(isos[ruuid])
+            if not components:
+                continue
+            image["components"] = components
+            res.append(image)
+
+        res.sort(key=lambda x: (x["date"], x["tag"]), reverse=True)
+
+        return {"request_args": self.args, "length": len(res), "images": res}, 200

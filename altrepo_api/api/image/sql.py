@@ -31,23 +31,68 @@ SELECT * FROM {tmp_table}
 INSERT INTO {tmp_table} (*) VALUES
 """
 
-    get_all_iso_names = """
+    get_all_iso_images = """
+SELECT DISTINCT
+    img_branch,
+    img_edition,
+    img_tag,
+    img_kv['file'],
+    pkgset_uuid,
+    pkgset_date
+FROM ImagePackageSetName
+WHERE (pkgset_date, img_tag) IN
+    (
+        SELECT
+            max(pkgset_date) AS img_d,
+            argMax(img_tag, pkgset_date) AS img_t
+        FROM ImagePackageSetName
+        WHERE img_type = 'iso'
+        GROUP BY img_tag
+    )
+"""
+
+    get_iso_root_info = """
+SELECT DISTINCT
+    pkgset_uuid,
+    pkgset_date,
+    img_tag,
+    img_branch,
+    img_edition,
+    img_flavor,
+    img_platform,
+    img_release,
+    img_version_major,
+    img_version_minor,
+    img_version_sub,
+    img_arch,
+    img_variant,
+    img_type,
+    img_kv
+FROM ImagePackageSetName
+WHERE (pkgset_date, img_tag) IN
+    (
+        SELECT
+            max(pkgset_date) AS img_d,
+            argMax(img_tag, pkgset_date) AS img_t
+        FROM ImagePackageSetName
+        WHERE img_type = 'iso'
+        GROUP BY img_tag
+    )
+    {image_clause}
+"""
+
+    get_iso_image_components = """
 SELECT
+    pkgset_ruuid,
     pkgset_uuid,
     pkgset_nodename,
-    pkgset_date
+    cast(arrayZip(pkgset_kv.k, pkgset_kv.v), 'Map(String,String)')
 FROM PackageSetName
-WHERE (pkgset_nodename, pkgset_date) IN
-(
-    SELECT
-        argMax(pkgset_name, pkgset_date) AS pkgset_n,
-        max(pkgset_date) AS pkgset_d
-    FROM StaticLastPackages
-    WHERE endsWith(pkgset_name, ':iso')
-    GROUP BY pkgset_name
-)
-    AND pkgset_depth = 0
-""" 
+WHERE pkgset_depth = 1
+    AND pkgset_ruuid IN {ruuids}
+    {component_clause}
+ORDER BY pkgset_tag ASC, pkgset_date DESC
+"""
 
     get_all_iso_info = """
 WITH

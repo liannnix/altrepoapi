@@ -41,7 +41,7 @@ logger = get_logger(__name__)
         "responses": {404: "Data not found in database"},
     },
 )
-class routeAllPackagesets(Resource):
+class routeAllISOImages(Resource):
     # @ns.expect()
     @ns.marshal_with(all_iso_model)
     def get(self):
@@ -71,7 +71,7 @@ class routeAllPackagesets(Resource):
         },
     },
 )
-class routeSitemapPackages(Resource):
+class routeISOImageInfo(Resource):
     @ns.expect(iso_images_args)
     @ns.marshal_with(iso_image_model)
     def get(self):
