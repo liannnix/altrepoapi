@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from tokenize import String
 from flask_restx import fields
 
 from .namespace import get_namespace
@@ -48,11 +49,15 @@ iso_image_comp_model = ns.model(
     "ISOImageComponentModel",
     {
         "name": fields.String(description="ISO component name"),
-        "size": fields.String(description="ISO component size (human readable)", attribute="image_size"),
-        "packages": fields.Integer(description="ISO component packages count", attribute="pkg_count"),
+        "size": fields.String(
+            description="ISO component size (human readable)", attribute="image_size"
+        ),
+        "packages": fields.Integer(
+            description="ISO component packages count", attribute="pkg_count"
+        ),
         "uuid": fields.String(description="ISO component package set UUID"),
         "ruuid": fields.String(description="ISO component package set root UUID"),
-        "kv": fields.Raw(description="ISO component metadata")
+        "kv": fields.Raw(description="ISO component metadata"),
     },
 )
 iso_image_el_model = ns.model(
@@ -73,6 +78,10 @@ iso_image_el_model = ns.model(
         "variant": fields.String(description="ISO image variant"),
         "type": fields.String(description="Image type"),
         "file": fields.String(description="ISO image file name"),
+        "url": fields.List(fields.String(description="download URL")),
+        "md5sum": fields.String(description="Image MD5 checksum"),
+        "gost12sum": fields.String(description="Image GOST12 checksum"),
+        "sha256sum": fields.String(description="Image SHA256 checksum"),
         "components": fields.Nested(
             iso_image_comp_model,
             description="list of ISO image components information",

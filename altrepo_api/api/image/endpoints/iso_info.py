@@ -14,11 +14,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import json
-import datetime
-from collections import namedtuple
-from dataclasses import dataclass, asdict
 from uuid import UUID
+from collections import namedtuple
 
 from altrepo_api.utils import bytes2human
 from altrepo_api.api.base import APIWorker
@@ -198,10 +195,29 @@ class ISOImageInfo(APIWorker):
         for comp in [Component(*r) for r in response]:
             isos[comp.ruuid].append(comp)
 
+        def make_download_mirrors(url: str) -> list[str]:
+            # build mirror.yandex.ru alternative download links
+            res = [url,]
+            if (
+                url.startswith("http://ftp.altlinux.org/pub/distributions/ALTLinux/images")
+            ):
+                res.append(
+                    url.replace(
+                    "http://ftp.altlinux.org/pub/distributions/ALTLinux/images",
+                    "https://mirror.yandex.ru/altlinux/images/"
+                    )
+                )
+
+            return res
+
         res: list[dict] = []
         for ruuid in isos:
             image = images[ruuid]._asdict()
             image["file"] = image["kv"]["file"]
+            image["url"] = make_download_mirrors(image["kv"]["url"])
+            image["md5sum"] = image["kv"]["md5_cs"]
+            image["gost12sum"] = image["kv"]["gost12_cs"]
+            image["sha256sum"] = image["kv"]["sha256_cs"]
             del image["kv"]
 
             if component is not None:
