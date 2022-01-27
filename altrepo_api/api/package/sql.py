@@ -614,13 +614,20 @@ FROM
             (
                 SELECT file_hashname
                 FROM Files
-                WHERE pkg_hash IN {hshs} AND file_class != 'directory'
+                WHERE pkg_hash IN
+                (
+                    SELECT pkg_hash FROM {tmp_table2}
+                )
+                    AND file_class != 'directory'
             )
                 AND pkg_hash IN
                 (
                     SELECT pkg_hash
                     FROM Packages
-                    WHERE pkg_hash NOT IN {hshs}
+                    WHERE pkg_hash NOT IN
+                    (
+                        SELECT pkg_hash FROM {tmp_table2}
+                    )
                         AND pkg_hash IN
                         (
                             SELECT pkg_hash FROM {tmp_table}
@@ -634,7 +641,11 @@ FROM
                     pkg_hash,
                     file_hashname
                 FROM Files
-                WHERE pkg_hash IN {hshs} AND file_class != 'directory'
+                WHERE pkg_hash IN
+                (
+                    SELECT pkg_hash FROM {tmp_table2}
+                )
+                    AND file_class != 'directory'
             ) AS InPkg USING file_hashname
         GROUP BY (InPkg.pkg_hash, pkg_hash)
     ) AS Sel1

@@ -93,6 +93,27 @@ class MisconflictPackages(APIWorker):
         else:
             input_pkg_hshs = tuple(pkg_hashes)
 
+        # store input_pkg_hashes to temporary table
+        tmp_pkg_hshs = "tmp_input_pkg_hshs"
+        self.conn.request_line = self.sql.create_tmp_table.format(
+            tmp_table=tmp_pkg_hshs, columns="(pkg_hash UInt64)"
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return
+
+        self.conn.request_line = (
+            self.sql.insert_into_tmp_table.format(
+                tmp_table=tmp_pkg_hshs
+            ),
+            ((hsh,) for hsh in input_pkg_hshs)
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return
+
         # create temporary table with repository state hashes
         tmp_repo_state = "tmp_repo_state_hshs"
         self.conn.request_line = self.sql.create_tmp_table.format(
@@ -163,7 +184,7 @@ class MisconflictPackages(APIWorker):
 
         # get list of (input package | conflict package | conflict files)
         self.conn.request_line = self.sql.misconflict_get_pkgs_with_conflict.format(
-            tmp_table=tmp_repo_state, hshs=input_pkg_hshs
+            tmp_table=tmp_repo_state, tmp_table2=tmp_pkg_hshs
         )
         status, response = self.conn.send_request()
         if status is False:
@@ -175,6 +196,16 @@ class MisconflictPackages(APIWorker):
             return
         # replace 'file_hashname' by 'fn_name' from FileNames
         hshs_files = response
+
+        # drop input package hashes temporary table
+        self.conn.request_line = self.sql.drop_tmp_table.format(
+            tmp_table=tmp_pkg_hshs
+        )
+        status, response = self.conn.send_request()
+        if status is False:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return
+
         # 1. collect all files_hashnames
         f_hashnames = set()
         for el in hshs_files:
@@ -259,7 +290,7 @@ class MisconflictPackages(APIWorker):
             self._store_sql_error(response, self.ll.ERROR, 500)
             return
 
-        pkg_archs_dict = tuplelist_to_dict(response, 1)
+        pkg_archs_dict = tuplelist_to_dict(response, 1)  # type: ignore
 
         # look for duplicate pairs of packages in the list with different files
         # and join them
