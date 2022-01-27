@@ -72,12 +72,10 @@ WHERE pkg_hash = {pkghash}
     AND dp_type = 'require'
 """
 
-    get_src_by_bin_deps = """
+    make_src_by_bin_deps_tmp = """
+CREATE TEMPORARY TABLE {tmp_table_2} AS
 SELECT DISTINCT
-    pkg_hash,
-    pkg_name,
-    pkg_version,
-    pkg_release
+    pkg_hash
 FROM static_last_packages
 WHERE pkg_sourcepackage = 1
     AND pkgset_name = '{branch}'
@@ -94,6 +92,19 @@ WHERE pkg_sourcepackage = 1
                 (SELECT dp_name FROM {tmp_table})
         )
     )
+"""
+
+    get_src_by_bin_deps = """
+SELECT DISTINCT
+    pkg_hash,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_summary
+FROM Packages
+WHERE pkg_sourcepackage = 1
+    AND pkg_hash IN
+        (SELECT pkg_hash FROM {tmp_table})
 """
 
     get_pkgs_name_and_arch = """

@@ -304,19 +304,36 @@ class DependsSrcPackage(APIWorker):
             el["flag_decoded"] = dp_flags_decode(el["flag"], lut.rpmsense_flags)
 
         # get source packages from last branch state by dependency names
-        self.conn.request_line = self.sql.get_src_by_bin_deps.format(branch=branch, tmp_table=tmp_table)
+        tmp_table_2 = "_TmpSrcByBinDeps"
+        self.conn.request_line = self.sql.make_src_by_bin_deps_tmp.format(
+            tmp_table_2=tmp_table_2, tmp_table=tmp_table, branch=branch
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
 
-        SrcPkgInfo = namedtuple("SrcPkgInfo", ["pkghash", "name", "version", "release"])
+        self.conn.request_line = self.sql.get_src_by_bin_deps.format(
+            tmp_table=tmp_table_2
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+
+        SrcPkgInfo = namedtuple("SrcPkgInfo", ["pkghash", "name", "version", "release", "summary"])
         src_pkg_dependencies = [SrcPkgInfo(*el)._asdict() for el in response]
         for pkg in src_pkg_dependencies:
             pkg["pkghash"] = str(pkg["pkghash"])
 
         # drop temporary table
         self.conn.request_line = self.sql.drop_tmp_table.format(tmp_table=tmp_table)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+
+        self.conn.request_line = self.sql.drop_tmp_table.format(tmp_table=tmp_table_2)
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)

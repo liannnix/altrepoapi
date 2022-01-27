@@ -117,6 +117,7 @@ package_info_el_model = ns.model(
         "name": fields.String(description="package name"),
         "version": fields.String(description="package version"),
         "release": fields.String(description="package release"),
+        "summary": fields.String(description="package summary"),
         "pkghash": fields.String(description="package hash UInt64 as string"),
     },
 )
