@@ -22,9 +22,14 @@ from altrepo_api.utils import get_logger, url_logging, response_error_parser
 from .namespace import get_namespace
 from .endpoints.repology import RepologyExport
 from .endpoints.sitemap import SitemapPackages
+from .endpoints.packageset import PackageSetBinaries
 
-from .parsers import *
-from .serializers import repology_export_model, sitemap_packages_export_model
+from .parsers import pkgset_packages_args
+from .serializers import (
+    repology_export_model,
+    sitemap_packages_export_model,
+    pkgset_packages_export_model,
+)
 
 ns = get_namespace()
 
@@ -82,6 +87,37 @@ class routeSitemapPackages(Resource):
         args = {}
         url_logging(logger, g.url)
         wrk = SitemapPackages(g.connection, branch, **args)
+        if not wrk.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=wrk.validation_results,
+            )
+        result, code = wrk.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        return result, code
+
+
+@ns.route(
+    "/branch_binary_packages/<string:branch>",
+    doc={
+        "params": {"branch": "branch name"},
+        "description": "Get branch binary packages info",
+        "responses": {
+            400: "Request parameters validation error",
+            404: "Information not found in database",
+        },
+    },
+)
+class routePackageSetBinaries(Resource):
+    @ns.expect(pkgset_packages_args)
+    @ns.marshal_with(pkgset_packages_export_model)
+    def get(self, branch):
+        args = pkgset_packages_args.parse_args(strict=True)
+        url_logging(logger, g.url)
+        wrk = PackageSetBinaries(g.connection, branch, **args)
         if not wrk.check_params():
             abort(
                 400,

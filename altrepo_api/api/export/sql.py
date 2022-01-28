@@ -130,5 +130,34 @@ WHERE pkg_hash IN (
 )
 """
 
+    get_branch_binary_packages = """
+SELECT DISTINCT
+    pkg_name,
+    pkg_epoch,
+    pkg_version,
+    pkg_release,
+    pkg_arch,
+    pkg_disttag,
+    pkg_buildtime,
+    SRC.pkg_name AS pkg_source
+FROM Packages
+LEFT JOIN
+(
+    SELECT pkg_hash, pkg_name
+    FROM static_last_packages
+    WHERE pkgset_name = '{branch}'
+        AND pkg_sourcepackage = 1
+) AS SRC ON SRC.pkg_hash = Packages.pkg_srcrpm_hash
+WHERE pkg_hash IN
+(
+    SELECT pkg_hash
+    FROM static_last_packages
+    WHERE pkgset_name = '{branch}'
+        AND pkg_sourcepackage = 0
+)
+{arch_clause}
+ORDER BY pkg_arch, pkg_name
+"""
+
 
 sql = SQL()

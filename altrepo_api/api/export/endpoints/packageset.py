@@ -23,8 +23,8 @@ from altrepo_api.api.misc import lut
 from ..sql import sql
 
 
-class RepologyExport(APIWorker):
-    """Retrieves package info from DB."""
+class PackageSetBinaries(APIWorker):
+    """Retrieves packageset binary packages info from DB."""
 
     def __init__(self, connection, branch, **kwargs):
         self.branch = branch
@@ -51,8 +51,14 @@ class RepologyExport(APIWorker):
             return True
 
     def get(self):
-        # get branch stat
-        self.conn.request_line = self.sql.get_branch_stat.format(branch=self.branch)
+        arch = self.args["arch"]
+        arch_clause = ""
+        if arch is not None:
+            arch_clause = f"AND pkg_arch = '{arch}'"
+        # get packages info
+        self.conn.request_line = self.sql.get_branch_binary_packages.format(
+            branch=self.branch, arch_clause=arch_clause
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -68,62 +74,26 @@ class RepologyExport(APIWorker):
             )
             return self.error
 
-        RepoStat = namedtuple("RepoStat", ["arch", "cnt"])
-        repo_date, repo_stat = response[0][0], [RepoStat(*el)._asdict() for el in response[0][1]]
-
-        # get package info
-        self.conn.request_line = self.sql.get_branch_pkg_info.format(branch=self.branch)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
-        if not response:
-            self._store_error(
-                {
-                    "message": f"No data found for branch '{self.branch}'",
-                    "args": self.args,
-                },
-                self.ll.INFO,
-                404,
-            )
-            return self.error
-
-        SrcPkgInfo = namedtuple(
-            "SrcPkgInfo",
+        BinPkgInfo = namedtuple(
+            "BinPkgInfo",
             [
                 "name",
                 "epoch",
                 "version",
                 "release",
-                "category",
-                "url",
-                "summary",
-                "license",
-                "packager",
-                "recipe",
-                "binaries",
+                "arch",
+                "disttag",
+                "buildtime",
+                "source",
             ],
         )
-        BinPkgInfo = namedtuple(
-            "BinPkgInfo", ["name", "epoch", "version", "release", "summary", "archs"]
-        )
-        src_packages = [SrcPkgInfo(*el)._asdict() for el in response]
-
-        # build result packages dictionary
-        for src in src_packages:
-            src["binaries"] = [BinPkgInfo(*el)._asdict() for el in src["binaries"]]
-            src["homepage"] = f'{lut.packages_base}/{self.branch}/srpms/{src["name"]}/'
-            _specfile = src["recipe"]
-            src["recipe"] = f'{lut.packages_base}/{self.branch}/srpms/{src["name"]}/specfiles/'
-            src["recipe_raw"] = f'{lut.packages_base}/{self.branch}/srpms/{src["name"]}/specfiles/{_specfile}'
-            src["CPE"] = ""  # TODO: add CPE info for packages when ready
-            src["bugzilla"] = f'{lut.bugzilla_base}/buglist.cgi?quicksearch={src["name"]}'
+        packages = [BinPkgInfo(*el)._asdict() for el in response]
 
         res = {
             "branch": self.branch,
-            "date": datetime_to_iso(repo_date),  # type: ignore
-            "stats": repo_stat,
-            "packages": src_packages,
+            "request_args": self.args,
+            "length": len(packages),
+            "packages": packages,
         }
 
         return res, 200
