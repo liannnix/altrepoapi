@@ -15,9 +15,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from flask import g
-from flask_restx import Resource, abort
+from flask_restx import Resource
 
-from altrepo_api.utils import get_logger, url_logging, response_error_parser
+from altrepo_api.utils import get_logger, url_logging
+from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
 
 from .namespace import get_namespace
 from .parsers import package_bugzilla_args, maintainer_bugzilla_args
@@ -33,57 +34,31 @@ logger = get_logger(__name__)
     "/bugzilla_by_package",
     doc={
         "description": "Get information from bugzilla by the source package name",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routeBugzillaByPackage(Resource):
     @ns.expect(package_bugzilla_args)
     @ns.marshal_list_with(bugzilla_info_model)
     def get(self):
-        args = package_bugzilla_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = Bugzilla(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get_bug_by_package()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = package_bugzilla_args.parse_args(strict=True)
+        w = Bugzilla(g.connection, **args)
+        return run_worker(worker=w, run_method=w.get_bug_by_package, args=args)
 
 
 @ns.route(
     "/bugzilla_by_maintainer",
     doc={
         "description": "Get information from bugzilla by the maintainer nickname",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routeBugzillaByMaintainer(Resource):
     @ns.expect(maintainer_bugzilla_args)
     @ns.marshal_list_with(bugzilla_info_model)
     def get(self):
-        args = maintainer_bugzilla_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = Bugzilla(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get_bug_by_maintainer()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = maintainer_bugzilla_args.parse_args(strict=True)
+        w = Bugzilla(g.connection, **args)
+        return run_worker(worker=w, run_method=w.get_bug_by_maintainer, args=args)
