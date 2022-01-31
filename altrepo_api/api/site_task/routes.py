@@ -15,9 +15,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from flask import g
-from flask_restx import Resource, abort
+from flask_restx import Resource
 
-from altrepo_api.utils import get_logger, url_logging, response_error_parser
+from altrepo_api.utils import get_logger, url_logging
+from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
 
 from .namespace import get_namespace
 from .endpoints.last_packages import LastTaskPackages
@@ -45,30 +46,17 @@ logger = get_logger(__name__)
     "/tasks_by_package",
     doc={
         "description": "Get tasks list by source package name",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Data not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routeTasksByPackage(Resource):
     @ns.expect(task_by_name_args)
     @ns.marshal_with(task_by_name_model)
     def get(self):
-        args = task_by_name_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = TasksByPackage(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = task_by_name_args.parse_args(strict=True)
+        w = TasksByPackage(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
@@ -76,87 +64,48 @@ class routeTasksByPackage(Resource):
     "/last_packages_by_tasks",
     doc={
         "description": ("Get list of last packages from tasks for given parameters"),
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routeLastTaskPackages(Resource):
     @ns.expect(last_pkgs_args)
     @ns.marshal_with(last_packages_model)
     def get(self):
-        args = last_pkgs_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = LastTaskPackages(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = last_pkgs_args.parse_args(strict=True)
+        w = LastTaskPackages(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
     "/tasks_by_maintainer",
     doc={
         "description": "Get tasks list by maintainer nickname",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routeTasksByMaintainer(Resource):
     @ns.expect(maintainer_info_args)
     @ns.marshal_list_with(task_by_name_model)
     def get(self):
-        args = maintainer_info_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = TasksByMaintainer(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = maintainer_info_args.parse_args(strict=True)
+        w = TasksByMaintainer(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
     "/package_versions_from_tasks",
     doc={
         "description": "Get source package versions from tasks",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routePackageVersionsFromTasks(Resource):
     @ns.expect(pkgs_versions_from_tasks_args)
     @ns.marshal_with(pkgs_versions_from_tasks_model)
     def get(self):
-        args = pkgs_versions_from_tasks_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = PackageVersionsFromTasks(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = pkgs_versions_from_tasks_args.parse_args(strict=True)
+        w = PackageVersionsFromTasks(g.connection, **args)
+        return run_worker(worker=w, args=args)
