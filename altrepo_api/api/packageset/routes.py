@@ -15,10 +15,16 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from flask import g, request
-from flask_restx import Resource, abort, Namespace
+from flask_restx import Resource
 
-from altrepo_api.utils import get_logger, url_logging, response_error_parser
+from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.auth.decorators import auth_required
+from altrepo_api.api.base import (
+    run_worker,
+    GET_RESPONSES_404,
+    GET_RESPONSES_400_404,
+    POST_RESPONSE_400_404,
+)
 
 from .endpoints.pkgset_compare import PackagesetCompare
 from .endpoints.pkgset_packages import PackagesetPackages
@@ -45,140 +51,81 @@ logger = get_logger(__name__)
         "description": (
             "Get list of packageset packages in accordance " "to given parameters"
         ),
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routePackagesetPackages(Resource):
     @ns.expect(pkgset_packages_args)
     @ns.marshal_with(pkgset_packages_model)
     def get(self):
-        args = pkgset_packages_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = PackagesetPackages(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = pkgset_packages_args.parse_args(strict=True)
+        w = PackagesetPackages(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
     "/compare_packagesets",
     doc={
         "description": "Get difference list of packages from two package sets",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routePackagesetCompare(Resource):
     @ns.expect(pkgset_compare_args)
     @ns.marshal_with(pkgset_compare_model)
     def get(self):
-        args = pkgset_compare_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = PackagesetCompare(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = pkgset_compare_args.parse_args(strict=True)
+        w = PackagesetCompare(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route("/pkgset_status")
 class routeRepositoryStatus(Resource):
     @ns.doc(
         description="Load package set status into database",
-        responses={
-            201: "Data loaded",
-            400: "Request parameters validation error",
-            404: "Requested data not found in database",
-        },
+        responses=POST_RESPONSE_400_404,
     )
     @ns.expect(pkgset_status_post_model)
     @ns.doc(security="BasicAuth")
     @auth_required
     def post(self):
-        args = {}
         url_logging(logger, g.url)
-        wrk = RepositoryStatus(g.connection, json_data=request.json)
-        if not wrk.check_params_post():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.post()
-        if code != 201:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = {}
+        w = RepositoryStatus(g.connection, json_data=request.json)
+        return run_worker(
+            worker=w,
+            run_method=w.post,
+            check_method=w.check_params_post,
+            args=args,
+            ok_code=201,
+        )
 
     @ns.doc(
         description="Get package set status into database",
-        responses={
-            400: "Request parameters validation error",
-            404: "Requested data not found in database",
-        },
+        responses=GET_RESPONSES_400_404,
     )
     @ns.marshal_with(pkgset_status_get_model)
     def get(self):
-        args = {}
         url_logging(logger, g.url)
-        wrk = RepositoryStatus(g.connection, json_data=request.json)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = {}
+        w = RepositoryStatus(g.connection, json_data=request.json)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
     "/active_packagesets",
     doc={
         "description": ("Get list of active package sets"),
-        "responses": {
-            404: "Package sets not found in database",
-        },
+        "responses": GET_RESPONSES_404,
     },
 )
 class routeActivePackagesets(Resource):
     # @ns.expect()
     @ns.marshal_with(active_pkgsets_model)
     def get(self):
-        args = {}
         url_logging(logger, g.url)
-        wrk = ActivePackagesets(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = {}
+        w = ActivePackagesets(g.connection, **args)
+        return run_worker(worker=w, args=args)
