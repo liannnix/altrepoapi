@@ -128,7 +128,7 @@ def response_error_parser(response: Any) -> dict[str, Any]:
             if k not in ("message", "error", "Error")
         ]
         return {"message": msg, "details": details}
-    except:
+    except AttributeError:
         return {"message": response}
 
 
