@@ -108,7 +108,7 @@ def run_worker(
 ):
     """Calls APIWorker class's 'check_method' and 'run_method' and returns the result.
     
-    Calls Flask abort() if check_method() returned False 
+    Calls flask_restx abort() if check_method() returned False 
     or if run_method() returned code not equal to 'ok_code'.
     Otherwise returns run_method() results.
     
