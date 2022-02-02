@@ -31,6 +31,14 @@ SELECT * FROM {tmp_table}
 INSERT INTO {tmp_table} (*) VALUES
 """
 
+    truncate_tmp_table = """
+TRUNCATE TABLE {tmp_table}
+"""
+
+    drop_tmp_table = """
+DROP TABLE {tmp_table}
+"""
+
     get_all_iso_images = """
 SELECT DISTINCT
     img_branch,
@@ -144,5 +152,290 @@ WHERE pkgset_depth = 0
     )
 ORDER BY name ASC,  depth ASC, date DESC
 """
+
+    get_pkgs_not_in_db = """
+WITH
+PkgsInDB AS
+(
+    SELECT pkg_hash
+    FROM Packages
+    WHERE pkg_hash IN
+    (
+        SELECT * FROM {tmp_table}
+    )
+)
+SELECT DISTINCT pkg_hash
+FROM {tmp_table}
+WHERE pkg_hash NOT IN
+(
+    SELECT * FROM PkgsInDB
+)
+"""
+
+    get_pkgs_not_in_branch = """
+WITH
+PkgsetRoots AS
+(
+    SELECT pkgset_uuid, pkgset_date
+    FROM PackageSetName
+    WHERE pkgset_depth = 0
+        AND pkgset_nodename = '{branch}'
+),
+PkgsetUUIDs AS
+(
+    SELECT pkgset_uuid, R.pkgset_date AS pdate, R.pkgset_uuid AS ruuid
+    FROM PackageSetName
+    LEFT JOIN
+    (
+        SELECT pkgset_date, pkgset_uuid FROM PkgsetRoots
+    ) AS R ON R.pkgset_uuid = PackageSetName.pkgset_ruuid
+    WHERE pkgset_depth = 2
+        AND pkgset_ruuid IN
+        (
+            SELECT pkgset_uuid FROM PkgsetRoots
+        )
+)
+SELECT
+    pkg_hash,
+    T.cnt
+FROM {tmp_table}
+LEFT JOIN
+(
+    SELECT
+        pkg_hash AS hash,
+        count(pkg_hash) AS cnt
+    FROM PackageSet
+    WHERE pkg_hash IN (
+        SELECT pkg_hash FROM {tmp_table}
+    )
+        AND pkgset_uuid IN (
+            SELECT pkgset_uuid FROM PkgsetUUIDs
+        )
+    GROUP BY hash
+) AS T ON T.hash = pkg_hash
+"""
+
+    get_pkgs_tasks = """
+SELECT DISTINCT
+    arrayJoin(titer_pkgs_hash) AS pkg_hash,
+    task_id,
+    subtask_id
+FROM TaskIterations
+WHERE pkg_hash IN {hshs}
+"""
+
+    tmp_table_columns = (
+        "(pkg_hash UInt64, pkg_name String, pkg_epoch UInt32,"
+        "pkg_version String, pkg_release String, pkg_disttag String,"
+        "pkg_arch String, pkg_buildtime UInt32)"
+    )
+
+    tmp_pkgs_by_nevr = """
+CREATE TEMPORARY TABLE {tmp_table} AS
+(
+    SELECT DISTINCT
+        pkg_hash,
+        pkg_name,
+        pkg_epoch,
+        pkg_version,
+        pkg_release,
+        pkg_disttag,
+        pkg_arch,
+        pkg_buildtime
+    FROM Packages
+    WHERE pkg_sourcepackage = 0
+        AND (pkg_name, pkg_epoch, pkg_version, pkg_release, pkg_disttag, pkg_arch) IN
+        (
+            SELECT
+                pkg_name,
+                pkg_epoch,
+                pkg_version,
+                pkg_release,
+                pkg_disttag,
+                pkg_arch
+            FROM {tmp_table2}
+        )
+)
+"""
+
+    tmp_pkgs_in_branch = """
+CREATE TEMPORARY TABLE {tmp_table} AS
+(
+    WITH
+    HshByNEVR AS
+    (
+        SELECT DISTINCT
+            pkg_hash
+        FROM Packages
+        WHERE pkg_sourcepackage = 0
+            AND (pkg_name, pkg_epoch, pkg_version, pkg_release, pkg_disttag, pkg_arch) IN
+            (
+                SELECT
+                    pkg_name,
+                    pkg_epoch,
+                    pkg_version,
+                    pkg_release,
+                    pkg_disttag,
+                    pkg_arch
+                FROM {tmp_table2}
+            )
+    ),
+    PkgsetRoots AS
+    (
+        SELECT pkgset_uuid, pkgset_date
+        FROM PackageSetName
+        WHERE pkgset_depth = 0
+            AND pkgset_nodename = '{branch}'
+    ),
+    PkgsetUUIDs AS
+    (
+        SELECT pkgset_uuid, R.pkgset_date AS pdate, R.pkgset_uuid AS ruuid
+        FROM PackageSetName
+        LEFT JOIN
+        (
+            SELECT pkgset_date, pkgset_uuid FROM PkgsetRoots
+        ) AS R ON R.pkgset_uuid = PackageSetName.pkgset_ruuid
+        WHERE pkgset_depth = 2
+            AND pkgset_ruuid IN
+            (
+                SELECT pkgset_uuid FROM PkgsetRoots
+            )
+    ),
+    HshInBranch AS
+    (
+        SELECT pkg_hash
+        FROM
+        (
+            SELECT
+                pkg_hash,
+                T.cnt
+            FROM HshByNEVR
+            LEFT JOIN
+            (
+                SELECT
+                    pkg_hash AS hash,
+                    count(pkg_hash) AS cnt
+                FROM PackageSet
+                WHERE pkgset_uuid IN (
+                    SELECT pkgset_uuid FROM PkgsetUUIDs
+                )
+                    AND pkg_hash IN (
+                        SELECT pkg_hash FROM HshByNEVR
+                    )
+                GROUP BY hash
+            ) AS T ON T.hash = pkg_hash
+        ) WHERE cnt > 0
+    )
+    SELECT DISTINCT
+        pkg_hash,
+        pkg_name,
+        pkg_epoch,
+        pkg_version,
+        pkg_release,
+        pkg_disttag,
+        pkg_arch,
+        pkg_buildtime
+    FROM Packages
+    WHERE pkg_hash IN (SELECT pkg_hash FROM HshInBranch)
+        AND (pkg_name, pkg_epoch, pkg_version, pkg_release, pkg_disttag, pkg_arch) IN
+        (
+            SELECT
+                pkg_name,
+                pkg_epoch,
+                pkg_version,
+                pkg_release,
+                pkg_disttag,
+                pkg_arch
+            FROM {tmp_table2}
+        )
+)
+"""
+
+    get_pkgs_tasks_nevr = """
+WITH
+PkgsByNEVR AS
+(
+    SELECT DISTINCT
+        pkg_hash,
+        pkg_name,
+        pkg_epoch,
+        pkg_version,
+        pkg_release,
+        pkg_disttag,
+        pkg_arch,
+        pkg_buildtime
+    FROM Packages
+    WHERE pkg_sourcepackage = 0
+        AND (pkg_name, pkg_epoch, pkg_version, pkg_release, pkg_disttag, pkg_arch) IN
+        (
+            SELECT
+                pkg_name,
+                pkg_epoch,
+                pkg_version,
+                pkg_release,
+                pkg_disttag,
+                pkg_arch
+            FROM {tmp_table}
+        )
+),
+PkgsTasks AS
+(
+    SELECT DISTINCT
+        arrayJoin(titer_pkgs_hash) AS pkg_hash,
+        task_id,
+        subtask_id
+    FROM TaskIterations
+    WHERE pkg_hash IN
+    (
+        SELECT pkg_hash FROM PkgsByNEVR
+    )
+
+)
+SELECT
+    pkg_hash,
+    task_id,
+    subtask_id,
+    P.*
+FROM PkgsTasks
+LEFT JOIN
+(
+    SELECT * FROM PkgsByNEVR
+) AS P USING pkg_hash
+"""
+
+    get_pkgs_last_branch = """
+SELECT
+    pkg_hash,
+    pkg_name,
+    pkg_epoch,
+    pkg_version,
+    pkg_release,
+    pkg_disttag,
+    pkg_arch,
+    pkg_buildtime
+FROM last_packages
+WHERE pkgset_name = '{branch}'
+    AND pkg_sourcepackage = 0
+    AND (pkg_name, pkg_epoch, pkg_version, pkg_release, pkg_arch) IN
+    {nevra}
+"""
+
+    get_pkgs_last_branch_by_na = """
+SELECT
+    pkg_hash,
+    pkg_name,
+    pkg_epoch,
+    pkg_version,
+    pkg_release,
+    pkg_disttag,
+    pkg_arch,
+    pkg_buildtime
+FROM last_packages
+WHERE pkgset_name = '{branch}'
+    AND pkg_sourcepackage = 0
+    AND (pkg_name, pkg_arch) IN
+    {na}
+"""
+
 
 sql = SQL()

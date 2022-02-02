@@ -14,19 +14,29 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from flask import g
-from flask_restx import Resource, abort
+from platform import release
+from flask import g, request
+from flask_restx import Resource
 
-from altrepo_api.utils import get_logger, url_logging, response_error_parser
+from altrepo_api.utils import get_logger, url_logging
+from altrepo_api.api.base import (
+    run_worker,
+    GET_RESPONSES_404,
+    GET_RESPONSES_400_404,
+)
 
 from .namespace import get_namespace
 from .endpoints.iso_info import AllISOImages, ISOImageInfo
+from .endpoints.packages import CheckPackages
 from .parsers import (
     iso_images_args,
 )
 from .serializers import (
     all_iso_model,
     iso_image_model,
+    pkgs_json_model,
+    pkg_inspect_sp_model,
+    pkg_inspect_regular_model,
 )
 
 ns = get_namespace()
@@ -38,54 +48,65 @@ logger = get_logger(__name__)
     "/iso/all_images",
     doc={
         "description": "Get all ISO images",
-        "responses": {404: "Data not found in database"},
+        "responses": GET_RESPONSES_404,
     },
 )
 class routeAllISOImages(Resource):
     # @ns.expect()
     @ns.marshal_with(all_iso_model)
     def get(self):
-        args = {}
         url_logging(logger, g.url)
-        wrk = AllISOImages(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = {}
+        w = AllISOImages(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
     "/iso/info",
     doc={
         "description": "Get branch ISO images info",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Information not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routeISOImageInfo(Resource):
     @ns.expect(iso_images_args)
     @ns.marshal_with(iso_image_model)
     def get(self):
-        args = iso_images_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = ISOImageInfo(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = iso_images_args.parse_args(strict=True)
+        w = ISOImageInfo(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/inspect/regular",
+    doc={
+        "description": "Inspect binary packages from regular distribution image",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeCheckPackagesRegular(Resource):
+    @ns.expect(pkgs_json_model)
+    @ns.marshal_with(pkg_inspect_regular_model)
+    def post(self):
+        url_logging(logger, g.url)
+        args = {}
+        w = CheckPackages(g.connection, payload=ns.payload, **args)
+        return run_worker(worker=w, args=args, run_method=w.post_regular)
+
+
+@ns.route(
+    "/inspect/sp",
+    doc={
+        "description": "Inspect binary packages from SP distribution image",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeCheckPackagesSP(Resource):
+    @ns.expect(pkgs_json_model)
+    @ns.marshal_with(pkg_inspect_sp_model)
+    def post(self):
+        url_logging(logger, g.url)
+        args = {}
+        w = CheckPackages(g.connection, payload=ns.payload, **args)
+        return run_worker(worker=w, args=args, run_method=w.post_sp)
