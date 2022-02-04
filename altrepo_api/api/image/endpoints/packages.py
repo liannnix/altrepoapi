@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021  BaseALT Ltd
+# Copyright (C) 2021-2022  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -283,7 +283,6 @@ class CheckPackages(APIWorker):
             p.hash for p, _, s in pkgs_compare.values() if s == "not found"
         }
 
-        # FIXME: compare not_found packages with last branch state
         # compare versions
         def compare_versions(p1: Package, p2: Package) -> int:
             # 0 : equal, 1 : v1 > v2, -1 : v1 < v2
