@@ -6,6 +6,25 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.6.0] - 2022-02-14
+
+Regular API code updates and fixes.
+
+### Added
+- e2kv6 architecture support
+- 'export/branch_binary_packages route' route
+- 'image/*' API namespace and routes
+- ISO image related validators and look-up tables
+- UUID serialization support
+
+### Changed
+- reduced routes boilerplate code duplication
+- updated license years
+### Fixed
+- 'task/misconflict' route error on huge tasks (#41813)
+- 'task/task_repo' code for built postponed tasks
+
+
 ## [1.5.4] - 2022-01-10
 
 Regular API code updates and fixes.
