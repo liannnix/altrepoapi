@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021  BaseALT Ltd
+# Copyright (C) 2021-2022  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -15,9 +15,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from flask import g
-from flask_restx import Resource, abort
+from flask_restx import Resource
 
-from altrepo_api.utils import get_logger, url_logging, response_error_parser
+from altrepo_api.utils import get_logger, url_logging
+from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
 
 from .namespace import get_namespace
 from .endpoints.find_package import (
@@ -64,30 +65,17 @@ logger = get_logger(__name__)
         "description": (
             "Get list of packageset packages in accordance to given parameters"
         ),
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routePackagesetPackages(Resource):
     @ns.expect(pkgset_packages_args)
     @ns.marshal_with(pkgset_packages_model)
     def get(self):
-        args = pkgset_packages_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = PackagesetPackages(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = pkgset_packages_args.parse_args(strict=True)
+        w = PackagesetPackages(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
@@ -96,30 +84,17 @@ class routePackagesetPackages(Resource):
         "description": (
             "Get source package hash by package name and package set name"
         ),
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routePackagesetPackageHash(Resource):
     @ns.expect(pkgset_pkghash_args)
     @ns.marshal_with(pkgset_pkghash_model)
     def get(self):
-        args = pkgset_pkghash_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = PackagesetPackageHash(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = pkgset_pkghash_args.parse_args(strict=True)
+        w = PackagesetPackageHash(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
@@ -128,120 +103,68 @@ class routePackagesetPackageHash(Resource):
         "description": (
             "Get source package hash by package name and package set name"
         ),
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routePackagesetPackageBinaryHash(Resource):
     @ns.expect(pkgset_pkg_binary_hash_args)
     @ns.marshal_with(pkgset_pkghash_model)
     def get(self):
-        args = pkgset_pkg_binary_hash_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = PackagesetPackageBinaryHash(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = pkgset_pkg_binary_hash_args.parse_args(strict=True)
+        w = PackagesetPackageBinaryHash(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
     "/find_packages",
     doc={
         "description": "Find packages by name",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Data not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routePackagesetFindPackages(Resource):
     @ns.expect(pkgs_by_name_args)
     @ns.marshal_with(fing_pkgs_by_name_model)
     def get(self):
-        args = pkgs_by_name_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = PackagesetFindPackages(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = pkgs_by_name_args.parse_args(strict=True)
+        w = PackagesetFindPackages(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
     "/fast_packages_search_lookup",
     doc={
         "description": "Fast packages search by name",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Data not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routePackagesetFastPackagesSearch(Resource):
     @ns.expect(pkgs_search_by_name_args)
     @ns.marshal_with(fast_pkgs_search_model)
     def get(self):
-        args = pkgs_by_name_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = FastPackagesSearchLookup(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = pkgs_by_name_args.parse_args(strict=True)
+        w = FastPackagesSearchLookup(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
     "/last_packages_by_branch",
     doc={
         "description": ("Get list of last packages from branch for given parameters"),
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routeLastBranchPackages(Resource):
     @ns.expect(last_pkgs_branch_args)
     @ns.marshal_with(last_packages_branch_model)
     def get(self):
-        args = last_pkgs_branch_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = LastBranchPackages(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = last_pkgs_branch_args.parse_args(strict=True)
+        w = LastBranchPackages(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
@@ -249,10 +172,7 @@ class routeLastBranchPackages(Resource):
     doc={
         "params": {"pkghash": "package hash"},
         "description": "Get package set list by package hash",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routePackagsetsByHash(Resource):
@@ -261,20 +181,10 @@ class routePackagsetsByHash(Resource):
     @ns.expect()
     @ns.marshal_with(pkgsets_by_hash_model)
     def get(self, pkghash):
-        args = {}
         url_logging(logger, g.url)
-        wrk = AllPackagesetsByHash(g.connection, pkghash, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = {}
+        w = AllPackagesetsByHash(g.connection, pkghash, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
@@ -284,27 +194,14 @@ class routePackagsetsByHash(Resource):
             "Get source package hash by package name, version and release"
             " for specific branch"
         ),
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routePackagesetPkghashByNVR(Resource):
     @ns.expect(pkgset_pkghash_by_nvr)
     @ns.marshal_with(pkgset_pkghash_by_nvr_model)
     def get(self):
-        args = pkgset_pkghash_by_nvr.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = PackagesetPkghashByNVR(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = pkgset_pkghash_by_nvr.parse_args(strict=True)
+        w = PackagesetPkghashByNVR(g.connection, **args)
+        return run_worker(worker=w, args=args)

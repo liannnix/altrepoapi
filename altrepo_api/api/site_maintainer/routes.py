@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021  BaseALT Ltd
+# Copyright (C) 2021-2022  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -15,9 +15,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from flask import g
-from flask_restx import Resource, abort
+from flask_restx import Resource
 
-from altrepo_api.utils import get_logger, url_logging, response_error_parser
+from altrepo_api.utils import get_logger, url_logging
+from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
 
 from .namespace import get_namespace
 from .endpoints.maintainer import AllMaintainers
@@ -55,205 +56,115 @@ logger = get_logger(__name__)
 @ns.route("/all_maintainers_with_nicknames")
 @ns.doc(
     description="List of maintainers in branch with nicknames and source packages count",
-    responses={
-        400: "Request parameters validation error",
-        404: "Package not found in database",
-    },
+    responses=GET_RESPONSES_400_404,
 )
 class routeMaintainersAll(Resource):
     @ns.expect(all_maintainers_args)
     @ns.marshal_list_with(all_maintainers_model)
     def get(self):
-        args = all_maintainers_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = AllMaintainers(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = all_maintainers_args.parse_args(strict=True)
+        w = AllMaintainers(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
     "/maintainer_info",
     doc={
         "description": "Maintainer information",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routeMaintainersInfo(Resource):
     @ns.expect(maintainer_info_args)
     @ns.marshal_list_with(maintainer_info_model)
     def get(self):
-        args = maintainer_info_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = MaintainerInfo(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = maintainer_info_args.parse_args(strict=True)
+        w = MaintainerInfo(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
     "/maintainer_packages",
     doc={
         "description": "Packages collected by the specified maintainer",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routeMaintainerPackages(Resource):
     @ns.expect(maintainer_packages_args)
     @ns.marshal_list_with(maintainer_pkgs_model)
     def get(self):
-        args = maintainer_packages_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = MaintainerPackages(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = maintainer_packages_args.parse_args(strict=True)
+        w = MaintainerPackages(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
     "/maintainer_branches",
     doc={
         "description": "Packages collected by the specified maintainer",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routeMaintainerBranches(Resource):
     @ns.expect(maintainer_branches_args)
     @ns.marshal_list_with(maintainer_branches_model)
     def get(self):
-        args = maintainer_branches_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = MaintainerBranches(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = maintainer_branches_args.parse_args(strict=True)
+        w = MaintainerBranches(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
     "/repocop_by_maintainer",
     doc={
         "description": "Get repocop results by the maintainers nickname",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routeRepocopByMaintainer(Resource):
     @ns.expect(maintainer_packages_args)
     @ns.marshal_list_with(repocop_by_maintainer_model)
     def get(self):
-        args = maintainer_packages_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = RepocopByMaintainer(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = maintainer_packages_args.parse_args(strict=True)
+        w = RepocopByMaintainer(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
     "/beehive_errors_by_maintainer",
     doc={
         "description": "Get Beehive rebuild errors by the maintainer's nickname",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routeBeehiveByMaintainer(Resource):
     @ns.expect(maintainer_packages_args)
     @ns.marshal_list_with(beehive_by_maintainer_model)
     def get(self):
-        args = maintainer_packages_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = MaintainerBeehiveErrors(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = maintainer_packages_args.parse_args(strict=True)
+        w = MaintainerBeehiveErrors(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
 
 @ns.route(
     "/watch_by_maintainer",
     doc={
         "description": "Get watch packages by the maintainer's nickname",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routeWatchByMaintainer(Resource):
     @ns.expect(maintainer_watch_args)
     @ns.marshal_list_with(watch_by_maintainer_model)
     def get(self):
-        args = maintainer_watch_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = WatchByMaintainer(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = maintainer_watch_args.parse_args(strict=True)
+        w = WatchByMaintainer(g.connection, **args)
+        return run_worker(worker=w, args=args)

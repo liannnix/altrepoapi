@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021  BaseALT Ltd
+# Copyright (C) 2021-2022  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -16,6 +16,7 @@
 
 import re
 from typing import Any, Iterable, Union
+from uuid import UUID
 
 import mmh3
 import json
@@ -45,6 +46,9 @@ class CustomJSONEncoder(json.JSONEncoder):
         # convert datetime to ISO string representation
         if isinstance(obj, datetime.datetime):
             return obj.isoformat()
+        # convert UUID to string
+        if isinstance(obj, UUID):
+            return str(obj)
 
         return json.JSONEncoder.default(self, obj)
 
@@ -124,7 +128,7 @@ def response_error_parser(response: Any) -> dict[str, Any]:
             if k not in ("message", "error", "Error")
         ]
         return {"message": msg, "details": details}
-    except:
+    except AttributeError:
         return {"message": response}
 
 

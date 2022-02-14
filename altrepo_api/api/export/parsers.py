@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021  BaseALT Ltd
+# Copyright (C) 2021-2022  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -14,8 +14,16 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from altrepo_api.api.parser import parser
+from altrepo_api.api.parser import parser, arch_name_type
 
 # register parser items
+arch_opt = parser.register_item(
+    "arch",
+    type=arch_name_type,
+    required=False,
+    help="package architecture",
+    location="args",
+)
 
 # build parsers
+pkgset_packages_args = parser.build_parser(arch_opt)

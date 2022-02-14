@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021  BaseALT Ltd
+# Copyright (C) 2021-2022  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -15,9 +15,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from flask import g
-from flask_restx import Resource, abort
+from flask_restx import Resource
 
-from altrepo_api.utils import get_logger, url_logging, response_error_parser
+from altrepo_api.utils import get_logger, url_logging
+from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
 
 from .namespace import get_namespace
 from .endpoints.package_info import (
@@ -64,60 +65,34 @@ logger = get_logger(__name__)
     doc={
         "params": {"pkghash": "package hash"},
         "description": "Get package info by hash",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routePackageInfo(Resource):
     @ns.expect(package_info_args)
     @ns.marshal_with(package_info_model)
     def get(self, pkghash):
-        args = package_info_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = PackageInfo(g.connection, pkghash, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = package_info_args.parse_args(strict=True)
+        w = PackageInfo(g.connection, pkghash, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
     "/binary_package_archs_and_versions",
     doc={
         "description": "Get binary package archs and versions",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routePackagesBinaryList(Resource):
     @ns.expect(pkgs_binary_list_args)
     @ns.marshal_with(pkgs_binary_list_model)
     def get(self):
-        args = pkgs_binary_list_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = PackagesBinaryListInfo(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = pkgs_binary_list_args.parse_args(strict=True)
+        w = PackagesBinaryListInfo(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
@@ -125,10 +100,7 @@ class routePackagesBinaryList(Resource):
     doc={
         "params": {"pkghash": "package hash"},
         "description": "Get package changelog history by hash",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routePackageChangelog(Resource):
@@ -137,60 +109,34 @@ class routePackageChangelog(Resource):
     @ns.expect(package_chlog_args)
     @ns.marshal_with(package_chlog_model)
     def get(self, pkghash):
-        args = package_chlog_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = PackageChangelog(g.connection, pkghash, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = package_chlog_args.parse_args(strict=True)
+        w = PackageChangelog(g.connection, pkghash, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
     "/deleted_package_info",
     doc={
         "description": ("Get information about package deleted from branch"),
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package deletion info not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routeDeletedPackageInfo(Resource):
     @ns.expect(deleted_package_args)
     @ns.marshal_with(deleted_package_model)
     def get(self):
-        args = deleted_package_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = DeletedPackageInfo(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = deleted_package_args.parse_args(strict=True)
+        w = DeletedPackageInfo(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
     "/binary_package_scripts/<int:pkghash>",
     doc={
         "description": "Get binary package scripts",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routeBinPackageScripts(Resource):
@@ -198,18 +144,9 @@ class routeBinPackageScripts(Resource):
     @ns.marshal_with(depends_packages_model)
     def get(self, pkghash):
         url_logging(logger, g.url)
-        wrk = BinaryPackageScripts(g.connection, pkghash)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                # args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = {}
+        w = BinaryPackageScripts(g.connection, pkghash, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
@@ -219,30 +156,17 @@ class routeBinPackageScripts(Resource):
             "Get information about last packages with CVE "
             "fixes mentioned in changelog"
         ),
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package deletion info not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routeLastPackagesWithCVEFix(Resource):
     @ns.expect(pkgs_with_cve_fix_args)
     @ns.marshal_with(last_pkgs_with_cve_fix_model)
     def get(self):
-        args = pkgs_with_cve_fix_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = LastPackagesWithCVEFix(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = pkgs_with_cve_fix_args.parse_args(strict=True)
+        w = LastPackagesWithCVEFix(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
@@ -251,32 +175,17 @@ class routeLastPackagesWithCVEFix(Resource):
     doc={
         "params": {"pkghash": "package hash"},
         "description": "Get package download links by source package hash",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routePackageDownloadLinks(Resource):
-    pass
-
     @ns.expect(src_downloads_args)
     @ns.marshal_with(package_downloads_model)
     def get(self, pkghash):
-        args = src_downloads_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = PackageDownloadLinks(g.connection, pkghash, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = src_downloads_args.parse_args(strict=True)
+        w = PackageDownloadLinks(g.connection, pkghash, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
@@ -284,92 +193,51 @@ class routePackageDownloadLinks(Resource):
     doc={
         "params": {"pkghash": "package hash"},
         "description": "Get binary package download link",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routeBinaryPackageDownloadLinks(Resource):
-    pass
-
     @ns.expect(bin_downloads_args)
     @ns.marshal_with(package_downloads_model)
     def get(self, pkghash):
-        args = bin_downloads_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = BinaryPackageDownloadLinks(g.connection, pkghash, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = bin_downloads_args.parse_args(strict=True)
+        w = BinaryPackageDownloadLinks(g.connection, pkghash, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
     "/source_package_versions",
     doc={
         "description": "Get source package versions from last branches",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routeSourcePackageVersions(Resource):
     @ns.expect(src_pkgs_versions_args)
     @ns.marshal_with(src_pkgs_versions_model)
     def get(self):
-        args = src_pkgs_versions_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = SourcePackageVersions(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = src_pkgs_versions_args.parse_args(strict=True)
+        w = SourcePackageVersions(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
     "/package_versions",
     doc={
         "description": "Get source or binary package versions from last branches",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routePackageVersions(Resource):
     @ns.expect(pkgs_versions_args)
     @ns.marshal_with(src_pkgs_versions_model)
     def get(self):
-        args = pkgs_versions_args.parse_args(strict=True)
         url_logging(logger, g.url)
-        wrk = PackageVersions(g.connection, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = pkgs_versions_args.parse_args(strict=True)
+        w = PackageVersions(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
@@ -377,28 +245,14 @@ class routePackageVersions(Resource):
     doc={
         "params": {"pkghash": "package hash"},
         "description": "Get binary package build log link",
-        "responses": {
-            400: "Request parameters validation error",
-            404: "Package not found in database",
-        },
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routeBinaryPackageLog(Resource):
-
     @ns.expect()
     @ns.marshal_with(bin_package_log_el_model)
     def get(self, pkghash):
-        args = {}
         url_logging(logger, g.url)
-        wrk = BinaryPackageLog(g.connection, pkghash, **args)
-        if not wrk.check_params():
-            abort(
-                400,
-                message=f"Request parameters validation error",
-                args=args,
-                validation_message=wrk.validation_results,
-            )
-        result, code = wrk.get()
-        if code != 200:
-            abort(code, **response_error_parser(result))
-        return result, code
+        args = {}
+        w = BinaryPackageLog(g.connection, pkghash, **args)
+        return run_worker(worker=w, args=args)

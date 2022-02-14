@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021  BaseALT Ltd
+# Copyright (C) 2021-2022  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -31,5 +31,14 @@ dp_type_opt = parser.register_item(
     help="type of dependency [provide|require]",
     location="args",
 )
+depends_depth_opt = parser.register_item(
+    "depth",
+    type=int,
+    default=1,
+    required=False,
+    help="dependency level limit",
+    location="args",
+)
 
 pkgs_depends_args = parser.build_parser(branch, dp_name, dp_type_opt)
+src_pkg_depends_args = parser.build_parser(branch, depends_depth_opt)

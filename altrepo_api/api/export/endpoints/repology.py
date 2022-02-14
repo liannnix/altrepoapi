@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021  BaseALT Ltd
+# Copyright (C) 2021-2022  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -121,7 +121,7 @@ class RepologyExport(APIWorker):
 
         res = {
             "branch": self.branch,
-            "date": datetime_to_iso(repo_date),
+            "date": datetime_to_iso(repo_date),  # type: ignore
             "stats": repo_stat,
             "packages": src_packages,
         }

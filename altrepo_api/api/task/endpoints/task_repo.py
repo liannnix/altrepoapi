@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021  BaseALT Ltd
+# Copyright (C) 2021-2022  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -129,7 +129,7 @@ class TaskRepoState(APIWorker):
             self._store_sql_error(response, self.ll.ERROR, 500)
             return None
         if response:
-            task_add_pkgs = set(join_tuples(response))
+            task_add_pkgs = set(join_tuples(response))  # type: ignore
         else:
             task_add_pkgs = set()
         # get task plan 'delete' hashes
@@ -142,12 +142,12 @@ class TaskRepoState(APIWorker):
             self._store_sql_error(response, self.ll.ERROR, 500)
             return None
         if response:
-            task_del_pkgs = set(join_tuples(response))
+            task_del_pkgs = set(join_tuples(response))  # type: ignore
         else:
             task_del_pkgs = set()
         # if no task plan found return an error if task not in 'FAILED' state
         if not task_add_pkgs and not task_del_pkgs:
-            if task_state == "FAILED":
+            if task_state in ("FAILED", "POSTPONED"):
                 self.have_plan = False
             else:
                 self._store_error(
@@ -193,9 +193,10 @@ class TaskRepoState(APIWorker):
                 )
                 return None
 
-            last_repo_pkgs = set(join_tuples(response))
+            last_repo_pkgs = set(join_tuples(response))  # type: ignore
         else:
-            # if task state is 'EPERM', 'TESTED' or 'FAILED' use latest repo and apply all 'DONE' on top of it
+            # if task state is 'EPERM', 'TESTED', 'POSTPONED' or 'FAILED' 
+            # use latest repo and apply all 'DONE' on top of it
             self.conn.request_line = self.sql.repo_last_repo_tasks_diff_list.format(
                 repo=self.task_repo
             )
@@ -225,7 +226,7 @@ class TaskRepoState(APIWorker):
                 )
                 return None
 
-            last_repo_pkgs = set(join_tuples(response))
+            last_repo_pkgs = set(join_tuples(response))  # type: ignore
 
         if tasks_diff_list:
             self.task_diff_list = tasks_diff_list
@@ -240,7 +241,7 @@ class TaskRepoState(APIWorker):
             if not response:
                 tasks_diff_add_hshs = set()
             else:
-                tasks_diff_add_hshs = set(join_tuples(response))
+                tasks_diff_add_hshs = set(join_tuples(response))  # type: ignore
 
             self.conn.request_line = (
                 self.sql.repo_tasks_plan_hshs,
@@ -253,7 +254,7 @@ class TaskRepoState(APIWorker):
             if not response:
                 tasks_diff_del_hshs = set()
             else:
-                tasks_diff_del_hshs = set(join_tuples(response))
+                tasks_diff_del_hshs = set(join_tuples(response))  # type: ignore
 
             if not tasks_diff_add_hshs and not tasks_diff_del_hshs:
                 self._store_sql_error(

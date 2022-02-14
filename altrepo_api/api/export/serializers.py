@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021  BaseALT Ltd
+# Copyright (C) 2021-2022  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -99,6 +99,32 @@ sitemap_packages_export_model = ns.model(
         "packages": fields.Nested(
             sitemap_packages_el_model,
             description="source packages info",
+            as_list=True,
+        ),
+    },
+)
+
+pkgset_packages_export_el_model = ns.model(
+    "PackagesetPackagesExportElementModel",
+    {
+        "name": fields.String(description="package name"),
+        "epoch": fields.Integer(description="package epoch"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "arch": fields.String(description="package arch"),
+        "disttag": fields.String(description="package disttag"),
+        "buildtime": fields.Integer(description="package build time"),
+        "source": fields.String(description="source package name"),
+    },
+)
+pkgset_packages_export_model = ns.model(
+    "PackagesetPackagesExportModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of binary packages found"),
+        "packages": fields.Nested(
+            pkgset_packages_export_el_model,
+            description="binary packages information",
             as_list=True,
         ),
     },

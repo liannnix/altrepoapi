@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021  BaseALT Ltd
+# Copyright (C) 2021-2022  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -14,10 +14,11 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Any, Tuple
+from typing import Any, Callable, Optional
+from flask_restx import abort
 
 from altrepo_api.settings import namespace as settings
-from altrepo_api.utils import get_logger, logger_level
+from altrepo_api.utils import response_error_parser, get_logger, logger_level
 from altrepo_api.database.connection import Connection
 
 
@@ -30,7 +31,7 @@ class APIWorker:
         self.logger = get_logger(__name__)
         self.ll = logger_level
         self.status: bool = False
-        self.error: Tuple[Any, int]
+        self.error: tuple[Any, int]
         self.conn: Connection
         self.validation_results: list = []
 
@@ -46,7 +47,7 @@ class APIWorker:
         else:
             self.logger.debug(self.error)
 
-    def _build_sql_error_response(self, response: dict, code: int) -> Tuple[Any, int]:
+    def _build_sql_error_response(self, response: dict, code: int) -> tuple[Any, int]:
         """Add SQL request details from class to response dictionary if debug is enabled."""
         if self.DEBUG:
             response["module"] = self.__class__.__name__
@@ -72,5 +73,71 @@ class APIWorker:
     def check_params(self) -> bool:
         return True
 
-    def get(self) -> Any:
+    def get(self) -> tuple[Any, int]:
         return "OK", 200
+
+
+def abort_on_validation_error(worker: APIWorker, method: Callable, args: Any):
+    """Call Flask abort() on APIWorker validation method call returned Flase."""
+
+    if not method():
+        abort(
+            400,
+            message=f"Request parameters validation error",
+            args=args,
+            validation_message=worker.validation_results,
+        )
+
+
+def abort_on_result_error(method: Callable[[], tuple[Any, int]], ok_code: int):
+    """Call Flask abort() on APIWorker run method call returned not 'ok_code'."""
+
+    result, code = method()
+    if code != ok_code:
+        abort(code, **response_error_parser(result))
+    return result, code
+
+
+def run_worker(
+    *,
+    worker: APIWorker,
+    run_method: Optional[Callable[[], tuple[Any, int]]] = None,
+    check_method: Optional[Callable[[], bool]] = None,
+    args: Any = None,
+    ok_code: int = 200,
+):
+    """Calls APIWorker class's 'check_method' and 'run_method' and returns the result.
+    
+    Calls flask_restx abort() if check_method() returned False 
+    or if run_method() returned code not equal to 'ok_code'.
+    Otherwise returns run_method() results.
+    
+    Default 'run_method' is worker.get().
+    Default 'check_method' is worker.check_params()."""
+
+    # run APIWorker valdator method
+    if check_method is None:
+        check_method = worker.check_params
+    abort_on_validation_error(worker=worker, method=check_method, args=args)
+    # run APIWorker run method
+    if run_method is None:
+        run_method = worker.get
+    return abort_on_result_error(method=run_method, ok_code=ok_code)
+
+
+GET_RESPONSES_404 = {
+    200: "Success",
+    404: "Requested data not found in database",
+}
+
+GET_RESPONSES_400_404 = {
+    200: "Success",
+    400: "Request parameters validation error",
+    404: "Requested data not found in database",
+}
+
+POST_RESPONSE_400_404 = {
+    201: "Data loaded",
+    400: "Request parameters validation error",
+    404: "Requested data not found in database",
+}
