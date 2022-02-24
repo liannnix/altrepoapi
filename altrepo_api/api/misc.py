@@ -267,6 +267,7 @@ class LookupTables:
         "alt-workstation",
         "alt-kworkstation",
         "slinux",
+        "cloud",
     ]
     known_iso_image_archs = ["i586", "x86_64", "aarch64", "ppc64le"]
     known_iso_image_releases = ["alpha", "beta", "rc", "release"]
