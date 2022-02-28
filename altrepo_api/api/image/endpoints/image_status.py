@@ -135,8 +135,8 @@ class ImageStatus(APIWorker):
         ImageStatusInfo = namedtuple(
             "RepositoryStatusInfo",
             [
-                "edition",
                 "branch",
+                "edition",
                 "name",
                 "show",
                 "start_date",
@@ -153,5 +153,101 @@ class ImageStatus(APIWorker):
         for el in res:
             el["json"] = json.loads(el["json"])
         res = {"images": res}
+
+        return res, 200
+
+
+class ImageTagStatus(APIWorker):
+    """
+    Upload or get information on current iso images.
+    """
+
+    def __init__(self, connection, payload, **kwargs):
+        self.conn = connection
+        self.payload = payload
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def check_params_get(self):
+        self.logger.debug(f"args : {self.args}")
+        self.validation_results = []
+
+        if self.args["branch"] not in lut.known_branches:
+            self.validation_results.append(
+                f"unknown package set name : {self.args['branch']}"
+            )
+            self.validation_results.append(
+                f"allowed package set names are : {lut.known_branches}"
+            )
+
+        if self.validation_results != []:
+            return False
+        else:
+            return True
+
+    def post(self):
+        """
+        Load iso image data
+        """
+
+        Tags = namedtuple(
+            "Tags",
+            [
+                "tag",
+                "show",
+            ],
+        )
+
+        def img2ntuple(p: dict) -> Tags:
+            return Tags(
+                tag=p["img_tag"],
+                show=p["img_show"]
+            )
+
+        images = [img2ntuple(p) for p in self.payload["tags"]]
+        self.conn.request_line = (self.sql.insert_image_tag_status, images)
+        status, response = self.conn.send_request()
+
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        return "data loaded successfully", 201
+
+    def get(self):
+        """
+        Get information about a iso image
+        """
+        branch = self.args['branch']
+        if self.args['edition'] is not None:
+            edition = f"AND img_edition = '{self.args['edition']}'"
+        else:
+            edition = ""
+
+        self.conn.request_line = self.sql.get_img_tag_status.format(branch=branch, edition=edition)
+
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+
+        if not response:
+            self._store_error(
+                {"message": f"No data not found in database", "args": self.args},
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        ImageTagStatusInfo = namedtuple(
+            "ImageTagStatusInfo",
+            [
+                "tag",
+                "show",
+            ],
+        )
+
+        res = [ImageTagStatusInfo(*el)._asdict() for el in response]
+        res = {"tags": res}
 
         return res, 200

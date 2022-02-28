@@ -87,3 +87,4 @@ iso_images_args = parser.build_parser(
     iso_arch_opt,
     iso_component_opt,
 )
+image_tag_args = parser.build_parser(branch, iso_edition_opt)

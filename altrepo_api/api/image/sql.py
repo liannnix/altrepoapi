@@ -441,10 +441,14 @@ WHERE pkgset_name = '{branch}'
 INSERT INTO ImageStatus (*) VALUES
 """
 
+    insert_image_tag_status = """
+INSERT INTO ImageTagStatus (*) VALUES
+"""
+
     get_img_status = """
 SELECT
+    img_branch,
     img_edition,
-    argMax(img_branch, ts) AS img_branch,
     argMax(img_name, ts) AS img_name,
     argMax(img_show, ts) AS img_show,
     argMax(img_start_date, ts) AS img_start_date,
@@ -455,7 +459,23 @@ SELECT
     argMax(img_name_bugzilla, ts) AS img_name_bugzilla,
     argMax(img_json, ts) AS img_json
 FROM ImageStatus
-GROUP BY img_edition
+GROUP BY 
+    img_branch,
+    img_edition
+"""
+
+    get_img_tag_status = """
+SELECT
+    img_tag,
+    argMax(img_show, ts) AS img_show
+FROM ImageTagStatus
+WHERE img_tag IN (
+    SELECT img_tag
+    FROM ImagePackageSetName
+    WHERE img_branch = '{branch}'
+        {edition}
+)
+GROUP BY img_tag
 """
 
 

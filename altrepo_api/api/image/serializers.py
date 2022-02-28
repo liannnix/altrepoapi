@@ -341,3 +341,47 @@ image_status_get_model = ns.model(
         )
     },
 )
+
+img_tag_json_el_model = ns.model(
+    "ImageTagJSONElementModel",
+    {
+        "img_tag": fields.String(
+            required=True,
+            description="ISO image package set tag",
+            example="branch:edition:flavor:platform:release.ver_major.ver_minor.ver_sub:arch:variant:type",
+            pattern=img_tag_match.pattern,
+        ),
+        "img_show": fields.String(
+            required=True,
+            description="hide - hide image, show - show image",
+            example="hide",
+            pattern=show_match.pattern
+        ),
+    }
+)
+img_tag_json_model = ns.model(
+    "ImageTagJSONModel",
+    {
+        "tags": fields.Nested(
+            img_tag_json_el_model,
+            description="iso image info",
+            as_list=True,
+        ),
+    },
+)
+
+img_tag_status_get_el_model = ns.model(
+    "ImageTagStatusGetElementModel",
+    {
+        "tag": fields.String(description="ISO image package set tag"),
+        "show": fields.String(description="hide - hide image, show - show image"),
+    },
+)
+img_tag_status_get_model = ns.model(
+    "ImageTagStatusGetModel",
+    {
+        "tags": fields.Nested(
+            img_tag_status_get_el_model, description="image info", as_list=True
+        )
+    },
+)
