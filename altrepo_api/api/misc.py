@@ -47,7 +47,14 @@ class LookupTables:
         "t6",
         "t7",
     ]
-    taskless_branches = ["p9_mipsel", "sisyphus_mipsel", "sisyphus_riscv64", "sisyphus_e2k", "p9_e2k", "p10_e2k"]
+    taskless_branches = [
+        "p9_mipsel",
+        "sisyphus_mipsel",
+        "sisyphus_riscv64",
+        "sisyphus_e2k",
+        "p9_e2k",
+        "p10_e2k",
+    ]
     no_downloads_branches = ["sisyphus_e2k", "p9_e2k", "p10_e2k"]
     repology_export_branches = ["sisyphus", "p9", "p10"]
     known_archs = [
@@ -265,6 +272,30 @@ class LookupTables:
     known_iso_image_releases = ["alpha", "beta", "rc", "release"]
     known_iso_image_variants = ["install", "live", "rescue"]
     known_iso_image_components = ["iso", "rpms", "altinst", "live", "rescue"]
+
+    known_image_editions = [
+        "alt-server",
+        "alt-server-v",
+        "alt-education",
+        "alt-workstation",
+        "alt-kworkstation",
+        "slinux",
+        "cloud",
+        "starterkit",
+        "regular",
+    ]
+    known_image_archs = [
+        "i586",
+        "x86_64",
+        "aarch64",
+        "ppc64le",
+        "armh",
+        "riscv64",
+        "mipsel",
+    ]
+    known_image_types = ["iso", "tar", "img", "qcow"]
+    known_image_releases = ["alpha", "beta", "rc", "release"]
+    known_image_variants = ["install", "live", "rescue"]
 
     gitalt_base = "https://git.altlinux.org"
     beehive_base = "https://git.altlinux.org/beehive"
