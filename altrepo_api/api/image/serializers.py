@@ -21,7 +21,6 @@ from .namespace import get_namespace
 
 ns = get_namespace()
 
-
 all_iso_element_model = ns.model(
     "ImageAllISOElementModel",
     {
@@ -183,9 +182,16 @@ pkg_inspect_sp_model = ns.model(
 hash_str_match = re.compile("^[0-9]{18,20}$")  # package hash string
 arch_match = re.compile("^[a-z0-9\-\_]{3,}$")  # type: ignore
 name_match = re.compile("^[\w\.\+\-]{2,}$")  # type: ignore # ref __pkg_name_match
+description_match = re.compile("|^[a-zA-Z0-9+/]+={0,3}$")
+url_match = re.compile("(|^https?://[^\"\s<>]+\w)")
+branch_match = re.compile("^[a-zA-Z0-9+/ _]+")
+name_bugzilla_match = re.compile("|^[a-zA-Z0-9+/ _]+")
+show_match = re.compile("^(hide|show)$")
 version_match = re.compile("^[\w\.\+]+$")  # type: ignore # ref __pkg_VR_match
 release_match = re.compile("^[\w\.\+]+$")  # type: ignore # ref __pkg_VR_match
 disttag_match = re.compile("^$|^[a-z0-9\+\.]+$")  # type: ignore # empty string allowed
+img_tag_match = re.compile(
+    "(^[a-z0-9\_]+):([\w\.\+\-]{2,}):(|[\w\.\+\-]{2,}):(|[[a-z0-9\+\_\.\-]+):([a-z0-9\+\_\.\-]+):([a-z0-9\-\_]{3,}):([a-z0-9\_\+\-\.]+):([a-z0-9\_\+\-\.]+)$")
 
 pkgs_json_el_model = ns.model(
     "ImagePackagesJSONElementModel",
@@ -243,5 +249,143 @@ pkgs_json_model = ns.model(
             description="list of packages",
             as_list=True,
         ),
+    },
+)
+
+img_json_el_model = ns.model(
+    "ImageJSONElementModel",
+    {
+        "img_edition": fields.String(
+            required=True,
+            description="ISO image edition",
+            example="alt-kworkstation",
+            pattern=name_match.pattern,
+        ),
+        "img_name": fields.String(
+            required=True,
+            description="ISO image name",
+            example="ALT-KWORKSTATION 9.2 x86_64",
+        ),
+        "img_show": fields.String(
+            required=True,
+            description="hide - hide image, show - show image",
+            example="hide",
+            pattern=show_match.pattern
+        ),
+        "img_summary_ru": fields.String(description="image summary in Russian", example="Image summary in Russian"),
+        "img_summary_en": fields.String(description="image summary in English", example="Image summary in English"),
+        "img_start_date": fields.DateTime(required=True, description="support start date"),
+        "img_end_date": fields.DateTime(required=True, description="support end date"),
+        "img_mailing_list": fields.String(
+            description="link to mailing list",
+            example="https://lists.altlinux.org/mailman/listinfo/devel-ports",
+            pattern=url_match.pattern,
+        ),
+        "img_name_bugzilla": fields.String(
+            description="image name for bugzilla",
+            example="p10",
+            pattern=name_bugzilla_match.pattern
+        ),
+        "img_json": fields.Raw(
+            required=True,
+            description="image mirror's auxilary info as JSON substructure",
+            example="{}",
+        ),
+    }
+)
+img_json_model = ns.model(
+    "ImageJSONModel",
+    {
+        "img_branch": fields.String(required=True, description="image base branch", example="p10"),
+        "img_description_ru": fields.String(
+            description="html description in Russian in Base64 format",
+            example="0YLQtdGB0YLQvtCy0L7QtSDQvtC/0LjRgdCw0L3QuNC1",
+            pattern=description_match.pattern,
+        ),
+        "img_description_en": fields.String(
+            description="html description in English in Base64 format",
+            example="dGVzdCBkZXNjcmlwdGlvbg==",
+            pattern=description_match.pattern,
+        ),
+        "images": fields.Nested(
+            img_json_el_model,
+            description="image info",
+            as_list=True,
+        ),
+    },
+)
+
+image_status_get_el_model = ns.model(
+    "ImageStatusGetElementModel",
+    {
+        "branch": fields.String(description="ISO image base branch"),
+        "edition": fields.String(description="ISO image edition"),
+        "name": fields.String(description="ISO image name"),
+        "show": fields.String(description="hide - hide image, show - show image"),
+        "start_date": fields.DateTime(description="support start date"),
+        "end_date": fields.DateTime(description="support end date"),
+        "summary_ru": fields.String(description="image summary in Russian"),
+        "summary_en": fields.String(description="image summary in English", example="Image summary in English"),
+        "description_ru": fields.String(
+            description="html description in Russian in Base64 format"
+        ),
+        "description_en": fields.String(
+            description="html description in English in Base64 format"
+        ),
+        "mailing_list": fields.String(description="link to mailing list"),
+        "name_bugzilla": fields.String(description="image name for bugzilla"),
+        "json": fields.Raw(description="image mirror's auxilary info as JSON substructure"),
+    },
+)
+image_status_get_model = ns.model(
+    "ImageStatusGetModel",
+    {
+        "images": fields.Nested(
+            image_status_get_el_model, description="image info", as_list=True
+        )
+    },
+)
+
+img_tag_json_el_model = ns.model(
+    "ImageTagJSONElementModel",
+    {
+        "img_tag": fields.String(
+            required=True,
+            description="ISO image package set tag",
+            example="branch:edition:flavor:platform:release.ver_major.ver_minor.ver_sub:arch:variant:type",
+            pattern=img_tag_match.pattern,
+        ),
+        "img_show": fields.String(
+            required=True,
+            description="hide - hide image, show - show image",
+            example="hide",
+            pattern=show_match.pattern
+        ),
+    }
+)
+img_tag_json_model = ns.model(
+    "ImageTagJSONModel",
+    {
+        "tags": fields.Nested(
+            img_tag_json_el_model,
+            description="iso image info",
+            as_list=True,
+        ),
+    },
+)
+
+img_tag_status_get_el_model = ns.model(
+    "ImageTagStatusGetElementModel",
+    {
+        "tag": fields.String(description="ISO image package set tag"),
+        "show": fields.String(description="hide - hide image, show - show image"),
+    },
+)
+img_tag_status_get_model = ns.model(
+    "ImageTagStatusGetModel",
+    {
+        "tags": fields.Nested(
+            img_tag_status_get_el_model, description="image info", as_list=True
+        )
     },
 )

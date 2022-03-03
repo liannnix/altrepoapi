@@ -437,5 +437,48 @@ WHERE pkgset_name = '{branch}'
     {na}
 """
 
+    insert_image_status = """
+INSERT INTO ImageStatus (*) VALUES
+"""
+
+    insert_image_tag_status = """
+INSERT INTO ImageTagStatus (*) VALUES
+"""
+
+    get_img_status = """
+SELECT
+    img_branch,
+    img_edition,
+    argMax(img_name, ts) AS img_name,
+    argMax(img_show, ts) AS img_show,
+    argMax(img_summary_ru, ts) AS img_summary_ru,
+    argMax(img_summary_en, ts) AS img_summary_en,
+    argMax(img_start_date, ts) AS img_start_date,
+    argMax(img_end_date, ts) AS img_end_date,
+    argMax(img_description_ru, ts) AS img_description_ru,
+    argMax(img_description_en, ts) AS img_description_en,
+    argMax(img_mailing_list, ts) AS img_mailing_list,
+    argMax(img_name_bugzilla, ts) AS img_name_bugzilla,
+    argMax(img_json, ts) AS img_json
+FROM ImageStatus
+GROUP BY 
+    img_branch,
+    img_edition
+"""
+
+    get_img_tag_status = """
+SELECT
+    img_tag,
+    argMax(img_show, ts) AS img_show
+FROM ImageTagStatus
+WHERE img_tag IN (
+    SELECT img_tag
+    FROM ImagePackageSetName
+    WHERE img_branch = '{branch}'
+        {edition}
+)
+GROUP BY img_tag
+"""
+
 
 sql = SQL()

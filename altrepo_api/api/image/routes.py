@@ -19,17 +19,21 @@ from flask import g, request
 from flask_restx import Resource
 
 from altrepo_api.utils import get_logger, url_logging
+from altrepo_api.api.auth.decorators import auth_required
 from altrepo_api.api.base import (
     run_worker,
     GET_RESPONSES_404,
     GET_RESPONSES_400_404,
+    POST_RESPONSE_400_404,
 )
+from .endpoints.image_status import ImageStatus, ImageTagStatus
 
 from .namespace import get_namespace
 from .endpoints.iso_info import AllISOImages, ISOImageInfo
 from .endpoints.packages import CheckPackages
 from .parsers import (
     iso_images_args,
+    image_tag_args,
 )
 from .serializers import (
     all_iso_model,
@@ -37,6 +41,10 @@ from .serializers import (
     pkgs_json_model,
     pkg_inspect_sp_model,
     pkg_inspect_regular_model,
+    image_status_get_model,
+    img_json_model,
+    img_tag_status_get_model,
+    img_tag_json_model,
 )
 
 ns = get_namespace()
@@ -110,3 +118,74 @@ class routeCheckPackagesSP(Resource):
         args = {}
         w = CheckPackages(g.connection, payload=ns.payload, **args)
         return run_worker(worker=w, args=args, run_method=w.post_sp)
+
+
+@ns.route("/image_status")
+class routeImageStatus(Resource):
+    @ns.doc(
+        description="Load image status into database",
+        responses=POST_RESPONSE_400_404,
+    )
+    @ns.expect(img_json_model)
+    @ns.doc(security="BasicAuth")
+    @auth_required
+    def post(self):
+        url_logging(logger, g.url)
+        args = {}
+        w = ImageStatus(g.connection, payload=ns.payload, **args)
+        return run_worker(
+            worker=w,
+            run_method=w.post,
+            check_method=w.check_params_post,
+            args=args,
+            ok_code=201,
+        )
+
+    @ns.doc(
+        description="Get image status into database",
+        responses=GET_RESPONSES_400_404,
+    )
+    @ns.marshal_with(image_status_get_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = {}
+        w = ImageStatus(g.connection, payload=ns.payload, **args)
+        return run_worker(worker=w, args=args, run_method=w.get)
+
+
+@ns.route("/image_tag_status")
+class routeImageTagStatus(Resource):
+    @ns.doc(
+        description="Load iso image status into database",
+        responses=POST_RESPONSE_400_404,
+    )
+    @ns.expect(img_tag_json_model)
+    @ns.doc(security="BasicAuth")
+    @auth_required
+    def post(self):
+        url_logging(logger, g.url)
+        args = {}
+        w = ImageTagStatus(g.connection, payload=ns.payload, **args)
+        return run_worker(
+            worker=w,
+            run_method=w.post,
+            args=args,
+            ok_code=201,
+        )
+
+    @ns.doc(
+        description="Get iso image status into database",
+        responses=GET_RESPONSES_400_404,
+    )
+    @ns.expect(image_tag_args)
+    @ns.marshal_with(img_tag_status_get_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = image_tag_args.parse_args(strict=True)
+        w = ImageTagStatus(g.connection, payload=ns.payload, **args)
+        return run_worker(
+            worker=w,
+            args=args,
+            check_method=w.check_params_get,
+            run_method=w.get
+        )
