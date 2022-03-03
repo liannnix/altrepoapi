@@ -451,6 +451,8 @@ SELECT
     img_edition,
     argMax(img_name, ts) AS img_name,
     argMax(img_show, ts) AS img_show,
+    argMax(img_summary_ru, ts) AS img_summary_ru,
+    argMax(img_summary_en, ts) AS img_summary_en,
     argMax(img_start_date, ts) AS img_start_date,
     argMax(img_end_date, ts) AS img_end_date,
     argMax(img_description_ru, ts) AS img_description_ru,

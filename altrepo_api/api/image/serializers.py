@@ -272,6 +272,8 @@ img_json_el_model = ns.model(
             example="hide",
             pattern=show_match.pattern
         ),
+        "img_summary_ru": fields.String(description="image summary in Russian", example="Image summary in Russian"),
+        "img_summary_en": fields.String(description="image summary in English", example="Image summary in English"),
         "img_start_date": fields.DateTime(required=True, description="support start date"),
         "img_end_date": fields.DateTime(required=True, description="support end date"),
         "img_mailing_list": fields.String(
@@ -322,6 +324,8 @@ image_status_get_el_model = ns.model(
         "show": fields.String(description="hide - hide image, show - show image"),
         "start_date": fields.DateTime(description="support start date"),
         "end_date": fields.DateTime(description="support end date"),
+        "summary_ru": fields.String(description="image summary in Russian"),
+        "summary_en": fields.String(description="image summary in English", example="Image summary in English"),
         "description_ru": fields.String(
             description="html description in Russian in Base64 format"
         ),
