@@ -16,7 +16,7 @@
 
 import types
 from time import sleep
-from clickhouse_driver import Client, errors
+from clickhouse_driver import Client, errors, __version__ as chd_version
 
 from altrepo_api.settings import namespace as settings
 from altrepo_api.utils import get_logger, exception_to_logger, json_str_error
@@ -81,11 +81,17 @@ class DBConnection:
         if isinstance(self.db_query, tuple):
             # SQL query has params
             if not isinstance(self.db_query[1], (list, tuple, types.GeneratorType)):
-                query = self.clickhouse_client.substitute_params(
-                    self.db_query[0],
-                    self.db_query[1],
-                    # self.clickhouse_client.connection.context,  # works only for clickhouse-driver >= 0.2.3
-                )  # type: ignore
+                if chd_version <= "0.2.2":
+                    query = self.clickhouse_client.substitute_params(
+                        self.db_query[0],
+                        self.db_query[1],
+                    )  # type: ignore
+                else:
+                    query = self.clickhouse_client.substitute_params(
+                        self.db_query[0],
+                        self.db_query[1],
+                        self.clickhouse_client.connection.context,  # works only for clickhouse-driver >= 0.2.3
+                    )
             else:
                 query = self.db_query[0]
         else:
