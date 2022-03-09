@@ -44,58 +44,58 @@ all_iso_model = ns.model(
     },
 )
 
-iso_image_comp_model = ns.model(
-    "ISOImageComponentModel",
+image_info_comp_model = ns.model(
+    "ImageInfoComponentModel",
     {
-        "name": fields.String(description="ISO component name"),
+        "name": fields.String(description="Component name"),
         "size": fields.String(
-            description="ISO component size (human readable)", attribute="image_size"
+            description="Component size (human readable)", attribute="image_size"
         ),
         "packages": fields.Integer(
-            description="ISO component packages count", attribute="pkg_count"
+            description="Component packages count", attribute="pkg_count"
         ),
-        "uuid": fields.String(description="ISO component package set UUID"),
-        "ruuid": fields.String(description="ISO component package set root UUID"),
-        "kv": fields.Raw(description="ISO component metadata"),
+        "uuid": fields.String(description="Component package set UUID"),
+        "ruuid": fields.String(description="Component package set root UUID"),
+        "kv": fields.Raw(description="Component metadata"),
     },
 )
-iso_image_el_model = ns.model(
-    "ISOImageElementModel",
+image_info_el_model = ns.model(
+    "ImageInfoElementModel",
     {
-        "date": fields.DateTime(description="ISO image package set date"),
-        "uuid": fields.String(description="ISO image package set UUID"),
-        "tag": fields.String(description="ISO image package set tag"),
-        "branch": fields.String(description="ISO image base branch"),
-        "edition": fields.String(description="ISO image edition"),
-        "flavor": fields.String(description="ISO image flavor"),
-        "platform": fields.String(description="ISO image platform"),
-        "release": fields.String(description="ISO image release type"),
-        "version_major": fields.Integer(description="ISO image version major"),
-        "version_minor": fields.Integer(description="ISO image version minor"),
-        "version_sub": fields.Integer(description="ISO image version sub"),
-        "arch": fields.String(description="ISO image architecture"),
-        "variant": fields.String(description="ISO image variant"),
+        "date": fields.DateTime(description="Image package set date"),
+        "uuid": fields.String(description="Image package set UUID"),
+        "tag": fields.String(description="Image package set tag"),
+        "branch": fields.String(description="Image base branch"),
+        "edition": fields.String(description="Image edition"),
+        "flavor": fields.String(description="Image flavor"),
+        "platform": fields.String(description="Image platform"),
+        "release": fields.String(description="Image release type"),
+        "version_major": fields.Integer(description="Image version major"),
+        "version_minor": fields.Integer(description="Image version minor"),
+        "version_sub": fields.Integer(description="Image version sub"),
+        "arch": fields.String(description="Image architecture"),
+        "variant": fields.String(description="Image variant"),
         "type": fields.String(description="Image type"),
-        "file": fields.String(description="ISO image file name"),
+        "file": fields.String(description="Image file name"),
         "url": fields.List(fields.String(description="download URL")),
         "md5sum": fields.String(description="Image MD5 checksum"),
         "gost12sum": fields.String(description="Image GOST12 checksum"),
         "sha256sum": fields.String(description="Image SHA256 checksum"),
         "components": fields.Nested(
-            iso_image_comp_model,
-            description="list of ISO image components information",
+            image_info_comp_model,
+            description="list of image components information",
             as_list=True,
         ),
     },
 )
-iso_image_model = ns.model(
-    "ISOImageModel",
+image_info_model = ns.model(
+    "ImageInfoModel",
     {
         "request_args": fields.Raw(description="request arguments"),
-        "length": fields.Integer(description="number of ISO images"),
+        "length": fields.Integer(description="number of images"),
         "images": fields.Nested(
-            iso_image_el_model,
-            description="list of ISO images information",
+            image_info_el_model,
+            description="list of images information",
             as_list=True,
         ),
     },

@@ -260,19 +260,7 @@ class LookupTables:
         "x86_64",
     ]
 
-    known_iso_image_editions = [
-        "alt-server",
-        "alt-server-v",
-        "alt-education",
-        "alt-workstation",
-        "alt-kworkstation",
-        "slinux",
-        "cloud",
-    ]
-    known_iso_image_archs = ["i586", "x86_64", "aarch64", "ppc64le"]
-    known_iso_image_releases = ["alpha", "beta", "rc", "release"]
-    known_iso_image_variants = ["install", "live", "rescue"]
-    known_iso_image_components = ["iso", "rpms", "altinst", "live", "rescue"]
+    known_image_components = ["iso", "rpms", "altinst", "live", "rescue"]
 
     known_image_editions = [
         "alt-server",

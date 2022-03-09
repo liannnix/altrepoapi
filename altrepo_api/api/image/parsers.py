@@ -17,13 +17,13 @@
 from altrepo_api.api.parser import (
     parser,
     branch_name_type,
-    image_tag_type,
     image_version_type,
-    iso_edition_type,
-    iso_arch_type,
-    iso_release_type,
-    iso_variant_type,
-    iso_component_type,
+    img_edition_type,
+    img_arch_type,
+    img_release_type,
+    img_variant_type,
+    img_component_type,
+    img_type,
 )
 
 # register items
@@ -34,57 +34,65 @@ branch = parser.register_item(
     help="name of packageset",
     location="args",
 )
-iso_edition_opt = parser.register_item(
+img_edition_opt = parser.register_item(
     "edition",
-    type=iso_edition_type,
+    type=img_edition_type,
     required=False,
-    help="ISO image edition",
+    help="Image edition",
     location="args",
 )
-iso_release_opt = parser.register_item(
+img_release_opt = parser.register_item(
     "release",
-    type=iso_release_type,
+    type=img_release_type,
     required=False,
-    help="ISO image release type",
+    help="Image release type",
     location="args",
 )
-iso_version_opt = parser.register_item(
+img_version_opt = parser.register_item(
     "version",
     type=image_version_type,
     required=False,
-    help="ISO image version",
+    help="Image version",
     location="args",
 )
-iso_variant_opt = parser.register_item(
+img_variant_opt = parser.register_item(
     "variant",
-    type=iso_variant_type,
+    type=img_variant_type,
     required=False,
-    help="ISO image variant",
+    help="Image variant",
     location="args",
 )
-iso_arch_opt = parser.register_item(
+img_arch_opt = parser.register_item(
     "arch",
-    type=iso_arch_type,
+    type=img_arch_type,
     required=False,
-    help="ISO image architecture",
+    help="Image architecture",
     location="args",
 )
-iso_component_opt = parser.register_item(
+img_component_opt = parser.register_item(
     "component",
-    type=iso_component_type,
+    type=img_component_type,
     required=False,
-    help="ISO image component",
+    help="Image component",
+    location="args",
+)
+img_type_opt = parser.register_item(
+    "type",
+    type=img_type,
+    required=False,
+    help="Image type",
     location="args",
 )
 
 # build parsers
-iso_images_args = parser.build_parser(
+image_info_args = parser.build_parser(
     branch,
-    iso_edition_opt,
-    iso_version_opt,
-    iso_release_opt,
-    iso_variant_opt,
-    iso_arch_opt,
-    iso_component_opt,
+    img_edition_opt,
+    img_version_opt,
+    img_release_opt,
+    img_variant_opt,
+    img_arch_opt,
+    img_component_opt,
+    img_type_opt
 )
-image_tag_args = parser.build_parser(branch, iso_edition_opt)
+image_tag_args = parser.build_parser(branch, img_edition_opt)

@@ -54,11 +54,12 @@ parser = ParserFactory()
 # __pkg_groups = set(lut.pkg_groups)
 __known_archs = set(lut.known_archs)
 __known_branches = set(lut.known_branches)
-__known_iso_archs = set(lut.known_iso_image_archs)
-__known_iso_editions = set(lut.known_iso_image_editions)
-__known_iso_releases = set(lut.known_iso_image_releases)
-__known_iso_variants = set(lut.known_iso_image_variants)
-__known_iso_components = set(lut.known_iso_image_components)
+__known_img_archs = set(lut.known_image_archs)
+__known_img_editions = set(lut.known_image_editions)
+__known_img_releases = set(lut.known_image_releases)
+__known_img_variants = set(lut.known_image_variants)
+__known_img_components = set(lut.known_image_components)
+__known_img_types = set(lut.known_image_types)
 
 
 # regex patterns
@@ -298,56 +299,67 @@ def image_version_type(value: Any) -> str:
 image_version_type.__schema__ = {"type": "string", "pattern": __image_version_match.pattern}
 
 
-def iso_edition_type(value: Any) -> str:
-    """ISO image edition validator."""
+def img_edition_type(value: Any) -> str:
+    """Image edition validator."""
 
     value = __get_string(value)
-    if value not in __known_iso_editions:
-        raise ValueError("Invalid ISO image edition: {0}".format(value))
+    if value not in __known_img_editions:
+        raise ValueError("Invalid image edition: {0}".format(value))
     return value
 
-iso_edition_type.__schema__ = {"type": "string"}
+img_edition_type.__schema__ = {"type": "string"}
 
 
-def iso_arch_type(value: Any) -> str:
-    """ISO image architecture validator."""
+def img_arch_type(value: Any) -> str:
+    """Image architecture validator."""
 
     value = __get_string(value)
-    if value not in __known_iso_archs:
-        raise ValueError("Invalid ISO image architecture: {0}".format(value))
+    if value not in __known_img_archs:
+        raise ValueError("Invalid image architecture: {0}".format(value))
     return value
 
-iso_arch_type.__schema__ = {"type": "string"}
+img_arch_type.__schema__ = {"type": "string"}
 
 
-def iso_variant_type(value: Any) -> str:
-    """ISO image variant validator."""
+def img_variant_type(value: Any) -> str:
+    """Image variant validator."""
 
     value = __get_string(value)
-    if value not in __known_iso_variants:
-        raise ValueError("Invalid ISO image variant: {0}".format(value))
+    if value not in __known_img_variants:
+        raise ValueError("Invalid image variant: {0}".format(value))
     return value
 
-iso_variant_type.__schema__ = {"type": "string"}
+img_variant_type.__schema__ = {"type": "string"}
 
 
-def iso_component_type(value: Any) -> str:
-    """ISO image component validator."""
+def img_component_type(value: Any) -> str:
+    """Image component validator."""
 
     value = __get_string(value)
-    if value not in __known_iso_components:
-        raise ValueError("Invalid ISO image component: {0}".format(value))
+    if value not in __known_img_components:
+        raise ValueError("Invalid image component: {0}".format(value))
     return value
 
-iso_component_type.__schema__ = {"type": "string"}
+img_component_type.__schema__ = {"type": "string"}
 
 
-def iso_release_type(value: Any) -> str:
-    """ISO image release validator."""
+def img_release_type(value: Any) -> str:
+    """Image release validator."""
 
     value = __get_string(value)
-    if value not in __known_iso_releases:
-        raise ValueError("Invalid ISO image release: {0}".format(value))
+    if value not in __known_img_releases:
+        raise ValueError("Invalid image release: {0}".format(value))
     return value
 
-iso_release_type.__schema__ = {"type": "string"}
+img_release_type.__schema__ = {"type": "string"}
+
+
+def img_type(value: Any) -> str:
+    """Image type validator."""
+
+    value = __get_string(value)
+    if value not in __known_img_types:
+        raise ValueError("Invalid image type: {0}".format(value))
+    return value
+
+img_type.__schema__ = {"type": "string"}

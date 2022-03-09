@@ -54,8 +54,8 @@ class AllISOImages(APIWorker):
         return res, 200
 
 
-class ISOImageInfo(APIWorker):
-    """Retrieves ISO images info from DB."""
+class ImageInfo(APIWorker):
+    """Retrieves images info from DB."""
 
     def __init__(self, connection, **kwargs):
         self.conn = connection
@@ -92,6 +92,7 @@ class ISOImageInfo(APIWorker):
         release = self.args["release"]
         variant = self.args["variant"]
         component = self.args["component"]
+        img_type = self.args["type"]
 
         image_clause = f" AND img_branch = '{branch}'"
 
@@ -108,9 +109,11 @@ class ISOImageInfo(APIWorker):
             image_clause += f" AND img_release = '{release}'"
         if variant:
             image_clause += f" AND img_variant = '{variant}'"
+        if img_type:
+            image_clause += f" AND img_type = '{img_type}'"
 
         # get iso roots info
-        self.conn.request_line = self.sql.get_iso_root_info.format(
+        self.conn.request_line = self.sql.get_img_root_info.format(
             image_clause=image_clause
         )
         status, response = self.conn.send_request()

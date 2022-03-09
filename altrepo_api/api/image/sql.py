@@ -59,7 +59,7 @@ WHERE (pkgset_date, img_tag) IN
     )
 """
 
-    get_iso_root_info = """
+    get_img_root_info = """
 SELECT DISTINCT
     pkgset_uuid,
     pkgset_date,
@@ -77,13 +77,12 @@ SELECT DISTINCT
     img_type,
     img_kv
 FROM ImagePackageSetName
-WHERE (pkgset_date, img_tag) IN
+WHERE (ts, img_tag) IN
     (
         SELECT
-            max(pkgset_date) AS img_d,
+            max(ts) AS ts,
             argMax(img_tag, pkgset_date) AS img_t
         FROM ImagePackageSetName
-        WHERE img_type = 'iso'
         GROUP BY img_tag
     )
     {image_clause}

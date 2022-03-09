@@ -29,15 +29,15 @@ from altrepo_api.api.base import (
 from .endpoints.image_status import ImageStatus, ImageTagStatus
 
 from .namespace import get_namespace
-from .endpoints.iso_info import AllISOImages, ISOImageInfo
+from .endpoints.image_info import AllISOImages, ImageInfo
 from .endpoints.packages import CheckPackages
 from .parsers import (
-    iso_images_args,
+    image_info_args,
     image_tag_args,
 )
 from .serializers import (
     all_iso_model,
-    iso_image_model,
+    image_info_model,
     pkgs_json_model,
     pkg_inspect_sp_model,
     pkg_inspect_regular_model,
@@ -70,19 +70,19 @@ class routeAllISOImages(Resource):
 
 
 @ns.route(
-    "/iso/info",
+    "/image_info",
     doc={
-        "description": "Get branch ISO images info",
+        "description": "Get branch images info",
         "responses": GET_RESPONSES_400_404,
     },
 )
-class routeISOImageInfo(Resource):
-    @ns.expect(iso_images_args)
-    @ns.marshal_with(iso_image_model)
+class routeImageInfo(Resource):
+    @ns.expect(image_info_args)
+    @ns.marshal_with(image_info_model)
     def get(self):
         url_logging(logger, g.url)
-        args = iso_images_args.parse_args(strict=True)
-        w = ISOImageInfo(g.connection, **args)
+        args = image_info_args.parse_args(strict=True)
+        w = ImageInfo(g.connection, **args)
         return run_worker(worker=w, args=args)
 
 
