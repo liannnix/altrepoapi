@@ -19,11 +19,7 @@ from time import sleep
 from clickhouse_driver import Client, errors
 
 from altrepo_api.settings import namespace as settings
-from altrepo_api.utils import (
-    get_logger,
-    exception_to_logger,
-    json_str_error,
-)
+from altrepo_api.utils import get_logger, exception_to_logger, json_str_error
 
 logger = get_logger(__name__)
 
@@ -88,8 +84,8 @@ class DBConnection:
                 query = self.clickhouse_client.substitute_params(
                     self.db_query[0],
                     self.db_query[1],
-                    self.clickhouse_client.connection.context,
-                )
+                    # self.clickhouse_client.connection.context,  # works only for clickhouse-driver >= 0.2.3
+                )  # type: ignore
             else:
                 query = self.db_query[0]
         else:
