@@ -17,7 +17,7 @@
 from altrepo_api.api.parser import (
     parser,
     branch_name_type,
-    image_name_type,
+    image_tag_type,
     image_version_type,
     iso_edition_type,
     iso_arch_type,

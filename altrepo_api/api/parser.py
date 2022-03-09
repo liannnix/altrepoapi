@@ -71,11 +71,11 @@ __packager_name_match = re.compile("^[a-zA-Z]+[\w\.\ \-\@]*$")  # type: ignore
 __packager_email_match = re.compile("^[\w\.\-]+@[\w\.\-]+$")  # type: ignore
 __packager_nickname_match = re.compile("^[\w\-]{2,}$")  # type: ignore
 ## file name match allows '*' wildcard symbol
-__file_name_wc_match = re.compile("^[\w\-. \/\*]{2,}$")  # type: ignore
+__file_name_wc_match = re.compile("^[\w\-.\/\*]{2,}$")  # type: ignore
 __dp_name_match = re.compile("^[\w\/\(\)\.\:\-]{2,}$")  # type: ignore
 ## image name
 __uuid_string_match = re.compile("^[0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12}$")  # type: ignore
-__image_name_match = re.compile("^[a-zA-Z0-9\-\.\_:]+:[a-z]+$")  # type: ignore
+__image_tag_match = re.compile("^[a-zA-Z0-9\-\.\_:]+:[a-z]+$")  # type: ignore
 __image_version_match = re.compile("^[0-9]+\.[0-9]\.[0-9]$")  # type: ignore
 
 # custom validators
@@ -264,15 +264,15 @@ def uuid_type(value: Any) -> str:
 uuid_type.__schema__ = {"type": "string", "pattern": __uuid_string_match.pattern}
 
 
-def image_name_type(value: Any) -> str:
+def image_tag_type(value: Any) -> str:
     """Image name validator."""
 
     value = __get_string(value)
-    if not __image_name_match.search(value):
+    if not __image_tag_match.search(value):
         raise ValueError("Invalid image name: {0}".format(value))
     return value
 
-image_name_type.__schema__ = {"type": "string", "pattern": __image_name_match.pattern}
+image_tag_type.__schema__ = {"type": "string", "pattern": __image_tag_match.pattern}
 
 
 def image_version_type(value: Any) -> str:
