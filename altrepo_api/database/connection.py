@@ -19,7 +19,11 @@ from time import sleep
 from clickhouse_driver import Client, errors
 
 from altrepo_api.settings import namespace as settings
-from altrepo_api.utils import get_logger, exception_to_logger, json_str_error, print_statusbar
+from altrepo_api.utils import (
+    get_logger,
+    exception_to_logger,
+    json_str_error,
+)
 
 logger = get_logger(__name__)
 
@@ -60,7 +64,9 @@ class DBConnection:
         return True
 
     def _connection_test(self):
-        logger.debug(f"Connecting to databse {settings.DATABASE_NAME}@{settings.DATABASE_HOST}")
+        logger.debug(
+            f"Connecting to databse {settings.DATABASE_NAME}@{settings.DATABASE_HOST}"
+        )
         try:
             self.clickhouse_client.connection.connect()
         except Exception as error:
@@ -79,7 +85,11 @@ class DBConnection:
         if isinstance(self.db_query, tuple):
             # SQL query has params
             if not isinstance(self.db_query[1], (list, tuple, types.GeneratorType)):
-                query = self.clickhouse_client.substitute_params(self.db_query[0], self.db_query[1])
+                query = self.clickhouse_client.substitute_params(
+                    self.db_query[0],
+                    self.db_query[1],
+                    self.clickhouse_client.connection.context,
+                )
             else:
                 query = self.db_query[0]
         else:
@@ -87,7 +97,7 @@ class DBConnection:
 
         logger.debug(f"SQL request:\n{query}")
 
-    def send_request(self, trace=False):
+    def send_request(self):
         response_status = False
 
         try:
@@ -104,8 +114,6 @@ class DBConnection:
             if issubclass(error.__class__, errors.Error):
                 logger.error(exception_to_logger(error))
                 response = json_str_error("Error in SQL query!")
-                if trace:
-                    print_statusbar([(error, 'd',)])
             else:
                 raise error
 
@@ -118,7 +126,7 @@ class DBConnection:
 
 class Connection:
     """Database connection class supports retries if connection to dabase have been lost."""
-    
+
     def __init__(self, request_line=None):
         self.request_line = request_line
         self.db_connection = DBConnection(
@@ -128,7 +136,7 @@ class Connection:
             settings.DATABASE_PASS,
         )
 
-    def send_request(self, trace=False):
+    def send_request(self):
         status = self.db_connection.connection_status
         if not status:
             for try_ in range(settings.TRY_CONNECTION_NUMBER):
@@ -141,8 +149,8 @@ class Connection:
                 sleep(settings.TRY_TIMEOUT)
 
         if status:
-            self.db_connection.db_query = self.request_line
-            return self.db_connection.send_request(trace)
+            self.db_connection.db_query = self.request_line  # type: ignore
+            return self.db_connection.send_request()
         else:
             return False, "Database connection error."
 

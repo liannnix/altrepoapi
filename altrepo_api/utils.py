@@ -160,20 +160,6 @@ def join_tuples(tuple_list: list) -> tuple:
     return tuple([tuple_[0] for tuple_ in tuple_list])
 
 
-def print_statusbar(message_list: list) -> None:
-    types = {
-        "i": "[INFO]",
-        "w": "[WARNING]",
-        "d": "[DEBUG]",
-        "e": "[ERROR]",
-    }
-
-    for msg in message_list:
-        print(
-            "[ALTREPO SERVER]{type_}: {msg}" "".format(type_=types[msg[1]], msg=msg[0])
-        )
-
-
 # convert tuple or list of tuples to dict by set keys
 def tuplelist_to_dict(tuplelist: list, num: int) -> dict:
     result_dict = defaultdict(list)
