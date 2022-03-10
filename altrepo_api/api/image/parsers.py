@@ -13,6 +13,7 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from flask_restx import inputs
 
 from altrepo_api.api.parser import (
     parser,
@@ -24,6 +25,7 @@ from altrepo_api.api.parser import (
     img_variant_type,
     img_component_type,
     img_type,
+    uuid_type
 )
 
 # register items
@@ -83,6 +85,29 @@ img_type_opt = parser.register_item(
     help="Image type",
     location="args",
 )
+img_uuid_opt = parser.register_item(
+    "uuid",
+    type=uuid_type,
+    required=True,
+    help="Image UUID",
+    location="args"
+)
+pkgs_limit = parser.register_item(
+    "packages_limit",
+    type=int,
+    default=10,
+    required=True,
+    help="number of last packages to get",
+    location="args",
+)
+img_component_input_opt = parser.register_item(
+    "component",
+    type=inputs.boolean,
+    default=False,
+    required=False,
+    help="show package information for components",
+    location="args",
+)
 
 # build parsers
 image_info_args = parser.build_parser(
@@ -96,3 +121,4 @@ image_info_args = parser.build_parser(
     img_type_opt
 )
 image_tag_args = parser.build_parser(branch, img_edition_opt)
+image_packages_args = parser.build_parser(img_uuid_opt, pkgs_limit, img_component_input_opt)

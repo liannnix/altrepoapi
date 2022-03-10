@@ -479,5 +479,84 @@ WHERE img_tag IN (
 GROUP BY img_tag
 """
 
+    get_last_image_all_pkg_diff = """
+CREATE TEMPORARY TABLE {tmp_table} AS
+SELECT pkg_hash FROM
+(
+    SELECT DISTINCT pkg_hash
+        FROM PackageSet
+        WHERE pkgset_uuid IN (
+            SELECT pkgset_uuid
+            FROM PackageSetName
+            WHERE pkgset_ruuid = '{uuid}'
+            AND pkgset_depth = 1
+    )
+)    
+"""
+
+    get_last_image_cmp_pkg_diff = """
+CREATE TEMPORARY TABLE {tmp_table} AS
+SELECT pkg_hash FROM
+(
+    SELECT DISTINCT pkg_hash
+        FROM PackageSet
+        WHERE pkgset_uuid IN (
+            SELECT pkgset_uuid
+            FROM PackageSetName
+            WHERE pkgset_uuid = '{uuid}'
+                AND pkgset_depth = 1
+    )
+)    
+"""
+
+    get_last_image_pkgs_info = """
+WITH
+pkghash_sorted AS
+(
+    SELECT pkg_hash
+    FROM Packages
+    WHERE pkg_hash IN (
+        SELECT * FROM {tmp_table}
+    )
+    ORDER BY pkg_buildtime DESC
+    LIMIT {limit}
+),
+pkg_changelog AS
+(
+    SELECT pkg_changelog.hash[1]
+    FROM Packages
+    WHERE pkg_hash IN (
+        SELECT * FROM pkghash_sorted
+    )
+)
+SELECT DISTINCT
+    pkg_hash,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_summary,
+    pkg_buildtime,
+    pkg_changelog.date[1] AS date,
+    pkg_changelog.name[1] as name,
+    pkg_changelog.evr[1] AS evr,
+    pkg_changelog.hash[1] AS hash,
+    Chg.chlog_text as text
+FROM Packages
+LEFT JOIN
+(
+    SELECT DISTINCT
+        chlog_hash AS hash,
+        chlog_text
+    FROM Changelog
+    WHERE chlog_hash IN (
+        SELECT * FROM pkg_changelog
+    )
+) AS Chg ON Chg.hash = hash
+WHERE pkg_hash IN (
+    SELECT * FROM pkghash_sorted
+)
+ORDER BY pkg_buildtime DESC
+"""
+
 
 sql = SQL()

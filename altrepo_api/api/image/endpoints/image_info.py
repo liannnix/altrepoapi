@@ -17,7 +17,7 @@
 from uuid import UUID
 from collections import namedtuple
 
-from altrepo_api.utils import bytes2human
+from altrepo_api.utils import bytes2human, datetime_to_iso
 from altrepo_api.api.base import APIWorker
 from ..sql import sql
 
@@ -237,3 +237,90 @@ class ImageInfo(APIWorker):
         res.sort(key=lambda x: (x["date"], x["tag"]), reverse=True)
 
         return {"request_args": self.args, "length": len(res), "images": res}, 200
+
+
+class LastImagePackages(APIWorker):
+
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def get(self):
+        uuid = self.args["uuid"]
+        packages_limit = self.args["packages_limit"]
+        component = self.args["component"]
+
+        tmp_table = "tmp_pkg_hashes"
+        if component is False:
+            self.conn.request_line = self.sql.get_last_image_all_pkg_diff.format(
+                tmp_table=tmp_table, uuid=uuid
+            )
+        else:
+            self.conn.request_line = self.sql.get_last_image_cmp_pkg_diff.format(
+                tmp_table=tmp_table, uuid=uuid, component=component
+            )
+
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {
+                    "message": f"No data found in database for given parameters",
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
+
+        self.conn.request_line = self.sql.get_last_image_pkgs_info.format(
+            tmp_table=tmp_table,
+            limit=packages_limit,
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {
+                    "message": f"No data found in database for packages",
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        PkgMeta = namedtuple(
+            "PkgMeta",
+            [
+                "hash",
+                "pkg_name",
+                "pkg_version",
+                "pkg_release",
+                "pkg_summary",
+                "pkg_buildtime",
+                "changelog_date",
+                "changelog_name",
+                "changelog_evr",
+                "changelog_text",
+            ],
+        )
+        print(response)
+        packages = (PkgMeta(*el[:-1])._asdict() for el in response)
+
+        retval = []
+        for pkg in packages:
+            pkg["changelog_date"] = datetime_to_iso(pkg["changelog_date"])
+            retval.append(pkg)
+
+        res = {
+            "request_args": self.args,
+            "length": len(retval),
+            "packages": retval,
+        }
+        return res, 200

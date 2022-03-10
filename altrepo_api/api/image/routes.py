@@ -29,11 +29,12 @@ from altrepo_api.api.base import (
 from .endpoints.image_status import ImageStatus, ImageTagStatus
 
 from .namespace import get_namespace
-from .endpoints.image_info import AllISOImages, ImageInfo
+from .endpoints.image_info import AllISOImages, ImageInfo, LastImagePackages
 from .endpoints.packages import CheckPackages
 from .parsers import (
     image_info_args,
     image_tag_args,
+    image_packages_args,
 )
 from .serializers import (
     all_iso_model,
@@ -45,6 +46,7 @@ from .serializers import (
     img_json_model,
     img_tag_status_get_model,
     img_tag_json_model,
+    last_packages_image_model,
 )
 
 ns = get_namespace()
@@ -189,3 +191,20 @@ class routeImageTagStatus(Resource):
             check_method=w.check_params_get,
             run_method=w.get
         )
+
+
+@ns.route(
+    "/last_packages_by_image",
+    doc={
+        "description": "Get list of last packages from image for given parameters",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeLastImagePackages(Resource):
+    @ns.expect(image_packages_args)
+    @ns.marshal_with(last_packages_image_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = image_packages_args.parse_args(strict=True)
+        w = LastImagePackages(g.connection, **args)
+        return run_worker(worker=w, args=args)
