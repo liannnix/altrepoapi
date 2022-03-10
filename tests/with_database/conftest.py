@@ -2,11 +2,10 @@ import os
 import pytest
 
 os.environ["ALTREPO_API_CONFIG"] = "./tests/api.conf"
-from altrepo_api.app import app
+from altrepo_api.app import app as test_api
+
 
 @pytest.fixture
-def client():
-    """Test Flask App client."""
-    
-    with app.test_client() as client:
-        yield client
+def app():
+    app = test_api
+    return app
