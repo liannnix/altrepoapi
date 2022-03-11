@@ -48,7 +48,7 @@ class AllISOImages(APIWorker):
         ImageInfo = namedtuple(
             "ImageInfo", ["branch", "name", "tag", "file", "uuid", "date"]
         )
-        images = [ImageInfo(*r)._asdict() for r in response]
+        images = [ImageInfo(*r)._asdict() for r in response]  # type: ignore
 
         res = {"length": len(images), "images": images}
         return res, 200
@@ -155,13 +155,7 @@ class ImageInfo(APIWorker):
         ruuids = [str(i.uuid) for i in images.values()]
 
         # get components info
-        component_clause = ""
-        if component is not None and component != "iso":
-            component_clause = f" AND pkgset_nodename = '{component}'"
-
-        self.conn.request_line = self.sql.get_iso_image_components.format(
-            ruuids=ruuids, component_clause=component_clause
-        )
+        self.conn.request_line = self.sql.get_iso_image_components.format(ruuids=ruuids)
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -186,38 +180,43 @@ class ImageInfo(APIWorker):
                 elif "image_size" in c.kv:
                     d["image_size"] = bytes2human(int(c.kv["image_size"]))
                     d["pkg_count"] = int(c.kv["size"])
+                elif "size" in c.kv and c.name in ("tar", "img", "qcow"):
+                    d["image_size"] = bytes2human(int(c.kv["size"]))
+                    d["pkg_count"] = 0
                 else:
                     d["image_size"] = ""
                     d["pkg_count"] = int(c.kv["size"])
                 res.append(d)
             return res
 
-        # build 'iso' component from ISO root info
-        isos: dict[UUID, list[Component]] = {}
+        # build root component from image root info
+        image_components: dict[UUID, list[Component]] = {}
         for uuid, i in images.items():
-            isos[uuid] = []
-            isos[uuid].append(Component(ruuid=i.uuid, uuid=i.uuid, name="iso", kv=i.kv))
+            image_components[uuid] = []
+            image_components[uuid].append(
+                Component(ruuid=i.uuid, uuid=i.uuid, name=i.kv["class"], kv=i.kv)
+            )
 
-        for comp in [Component(*r) for r in response]:
-            isos[comp.ruuid].append(comp)
+        for comp in [Component(*r) for r in response]:  # type: ignore
+            image_components[comp.ruuid].append(comp)
 
         def make_download_mirrors(url: str) -> list[str]:
             # build mirror.yandex.ru alternative download links
             res = [url,]
-            if (
-                url.startswith("http://ftp.altlinux.org/pub/distributions/ALTLinux/images")
+            if url.startswith(
+                "http://ftp.altlinux.org/pub/distributions/ALTLinux/images"
             ):
                 res.append(
                     url.replace(
-                    "http://ftp.altlinux.org/pub/distributions/ALTLinux/images",
-                    "https://mirror.yandex.ru/altlinux/images/"
+                        "http://ftp.altlinux.org/pub/distributions/ALTLinux/images",
+                        "https://mirror.yandex.ru/altlinux/images/",
                     )
                 )
 
             return res
 
         res: list[dict] = []
-        for ruuid in isos:
+        for ruuid in image_components:
             image = images[ruuid]._asdict()
             image["file"] = image["kv"]["file"]
             image["url"] = make_download_mirrors(image["kv"]["url"])
@@ -228,10 +227,10 @@ class ImageInfo(APIWorker):
 
             if component is not None:
                 components = _process_components(
-                    [c for c in isos[ruuid] if c.name == component]
+                    [c for c in image_components[ruuid] if c.name == component]
                 )
             else:
-                components = _process_components(isos[ruuid])
+                components = _process_components(image_components[ruuid])
             if not components:
                 continue
             image["components"] = components
@@ -243,7 +242,6 @@ class ImageInfo(APIWorker):
 
 
 class LastImagePackages(APIWorker):
-
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
@@ -327,8 +325,8 @@ class LastImagePackages(APIWorker):
                 "changelog_text",
             ],
         )
-        print(response)
-        packages = (PkgMeta(*el[:-1])._asdict() for el in response)
+
+        packages = (PkgMeta(*el[:-1])._asdict() for el in response)  # type: ignore
 
         retval = []
         for pkg in packages:

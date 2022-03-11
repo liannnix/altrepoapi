@@ -97,7 +97,6 @@ SELECT
 FROM PackageSetName
 WHERE pkgset_depth = 1
     AND pkgset_ruuid IN {ruuids}
-    {component_clause}
 ORDER BY pkgset_tag ASC, pkgset_date DESC
 """
 
