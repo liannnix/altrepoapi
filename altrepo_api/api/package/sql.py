@@ -552,7 +552,6 @@ WHERE dp_name IN
                 SELECT * FROM {tmp_table}
             )
                 AND pkgset_name = %(branch)s
-                AND pkg_sourcepackage = 0
                 AND pkg_arch IN %(archs)s
                 AND pkg_name NOT LIKE '%%-debuginfo'
         UNION ALL
