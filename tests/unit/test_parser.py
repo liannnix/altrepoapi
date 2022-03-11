@@ -510,3 +510,26 @@ def test_img_flavor_type(test_input, expected_exception, expected):
         assert parser.img_flavor_type(test_input) == expected
     else:
         pytest.raises(expected_exception, parser.img_flavor_type, test_input)
+
+
+@pytest.mark.parametrize(
+    "test_input,expected_exception,expected",
+    [
+        ("abc", None, "abc"),
+        ("abc,def", None, "abc,def"),
+        ("abc123+.-_", None, "abc123+.-_"),
+        ("", ValueError, None),
+        ("a", ValueError, None),
+        ("ab,c", ValueError, None),
+        ("a,bc", ValueError, None),
+        (",bc", ValueError, None),
+        ("a*", ValueError, None),
+        ("a b", ValueError, None),
+        ("a/b", ValueError, None),
+    ],
+)
+def test_pkg_name_list_type(test_input, expected_exception, expected):
+    if not expected_exception:
+        assert parser.pkg_name_list_type(test_input) == expected
+    else:
+        pytest.raises(expected_exception, parser.pkg_name_list_type, test_input)
