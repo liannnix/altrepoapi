@@ -92,6 +92,7 @@ class ImageInfo(APIWorker):
         release = self.args["release"]
         variant = self.args["variant"]
         component = self.args["component"]
+        flavor = self.args["flavor"]
         img_type = self.args["type"]
 
         image_clause = f" AND img_branch = '{branch}'"
@@ -109,6 +110,8 @@ class ImageInfo(APIWorker):
             image_clause += f" AND img_release = '{release}'"
         if variant:
             image_clause += f" AND img_variant = '{variant}'"
+        if flavor:
+            image_clause += f" AND img_flavor = '{flavor}'"
         if img_type:
             image_clause += f" AND img_type = '{img_type}'"
 

@@ -79,6 +79,7 @@ __dp_name_match = re.compile("^[\w\/\(\)\.\:\-]{2,}$")  # type: ignore
 __uuid_string_match = re.compile("^[0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12}$")  # type: ignore
 __image_tag_match = re.compile("^[a-zA-Z0-9\-\.\_:]+:[a-z]+$")  # type: ignore
 __image_version_match = re.compile("^[0-9]+\.[0-9]\.[0-9]$")  # type: ignore
+__image_flavor_match = re.compile("^[a-zA-Z\-]+$")  # type: ignore
 
 # custom validators
 def __get_string(value: Any) -> str:
@@ -341,6 +342,17 @@ def img_component_type(value: Any) -> str:
     return value
 
 img_component_type.__schema__ = {"type": "string"}
+
+
+def img_flavor_type(value: Any) -> str:
+    """Image flavor validator."""
+
+    value = __get_string(value)
+    if not __image_flavor_match.search(value):
+        raise ValueError("Invalid image flavor: {0}".format(value))
+    return value
+
+img_flavor_type.__schema__ = {"type": "string"}
 
 
 def img_release_type(value: Any) -> str:
