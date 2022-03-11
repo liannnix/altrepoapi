@@ -64,6 +64,7 @@ __known_iso_components = set(lut.known_iso_image_components)
 # regex patterns
 __pkg_cs_match = re.compile("^[a-fA-F0-9]+$")
 __pkg_name_match = re.compile("^[\w\.\+\-]{2,}$")  # type: ignore
+__pkg_name_list_match = re.compile("^([\w\.\+\-]{2,}[,]?)+$")  # type: ignore
 __pkg_VR_match = re.compile("^[\w\.\+]+$")  # type: ignore
 __pkg_groups_match = re.compile("^[A-Z][a-zA-Z0-9\+\ \/-]+$")  # type: ignore
 __pkg_disttag_match = re.compile("^[a-z0-9\+\.]+$")  # type: ignore
@@ -95,6 +96,17 @@ def pkg_name_type(value: Any) -> str:
     return value
 
 pkg_name_type.__schema__ = {"type": "string", "pattern": __pkg_name_match.pattern}
+
+
+def pkg_name_list_type(value: Any) -> str:
+    """Package name validator."""
+
+    value = __get_string(value)
+    if not __pkg_name_list_match.search(value):
+        raise ValueError("Invalid package name: {0}".format(value))
+    return value
+
+pkg_name_list_type.__schema__ = {"type": "string", "pattern": __pkg_name_list_match.pattern}
 
 
 def pkg_version_type(value: Any) -> str:

@@ -28,6 +28,7 @@ from altrepo_api.api.parser import (
     file_name_wc_type,
     packager_name_type,
     packager_email_type,
+    pkg_name_list_type,
 )
 
 # register parser items
@@ -104,7 +105,7 @@ package_name_opt = parser.register_item(
 )
 package_list = parser.register_item(
     "packages",
-    type=pkg_name_type,
+    type=pkg_name_list_type,
     action="split",
     required=True,
     help="package or list of packages",
@@ -220,7 +221,7 @@ dptype_opt = parser.register_item(
 )
 filter_by_package_list_opt = parser.register_item(
     "filter_by_package",
-    type=pkg_name_type,
+    type=pkg_name_list_type,
     action="split",
     required=False,
     help="filter result by dependency on binary packages",
