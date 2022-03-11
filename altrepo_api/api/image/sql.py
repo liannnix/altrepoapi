@@ -500,13 +500,8 @@ SELECT pkg_hash FROM
 (
     SELECT DISTINCT pkg_hash
         FROM PackageSet
-        WHERE pkgset_uuid IN (
-            SELECT pkgset_uuid
-            FROM PackageSetName
-            WHERE pkgset_uuid = '{uuid}'
-                AND pkgset_depth = 1
+        WHERE pkgset_uuid = '{uuid}'
     )
-)    
 """
 
     get_last_image_pkgs_info = """
