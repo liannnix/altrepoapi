@@ -315,7 +315,7 @@ def test_dp_name_type(test_input, expected_exception, expected):
         ("20-10-20", ValueError, None),
         ("2020/10/20", ValueError, None),
         ("2020.10.20", ValueError, None),
-        ("2020-02-30", ValueError, None), # 29th of February
+        ("2020-02-30", ValueError, None),  # 29th of February
     ],
 )
 def test_date_string_type(test_input, expected_exception, expected):
@@ -406,11 +406,11 @@ def test_image_version_type(test_input, expected_exception, expected):
         ("workstation", ValueError, None),
     ],
 )
-def test_iso_edition_type(test_input, expected_exception, expected):
+def test_img_edition_type(test_input, expected_exception, expected):
     if not expected_exception:
-        assert parser.iso_edition_type(test_input) == expected
+        assert parser.img_edition_type(test_input) == expected
     else:
-        pytest.raises(expected_exception, parser.iso_edition_type, test_input)
+        pytest.raises(expected_exception, parser.img_edition_type, test_input)
 
 
 @pytest.mark.parametrize(
@@ -425,11 +425,11 @@ def test_iso_edition_type(test_input, expected_exception, expected):
         ("armh ", ValueError, None),
     ],
 )
-def test_iso_arch_type(test_input, expected_exception, expected):
+def test_img_arch_type(test_input, expected_exception, expected):
     if not expected_exception:
-        assert parser.iso_arch_type(test_input) == expected
+        assert parser.img_arch_type(test_input) == expected
     else:
-        pytest.raises(expected_exception, parser.iso_arch_type, test_input)
+        pytest.raises(expected_exception, parser.img_arch_type, test_input)
 
 
 @pytest.mark.parametrize(
@@ -444,11 +444,11 @@ def test_iso_arch_type(test_input, expected_exception, expected):
         ("live ", ValueError, None),
     ],
 )
-def test_iso_variant_type(test_input, expected_exception, expected):
+def test_img_variant_type(test_input, expected_exception, expected):
     if not expected_exception:
-        assert parser.iso_variant_type(test_input) == expected
+        assert parser.img_variant_type(test_input) == expected
     else:
-        pytest.raises(expected_exception, parser.iso_variant_type, test_input)
+        pytest.raises(expected_exception, parser.img_variant_type, test_input)
 
 
 @pytest.mark.parametrize(
@@ -465,11 +465,11 @@ def test_iso_variant_type(test_input, expected_exception, expected):
         ("live ", ValueError, None),
     ],
 )
-def test_iso_component_type(test_input, expected_exception, expected):
+def test_img_component_type(test_input, expected_exception, expected):
     if not expected_exception:
-        assert parser.iso_component_type(test_input) == expected
+        assert parser.img_component_type(test_input) == expected
     else:
-        pytest.raises(expected_exception, parser.iso_component_type, test_input)
+        pytest.raises(expected_exception, parser.img_component_type, test_input)
 
 
 @pytest.mark.parametrize(
@@ -485,8 +485,28 @@ def test_iso_component_type(test_input, expected_exception, expected):
         ("beta ", ValueError, None),
     ],
 )
-def test_iso_release_type(test_input, expected_exception, expected):
+def test_img_release_type(test_input, expected_exception, expected):
     if not expected_exception:
-        assert parser.iso_release_type(test_input) == expected
+        assert parser.img_release_type(test_input) == expected
     else:
-        pytest.raises(expected_exception, parser.iso_release_type, test_input)
+        pytest.raises(expected_exception, parser.img_release_type, test_input)
+
+
+@pytest.mark.parametrize(
+    "test_input,expected_exception,expected",
+    [
+        ("rootfs-sysvinit", None, "rootfs-sysvinit"),
+        ("rootfs-systemd-etcnet", None, "rootfs-systemd-etcnet"),
+        ("opennebula", None, "opennebula"),
+        ("workstation", None, "workstation"),
+        ("", ValueError, None),
+        (" workstation", ValueError, None),
+        ("workstation ", ValueError, None),
+        ("workstation+", ValueError, None),
+    ],
+)
+def test_img_flavor_type(test_input, expected_exception, expected):
+    if not expected_exception:
+        assert parser.img_flavor_type(test_input) == expected
+    else:
+        pytest.raises(expected_exception, parser.img_flavor_type, test_input)
