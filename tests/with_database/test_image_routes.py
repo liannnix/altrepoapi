@@ -12,19 +12,21 @@ from flask import url_for
             "release": None,
             "variant": None,
             "arch": None,
+            "flavor": None,
             "component": None,
             "type": None,
             "status_code": 200
         },
         {
-            "branch": 'p10',
-            "edition": 'slinux',
-            "version": "10.0.0",
+            "branch": 'p9',
+            "edition": 'cloud',
+            "version": "9.2.0",
             "release": "release",
-            "variant": "live",
+            "variant": "install",
             "arch": "x86_64",
-            "component": "live",
-            "type": "iso",
+            "flavor": "workstation",
+            "component": None,
+            "type": "qcow",
             "status_code": 200
         },
         {
@@ -34,6 +36,7 @@ from flask import url_for
             "release": None,
             "variant": None,
             "arch": None,
+            "flavor": None,
             "component": None,
             "type": "zip",
             "status_code": 400
@@ -45,6 +48,7 @@ from flask import url_for
             "release": "release",
             "variant": None,
             "arch": "x86_64",
+            "flavor": None,
             "component": None,
             "type": "img",
             "status_code": 404
@@ -179,10 +183,16 @@ def test_image_tag_status_post(client, kwargs):
             "status_code": 200
         },
         {
-            "uuid": "test-1d71-40b9-958c-d5a79b2260dd",
+            "uuid": "12345-1234-1234-1234-123456789012",
             "packages_limit": 10,
             "component": True,
             "status_code": 400
+        },
+        {
+            "uuid": "12345678-1234-1234-1234-123456789012",
+            "packages_limit": 10,
+            "component": True,
+            "status_code": 404
         },
     ]
 )
