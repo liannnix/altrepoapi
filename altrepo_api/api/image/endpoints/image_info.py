@@ -322,15 +322,17 @@ class LastImagePackages(APIWorker):
                 "changelog_date",
                 "changelog_name",
                 "changelog_evr",
+                "changelog_hash",
                 "changelog_text",
             ],
         )
 
-        packages = (PkgMeta(*el[:-1])._asdict() for el in response)  # type: ignore
+        packages = (PkgMeta(*el)._asdict() for el in response)  # type: ignore
 
         retval = []
         for pkg in packages:
             pkg["changelog_date"] = datetime_to_iso(pkg["changelog_date"])
+            del pkg["changelog_hash"]
             retval.append(pkg)
 
         res = {
