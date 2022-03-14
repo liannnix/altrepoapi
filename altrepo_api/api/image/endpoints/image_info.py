@@ -375,3 +375,39 @@ class ImageTagUUID(APIWorker):
             "uuid": str(response[0][0]),
         }
         return res, 200
+
+
+class ImageCategoriesCount(APIWorker):
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def get(self):
+        uuid = self.args["uuid"]
+        component = self.args["component"]
+
+        component_clause = ""
+        if component:
+            component_clause += f"AND pkgset_nodename = '{component}'"
+
+        self.conn.request_line = self.sql.get_image_groups_count.format(
+            uuid=uuid, component=component_clause
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {"message": f"No data not found in database", "args": self.args},
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        res = [{"category": el[0], "count": el[1]} for el in response]
+
+        res = {"request_args": self.args, "length": len(res), "categories": res}
+        return res, 200

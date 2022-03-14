@@ -29,13 +29,13 @@ from altrepo_api.api.base import (
 from .endpoints.image_status import ImageStatus, ImageTagStatus
 
 from .namespace import get_namespace
-from .endpoints.image_info import AllISOImages, ImageInfo, LastImagePackages, ImageTagUUID
+from .endpoints.image_info import AllISOImages, ImageInfo, LastImagePackages, ImageTagUUID, ImageCategoriesCount
 from .endpoints.packages import CheckPackages
 from .parsers import (
     image_info_args,
     image_tag_args,
     image_packages_args,
-    image_uuid_args,
+    image_uuid_args, image_categories_args,
 )
 from .serializers import (
     all_iso_model,
@@ -48,7 +48,7 @@ from .serializers import (
     img_tag_status_get_model,
     img_tag_json_model,
     last_packages_image_model,
-    image_tag_uuid_model,
+    image_tag_uuid_model, image_categories_model,
 )
 
 ns = get_namespace()
@@ -226,4 +226,23 @@ class routeImageTagUuid(Resource):
         url_logging(logger, g.url)
         args = image_uuid_args.parse_args(strict=True)
         w = ImageTagUUID(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/image_categories_count",
+    doc={
+        "description": (
+            "Get list of package categories with count for image"
+        ),
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeImageCategoriesCount(Resource):
+    @ns.expect(image_categories_args)
+    @ns.marshal_with(image_categories_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = image_categories_args.parse_args(strict=True)
+        w = ImageCategoriesCount(g.connection, **args)
         return run_worker(worker=w, args=args)

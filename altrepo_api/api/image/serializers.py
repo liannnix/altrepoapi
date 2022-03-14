@@ -436,3 +436,21 @@ image_tag_uuid_model = ns.model(
         "uuid": fields.String(description="Image package set UUID"),
     },
 )
+
+image_category_model = ns.model(
+    "SiteImageCategoryElementModel",
+    {
+        "category": fields.String(description="package category"),
+        "count": fields.Integer(description="number of packages in category"),
+    },
+)
+image_categories_model = ns.model(
+    "SiteImageCategoriesModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of categories in list"),
+        "categories": fields.Nested(
+            image_category_model, description="found categories", as_list=True
+        ),
+    },
+)

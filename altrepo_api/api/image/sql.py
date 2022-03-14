@@ -558,5 +558,25 @@ FROM ImagePackageSetName
 WHERE img_tag = '{img_tag}'
 """
 
+    get_image_groups_count = """
+SELECT
+    pkg_group_,
+    count(pkg_hash)
+FROM Packages
+WHERE pkg_hash IN
+(
+    SELECT DISTINCT pkg_hash
+    FROM PackageSet
+    WHERE pkgset_uuid IN (
+        SELECT pkgset_uuid
+        FROM PackageSetName
+        WHERE pkgset_ruuid = '{uuid}'
+            {component}
+    )
+)
+GROUP BY pkg_group_
+ORDER BY pkg_group_ ASC    
+"""
+
 
 sql = SQL()
