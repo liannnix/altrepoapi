@@ -230,7 +230,7 @@ def test_all_images(client):
             "tag": "p5:slinux::mcom02:release.9.1.0:armh:install:img",
             "status_code": 404
         },
-{
+        {
             "tag": "p9:slinux:mcom02:release.9.1.0:install:img",
             "status_code": 404
         },
@@ -246,3 +246,44 @@ def test_image_uuid_by_tag(client, kwargs):
     if response.status_code == 200:
         assert data != {}
         assert data["uuid"] != ""
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "uuid": "8810f33e-9056-447a-816b-b480a3985078",
+            "status_code": 200
+        },
+        {
+            "uuid": "8810f33e-9056-447a-816b-b480a3985078",
+            "component": "live",
+            "status_code": 200
+        },
+        {
+            "uuid": "b788d4ad-ce8c-45d2-9fc7-78a93f45f1f4",
+            "component": "live",
+            "status_code": 404
+        },
+        {
+            "uuid": "8810f33e-9056-447a-816b-b480a3985078",
+            "component": "invalid",
+            "status_code": 400
+        },
+        {
+            "uuid": "12345-1234-1234-1234-123456789012",
+            "component": "invalid",
+            "status_code": 400
+        },
+    ]
+)
+def test_image_categories_count(client, kwargs):
+    params = {k: v for k, v in kwargs.items() if k != "status_code"}
+
+    url = url_for("api.image_route_image_categories_count")
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["categories"] != []
