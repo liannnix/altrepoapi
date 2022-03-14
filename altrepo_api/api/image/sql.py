@@ -553,9 +553,26 @@ ORDER BY pkg_buildtime DESC
 """
 
     get_image_uuid_by_tag = """
-SELECT argMax(pkgset_uuid, ts) as pkgset_uuid
+WITH
+root_info AS (
+SELECT
+    argMax(pkgset_uuid, ts) AS uuid,
+    argMax(img_kv['file'], ts) AS r_file
 FROM ImagePackageSetName
 WHERE img_tag = '{img_tag}'
+)
+SELECT
+    pkgset_ruuid,
+    groupUniqArray(pkgset_nodename),
+    any(RI.r_file)
+FROM PackageSetName
+LEFT JOIN
+(
+    SELECT uuid, r_file FROM root_info
+) AS RI ON RI.uuid = pkgset_ruuid
+WHERE pkgset_ruuid IN (SELECT uuid FROM root_info)
+    AND pkgset_depth != 0
+GROUP BY pkgset_ruuid
 """
 
     get_image_groups_count = """
