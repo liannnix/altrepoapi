@@ -1,12 +1,20 @@
 import pytest
 from flask import url_for
 
+BRANCH_IN_DB = ["p9", "p10", "4.0"]
+BRANCH_NOT_DB = "abc"
+ROOT_UUID_VALID = "bb195b37-84b5-45a9-9107-3b7c835c0e20"
+COMPONENT_UUID_VALID = "a2a5645b-1d71-40b9-958c-d5a79b2260dd"
+UUID_VALID = "a2a5645b-1d71-40b9-958c-d5a79b2260dd"
+UUID_NOT_VALID = "00000-0000-0000-0000-000000000000"
+UUID_NOT_DB = "00000000-0000-0000-0000-000000000000"
+
 
 @pytest.mark.parametrize(
     "kwargs",
     [
         {
-            "branch": "p10",
+            "branch": BRANCH_IN_DB[0],
             "edition": "slinux",
             "version": None,
             "release": None,
@@ -18,7 +26,7 @@ from flask import url_for
             "status_code": 200
         },
         {
-            "branch": 'p9',
+            "branch": BRANCH_IN_DB[0],
             "edition": 'cloud',
             "version": "9.2.0",
             "release": "release",
@@ -30,7 +38,7 @@ from flask import url_for
             "status_code": 200
         },
         {
-            "branch": "test",
+            "branch": BRANCH_NOT_DB,
             "edition": "slinux",
             "version": None,
             "release": None,
@@ -42,7 +50,7 @@ from flask import url_for
             "status_code": 400
         },
         {
-            "branch": 'p10',
+            "branch": BRANCH_IN_DB[1],
             "edition": 'slinux',
             "version": "10.0.0",
             "release": "release",
@@ -86,7 +94,7 @@ def test_image_status_get(client):
     "kwargs",
     [
         {
-            "img_branch": "p10",
+            "img_branch": BRANCH_IN_DB[0],
             "img_description_ru": "0YLQtdGB0YLQvtCy0L7QtSDQvtC/0LjRgdCw0L3QuNC1",
             "img_description_en": "dGVzdCBkZXNjcmlwdGlvbg==",
             "images": [
@@ -99,7 +107,7 @@ def test_image_status_get(client):
                     "img_start_date": "2022-03-10T14:26:43.284",
                     "img_end_date": "2022-03-10T14:26:43.284",
                     "img_mailing_list": "https://lists.altlinux.org/mailman/listinfo/devel-ports",
-                    "img_name_bugzilla": "p10",
+                    "img_name_bugzilla": "p9",
                     "img_json": {}
                 }
             ]
@@ -115,11 +123,11 @@ def test_image_status_post(client, kwargs):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"branch": "p10", "edition": "slinux", "status_code": 200},
-        {"branch": "p9", "edition": "alt-kworkstation", "status_code": 200},
-        {"branch": "test", "edition": "alt-kworkstation", "status_code": 400},
-        {"branch": "p9", "edition": "test", "status_code": 400},
-        {"branch": "4.0", "edition": "alt-kworkstation", "status_code": 404},
+        {"branch": BRANCH_IN_DB[1], "edition": "slinux", "status_code": 200},
+        {"branch": BRANCH_IN_DB[0], "edition": "alt-kworkstation", "status_code": 200},
+        {"branch": BRANCH_NOT_DB, "edition": "alt-kworkstation", "status_code": 400},
+        {"branch": BRANCH_IN_DB[0], "edition": "test", "status_code": 400},
+        {"branch": BRANCH_IN_DB[2], "edition": "alt-kworkstation", "status_code": 404},
     ]
 )
 def test_image_tag_status_get(client, kwargs):
@@ -159,37 +167,37 @@ def test_image_tag_status_post(client, kwargs):
     "kwargs",
     [
         {
-            "uuid": "bb195b37-84b5-45a9-9107-3b7c835c0e20",
+            "uuid": ROOT_UUID_VALID,
             "packages_limit": 10,
             "component": False,
             "status_code": 200
         },
         {
-            "uuid": "bb195b37-84b5-45a9-9107-3b7c835c0e20",
+            "uuid": ROOT_UUID_VALID,
             "packages_limit": 10,
             "component": True,
             "status_code": 404
         },
         {
-            "uuid": "a2a5645b-1d71-40b9-958c-d5a79b2260dd",
+            "uuid": COMPONENT_UUID_VALID,
             "packages_limit": 10,
             "component": False,
             "status_code": 404
         },
         {
-            "uuid": "a2a5645b-1d71-40b9-958c-d5a79b2260dd",
+            "uuid": COMPONENT_UUID_VALID,
             "packages_limit": 10,
             "component": True,
             "status_code": 200
         },
         {
-            "uuid": "12345-1234-1234-1234-123456789012",
+            "uuid": UUID_NOT_VALID,
             "packages_limit": 10,
             "component": True,
             "status_code": 400
         },
         {
-            "uuid": "12345678-1234-1234-1234-123456789012",
+            "uuid": UUID_NOT_DB,
             "packages_limit": 10,
             "component": True,
             "status_code": 404
@@ -254,26 +262,26 @@ def test_image_uuid_by_tag(client, kwargs):
     "kwargs",
     [
         {
-            "uuid": "8810f33e-9056-447a-816b-b480a3985078",
+            "uuid": ROOT_UUID_VALID,
             "status_code": 200
         },
         {
-            "uuid": "8810f33e-9056-447a-816b-b480a3985078",
+            "uuid": ROOT_UUID_VALID,
             "component": "live",
             "status_code": 200
         },
         {
-            "uuid": "b788d4ad-ce8c-45d2-9fc7-78a93f45f1f4",
+            "uuid": COMPONENT_UUID_VALID,
             "component": "live",
             "status_code": 404
         },
         {
-            "uuid": "8810f33e-9056-447a-816b-b480a3985078",
+            "uuid": ROOT_UUID_VALID,
             "component": "invalid",
             "status_code": 400
         },
         {
-            "uuid": "12345-1234-1234-1234-123456789012",
+            "uuid": UUID_NOT_VALID,
             "component": "invalid",
             "status_code": 400
         },
