@@ -246,6 +246,8 @@ def test_image_uuid_by_tag(client, kwargs):
     if response.status_code == 200:
         assert data != {}
         assert data["uuid"] != ""
+        assert data["file"] != ""
+        assert data["components"] != []
 
 
 @pytest.mark.parametrize(
