@@ -26,7 +26,8 @@ from altrepo_api.api.parser import (
     img_component_type,
     img_type,
     uuid_type,
-    img_flavor_type
+    img_flavor_type,
+    image_tag_type
 )
 
 # register items
@@ -116,6 +117,13 @@ img_component_input_opt = parser.register_item(
     help="show package information for components",
     location="args",
 )
+img_tag_opt = parser.register_item(
+    "tag",
+    type=image_tag_type,
+    required=True,
+    help="Image tag",
+    location="args",
+)
 
 # build parsers
 image_info_args = parser.build_parser(
@@ -131,3 +139,4 @@ image_info_args = parser.build_parser(
 )
 image_tag_args = parser.build_parser(branch, img_edition_opt)
 image_packages_args = parser.build_parser(img_uuid_opt, pkgs_limit, img_component_input_opt)
+image_uuid_args = parser.build_parser(img_tag_opt)

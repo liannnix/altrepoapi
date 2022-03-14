@@ -29,12 +29,13 @@ from altrepo_api.api.base import (
 from .endpoints.image_status import ImageStatus, ImageTagStatus
 
 from .namespace import get_namespace
-from .endpoints.image_info import AllISOImages, ImageInfo, LastImagePackages
+from .endpoints.image_info import AllISOImages, ImageInfo, LastImagePackages, ImageTagUUID
 from .endpoints.packages import CheckPackages
 from .parsers import (
     image_info_args,
     image_tag_args,
     image_packages_args,
+    image_uuid_args,
 )
 from .serializers import (
     all_iso_model,
@@ -47,6 +48,7 @@ from .serializers import (
     img_tag_status_get_model,
     img_tag_json_model,
     last_packages_image_model,
+    image_tag_uuid_model,
 )
 
 ns = get_namespace()
@@ -207,4 +209,21 @@ class routeLastImagePackages(Resource):
         url_logging(logger, g.url)
         args = image_packages_args.parse_args(strict=True)
         w = LastImagePackages(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/image_uuid_by_tag",
+    doc={
+        "description": "Get image UUID by image tag",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeImageTagUuid(Resource):
+    @ns.expect(image_uuid_args)
+    @ns.marshal_with(image_tag_uuid_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = image_uuid_args.parse_args(strict=True)
+        w = ImageTagUUID(g.connection, **args)
         return run_worker(worker=w, args=args)

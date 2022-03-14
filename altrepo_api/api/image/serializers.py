@@ -428,3 +428,11 @@ last_packages_image_model = ns.model(
         ),
     }
 )
+
+image_tag_uuid_model = ns.model(
+    "ImageTagUUIDModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "uuid": fields.String(description="Image package set UUID"),
+    },
+)

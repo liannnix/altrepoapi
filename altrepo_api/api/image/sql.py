@@ -552,5 +552,11 @@ WHERE pkg_hash IN (
 ORDER BY pkg_buildtime DESC
 """
 
+    get_image_uuid_by_tag = """
+SELECT argMax(pkgset_uuid, ts) as pkgset_uuid
+FROM ImagePackageSetName
+WHERE img_tag = '{img_tag}'
+"""
+
 
 sql = SQL()

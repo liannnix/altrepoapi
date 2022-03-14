@@ -341,3 +341,37 @@ class LastImagePackages(APIWorker):
             "packages": retval,
         }
         return res, 200
+
+
+class ImageTagUUID(APIWorker):
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def get(self):
+        img_tag = self.args["tag"]
+
+        self.conn.request_line = self.sql.get_image_uuid_by_tag.format(img_tag=img_tag)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+
+        if not response or str(response[0][0]) == "00000000-0000-0000-0000-000000000000":
+            self._store_error(
+                {
+                    "message": f"Image tag '{img_tag}' not found.",
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        res = {
+            "request_args": self.args,
+            "uuid": str(response[0][0]),
+        }
+        return res, 200
