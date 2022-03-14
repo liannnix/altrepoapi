@@ -217,3 +217,32 @@ def test_all_images(client):
     if response.status_code == 200:
         assert data != {}
         assert data["images"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "tag": "p9:slinux::mcom02:release.9.1.0:armh:install:img",
+            "status_code": 200
+        },
+        {
+            "tag": "p5:slinux::mcom02:release.9.1.0:armh:install:img",
+            "status_code": 404
+        },
+{
+            "tag": "p9:slinux:mcom02:release.9.1.0:install:img",
+            "status_code": 404
+        },
+    ]
+)
+def test_image_uuid_by_tag(client, kwargs):
+    params = {k: v for k, v in kwargs.items() if k != "status_code"}
+
+    url = url_for("api.image_route_image_tag_uuid")
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["uuid"] != ""
