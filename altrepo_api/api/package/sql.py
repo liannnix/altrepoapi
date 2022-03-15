@@ -108,7 +108,7 @@ FROM
 )
 """
 
-    create_shadow_last_dependss = """
+    create_shadow_last_depends = """
 CREATE TEMPORARY TABLE last_depends
 (pkg_hash UInt64, dp_name String, dp_type String, pkg_name String, pkg_arch String, pkg_sourcepackage UInt8, pkgset_name String)
 """

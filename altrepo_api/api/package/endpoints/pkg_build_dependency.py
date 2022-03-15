@@ -170,7 +170,7 @@ class BuildDependency(APIWorker):
         tmp_repo_state = tmp_repo_state_filtered
         # create shadow copy for last_depends and last_packages_with_source
         # proceed with last_packages_with_source
-        # 1. create shdowing temporary table
+        # 1. create shadowing temporary table
         self.conn.request_line = self.sql.create_shadow_last_pkgs_w_srcs
         status, response = self.conn.send_request()
         if status is False:
@@ -186,7 +186,7 @@ class BuildDependency(APIWorker):
             return
         # proceed with last_depends
         # 1. create shdowing temporary table
-        self.conn.request_line = self.sql.create_shadow_last_dependss
+        self.conn.request_line = self.sql.create_shadow_last_depends
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, self.ll.ERROR, 500)
