@@ -8,6 +8,8 @@ COMPONENT_UUID_VALID = "a2a5645b-1d71-40b9-958c-d5a79b2260dd"
 UUID_VALID = "a2a5645b-1d71-40b9-958c-d5a79b2260dd"
 UUID_NOT_VALID = "00000-0000-0000-0000-000000000000"
 UUID_NOT_DB = "00000000-0000-0000-0000-000000000000"
+CATEGORY_VALID = "Security/Networking"
+CATEGORY_NOT_DB = "Security/Abcd"
 
 
 @pytest.mark.parametrize(
@@ -297,3 +299,47 @@ def test_image_categories_count(client, kwargs):
     if response.status_code == 200:
         assert data != {}
         assert data["categories"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "uuid": ROOT_UUID_VALID,
+            "group": CATEGORY_VALID,
+            "status_code": 200
+        },
+        {
+            "uuid": ROOT_UUID_VALID,
+            "group": CATEGORY_VALID,
+            "component": "live",
+            "status_code": 200
+        },
+        {
+            "uuid": COMPONENT_UUID_VALID,
+            "group": CATEGORY_VALID,
+            "component": "live",
+            "status_code": 404
+        },
+        {
+            "uuid": ROOT_UUID_VALID,
+            "group": CATEGORY_NOT_DB,
+            "status_code": 400
+        },
+        {
+            "uuid": UUID_NOT_VALID,
+            "group": CATEGORY_VALID,
+            "status_code": 400
+        },
+    ]
+)
+def test_image_packages(client, kwargs):
+    params = {k: v for k, v in kwargs.items() if k != "status_code"}
+
+    url = url_for("api.image_route_image_packages")
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["packages"] != []

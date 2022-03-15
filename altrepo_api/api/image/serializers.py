@@ -390,8 +390,8 @@ img_tag_status_get_model = ns.model(
     },
 )
 
-last_packages_image_pkg_model = ns.model(
-    "LastImagePackagesPackageModel",
+packages_image_pkg_model = ns.model(
+    "ImagePackagesPackageModel",
     {
         "hash": fields.String(
             description="package hash UInt64 as string"
@@ -416,13 +416,14 @@ last_packages_image_pkg_model = ns.model(
         "changelog_text": fields.String(description="package last changelog message"),
     }
 )
-last_packages_image_model = ns.model(
-    "LastImagePackagesModel",
+packages_image_model = ns.model(
+    "ImagePackagesModel",
     {
         "request_args": fields.Raw(description="request arguments"),
         "length": fields.Integer(description="number of packages found"),
+        "subcategories": fields.List(fields.String, description="list of subcategories"),
         "packages": fields.Nested(
-            last_packages_image_pkg_model,
+            packages_image_pkg_model,
             description="last packages list",
             as_list=True,
         ),

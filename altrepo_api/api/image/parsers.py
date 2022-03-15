@@ -27,7 +27,7 @@ from altrepo_api.api.parser import (
     img_type,
     uuid_type,
     img_flavor_type,
-    image_tag_type
+    image_tag_type, pkg_groups_type
 )
 
 # register items
@@ -124,6 +124,13 @@ img_tag_opt = parser.register_item(
     help="Image tag",
     location="args",
 )
+group = parser.register_item(
+    "group",
+    type=pkg_groups_type,
+    required=False,
+    help="package category",
+    location="args",
+)
 
 # build parsers
 image_info_args = parser.build_parser(
@@ -138,6 +145,7 @@ image_info_args = parser.build_parser(
     img_type_opt
 )
 image_tag_args = parser.build_parser(branch, img_edition_opt)
-image_packages_args = parser.build_parser(img_uuid_opt, pkgs_limit, img_component_input_opt)
+image_last_packages_args = parser.build_parser(img_uuid_opt, pkgs_limit, img_component_input_opt)
 image_uuid_args = parser.build_parser(img_tag_opt)
 image_categories_args = parser.build_parser(img_uuid_opt, img_component_opt)
+image_packages_args = parser.build_parser(img_uuid_opt, group, img_component_opt)

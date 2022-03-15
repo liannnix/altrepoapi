@@ -499,8 +499,13 @@ SELECT pkg_hash FROM
 (
     SELECT DISTINCT pkg_hash
         FROM PackageSet
-        WHERE pkgset_uuid = '{uuid}'
+        WHERE pkgset_uuid IN (
+            SELECT pkgset_uuid
+            FROM PackageSetName
+            WHERE pkgset_uuid = '{uuid}'
+                AND pkgset_depth = 1
     )
+)    
 """
 
     get_last_image_pkgs_info = """
@@ -512,6 +517,7 @@ pkghash_sorted AS
     WHERE pkg_hash IN (
         SELECT * FROM {tmp_table}
     )
+    AND pkg_name NOT LIKE '%%-debuginfo'
     ORDER BY pkg_buildtime DESC
     LIMIT {limit}
 ),
@@ -591,8 +597,79 @@ WHERE pkg_hash IN
             {component}
     )
 )
+AND pkg_name NOT LIKE '%%-debuginfo'
 GROUP BY pkg_group_
 ORDER BY pkg_group_ ASC    
+"""
+
+    get_image_packages = """
+WITH
+pkg_hashes AS (
+    SELECT DISTINCT pkg_hash
+    FROM PackageSet
+    WHERE pkgset_uuid IN (
+        SELECT pkgset_uuid
+        FROM PackageSetName
+        WHERE pkgset_ruuid = '{uuid}'
+        {component}
+    )
+),
+pkg_info AS
+(
+SELECT
+    pkg_hash,
+    pkg_changelog.hash[1] AS hash
+FROM Packages
+WHERE pkg_hash IN (
+    SELECT * FROM pkg_hashes
+)
+    {group}
+),
+pkg_changelogs AS (
+SELECT chlog_hash,
+       chlog_text
+FROM Changelog
+WHERE chlog_hash IN (
+    SELECT hash FROM pkg_info
+    )
+)
+SELECT DISTINCT
+    pkg_hash,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_summary,
+    pkg_buildtime,
+    pkg_changelog.date[1] AS date,
+    pkg_changelog.name[1] as name,
+    pkg_changelog.evr[1] AS evr,
+    CHLG.chlog_text
+FROM Packages
+LEFT JOIN (
+    SELECT * FROM pkg_changelogs
+) AS CHLG ON CHLG.chlog_hash = pkg_changelog.hash[1]
+WHERE pkg_hash IN (
+    SELECT pkg_hash FROM pkg_info
+    )
+"""
+
+    get_group_subgroups = """
+SELECT DISTINCT pkg_group_
+FROM Packages
+WHERE pkg_hash IN
+(
+    SELECT DISTINCT pkg_hash
+    FROM PackageSet
+    WHERE pkgset_uuid IN (
+        SELECT pkgset_uuid
+        FROM PackageSetName
+        WHERE pkgset_ruuid = '{uuid}'
+        {component}
+    )
+)
+    AND pkg_name NOT LIKE '%%-debuginfo'
+    AND pkg_group_ like '{group}%%'
+    AND pkg_group_ != '{group}'
 """
 
 
