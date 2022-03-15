@@ -20,6 +20,7 @@ from collections import namedtuple
 from altrepo_api.utils import bytes2human, datetime_to_iso
 from altrepo_api.api.base import APIWorker
 from ..sql import sql
+from ...misc import lut
 
 
 class AllISOImages(APIWorker):
@@ -412,4 +413,103 @@ class ImageCategoriesCount(APIWorker):
         res = [{"category": el[0], "count": el[1]} for el in response]
 
         res = {"request_args": self.args, "length": len(res), "categories": res}
+        return res, 200
+
+
+class ImagePackages(APIWorker):
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        self.validation_results = []
+
+        if self.args["group"]:
+            match = False
+            if self.args["group"] not in lut.pkg_groups:
+                for el in lut.pkg_groups:
+                    if (
+                        (el.startswith(self.args["group"]) and self.args["group"][-1] == "/")
+                        or el.startswith(self.args["group"] + '/')
+                    ):
+                        match = True
+                        break
+            else:
+                match = True
+            if not match:
+                self.validation_results.append(
+                    f"unknown package category : {self.args['group']}"
+                )
+                self.validation_results.append(
+                    f"allowed package categories : {lut.pkg_groups}"
+                )
+
+        if self.validation_results != []:
+            return False
+        else:
+            return True
+
+    def get(self):
+        group = self.args["group"]
+        uuid = self.args["uuid"]
+        component = self.args["component"]
+
+        if group is not None:
+            group_clause = f"AND pkg_group_ LIKE '{group}%%'"
+        else:
+            group_clause = ""
+
+        if component is not None:
+            component = f"AND pkgset_nodename = '{component}'"
+        else:
+            component = ""
+
+        self.conn.request_line = self.sql.get_image_packages.format(uuid=uuid, group=group_clause, component=component)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {
+                    "message": f"No data found in database for given parameters",
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        PkgMeta = namedtuple(
+            "PkgMeta",
+            [
+                "hash",
+                "pkg_name",
+                "pkg_version",
+                "pkg_release",
+                "pkg_summary",
+                "pkg_buildtime",
+                "changelog_date",
+                "changelog_name",
+                "changelog_evr",
+                "changelog_text",
+            ],
+        )
+
+        retval = [PkgMeta(*el)._asdict() for el in response]
+
+        subcategories = []
+        self.conn.request_line = self.sql.get_group_subgroups.format(uuid=uuid, group=group, component=component)
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+
+        if response:
+            subcategories = [el[0] for el in response]
+
+        res = {"request_args": self.args, "length": len(retval), "subcategories": subcategories, "packages": retval}
         return res, 200

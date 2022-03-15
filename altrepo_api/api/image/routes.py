@@ -29,13 +29,14 @@ from altrepo_api.api.base import (
 from .endpoints.image_status import ImageStatus, ImageTagStatus
 
 from .namespace import get_namespace
-from .endpoints.image_info import AllISOImages, ImageInfo, LastImagePackages, ImageTagUUID, ImageCategoriesCount
+from .endpoints.image_info import AllISOImages, ImageInfo, LastImagePackages, ImageTagUUID, ImageCategoriesCount, \
+    ImagePackages
 from .endpoints.packages import CheckPackages
 from .parsers import (
     image_info_args,
     image_tag_args,
-    image_packages_args,
-    image_uuid_args, image_categories_args,
+    image_last_packages_args,
+    image_uuid_args, image_categories_args, image_packages_args,
 )
 from .serializers import (
     all_iso_model,
@@ -47,7 +48,7 @@ from .serializers import (
     img_json_model,
     img_tag_status_get_model,
     img_tag_json_model,
-    last_packages_image_model,
+    packages_image_model,
     image_tag_uuid_model, image_categories_model,
 )
 
@@ -203,11 +204,11 @@ class routeImageTagStatus(Resource):
     },
 )
 class routeLastImagePackages(Resource):
-    @ns.expect(image_packages_args)
-    @ns.marshal_with(last_packages_image_model)
+    @ns.expect(image_last_packages_args)
+    @ns.marshal_with(packages_image_model)
     def get(self):
         url_logging(logger, g.url)
-        args = image_packages_args.parse_args(strict=True)
+        args = image_last_packages_args.parse_args(strict=True)
         w = LastImagePackages(g.connection, **args)
         return run_worker(worker=w, args=args)
 
@@ -245,4 +246,23 @@ class routeImageCategoriesCount(Resource):
         url_logging(logger, g.url)
         args = image_categories_args.parse_args(strict=True)
         w = ImageCategoriesCount(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/image_packages",
+    doc={
+        "description": (
+            "Get list of image packages in accordance to given parameters"
+        ),
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeImagePackages(Resource):
+    @ns.expect(image_packages_args)
+    @ns.marshal_with(packages_image_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = image_packages_args.parse_args(strict=True)
+        w = ImagePackages(g.connection, **args)
         return run_worker(worker=w, args=args)
