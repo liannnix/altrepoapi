@@ -146,6 +146,7 @@ image_info_args = parser.build_parser(
 )
 image_tag_args = parser.build_parser(branch, img_edition_opt)
 image_last_packages_args = parser.build_parser(img_uuid_opt, pkgs_limit, img_component_input_opt)
+image_with_cve_fix_args = parser.build_parser(img_uuid_opt, img_component_opt)
 image_uuid_args = parser.build_parser(img_tag_opt)
 image_categories_args = parser.build_parser(img_uuid_opt, img_component_opt)
 image_packages_args = parser.build_parser(img_uuid_opt, group, img_component_opt)

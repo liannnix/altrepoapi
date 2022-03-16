@@ -432,6 +432,18 @@ packages_image_model = ns.model(
         ),
     }
 )
+last_packages_image_model = ns.model(
+    "LastImagePackagesModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "packages": fields.Nested(
+            packages_image_pkg_model,
+            description="last packages list",
+            as_list=True,
+        ),
+    }
+)
 
 image_tag_uuid_model = ns.model(
     "ImageTagUUIDModel",

@@ -29,14 +29,24 @@ from altrepo_api.api.base import (
 from .endpoints.image_status import ImageStatus, ImageTagStatus
 
 from .namespace import get_namespace
-from .endpoints.image_info import AllISOImages, ImageInfo, LastImagePackages, ImageTagUUID, ImageCategoriesCount, \
-    ImagePackages
+from .endpoints.image_info import (
+    AllISOImages,
+    ImageInfo,
+    LastImagePackages,
+    ImageTagUUID,
+    ImageCategoriesCount,
+    ImagePackages,
+    LastImagePackagesWithCVEFix
+)
 from .endpoints.packages import CheckPackages
 from .parsers import (
     image_info_args,
     image_tag_args,
     image_last_packages_args,
-    image_uuid_args, image_categories_args, image_packages_args,
+    image_uuid_args,
+    image_categories_args,
+    image_packages_args,
+    image_with_cve_fix_args,
 )
 from .serializers import (
     all_iso_model,
@@ -49,7 +59,9 @@ from .serializers import (
     img_tag_status_get_model,
     img_tag_json_model,
     packages_image_model,
-    image_tag_uuid_model, image_categories_model,
+    image_tag_uuid_model,
+    image_categories_model,
+    last_packages_image_model,
 )
 
 ns = get_namespace()
@@ -205,7 +217,7 @@ class routeImageTagStatus(Resource):
 )
 class routeLastImagePackages(Resource):
     @ns.expect(image_last_packages_args)
-    @ns.marshal_with(packages_image_model)
+    @ns.marshal_with(last_packages_image_model)
     def get(self):
         url_logging(logger, g.url)
         args = image_last_packages_args.parse_args(strict=True)
@@ -265,4 +277,24 @@ class routeImagePackages(Resource):
         url_logging(logger, g.url)
         args = image_packages_args.parse_args(strict=True)
         w = ImagePackages(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/last_packages_image_with_cve_fixed",
+    doc={
+        "description": (
+            "Get information about last packages with CVE "
+            "fixes mentioned in changelog for given image"
+        ),
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeLastImagePackagesWithCveFix(Resource):
+    @ns.expect(image_with_cve_fix_args)
+    @ns.marshal_with(last_packages_image_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = image_with_cve_fix_args.parse_args(strict=True)
+        w = LastImagePackagesWithCVEFix(g.connection, **args)
         return run_worker(worker=w, args=args)
