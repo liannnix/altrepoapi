@@ -439,6 +439,7 @@ image_tag_uuid_model = ns.model(
         "request_args": fields.Raw(description="request arguments"),
         "uuid": fields.String(description="Image package set UUID"),
         "file": fields.String(description="ISO image file name"),
+        "type": fields.String(description="Image type"),
         "components": fields.Raw(description="List of components for given tag"),
     },
 )

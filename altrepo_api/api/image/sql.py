@@ -564,18 +564,20 @@ WITH
 root_info AS (
 SELECT
     argMax(pkgset_uuid, ts) AS uuid,
-    argMax(img_kv['file'], ts) AS r_file
+    argMax(img_kv['file'], ts) AS r_file,
+    argMax(img_type, ts) AS img_type
 FROM ImagePackageSetName
 WHERE img_tag = '{img_tag}'
 )
 SELECT
     pkgset_ruuid,
     groupUniqArray(pkgset_nodename),
-    any(RI.r_file)
+    any(RI.r_file),
+    any(RI.img_type)
 FROM PackageSetName
 LEFT JOIN
 (
-    SELECT uuid, r_file FROM root_info
+    SELECT uuid, r_file, img_type FROM root_info
 ) AS RI ON RI.uuid = pkgset_ruuid
 WHERE pkgset_ruuid IN (SELECT uuid FROM root_info)
     AND pkgset_depth != 0

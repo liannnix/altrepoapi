@@ -376,6 +376,7 @@ class ImageTagUUID(APIWorker):
             "request_args": self.args,
             "uuid": str(response[0][0]),
             "file": str(response[0][2]),
+            "type": str(response[0][3]),
             "components": response[0][1]
         }
         return res, 200
