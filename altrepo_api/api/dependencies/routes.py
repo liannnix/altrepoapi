@@ -46,7 +46,7 @@ logger = get_logger(__name__)
         "responses": GET_RESPONSES_400_404,
     },
 )
-class routeDependsBinPakage(Resource):
+class routeDependsBinPackage(Resource):
     @ns.expect()
     @ns.marshal_with(package_dependencies_model)
     def get(self, pkghash):

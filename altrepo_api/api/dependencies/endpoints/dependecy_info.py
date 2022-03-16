@@ -90,7 +90,7 @@ class DependsBinPackage(APIWorker):
         ]
 
         res = {
-            "request_args": self.pkghash,
+            "request_args": str(self.pkghash),
             "length": len(pkg_dependencies),
             "dependencies": pkg_dependencies,
             "versions": pkg_versions,
