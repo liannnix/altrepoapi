@@ -15,12 +15,15 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from collections import namedtuple
+from datetime import timedelta
 
 from altrepo_api.utils import sort_branches, datetime_to_iso
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
 from ..sql import sql
+
+MAX_BRANCH_HIST_REWIND = 5
 
 
 class PackagesetPackages(APIWorker):
@@ -130,7 +133,12 @@ class PackagesetPackages(APIWorker):
         if response:
             subcategories = [el[0] for el in response]
 
-        res = {"request_args": self.args, "length": len(retval), "subcategories": subcategories, "packages": retval}
+        res = {
+            "request_args": self.args,
+            "length": len(retval),
+            "subcategories": subcategories,
+            "packages": retval,
+        }
         return res, 200
 
 
@@ -198,27 +206,92 @@ class LastBranchPackages(APIWorker):
             self.packager = ""
             packager_sub = ""
 
-        if not self.packager:
+        # get last branch date
+        self.conn.request_line = self.sql.get_last_branch_date.format(
+            branch=self.branch
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {
+                    "message": f"No data found in database for given parameters",
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+        last_branch_date = response[0][0]
+
+        if self.packager:
+            tmp_table = self.sql.get_last_branch_hsh_source.format(branch=self.branch)
+        else:
             # get source packages diff from current branch state and previous one
             tmp_table = "tmp_srcpkg_hashes"
             self.conn.request_line = self.sql.get_last_branch_src_diff.format(
-                tmp_table=tmp_table, branch=self.branch
+                tmp_table=tmp_table,
+                branch=self.branch,
+                last_pkgset_date=last_branch_date,
             )
             status, response = self.conn.send_request()
             if not status:
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
-            if not response:
+            # check if we have source packages diff from previous branch state
+            self.conn.request_line = self.sql.check_tmp_table_count.format(
+                tmp_table=tmp_table
+            )
+            status, response = self.conn.send_request()
+            if not status:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return self.error
+            src_diff_count = response[0][0]
+            t_date = last_branch_date
+            if src_diff_count == 0:
+                # try to go back in branch history
+                for _ in range(MAX_BRANCH_HIST_REWIND):
+                    # decrement date
+                    t_date = t_date - timedelta(days=1)  # type: ignore
+                    # drop temporary table
+                    self.conn.request_line = self.sql.drop_tmp_table.format(
+                        tmp_table=tmp_table
+                    )
+                    status, response = self.conn.send_request()
+                    if not status:
+                        self._store_sql_error(response, self.ll.ERROR, 500)
+                        return self.error
+                    # fill it again using new date
+                    self.conn.request_line = self.sql.get_last_branch_src_diff.format(
+                        tmp_table=tmp_table, branch=self.branch, last_pkgset_date=t_date
+                    )
+                    status, response = self.conn.send_request()
+                    if not status:
+                        self._store_sql_error(response, self.ll.ERROR, 500)
+                        return self.error
+                    # check if we have source packages diff from previous branch state
+                    self.conn.request_line = self.sql.check_tmp_table_count.format(
+                        tmp_table=tmp_table
+                    )
+                    status, response = self.conn.send_request()
+                    if not status:
+                        self._store_sql_error(response, self.ll.ERROR, 500)
+                        return self.error
+                    src_diff_count = response[0][0]
+                    if src_diff_count != 0:
+                        break
+            if src_diff_count == 0:
                 self._store_error(
                     {
-                        "message": f"No data found in database for given parameters",
+                        "message": f"Failed to get branch state diff from database",
                         "args": self.args,
                     },
                     self.ll.INFO,
                     404,
                 )
-        else:
-            tmp_table = self.sql.get_last_branch_hsh_source.format(branch=self.branch)
+                return self.error
         # get source and binary packages info by hashes from temporary table
         self.conn.request_line = self.sql.get_last_branch_pkgs_info.format(
             branch=self.branch,
@@ -259,15 +332,7 @@ class LastBranchPackages(APIWorker):
 
         packages = (PkgMeta(*el[1:])._asdict() for el in response)
 
-        # get last branch date
-        self.conn.request_line = self.sql.get_last_branch_date.format(
-            branch=self.branch
-        )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
-        last_branch_date = datetime_to_iso(response[0][0])  # type: ignore
+        last_branch_date = datetime_to_iso(last_branch_date)  # type: ignore
 
         retval = []
 
