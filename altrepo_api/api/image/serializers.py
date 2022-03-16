@@ -403,6 +403,9 @@ packages_image_pkg_model = ns.model(
         "release": fields.String(
             attribute="pkg_release", description="package release"
         ),
+        "arch": fields.String(
+            attribute="pkg_arch", description="package architecture"
+        ),
         "summary": fields.String(
             attribute="pkg_summary", description="package summary"
         ),
