@@ -185,7 +185,7 @@ class LastBranchPackages(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["packages_limit"] and self.args["packages_limit"] < 1:
+        if self.args["packages_limit"] < 1:
             self.validation_results.append(
                 f"last packages limit should be greater or equal to 1"
             )
