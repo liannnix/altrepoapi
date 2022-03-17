@@ -134,7 +134,7 @@ def test_last_packages(client, kwargs):
             continue
         if v is not None:
             params[k] = v
-    url = url_for("api.site_route_last_task_packages")
+    url = "api/site/last_packages"
     response = client.get(url, query_string=params)
     data = response.json
     assert response.status_code == kwargs["status_code"]
