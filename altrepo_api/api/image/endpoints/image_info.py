@@ -318,6 +318,7 @@ class LastImagePackages(APIWorker):
                 "pkg_name",
                 "pkg_version",
                 "pkg_release",
+                "pkg_arch",
                 "pkg_summary",
                 "pkg_buildtime",
                 "changelog_date",
@@ -371,11 +372,23 @@ class ImageTagUUID(APIWorker):
             )
             return self.error
 
+        ImgInfo = namedtuple(
+            "ImgInfo",
+            [
+                "uuid",
+                "components",
+                "file",
+                "type",
+            ],
+        )
+
+        img_info = ImgInfo(*response[0])  # type: ignore
         res = {
             "request_args": self.args,
-            "uuid": str(response[0][0]),
-            "file": str(response[0][2]),
-            "components": response[0][1]
+            "uuid": img_info.uuid,
+            "file": img_info.file,
+            "type": img_info.type,
+            "components": img_info.components
         }
         return res, 200
 
@@ -490,6 +503,7 @@ class ImagePackages(APIWorker):
                 "pkg_name",
                 "pkg_version",
                 "pkg_release",
+                "pkg_arch",
                 "pkg_summary",
                 "pkg_buildtime",
                 "changelog_date",
@@ -512,4 +526,63 @@ class ImagePackages(APIWorker):
             subcategories = [el[0] for el in response]
 
         res = {"request_args": self.args, "length": len(retval), "subcategories": subcategories, "packages": retval}
+        return res, 200
+
+
+class LastImagePackagesWithCVEFix(APIWorker):
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def get(self):
+        uuid = self.args["uuid"]
+        component = self.args["component"]
+
+        if component is not None:
+            component = f"AND pkgset_nodename = '{component}'"
+        else:
+            component = ""
+
+        self.conn.request_line = self.sql.get_last_image_packages_with_cve_fixes.format(
+            uuid=uuid, component=component
+        )
+
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {
+                    "message": f"No data found in database for given parameters",
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        PkgMeta = namedtuple(
+            "PkgMeta",
+            [
+                "hash",
+                "pkg_name",
+                "pkg_version",
+                "pkg_release",
+                "pkg_arch",
+                "pkg_summary",
+                "pkg_buildtime",
+                "changelog_hash",
+                "changelog_text",
+            ],
+        )
+
+        retval = [PkgMeta(*el)._asdict() for el in response]
+        res = {
+            "request_args": self.args,
+            "length": len(retval),
+            "packages": retval,
+        }
         return res, 200

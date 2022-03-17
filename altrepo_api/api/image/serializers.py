@@ -403,6 +403,9 @@ packages_image_pkg_model = ns.model(
         "release": fields.String(
             attribute="pkg_release", description="package release"
         ),
+        "arch": fields.String(
+            attribute="pkg_arch", description="package architecture"
+        ),
         "summary": fields.String(
             attribute="pkg_summary", description="package summary"
         ),
@@ -429,6 +432,18 @@ packages_image_model = ns.model(
         ),
     }
 )
+last_packages_image_model = ns.model(
+    "LastImagePackagesModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "packages": fields.Nested(
+            packages_image_pkg_model,
+            description="last packages list",
+            as_list=True,
+        ),
+    }
+)
 
 image_tag_uuid_model = ns.model(
     "ImageTagUUIDModel",
@@ -436,6 +451,7 @@ image_tag_uuid_model = ns.model(
         "request_args": fields.Raw(description="request arguments"),
         "uuid": fields.String(description="Image package set UUID"),
         "file": fields.String(description="ISO image file name"),
+        "type": fields.String(description="Image type"),
         "components": fields.Raw(description="List of components for given tag"),
     },
 )

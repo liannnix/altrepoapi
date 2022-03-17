@@ -534,6 +534,7 @@ SELECT DISTINCT
     pkg_name,
     pkg_version,
     pkg_release,
+    pkg_arch,
     pkg_summary,
     pkg_buildtime,
     pkg_changelog.date[1] AS date,
@@ -563,18 +564,20 @@ WITH
 root_info AS (
 SELECT
     argMax(pkgset_uuid, ts) AS uuid,
-    argMax(img_kv['file'], ts) AS r_file
+    argMax(img_kv['file'], ts) AS r_file,
+    argMax(img_type, ts) AS img_type
 FROM ImagePackageSetName
 WHERE img_tag = '{img_tag}'
 )
 SELECT
     pkgset_ruuid,
     groupUniqArray(pkgset_nodename),
-    any(RI.r_file)
+    any(RI.r_file),
+    any(RI.img_type)
 FROM PackageSetName
 LEFT JOIN
 (
-    SELECT uuid, r_file FROM root_info
+    SELECT uuid, r_file, img_type FROM root_info
 ) AS RI ON RI.uuid = pkgset_ruuid
 WHERE pkgset_ruuid IN (SELECT uuid FROM root_info)
     AND pkgset_depth != 0
@@ -638,6 +641,7 @@ SELECT DISTINCT
     pkg_name,
     pkg_version,
     pkg_release,
+    pkg_arch,
     pkg_summary,
     pkg_buildtime,
     pkg_changelog.date[1] AS date,
@@ -670,6 +674,69 @@ WHERE pkg_hash IN
     AND pkg_name NOT LIKE '%%-debuginfo'
     AND pkg_group_ like '{group}%%'
     AND pkg_group_ != '{group}'
+"""
+
+    get_last_image_packages_with_cve_fixes = """
+WITH
+pkg_info AS
+(
+SELECT
+    pkg_hash,
+    pkg_changelog.hash[1] AS hash
+FROM Packages
+WHERE pkg_hash IN (
+    SELECT DISTINCT pkg_hash
+    FROM PackageSet
+    WHERE pkgset_uuid IN (
+        SELECT pkgset_uuid
+        FROM PackageSetName
+        WHERE pkgset_ruuid = '{uuid}'
+            {component}
+    )
+)
+),
+changelog_with_cve AS
+(
+    SELECT DISTINCT
+        chlog_hash,
+        chlog_text
+    FROM Changelog
+    WHERE match(chlog_text, 'CVE-\d{{4}}-(\d{{7}}|\d{{6}}|\d{{5}}|\d{{4}})')
+        AND chlog_hash IN (
+            SELECT hash FROM pkg_info
+        )
+)
+SELECT
+    PKG.*,
+    chlog_text
+FROM changelog_with_cve
+INNER JOIN
+(
+    SELECT DISTINCT
+        pkg_hash,
+        TT.pkg_name,
+        TT.pkg_version,
+        TT.pkg_release,
+        TT.pkg_arch,
+        TT.pkg_summary,
+        TT.pkg_buildtime,
+        pkg_changelog.hash[1] AS chlg_hash
+    FROM Packages
+    LEFT JOIN (
+        SELECT
+            pkg_hash,
+            pkg_name,
+            pkg_version,
+            pkg_release,
+            pkg_arch,
+            pkg_summary,
+            pkg_buildtime
+        FROM Packages
+        ) AS TT ON TT.pkg_hash = Packages.pkg_hash
+    WHERE pkg_hash IN (
+        SELECT pkg_hash FROM pkg_info
+    )
+) AS PKG ON PKG.chlg_hash = changelog_with_cve.chlog_hash
 """
 
 
