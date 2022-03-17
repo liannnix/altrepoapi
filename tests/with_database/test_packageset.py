@@ -78,7 +78,7 @@ def test_repository_packages(client, kwargs):
     for k, v in kwargs.items():
         if k in ("status_code",):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     response = client.get(url, query_string=params)
     data = response.json
@@ -107,7 +107,7 @@ def test_compare_packagesets(client, kwargs):
     for k, v in kwargs.items():
         if k in ("status_code",):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     response = client.get(url, query_string=params)
     data = response.json

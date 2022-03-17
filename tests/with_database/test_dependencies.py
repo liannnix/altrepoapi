@@ -27,7 +27,7 @@ def test_packages_by_dependency(client, kwargs):
     for k, v in kwargs.items():
         if k in ("pkghash", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.dependencies_route_package_depends")
     response = client.get(url, query_string=params)
@@ -56,7 +56,7 @@ def test_binary_package_dependencies(client, kwargs):
     for k, v in kwargs.items():
         if k in ("pkghash", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     response = client.get(url, query_string=params)
     data = response.json
@@ -84,7 +84,7 @@ def test_source_package_dependencies(client, kwargs):
     for k, v in kwargs.items():
         if k in ("pkghash", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     response = client.get(url, query_string=params)
     data = response.json

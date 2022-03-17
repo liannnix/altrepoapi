@@ -22,7 +22,7 @@ def test_tasks_by_package(client, kwargs):
     for k, v in kwargs.items():
         if k in ("status_code",):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.site_route_tasks_by_package")
     response = client.get(url, query_string=params)
@@ -48,7 +48,7 @@ def test_tasks_by_maintainer(client, kwargs):
     for k, v in kwargs.items():
         if k in ("status_code",):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.site_route_tasks_by_maintainer")
     response = client.get(url, query_string=params)
@@ -74,7 +74,7 @@ def test_package_versions_from_tasks(client, kwargs):
     for k, v in kwargs.items():
         if k in ("status_code",):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.site_route_package_versions_from_tasks")
     response = client.get(url, query_string=params)
@@ -102,7 +102,7 @@ def test_last_packages_by_tasks(client, kwargs):
     for k, v in kwargs.items():
         if k in ("status_code",):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.site_route_last_task_packages")
     response = client.get(url, query_string=params)
@@ -132,7 +132,7 @@ def test_last_packages(client, kwargs):
     for k, v in kwargs.items():
         if k in ("status_code",):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.site_route_last_task_packages")
     response = client.get(url, query_string=params)

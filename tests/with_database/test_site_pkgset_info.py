@@ -76,7 +76,7 @@ def test_all_pkgset_archs(client, kwargs):
     for k, v in kwargs.items():
         if k in ("status_code",):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.site_route_all_packageset_archs")
     response = client.get(url, query_string=params)
@@ -103,7 +103,7 @@ def test_all_pkgset_archs_with_src_count(client, kwargs):
     for k, v in kwargs.items():
         if k in ("status_code",):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.site_route_all_packageset_archs_source_count")
     response = client.get(url, query_string=params)
@@ -132,7 +132,7 @@ def test_pkgset_categories_count(client, kwargs):
     for k, v in kwargs.items():
         if k in ("status_code",):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.site_route_pkgset_categories_count")
     response = client.get(url, query_string=params)

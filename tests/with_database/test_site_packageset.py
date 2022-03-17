@@ -85,7 +85,7 @@ def test_repository_packages(client, kwargs):
     for k, v in kwargs.items():
         if k in ("pkghash", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.site_route_packageset_packages")
     response = client.get(url, query_string=params)
@@ -116,7 +116,7 @@ def test_pkghash_by_name(client, kwargs):
     for k, v in kwargs.items():
         if k in ("pkghash", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.site_route_packageset_package_hash")
     response = client.get(url, query_string=params)
@@ -164,7 +164,7 @@ def test_pkghash_by_binary_name(client, kwargs):
     for k, v in kwargs.items():
         if k in ("pkghash", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.site_route_packageset_package_binary_hash")
     response = client.get(url, query_string=params)
@@ -229,7 +229,7 @@ def test_pkghash_by_nvr(client, kwargs):
     for k, v in kwargs.items():
         if k in ("pkghash", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.site_route_packageset_pkghash_by_nvr")
     response = client.get(url, query_string=params)
@@ -269,6 +269,12 @@ def test_pkghash_by_nvr(client, kwargs):
         },
         {
             "branch": BRANCH_IN_DB,
+            "packages_limit": 0,
+            "packager": PACKAGER_IN_DB,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
             "packages_limit": -10,
             "packager": PACKAGER_IN_DB,
             "status_code": 400,
@@ -286,7 +292,7 @@ def test_last_packages_by_branch(client, kwargs):
     for k, v in kwargs.items():
         if k in ("pkghash", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.site_route_last_branch_packages")
     response = client.get(url, query_string=params)
@@ -315,7 +321,7 @@ def test_packagesets_by_hash(client, kwargs):
     for k, v in kwargs.items():
         if k in ("pkghash", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     response = client.get(url, query_string=params)
     data = response.json
@@ -363,7 +369,7 @@ def test_find_packages(client, kwargs):
     for k, v in kwargs.items():
         if k in ("pkghash", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.site_route_packageset_find_packages")
     response = client.get(url, query_string=params)
@@ -392,7 +398,7 @@ def test_fast_packages_search_lookup(client, kwargs):
     for k, v in kwargs.items():
         if k in ("pkghash", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.site_route_packageset_fast_packages_search")
     response = client.get(url, query_string=params)

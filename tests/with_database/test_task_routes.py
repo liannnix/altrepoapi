@@ -23,7 +23,7 @@ def test_task_info(client, kwargs):
     for k, v in kwargs.items():
         if k in ("id", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
 
     url = url_for("api.task_route_task_info", **{"id": kwargs["id"]})
@@ -97,7 +97,7 @@ def test_task_history(client, kwargs):
     for k, v in kwargs.items():
         if k == "status_code":
             continue
-        if v:
+        if v is not None:
             params[k] = v
 
     url = url_for("api.task_route_task_history")
@@ -160,7 +160,7 @@ def test_task_repo(client, kwargs):
     for k, v in kwargs.items():
         if k in ("id", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
 
     url = url_for("api.task_route_task_repo", **{"id": kwargs["id"]})
@@ -187,7 +187,7 @@ def test_task_wds(client, kwargs):
     for k, v in kwargs.items():
         if k in ("id", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
 
     url = url_for("api.task_route_task_build_dependency", **{"id": kwargs["id"]})
@@ -234,7 +234,7 @@ def test_task_misconflict(client, kwargs):
     for k, v in kwargs.items():
         if k in ("id", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
 
     url = url_for("api.task_route_task_misconflict_packages", **{"id": kwargs["id"]})

@@ -31,7 +31,7 @@ def test_build_dependency_set(client, kwargs):
     for k, v in kwargs.items():
         if k in ("pkghash", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.package_route_package_build_dependency_set")
     response = client.get(url, query_string=params)
@@ -60,7 +60,7 @@ def test_find_packageset(client, kwargs):
     for k, v in kwargs.items():
         if k in ("pkghash", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.package_route_find_packageset")
     response = client.get(url, query_string=params)
@@ -113,7 +113,7 @@ def test_misconflict_packages(client, kwargs):
     for k, v in kwargs.items():
         if k in ("pkghash", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.package_route_package_misconflict_packages")
     response = client.get(url, query_string=params)
@@ -197,7 +197,7 @@ def test_package_by_file_md5(client, kwargs):
     for k, v in kwargs.items():
         if k in ("pkghash", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.package_route_package_by_file_md5")
     response = client.get(url, query_string=params)
@@ -259,7 +259,7 @@ def test_package_by_file_name(client, kwargs):
     for k, v in kwargs.items():
         if k in ("pkghash", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.package_route_package_by_file_name")
     response = client.get(url, query_string=params)
@@ -287,7 +287,7 @@ def test_package_files(client, kwargs):
     for k, v in kwargs.items():
         if k in ("pkghash", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     response = client.get(url, query_string=params)
     data = response.json
@@ -408,7 +408,7 @@ def test_package_info(client, kwargs):
     for k, v in kwargs.items():
         if k in ("pkghash", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.package_route_package_info")
     response = client.get(url, query_string=params)
@@ -522,7 +522,7 @@ def test_repocop_get(client, kwargs):
     for k, v in kwargs.items():
         if k in ("pkghash", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.package_route_package_repocop")
     response = client.get(url, query_string=params)
@@ -549,7 +549,7 @@ def test_specfile_by_hash(client, kwargs):
     for k, v in kwargs.items():
         if k in ("pkghash", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     response = client.get(url, query_string=params)
     data = response.json
@@ -585,7 +585,7 @@ def test_specfile_by_name(client, kwargs):
     for k, v in kwargs.items():
         if k in ("pkghash", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     response = client.get(url, query_string=params)
     data = response.json
@@ -621,7 +621,7 @@ def test_unpackaged_dirs(client, kwargs):
     for k, v in kwargs.items():
         if k in ("pkghash", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     response = client.get(url, query_string=params)
     data = response.json
@@ -649,7 +649,7 @@ def test_wds(client, kwargs):
     for k, v in kwargs.items():
         if k in ("pkghash", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     response = client.get(url, query_string=params)
     data = response.json

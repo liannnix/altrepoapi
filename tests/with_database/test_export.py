@@ -18,7 +18,7 @@ def test_repology(client, kwargs):
     for k, v in kwargs.items():
         if k in ("branch", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.export_route_package_info", **{"branch": kwargs["branch"]})
     response = client.get(url, query_string=params)
@@ -46,7 +46,7 @@ def test_sitemap(client, kwargs):
     for k, v in kwargs.items():
         if k in ("branch", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for("api.export_route_sitemap_packages", **{"branch": kwargs["branch"]})
     response = client.get(url, query_string=params)
@@ -72,7 +72,7 @@ def test_branch_binary_packages(client, kwargs):
     for k, v in kwargs.items():
         if k in ("branch", "status_code"):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     url = url_for(
         "api.export_route_package_set_binaries", **{"branch": kwargs["branch"]}

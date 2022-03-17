@@ -24,7 +24,7 @@ def test_bugzilla_by_package(client, kwargs):
     for k, v in kwargs.items():
         if k in ("status_code",):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     response = client.get(url, query_string=params)
     data = response.json
@@ -56,7 +56,7 @@ def test_bugzilla_by_maintainer(client, kwargs):
     for k, v in kwargs.items():
         if k in ("status_code",):
             continue
-        if v:
+        if v is not None:
             params[k] = v
     response = client.get(url, query_string=params)
     data = response.json
