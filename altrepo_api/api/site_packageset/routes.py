@@ -101,7 +101,7 @@ class routePackagesetPackageHash(Resource):
     "/pkghash_by_binary_name",
     doc={
         "description": (
-            "Get source package hash by package name and package set name"
+            "Get binary package hash by package name, arch and package set name"
         ),
         "responses": GET_RESPONSES_400_404,
     },
