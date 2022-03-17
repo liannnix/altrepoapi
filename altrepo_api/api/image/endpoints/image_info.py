@@ -372,12 +372,23 @@ class ImageTagUUID(APIWorker):
             )
             return self.error
 
+        ImgInfo = namedtuple(
+            "ImgInfo",
+            [
+                "uuid",
+                "components",
+                "file",
+                "type",
+            ],
+        )
+
+        img_info = ImgInfo(*response[0])  # type: ignore
         res = {
             "request_args": self.args,
-            "uuid": str(response[0][0]),
-            "file": str(response[0][2]),
-            "type": str(response[0][3]),
-            "components": response[0][1]
+            "uuid": img_info.uuid,
+            "file": img_info.file,
+            "type": img_info.type,
+            "components": img_info.components
         }
         return res, 200
 
