@@ -36,7 +36,7 @@ class LastTaskPackages(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["tasks_limit"] and self.args["tasks_limit"] < 1:
+        if self.args["tasks_limit"] < 1:
             self.validation_results.append(
                 f"last tasks limit should be greater or equal to 1"
             )
