@@ -1,11 +1,11 @@
 version: '3.8'
 
 services:
-  app:
-    container_name: tests
+  app-test:
+    container_name: app-test
     environment:
       - TZ=Europe/Moscow
     build:
       context: .
       dockerfile: Dockerfile-tests
-    command: python3 -m pytest --disable-pytest-warnings
+    command: python3 -m pytest --disable-pytest-warnings tests/unit
