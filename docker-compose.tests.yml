@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  app:
+    container_name: tests
+    environment:
+      - TZ=Europe/Moscow
+    build:
+      context: .
+      dockerfile: Dockerfile-tests
+    command: python3 -m pytest --disable-pytest-warnings
