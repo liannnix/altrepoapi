@@ -343,3 +343,43 @@ def test_image_packages(client, kwargs):
     if response.status_code == 200:
         assert data != {}
         assert data["packages"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "uuid": ROOT_UUID_VALID,
+            "status_code": 200
+        },
+        {
+            "uuid": ROOT_UUID_VALID,
+            "component": "live",
+            "status_code": 200
+        },
+        {
+            "uuid": COMPONENT_UUID_VALID,
+            "component": "live",
+            "status_code": 404
+        },
+        {
+            "uuid": ROOT_UUID_VALID,
+            "component": "invalid",
+            "status_code": 400
+        },
+        {
+            "uuid": UUID_NOT_VALID,
+            "status_code": 400
+        },
+    ]
+)
+def test_last_packages_image_with_cve_fixed(client, kwargs):
+    params = {k: v for k, v in kwargs.items() if k != "status_code"}
+
+    url = url_for("api.image_route_last_image_packages_with_cve_fix")
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["packages"] != []
