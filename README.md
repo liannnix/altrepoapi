@@ -175,3 +175,30 @@ formatted mapping is convenient to use jq utility.
 All API endpoints and response models are described in Swagger web-interface at `http://{altrepo.api.address:port}/api/`
 
 (* replace API address or domain name and port in accordance to web-server configuration)
+
+# Run API tests
+
+Beware that API tests require a DB containing actual data.
+Only unit tests from `tests/unit` could be run without actual connection to DB.
+
+Copy file `tests/api.conf.example` to `tests/api.conf` and edit it with actual DB settings before running the tests.
+
+## Requirements
+
+Following additional modules are required for tests:
+
+* python3-module-pytest
+* python3-module-pytest-flask
+
+## Run tests from source folder
+
+Really simple as it always with pytest:
+
+    [user@host]$ python3 -m pytest
+    [user@host]$ python3 -m pytest tests/unit
+
+## Run tests using docker container
+
+Use following command to run tests in separate docker container:
+
+    [root@host]# docker-compose -f docker-compose.tests.yml up --build && docker rm app-test

@@ -6,6 +6,21 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.6.1] - 2022-03-18
+
+Regular API code updates and fixes.
+
+### Added
+- unit and functional tests
+- 'image/*' routes for frontend
+
+### Changed
+- updated README.md
+
+### Fixed
+- request argument validators
+- 'what_depends_src' SQL requets errors
+
 ## [1.6.0] - 2022-02-14
 
 Regular API code updates and fixes.
