@@ -93,11 +93,11 @@ class routePackageSetBinaries(Resource):
 
 
 @ns.route(
-    "/translation/packages_po_file",
+    "/translation/packages_po_files",
     doc={
         "description": (
-            "Get a PO file with package's summary "
-            "and description for translation"
+            "Get an archive of PO files with package's summary "
+            "and description for translation purpose"
         ),
         "responses": GET_RESPONSES_400_404,
     },
@@ -105,7 +105,7 @@ class routePackageSetBinaries(Resource):
 class routeTranslationExport(Resource):
     @ns.expect(translation_export_args)
     # @ns.marshal_with(translation_export_model)
-    @ns.produces(["text/plain"])
+    @ns.produces(["application/zip"])
     def get(self):
         url_logging(logger, g.url)
         args = translation_export_args.parse_args(strict=True)
@@ -127,5 +127,5 @@ class routeTranslationExport(Resource):
             file,
             as_attachment=True,
             attachment_filename=file_name,
-            mimetype="text/plain",
+            mimetype="application/zip",
         )

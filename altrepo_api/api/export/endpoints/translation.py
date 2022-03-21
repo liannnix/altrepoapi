@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import zipfile
 import datetime
 from io import BytesIO
 from collections import namedtuple
@@ -22,9 +23,9 @@ from altrepo_api.api.base import APIWorker
 from ..sql import sql
 
 
-PO_FILE_NAME_BASE = "packages.po"
-PO_HEADER = """
-# SOME DESCRIPTIVE TITLE
+ZIP_FILE_NAME = "packages_POT.zip"
+PO_FILE_NAME_BASE = "packages_{symbol}.pot"
+PO_HEADER = """# SOME DESCRIPTIVE TITLE
 # Copyright (C) YEAR Free Software Foundation, Inc.
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -66,7 +67,9 @@ def format_po_file(packages: list[PkgInfo], uniq_only: bool = False) -> BytesIO:
         return res
 
     # write PO-file header
-    header = PO_HEADER.format(created_date=datetime.datetime.now().strftime('%Y-%m-%d %H:%m'))
+    header = PO_HEADER.format(
+        created_date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    )
     result.write(header.encode())
 
     for pkg in packages:
@@ -122,10 +125,26 @@ class TranslationExport(APIWorker):
             )
             return self.error
 
-        po_file = format_po_file(
-            sorted([PkgInfo(*el) for el in response], key=lambda pkg: pkg.src_pkg_name), # type: ignore
-            uniq_only=True,
-        )
-        po_file_name  = PO_FILE_NAME_BASE
+        packages = sorted([PkgInfo(*el) for el in response], key=lambda pkg: pkg.src_pkg_name)  # type: ignore
+        pkgs_by_1st = {}
+        for pkg in packages:
+            first_src_symbol = pkg.src_pkg_name[0].lower()
+            if first_src_symbol not in pkgs_by_1st:
+                pkgs_by_1st[first_src_symbol] = []
+            pkgs_by_1st[first_src_symbol].append(pkg)
 
-        return {"file": po_file, "file_name": po_file_name}, 200
+        zip_buffer = BytesIO()
+        with zipfile.ZipFile(
+            file=zip_buffer,
+            mode="a",
+            compression=zipfile.ZIP_DEFLATED,
+            allowZip64=False,
+            compresslevel=5,
+        ) as zip_file:
+            for k, v in pkgs_by_1st.items():
+                po_file = format_po_file(v, uniq_only=True)
+                po_file_name = PO_FILE_NAME_BASE.format(symbol=k)
+                zip_file.writestr(po_file_name, po_file.getvalue())
+                po_file.close()
+
+        return {"file": zip_buffer, "file_name": ZIP_FILE_NAME}, 200
