@@ -159,5 +159,19 @@ WHERE pkg_hash IN
 ORDER BY pkg_arch, pkg_name
 """
 
+    get_packages_descriptions = """
+SELECT DISTINCT
+    pkg_name,
+    pkg_url,
+    pkg_summary,
+    pkg_description,
+    arrayStringConcat(arrayPopBack(arrayPopBack(splitByChar('-', pkg_sourcerpm))), '-') AS src_pkg_name
+FROM last_packages
+WHERE pkgset_name IN {branches}
+    AND pkg_name NOT LIKE '%%-debuginfo'
+    AND pkg_name NOT LIKE 'i586-%%'
+ORDER BY pkg_name
+"""
+
 
 sql = SQL()

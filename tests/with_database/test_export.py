@@ -3,6 +3,7 @@ from flask import url_for
 
 
 BRANCH_IN_DB = "sisyphus"
+BRANCH_IN_DB_2 = "p10"
 BRANCH_NOT_IN_DB = "fakebranch"
 
 
@@ -84,3 +85,22 @@ def test_branch_binary_packages(client, kwargs):
         assert data != {}
         assert data["length"] != 0
         assert data["packages"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"branches": [BRANCH_IN_DB, BRANCH_IN_DB_2], "status_code": 200},
+        {"branches": [BRANCH_IN_DB, BRANCH_NOT_IN_DB], "status_code": 400},
+        {"branches": [], "status_code": 400},
+    ],
+)
+def test_translation_packages_po_file(client, kwargs):
+    params = {}
+    params = {"branches": ",".join(kwargs["branches"])}
+    url = url_for("api.export_route_translation_export")
+    response = client.get(url, query_string=params)
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        data = response.get_data().decode()
+        assert len(data) > 10_000_000  # usual file size is about 16_000_000 symbols

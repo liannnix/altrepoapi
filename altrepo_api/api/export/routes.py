@@ -14,18 +14,19 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from flask import g
+from flask import g, abort, send_file
 from flask_restx import Resource
 
-from altrepo_api.utils import get_logger, url_logging
+from altrepo_api.utils import get_logger, url_logging, response_error_parser
 from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
 
 from .namespace import get_namespace
 from .endpoints.repology import RepologyExport
 from .endpoints.sitemap import SitemapPackages
 from .endpoints.packageset import PackageSetBinaries
+from .endpoints.translation import TranslationExport
 
-from .parsers import pkgset_packages_args
+from .parsers import pkgset_packages_args, translation_export_args
 from .serializers import (
     repology_export_model,
     sitemap_packages_export_model,
@@ -89,3 +90,42 @@ class routePackageSetBinaries(Resource):
         args = pkgset_packages_args.parse_args(strict=True)
         w = PackageSetBinaries(g.connection, branch, **args)
         return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/translation/packages_po_file",
+    doc={
+        "description": (
+            "Get a PO file with package's summary "
+            "and description for translation"
+        ),
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeTranslationExport(Resource):
+    @ns.expect(translation_export_args)
+    # @ns.marshal_with(translation_export_model)
+    @ns.produces(["text/plain"])
+    def get(self):
+        url_logging(logger, g.url)
+        args = translation_export_args.parse_args(strict=True)
+        w = TranslationExport(g.connection, **args)
+        if not w.check_params():
+            abort(
+                400,
+                message=f"Request parameters validation error",
+                args=args,
+                validation_message=w.validation_results,
+            )
+        result, code = w.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        file = result["file"]
+        file_name = result["file_name"]
+        file.seek(0)
+        return send_file(
+            file,
+            as_attachment=True,
+            attachment_filename=file_name,
+            mimetype="text/plain",
+        )

@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from altrepo_api.api.parser import parser, arch_name_type
+from altrepo_api.api.parser import parser, arch_name_type, branch_name_type
 
 # register parser items
 arch_opt = parser.register_item(
@@ -24,6 +24,15 @@ arch_opt = parser.register_item(
     help="package architecture",
     location="args",
 )
+branch_list = parser.register_item(
+    "branches",
+    type=branch_name_type,
+    action="split",
+    required=True,
+    help="list of package sets to filter result",
+    location="args",
+)
 
 # build parsers
 pkgset_packages_args = parser.build_parser(arch_opt)
+translation_export_args = parser.build_parser(branch_list)
