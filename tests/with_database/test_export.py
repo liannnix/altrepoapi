@@ -1,4 +1,6 @@
 import pytest
+import zipfile
+from io import BytesIO
 from flask import url_for
 
 
@@ -102,5 +104,7 @@ def test_translation_packages_po_file(client, kwargs):
     response = client.get(url, query_string=params)
     assert response.status_code == kwargs["status_code"]
     if response.status_code == 200:
-        data = response.get_data().decode()
-        assert len(data) > 10_000_000  # usual file size is about 16_000_000 symbols
+        assert response.content_type == "application/zip"
+        data = BytesIO(response.get_data())
+        zip = zipfile.ZipFile(file=data, mode="r")
+        assert len(zip.filelist) > 10
