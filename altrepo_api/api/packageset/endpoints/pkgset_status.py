@@ -136,8 +136,22 @@ class RepositoryStatus(APIWorker):
         )
 
         res = [RepositoryStatusInfo(*el)._asdict() for el in response]
+
+        # check if branch has active images
+        self.conn.request_line = self.sql.get_branch_has_active_images
+
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+
+        branch_images = set()
+        if response:
+            branch_images = {el[0] for el in response}
+
         for el in res:
             el["mirrors_json"] = json.loads(el["mirrors_json"])
+            el["has_images"] = 1 if el["branch"] in branch_images else 0
         res = {"branches": res}
 
         return res, 200
