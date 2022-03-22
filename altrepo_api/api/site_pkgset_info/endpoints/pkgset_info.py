@@ -128,7 +128,7 @@ class AllPackagesets(APIWorker):
                 counts[cnt.branch] = []
             counts[cnt.branch].append({"arch": cnt.arch, "count": cnt.count})
 
-        # get pagaset status info
+        # get pkgset status info
         self.conn.request_line = self.sql.get_pkgset_status
 
         status, response = self.conn.send_request()
@@ -156,10 +156,25 @@ class AllPackagesets(APIWorker):
         )
 
         statuses = {el[0]: RepositoryStatusInfo(*el[1:])._asdict() for el in response}
+
+        # check if branch has active images
+        self.conn.request_line = self.sql.get_branch_has_active_images
+
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+
+        branch_images = set()
+        if response:
+            branch_images = {el[0] for el in response}
+
         # format dates
-        for el in statuses.values():
+        for k, el in statuses.items():
             el["start_date"] = datetime_to_iso(el["start_date"])
             el["end_date"] = datetime_to_iso(el["end_date"])
+            # add flag if has active images
+            el["has_images"] = 1 if k in branch_images else 0
         # sort statuses by branch
         statuses = [
             {"branch": br, **statuses[br]} for br in sort_branches(statuses.keys())

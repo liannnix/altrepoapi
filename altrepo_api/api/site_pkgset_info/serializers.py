@@ -120,7 +120,10 @@ pkgsets_status_el_model = ns.model(
         "show": fields.Integer(description="0 - hide branch, 1 - show branch"),
         "description_ru": fields.String(description="html description in Russian"),
         "description_en": fields.String(description="html description in English"),
-    }
+        "has_images": fields.Integer(
+            description="0 - branch has no active images, 1 - branch has active images"
+        ),
+    },
 )
 pkgsets_summary_status_model = ns.model(
     "SitePackagesetsSummaryStatusModel",

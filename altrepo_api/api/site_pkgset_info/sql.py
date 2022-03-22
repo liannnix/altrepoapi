@@ -96,5 +96,21 @@ WHERE pkgset_name = '{branch}'
     AND pkg_arch NOT LIKE 'srpm'
 """
 
+    get_branch_has_active_images = """
+SELECT img_branch, count(img_edition)
+FROM (
+    SELECT
+        img_branch,
+        img_edition,
+        argMax(img_show, ts) AS img_show
+    FROM ImageStatus
+    GROUP BY 
+        img_branch,
+        img_edition
+)
+WHERE img_show == 'show'
+GROUP BY img_branch
+"""
+
 
 sql = SQL()
