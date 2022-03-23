@@ -140,20 +140,28 @@ class PackageDownloadLinks(APIWorker):
                 return self.error
             # store filenames and archs as dict
             filenames = {el[0]: PkgInfo(*el[1:]) for el in response}
-            # get 'x86_64-i586' packages from task plan
-            self.conn.request_line = self.sql.get_arepo_pkgs_by_task.format(
-                taskid=subtasks[0]["task_id"]
-            )
-            status, response = self.conn.send_request()
-            if not status:
-                self._store_sql_error(response, self.ll.ERROR, 500)
-                return self.error
-            if response:
-                # store filenames and archs as dict
-                arepo_filenames = {el[0]: PkgInfo(*el[1:]) for el in response}
-                filenames.update(arepo_filenames)
-                # update bin_pkgs with arepo packages
-                bin_pkgs["x86_64-i586"] = list({h for h in arepo_filenames})
+            # try to find 'arepo' packages from task
+            if "i586" in bin_pkgs:
+                # get all 'x86_64-i586' packages from task plan
+                self.conn.request_line = self.sql.get_arepo_pkgs_by_task.format(
+                    taskid=subtasks[0]["task_id"]
+                )
+                status, response = self.conn.send_request()
+                if not status:
+                    self._store_sql_error(response, self.ll.ERROR, 500)
+                    return self.error
+                if response:
+                    # store filenames and archs as dict
+                    arepo_filenames = {el[0]: PkgInfo(*el[1:]) for el in response}
+                    # filter packages using package file name from 'i586' arch
+                    i586_pkg_files = {p.file for p in filenames.values() if p.arch == 'i586'}
+                    for hash, pkg in list(arepo_filenames.items()):
+                        fname = pkg.file.replace("i586-", "")
+                        if fname not in i586_pkg_files:
+                            del arepo_filenames[hash]
+                    filenames.update(arepo_filenames)
+                    # update bin_pkgs with arepo packages
+                    bin_pkgs["x86_64-i586"] = list({h for h in arepo_filenames})
         else:
             # no task found -> use ftp.altlinux.org
             use_task = False
