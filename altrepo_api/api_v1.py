@@ -28,6 +28,7 @@ from altrepo_api.api.package import ns as package_ns
 from altrepo_api.api.packageset import ns as packageset_ns
 from altrepo_api.api.dependencies import ns as dependencies_ns
 from altrepo_api.api.site_task import ns as site_task_ns
+from altrepo_api.api.site_image import ns as site_image_ns
 from altrepo_api.api.site_package import ns as site_package_ns
 from altrepo_api.api.site_pkgset_info import ns as site_pkgset_info
 from altrepo_api.api.site_maintainer import ns as site_maintainer_ns
@@ -60,6 +61,7 @@ api.add_namespace(packageset_ns)
 api.add_namespace(bug_ns)
 api.add_namespace(dependencies_ns)
 api.add_namespace(site_task_ns)
+api.add_namespace(site_image_ns)
 api.add_namespace(site_package_ns)
 api.add_namespace(site_pkgset_info)
 api.add_namespace(site_maintainer_ns)
