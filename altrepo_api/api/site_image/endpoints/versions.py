@@ -68,7 +68,12 @@ class PackageVersionsFromImages(APIWorker):
                 "arch",
                 "uuid",
                 "tag",
-                "file",
+                "platform",
+                "version_major",
+                "version_minor",
+                "version_sub",
+                "img_arch",
+                "type"
             ],
         )
         versions = [PkgVersions(*el)._asdict() for el in response]  # type: ignore

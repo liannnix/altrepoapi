@@ -83,7 +83,12 @@ img_packages AS (
 SELECT
     PKGS.*,
     TAGS.img_tag,
-    TAGS.file
+    TAGS.img_platform,
+    TAGS.img_version_major,
+    TAGS.img_version_minor,
+    TAGS.img_version_sub,
+    TAGS.img_arch,
+    TAGS.img_type
 FROM
 (
     SELECT
@@ -105,7 +110,12 @@ LEFT JOIN
     SELECT
         img_tag,
         pkgset_uuid,
-        img_kv['file'] AS file
+        img_platform,
+        img_version_major,
+        img_version_minor,
+        img_version_sub,
+        img_arch,
+        img_type
     FROM ImagePackageSetName
 ) AS TAGS ON TAGS.pkgset_uuid = PKGS.ruuid
 """
