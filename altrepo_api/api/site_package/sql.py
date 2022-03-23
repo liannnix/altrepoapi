@@ -507,6 +507,30 @@ FROM Packages
 WHERE pkg_hash IN {hshs}
 """
 
+    get_arepo_pkgs_by_task = """
+SELECT
+    pkg_hash,
+    pkg_filename,
+    pkg_arch,
+    pkg_filesize
+FROM Packages
+WHERE pkg_hash IN (
+    SELECT pkgh_mmh
+    FROM PackageHash
+    WHERE pkgh_sha256 IN (
+        SELECT tplan_sha256
+        FROM TaskPlanPkgHash
+        WHERE tplan_action = 'add'
+            AND tplan_hash IN (
+                SELECT tplan_hash
+                FROM task_plan_hashes
+                WHERE task_id = {taskid}
+                    AND tplan_arch = 'x86_64-i586'
+            )
+    )
+)
+"""
+
     get_src_and_binary_pkgs = """
 SELECT DISTINCT
     pkg_hash,

@@ -40,6 +40,7 @@ def make_link_to_task(base, task, subtask, arch, filename, is_src):
         )
     )
 
+
 def make_link_to_repo(base, branch, files, arch, filename, is_src):
     return "/".join(
         (
@@ -48,6 +49,17 @@ def make_link_to_repo(base, branch, files, arch, filename, is_src):
             files,
             "" if is_src else arch,
             "SRPMS" if is_src else "RPMS",
+            filename,
+        )
+    )
+
+
+def make_link_to_task_arepo(base, task, filename):
+    return "/".join(
+        (
+            base,
+            str(task),
+            "build/repo/x86_64-i586/RPMS.task",
             filename,
         )
     )
@@ -128,6 +140,20 @@ class PackageDownloadLinks(APIWorker):
                 return self.error
             # store filenames and archs as dict
             filenames = {el[0]: PkgInfo(*el[1:]) for el in response}
+            # get 'x86_64-i586' packages from task plan
+            self.conn.request_line = self.sql.get_arepo_pkgs_by_task.format(
+                taskid=subtasks[0]["task_id"]
+            )
+            status, response = self.conn.send_request()
+            if not status:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return self.error
+            if response:
+                # store filenames and archs as dict
+                arepo_filenames = {el[0]: PkgInfo(*el[1:]) for el in response}
+                filenames.update(arepo_filenames)
+                # update bin_pkgs with arepo packages
+                bin_pkgs["x86_64-i586"] = list({h for h in arepo_filenames})
         else:
             # no task found -> use ftp.altlinux.org
             use_task = False
@@ -190,8 +216,8 @@ class PackageDownloadLinks(APIWorker):
                 src_arch = arch
                 break
         # keep only 'noarch' packages from src_arch iteration
-        filenames_noarch = {k: v for k, v in filenames.items() if v.arch == 'noarch'}
-        filenames = {k: v for k, v in filenames.items() if v.arch != 'noarch'}
+        filenames_noarch = {k: v for k, v in filenames.items() if v.arch == "noarch"}
+        filenames = {k: v for k, v in filenames.items() if v.arch != "noarch"}
         # append 'noarch' packages only from src_arch iteration
         for p in bin_pkgs[src_arch]:
             if p in filenames_noarch:
@@ -263,6 +289,19 @@ class PackageDownloadLinks(APIWorker):
                                             k,
                                             filenames[p].file,
                                             is_src=False,
+                                        ),
+                                        "md5": md5_sums[p],
+                                        "size": bytes2human(filenames[p].size),
+                                    }
+                                )
+                            elif filenames[p].arch == "x86_64-i586":
+                                res[k].append(
+                                    {
+                                        "name": filenames[p].file,
+                                        "url": make_link_to_task_arepo(
+                                            task_base_,
+                                            task_,
+                                            filenames[p].file,
                                         ),
                                         "md5": md5_sums[p],
                                         "size": bytes2human(filenames[p].size),
