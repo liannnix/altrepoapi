@@ -25,7 +25,12 @@ pkgs_versions_from_images_el__el_model = ns.model(
     {
         "tag": fields.String(description="image tag"),
         "uuid": fields.String(description="image root UUID"),
-        "file": fields.String(description="image file name"),
+        "version_major": fields.Integer(description="Image version major"),
+        "version_minor": fields.Integer(description="Image version minor"),
+        "version_sub": fields.Integer(description="Image version sub"),
+        "img_arch": fields.String(description="Image architecture"),
+        "platform": fields.String(description="Image platform"),
+        "type": fields.String(description="Image type"),
         "hash": fields.String(description="package hash UInt64 as string"),
         "name": fields.String(description="package name"),
         "version": fields.String(description="package version"),
