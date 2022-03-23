@@ -291,6 +291,7 @@ class LookupTables:
     gitalt_tasks_base = "https://git.altlinux.org/tasks"
     packages_base = "https://packages.altlinux.org/en"
     bugzilla_base = "https://bugzilla.altlinux.org"
+    public_ftp_base = "http://ftp.altlinux.org/pub/distributions/ALTLinux"
 
     rpmsense_flags = [
         "RPMSENSE_ANY",

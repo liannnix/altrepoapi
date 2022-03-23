@@ -27,6 +27,32 @@ from altrepo_api.api.misc import lut
 from ..sql import sql
 
 
+def make_link_to_task(base, task, subtask, arch, filename, is_src):
+    return "/".join(
+        (
+            base,
+            str(task),
+            "build",
+            str(subtask),
+            arch,
+            "srpm" if is_src else "rpms",
+            filename,
+        )
+    )
+
+def make_link_to_repo(base, branch, files, arch, filename, is_src):
+    return "/".join(
+        (
+            base,
+            branch,
+            files,
+            "" if is_src else arch,
+            "SRPMS" if is_src else "RPMS",
+            filename,
+        )
+    )
+
+
 class PackageDownloadLinks(APIWorker):
     """Build source and binary packages downloads links."""
 
@@ -194,31 +220,6 @@ class PackageDownloadLinks(APIWorker):
             PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
         ]
 
-        def make_link_to_task(base, task, subtask, arch, filename, is_src):
-            return "/".join(
-                (
-                    base,
-                    str(task),
-                    "build",
-                    str(subtask),
-                    arch,
-                    "srpm" if is_src else "rpms",
-                    filename,
-                )
-            )
-
-        def make_link_to_repo(base, branch, files, arch, filename, is_src):
-            return "/".join(
-                (
-                    base,
-                    branch,
-                    files,
-                    "" if is_src else arch,
-                    "SRPMS" if is_src else "RPMS",
-                    filename,
-                )
-            )
-
         res = {}
 
         if use_task:
@@ -285,14 +286,13 @@ class PackageDownloadLinks(APIWorker):
                                 )
         else:
             #  build links to repo
-            repo_base_ = "http://ftp.altlinux.org/pub/distributions/ALTLinux"
+            repo_base_ = lut.public_ftp_base
             if self.branch in lut.taskless_branches:
                 branch_, arch_ = self.branch.split("_")
                 files_ = "files"
                 repo_base_ += f"/ports/{arch_}"
                 if branch_ == "sisyphus":
                     branch_ = "Sisyphus"
-
             elif self.branch == "sisyphus":
                 branch_ = "Sisyphus"
                 files_ = "files"
@@ -484,31 +484,6 @@ class BinaryPackageDownloadLinks(APIWorker):
             PkgVersions(*(b, *pkg_versions[b][-4:]))._asdict() for b in pkg_branches
         ]
 
-        def make_link_to_task(base, task, subtask, arch, filename, is_src):
-            return "/".join(
-                (
-                    base,
-                    str(task),
-                    "build",
-                    str(subtask),
-                    arch,
-                    "srpm" if is_src else "rpms",
-                    filename,
-                )
-            )
-
-        def make_link_to_repo(base, branch, files, arch, filename, is_src):
-            return "/".join(
-                (
-                    base,
-                    branch,
-                    files,
-                    "" if is_src else arch,
-                    "SRPMS" if is_src else "RPMS",
-                    filename,
-                )
-            )
-
         res = {}
 
         if use_task:
@@ -552,14 +527,13 @@ class BinaryPackageDownloadLinks(APIWorker):
                 )
         else:
             #  build links to repo
-            repo_base_ = "http://ftp.altlinux.org/pub/distributions/ALTLinux"
+            repo_base_ = lut.public_ftp_base
             if self.branch in lut.taskless_branches:
                 branch_, arch_ = self.branch.split("_")
                 files_ = "files"
                 repo_base_ += f"/ports/{arch_}"
                 if branch_ == "sisyphus":
                     branch_ = "Sisyphus"
-
             elif self.branch == "sisyphus":
                 branch_ = "Sisyphus"
                 files_ = "files"
