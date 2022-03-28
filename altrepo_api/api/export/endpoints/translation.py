@@ -13,7 +13,6 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 import zipfile
 import datetime
 from io import BytesIO
@@ -22,6 +21,8 @@ from collections import namedtuple
 from altrepo_api.api.base import APIWorker
 from ..sql import sql
 
+ESCAPING = str.maketrans({"\"": r"\"",
+                          "\\": r"\\"})
 
 ZIP_FILE_NAME = "packages_POT.zip"
 PO_FILE_NAME_BASE = "packages_{symbol}.pot"
@@ -62,11 +63,11 @@ def format_po_file(packages: list[PkgInfo], uniq_only: bool = False) -> BytesIO:
             res += 'msgid ""\n'
             for number_line, line in enumerate(lines):
                 if number_line + 1 != len(lines):
-                    res += f'"{line}\\n"\n'
+                    res += f'"{line.translate(ESCAPING)}\\n"\n'
                 else:
-                    res += f'"{line}"\n'
+                    res += f'"{line.translate(ESCAPING)}"\n'
         else:
-            res = f'msgid "{msg}"\n'
+            res = f'msgid "{msg.translate(ESCAPING)}"\n'
         return res
 
     # write PO-file header
@@ -77,20 +78,20 @@ def format_po_file(packages: list[PkgInfo], uniq_only: bool = False) -> BytesIO:
 
     for pkg in packages:
         str_ = ""
-        if pkg.summary not in uniq_summary:
+        if pkg.summary not in uniq_summary and pkg.summary not in uniq_description:
             str_ += f"#: {pkg.name}\n"
             str_ += f"#. homepage: {pkg.url}\n"
             str_ += "#. summary\n"
             str_ += format_message(pkg.summary)
-            str_ += "msgstr \n\n"
+            str_ += 'msgstr ""\n\n'
             if uniq_only:
                 uniq_summary.add(pkg.summary)
-        if pkg.description not in uniq_description:
+        if pkg.description not in uniq_description and pkg.description not in uniq_summary:
             str_ += f"#: {pkg.name}\n"
             str_ += f"#. homepage: {pkg.url}\n"
             str_ += "#. description\n"
             str_ += format_message(pkg.description)
-            str_ += "msgstr \n\n"
+            str_ += 'msgstr ""\n\n'
             if uniq_only:
                 uniq_description.add(pkg.description)
         if str_ != "":
