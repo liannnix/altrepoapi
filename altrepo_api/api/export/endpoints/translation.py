@@ -60,8 +60,11 @@ def format_po_file(packages: list[PkgInfo], uniq_only: bool = False) -> BytesIO:
         if "\n" in msg:
             lines = msg.split("\n")
             res += 'msgid ""\n'
-            for line in lines:
-                res += f'"{line}\\n"\n'
+            for number_line, line in enumerate(lines):
+                if number_line + 1 != len(lines):
+                    res += f'"{line}\\n"\n'
+                else:
+                    res += f'"{line}"\n'
         else:
             res = f'msgid "{msg}"\n'
         return res
