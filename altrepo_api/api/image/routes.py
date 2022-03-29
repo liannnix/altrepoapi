@@ -292,7 +292,7 @@ class routeImagePackages(Resource):
 )
 class routeLastImagePackagesWithCveFix(Resource):
     @ns.expect(image_with_cve_fix_args)
-    @ns.marshal_with(last_packages_image_model)
+    @ns.marshal_with(packages_image_model)
     def get(self):
         url_logging(logger, g.url)
         args = image_with_cve_fix_args.parse_args(strict=True)

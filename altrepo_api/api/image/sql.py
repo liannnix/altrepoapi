@@ -508,55 +508,73 @@ SELECT pkg_hash FROM
 )    
 """
 
+    get_img_pkg_info = """
+CREATE TEMPORARY TABLE {tmp_table} AS
+SELECT * FROM
+(
+    SELECT
+        pkg_hash,
+        pkg_summary,
+        pkg_name,
+        pkg_arch,
+        pkg_version,
+        pkg_release
+    FROM Packages
+    WHERE pkg_hash IN (
+        SELECT pkg_hash FROM {tmp_pkg_hashes}
+        )
+)    
+    """
+
     get_last_image_pkgs_info = """
-WITH
-pkghash_sorted AS
-(
-    SELECT pkg_hash
-    FROM Packages
-    WHERE pkg_hash IN (
-        SELECT * FROM {tmp_table}
-    )
-    AND pkg_name NOT LIKE '%%-debuginfo'
-    ORDER BY pkg_buildtime DESC
-    LIMIT {limit}
-),
-pkg_changelog AS
-(
-    SELECT pkg_changelog.hash[1]
-    FROM Packages
-    WHERE pkg_hash IN (
-        SELECT * FROM pkghash_sorted
-    )
-)
-SELECT DISTINCT
+SELECT
+    task_id,
+    task_changed,
+    tplan_action,
+    pkgset_name,
     pkg_hash,
     pkg_name,
     pkg_version,
     pkg_release,
     pkg_arch,
-    pkg_summary,
-    pkg_buildtime,
-    pkg_changelog.date[1] AS date,
-    pkg_changelog.name[1] as name,
-    pkg_changelog.evr[1] AS evr,
-    pkg_changelog.hash[1] AS hash,
-    Chg.chlog_text as text
-FROM Packages
-LEFT JOIN
-(
-    SELECT DISTINCT
-        chlog_hash AS hash,
-        chlog_text
-    FROM Changelog
-    WHERE chlog_hash IN (
-        SELECT * FROM pkg_changelog
+    chlog_date,
+    chlog_name,
+    chlog_nick,
+    chlog_evr,
+    chlog_text,
+    IMG.pkg_hash,
+    IMG.pkg_summary,
+    IMG.pkg_version,
+    IMG.pkg_release
+FROM BranchPackageHistory
+LEFT JOIN (
+    SELECT DISTINCT *
+    FROM {tmp_table}
+) AS IMG ON IMG.pkg_name = BranchPackageHistory.pkg_name and IMG.pkg_arch = BranchPackageHistory.pkg_arch
+WHERE (pkg_name, pkg_arch) IN (
+    SELECT pkg_name, pkg_arch FROM {tmp_table}
     )
-) AS Chg ON Chg.hash = hash
-WHERE pkg_hash IN (
-    SELECT * FROM pkghash_sorted
-)
-ORDER BY pkg_buildtime DESC
+    AND (task_id, pkg_name, pkg_arch, tplan_action) IN (
+        SELECT
+            task_id,
+            pkg_name,
+            pkg_arch,
+            if(has(groupUniqArray(tplan_action), 0), 'add', 'delete') AS actions
+        FROM BranchPackageHistory
+        WHERE (pkg_name, pkg_arch) IN (
+            SELECT pkg_name, pkg_arch FROM {tmp_table}
+            )
+            AND pkgset_name = '{branch}'
+            AND pkg_sourcepackage = 0
+        GROUP BY
+            task_id,
+            pkg_name,
+            pkg_arch
+    )
+    AND pkgset_name = '{branch}'
+    AND pkg_sourcepackage = 0
+ORDER BY task_changed DESC
+LIMIT {limit}
 """
 
     get_image_uuid_by_tag = """

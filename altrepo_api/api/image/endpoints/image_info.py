@@ -265,17 +265,18 @@ class LastImagePackages(APIWorker):
 
     def get(self):
         uuid = self.args["uuid"]
+        branch = self.args["branch"]
         packages_limit = self.args["packages_limit"]
         component = self.args["component"]
 
-        tmp_table = "tmp_pkg_hashes"
+        tmp_pkg_hashes = "tmp_pkg_hashes"
         if component is False:
             self.conn.request_line = self.sql.get_last_image_all_pkg_diff.format(
-                tmp_table=tmp_table, uuid=uuid
+                tmp_table=tmp_pkg_hashes, uuid=uuid
             )
         else:
             self.conn.request_line = self.sql.get_last_image_cmp_pkg_diff.format(
-                tmp_table=tmp_table, uuid=uuid, component=component
+                tmp_table=tmp_pkg_hashes, uuid=uuid, component=component
             )
 
         status, response = self.conn.send_request()
@@ -292,9 +293,28 @@ class LastImagePackages(APIWorker):
                 404,
             )
 
+        tmp_table = "tmp_img_pkg_info"
+        self.conn.request_line = self.sql.get_img_pkg_info.format(
+            tmp_table=tmp_table, tmp_pkg_hashes=tmp_pkg_hashes
+        )
+
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {
+                    "message": f"No data found in database for given parameters",
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
         self.conn.request_line = self.sql.get_last_image_pkgs_info.format(
             tmp_table=tmp_table,
-            limit=packages_limit,
+            branch=branch,
+            limit=packages_limit
         )
         status, response = self.conn.send_request()
         if not status:
@@ -314,33 +334,33 @@ class LastImagePackages(APIWorker):
         PkgMeta = namedtuple(
             "PkgMeta",
             [
-                "hash",
+                "task_id",
+                "task_changed",
+                "tplan_action",
+                "branch",
+                "pkg_hash",
                 "pkg_name",
                 "pkg_version",
                 "pkg_release",
                 "pkg_arch",
+                "chlog_date",
+                "chlog_name",
+                "chlog_nick",
+                "chlog_evr",
+                "chlog_text",
+                "img_pkg_hash",
                 "pkg_summary",
-                "pkg_buildtime",
-                "changelog_date",
-                "changelog_name",
-                "changelog_evr",
-                "changelog_hash",
-                "changelog_text",
+                "img_pkg_version",
+                "img_pkg_release",
             ],
         )
 
-        packages = (PkgMeta(*el)._asdict() for el in response)  # type: ignore
-
-        retval = []
-        for pkg in packages:
-            pkg["changelog_date"] = datetime_to_iso(pkg["changelog_date"])
-            del pkg["changelog_hash"]
-            retval.append(pkg)
+        packages = [PkgMeta(*el)._asdict() for el in response]  # type: ignore
 
         res = {
             "request_args": self.args,
-            "length": len(retval),
-            "packages": retval,
+            "length": len(packages),
+            "packages": packages,
         }
         return res, 200
 

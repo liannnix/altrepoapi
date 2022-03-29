@@ -390,8 +390,8 @@ img_tag_status_get_model = ns.model(
     },
 )
 
-packages_image_pkg_model = ns.model(
-    "ImagePackagesPackageModel",
+packages_image_el_model = ns.model(
+    "ImagePackagesElementModel",
     {
         "hash": fields.String(
             description="package hash UInt64 as string"
@@ -412,10 +412,6 @@ packages_image_pkg_model = ns.model(
         "buildtime": fields.Integer(
             attribute="pkg_buildtime", description="last binary package buildtime"
         ),
-        "changelog_name": fields.String(description="package last changelog name"),
-        "changelog_date": fields.String(
-            description="package last changelog message date"
-        ),
         "changelog_text": fields.String(description="package last changelog message"),
     }
 )
@@ -426,10 +422,45 @@ packages_image_model = ns.model(
         "length": fields.Integer(description="number of packages found"),
         "subcategories": fields.List(fields.String, description="list of subcategories"),
         "packages": fields.Nested(
-            packages_image_pkg_model,
+            packages_image_el_model,
             description="last packages list",
             as_list=True,
         ),
+    }
+)
+
+last_packages_img_el_model = ns.model(
+    "LastImagePackagesElementModel",
+    {
+        "task_id": fields.String(description="task id"),
+        "task_changed": fields.DateTime(description="task changed date"),
+        "tplan_action": fields.String(description="task type [add|delete]"),
+        "branch": fields.String(description="package set name"),
+        "hash": fields.String(attribute="pkg_hash", description="package hash UInt64 as string in the repository"),
+        "name": fields.String(attribute="pkg_name", description="package name"),
+        "version": fields.String(
+            attribute="pkg_version", description="package version in the repository"
+        ),
+        "release": fields.String(
+            attribute="pkg_release", description="package release in the repository"
+        ),
+        "arch": fields.String(
+            attribute="pkg_arch", description="package architecture in the repository"
+        ),
+        "img_hash": fields.String(attribute="img_pkg_hash", description="package hash UInt64 as string in the image"),
+        "img_version": fields.String(
+            attribute="img_pkg_version", description="package version in the image"
+        ),
+        "img_release": fields.String(
+            attribute="img_pkg_release", description="package release in the image"
+        ),
+        "summary": fields.String(
+            attribute="pkg_summary", description="package summary"
+        ),
+        "chlog_name": fields.String(description="package last changelog name"),
+        "chlog_nick": fields.String(description="maintainer nickname in the changelog"),
+        "chlog_date": fields.DateTime(description="package last changelog message date"),
+        "chlog_text": fields.String(description="package last changelog message"),
     }
 )
 last_packages_image_model = ns.model(
@@ -438,7 +469,7 @@ last_packages_image_model = ns.model(
         "request_args": fields.Raw(description="request arguments"),
         "length": fields.Integer(description="number of packages found"),
         "packages": fields.Nested(
-            packages_image_pkg_model,
+            last_packages_img_el_model,
             description="last packages list",
             as_list=True,
         ),

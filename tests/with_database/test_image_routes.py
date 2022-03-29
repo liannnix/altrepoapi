@@ -169,36 +169,42 @@ def test_image_tag_status_post(client, kwargs):
     "kwargs",
     [
         {
+            "branch": BRANCH_IN_DB[1],
             "uuid": ROOT_UUID_VALID,
             "packages_limit": 10,
             "component": False,
             "status_code": 200
         },
         {
+            "branch": BRANCH_IN_DB[1],
             "uuid": ROOT_UUID_VALID,
             "packages_limit": 10,
             "component": True,
             "status_code": 404
         },
         {
+            "branch": BRANCH_IN_DB[1],
             "uuid": COMPONENT_UUID_VALID,
             "packages_limit": 10,
             "component": False,
             "status_code": 404
         },
         {
+            "branch": BRANCH_IN_DB[1],
             "uuid": COMPONENT_UUID_VALID,
             "packages_limit": 10,
             "component": True,
             "status_code": 200
         },
         {
+            "branch": BRANCH_NOT_DB,
             "uuid": UUID_NOT_VALID,
             "packages_limit": 10,
             "component": True,
             "status_code": 400
         },
         {
+            "branch": BRANCH_IN_DB[1],
             "uuid": UUID_NOT_DB,
             "packages_limit": 10,
             "component": True,
