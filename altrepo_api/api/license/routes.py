@@ -25,11 +25,13 @@ from altrepo_api.api.base import (
 )
 
 from .namespace import get_namespace
-from .endpoints.license import LicenseTokens
+from .endpoints.license import LicenseTokens, LicenseInfo
 from .parsers import (
+    license_info_args,
     license_tokens_args,
 )
 from .serializers import (
+    license_info_model,
     license_tokens_model,
 )
 
@@ -52,4 +54,21 @@ class routeLicenseTokens(Resource):
         url_logging(logger, g.url)
         args = license_tokens_args.parse_args(strict=True)
         w = LicenseTokens(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/info",
+    doc={
+        "description": "Get license info by SPDX license ID",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeLicenseInfo(Resource):
+    @ns.expect(license_info_args)
+    @ns.marshal_with(license_info_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = license_tokens_args.parse_args(strict=True)
+        w = LicenseInfo(g.connection, **args)
         return run_worker(worker=w, args=args)

@@ -16,11 +16,19 @@
 
 from altrepo_api.api.parser import (
     parser,
+    license_id_type,
     license_string_type,
 )
 
 
 # register items
+license_id = parser.register_item(
+    "license",
+    type=license_id_type,
+    required=True,
+    help="SPDX license id",
+    location="args",
+)
 license_str = parser.register_item(
     "license",
     type=license_string_type,
@@ -30,4 +38,5 @@ license_str = parser.register_item(
 )
 
 # build parsers
+license_info_args = parser.build_parser(license_id)
 license_tokens_args = parser.build_parser(license_str)

@@ -39,3 +39,18 @@ license_tokens_model = ns.model(
         ),
     },
 )
+
+
+license_info_model = ns.model(
+    "LicenseInfoModel",
+    {
+        "request_args": fields.Raw(),
+        "id": fields.String(description="SPDX license ID"),
+        "name": fields.String(description="SPDX license name"),
+        "text": fields.String(description="license text"),
+        "type": fields.String(description="license type"),
+        "header": fields.String(description="license header"),
+        "comment": fields.String(description="license comment"),
+        "urls": fields.List(fields.String(description="license URLs")),
+    },
+)

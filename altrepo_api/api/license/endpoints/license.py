@@ -15,8 +15,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
+from collections import namedtuple
 
-from altrepo_api.api.base import APIWorker, Connection
+from altrepo_api.api.base import APIWorker
 from ..sql import sql
 
 
@@ -26,11 +27,10 @@ def parse_license_tokens(
     tokens: dict[str, str] = {}
     license_match = re.compile(r"[A-Za-z0-9\-\.\+]+")
     tokens_ = license_match.findall(licenses_str)
-
     all_valid_tokens = spdx_ids | aliases.keys()
+    # skip if license string not starts with valid token
     if tokens_ and tokens_[0] not in all_valid_tokens:
         return tokens
-
     # remove unmatched tokens
     tokens_ = [t for t in tokens_ if t in all_valid_tokens]
     # # replace license aliases with actual SPDX license names
@@ -48,7 +48,6 @@ class LicenseParser(APIWorker):
         license_str: str,
     ):
         self.conn = connection
-        # self.args = kwargs
         self.sql = sql
         self.license = license_str
         self.tokens = {}
@@ -109,6 +108,66 @@ class LicenseTokens(APIWorker):
                 "request_args": self.args,
                 "length": len(lp.tokens),
                 "tokens": [{"token": k, "license": v} for k, v in lp.tokens.items()],
+            }
+            return res, 200
+        else:
+            return lp.error
+
+
+class LicenseInfo(APIWorker):
+    """Retrievse license information from database."""
+
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def get(self):
+        lp = LicenseParser(
+            connection=self.conn,
+            license_str=self.args["license"]
+        )
+        lp.parse_license()
+        if lp.status:
+            if not lp.tokens:
+                self._store_error(
+                    {
+                        "message": f"No valid license tokens found",
+                        "args": self.args,
+                    },
+                    self.ll.INFO,
+                    404,
+                )
+                return self.error
+
+            spdx_id = list(lp.tokens.values())[0]
+            self.conn.request_line = self.sql.get_license_info.format(id=spdx_id)
+            status, response = self.conn.send_request()
+            if not status:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return self.error
+
+            if not response:
+                self._store_error(
+                    {"message": f"No data not found in database", "args": self.args},
+                    self.ll.INFO,
+                    404,
+                )
+                return self.error
+
+            LicenseInfo = namedtuple("LicenseInfo", ["id", "name", "text", "header", "urls", "type"])
+            license_info = LicenseInfo(*response[0])  # type: ignore
+
+            res = {
+                "request_args": self.args,
+                "id": license_info.id,
+                "name": license_info.name,
+                "text": license_info.text,
+                "type": license_info.type,
+                "urls": license_info.urls,
+                "header": license_info.header if license_info.type == "license" else "",
+                "comment": license_info.header if license_info.type == "exception" else "",
             }
             return res, 200
         else:

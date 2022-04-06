@@ -50,5 +50,17 @@ FROM LicenseAliases
 SELECT DISTINCT spdx_id FROM SPDXLicenses
 """
 
+    get_license_info = """
+SELECT
+    spdx_id,
+    spdx_name,
+    spdx_text,
+    spdx_header,
+    spdx_urls,
+    spdx_type
+FROM SPDXLicenses
+WHERE spdx_id = '{id}'
+"""
+
 
 sql = SQL()

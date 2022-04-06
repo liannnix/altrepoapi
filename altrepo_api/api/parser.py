@@ -82,6 +82,7 @@ __image_version_match = re.compile("^[0-9]+\.[0-9]\.[0-9]$")  # type: ignore
 __image_flavor_match = re.compile("^[a-zA-Z\-]+$")  # type: ignore
 ## licenses
 __license_string_match = re.compile(r"^[A-Za-z0-9\(\)\+ .\-/&,]+$")
+__license_id_match = re.compile(r"^[A-Za-z0-9\-\.\+]+$")
 
 # custom validators
 def __get_string(value: Any) -> str:
@@ -388,3 +389,14 @@ def license_string_type(value: Any) -> str:
     return value
 
 license_string_type.__schema__ = {"type": "string", "pattern": __license_string_match.pattern}
+
+
+def license_id_type(value: Any) -> str:
+    """Package name validator."""
+
+    value = __get_string(value)
+    if not __license_id_match.search(value):
+        raise ValueError("Invalid license string: {0}".format(value))
+    return value
+
+license_id_type.__schema__ = {"type": "string", "pattern": __license_id_match.pattern}
