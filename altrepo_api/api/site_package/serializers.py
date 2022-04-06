@@ -20,6 +20,14 @@ from .namespace import get_namespace
 
 ns = get_namespace()
 
+license_tokens_el_model = ns.model(
+    "SitePackageLicenseTokensElementModel",
+    {
+        "token": fields.String(description="license token"),
+        "license": fields.String(description="SPDX license ID"),
+    },
+)
+
 package_info_changelog_el_model = ns.model(
     "SitePackageInfoChangelogElementModel",
     {
@@ -143,6 +151,11 @@ package_info_model = ns.model(
             package_dependencies_el_model,
             as_list=True,
             description="all the dependence of the package",
+        ),
+        "license_tokens": fields.Nested(
+            license_tokens_el_model,
+            description="list of found valid license tokens",
+            as_list=True,
         ),
     },
 )

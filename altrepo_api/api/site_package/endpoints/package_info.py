@@ -27,6 +27,7 @@ from altrepo_api.utils import (
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
 from ..sql import sql
+from altrepo_api.api.license.endpoints.license import LicenseParser
 
 
 class PackageInfo(APIWorker):
@@ -140,7 +141,7 @@ class PackageInfo(APIWorker):
                 404,
             )
             return self.error
-        pkg_info = PkgMeta(*response[0])._asdict()
+        pkg_info = PkgMeta(*response[0])._asdict()  # type: ignore
         # get package task
         pkg_task = 0
         pkg_tasks = []
@@ -170,7 +171,7 @@ class PackageInfo(APIWorker):
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
         if response:
-            for task in [SubtaskMeta(*el)._asdict() for el in response]:
+            for task in [SubtaskMeta(*el)._asdict() for el in response]:  # type: ignore
                 if task["repo"] == self.branch:
                     pkg_task = task["id"]
                     pkg_task_date = datetime_to_iso(task["changed"])
@@ -211,7 +212,7 @@ class PackageInfo(APIWorker):
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
-        for el in response[0][0]:
+        for el in response[0][0]:  # type: ignore
             if "altlinux" in el:
                 nickname = get_nickname_from_packager(el)
                 if nickname not in pkg_maintainers:
@@ -226,7 +227,7 @@ class PackageInfo(APIWorker):
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
         if response:
-            pkg_acl = response[0][0]
+            pkg_acl = response[0][0]  # type: ignore
         # get package versions
         pkg_versions = []
         if source:
@@ -245,8 +246,8 @@ class PackageInfo(APIWorker):
             "PkgVersions", ["branch", "version", "release", "pkghash"]
         )
         # sort package versions by branch
-        pkg_branches = sort_branches([el[0] for el in response])
-        pkg_versions = tuplelist_to_dict(response, 3)
+        pkg_branches = sort_branches([el[0] for el in response])  # type: ignore
+        pkg_versions = tuplelist_to_dict(response, 3)  # type: ignore
         # FIXME: workaround for multiple versions of returned for certain branch
         pkg_versions = [
             PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
@@ -263,7 +264,7 @@ class PackageInfo(APIWorker):
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
             PkgDependencies = namedtuple("PkgDependencies", ["name", "version", "flag"])
-            pkg_dependencies = [PkgDependencies(*el)._asdict() for el in response]
+            pkg_dependencies = [PkgDependencies(*el)._asdict() for el in response]  # type: ignore
 
             # change numeric flag on text
             for el in pkg_dependencies:
@@ -286,11 +287,11 @@ class PackageInfo(APIWorker):
 
         if response:
             if source:
-                pkg_info["buildtime"] = response[0][2]
-                for elem in response:
+                pkg_info["buildtime"] = response[0][2]  # type: ignore
+                for elem in response:  # type: ignore
                     package_archs[elem[0]] = {el[0]: str(el[1]) for el in elem[1]}
             else:
-                for elem in response:
+                for elem in response:  # type: ignore
                     package_archs[elem[0]] = {"src": str(elem[1])}
         # get package changelog
         self.conn.request_line = (
@@ -314,7 +315,7 @@ class PackageInfo(APIWorker):
 
         Changelog = namedtuple("Changelog", ["date", "name", "evr", "message"])
         changelog_list = [
-            Changelog(datetime_to_iso(el[1]), *el[2:])._asdict() for el in response
+            Changelog(datetime_to_iso(el[1]), *el[2:])._asdict() for el in response  # type: ignore
         ]
 
         # get package beehive rebuild status
@@ -335,7 +336,7 @@ class PackageInfo(APIWorker):
                 "BeehiveStatus",
                 ["arch", "status", "build_time", "updated", "ftbfs_since"],
             )
-            bh_status = [BeehiveStatus(*el)._asdict() for el in response]
+            bh_status = [BeehiveStatus(*el)._asdict() for el in response]  # type: ignore
             for bh in bh_status:
                 epoch_ = pkg_info["epoch"]
                 if epoch_ == 0:
@@ -372,6 +373,18 @@ class PackageInfo(APIWorker):
                 tmp["pkghash"].append(str(hash))
             res_package_archs.append(tmp)
 
+        # get package license tokens
+        license_tokens = []
+        lp = LicenseParser(connection=self.conn, license_str=pkg_info["license"])
+        lp.parse_license()
+        if lp.status:
+            if lp.tokens:
+                license_tokens = [
+                    {"token": k, "license": v} for k, v in lp.tokens.items()
+                ]
+        else:
+            return lp.error
+
         res = {
             "pkghash": str(self.pkghash),
             "request_args": self.args,
@@ -387,6 +400,7 @@ class PackageInfo(APIWorker):
             "versions": pkg_versions,
             "beehive": bh_status,
             "dependencies": pkg_dependencies,
+            "license_tokens": license_tokens,
         }
 
         return res, 200
@@ -441,7 +455,7 @@ class DeletedPackageInfo(APIWorker):
             ["task_id", "subtask_id", "task_changed", "task_owner", "subtask_userid"],
         )
         if response:
-            delete_task_info = TaskMeta(*response[0])._asdict()
+            delete_task_info = TaskMeta(*response[0])._asdict()  # type: ignore
 
             # task in wich source package was deleted found
             # get task message
@@ -455,7 +469,7 @@ class DeletedPackageInfo(APIWorker):
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
             if response:
-                delete_task_info["task_message"] = response[0][0]
+                delete_task_info["task_message"] = response[0][0]  # type: ignore
             # get last package version info from branch
             if source:
                 self.conn.request_line = (
@@ -479,9 +493,9 @@ class DeletedPackageInfo(APIWorker):
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
             if response:
-                pkg_hash = str(response[0][0])
-                pkg_version = str(response[0][1])
-                pkg_release = str(response[0][2])
+                pkg_hash = str(response[0][0])  # type: ignore
+                pkg_version = str(response[0][1])  # type: ignore
+                pkg_release = str(response[0][2])  # type: ignore
             else:
                 #  find if package were ever built before delete
                 if source:
@@ -515,9 +529,9 @@ class DeletedPackageInfo(APIWorker):
                     )
                     return self.error
 
-                pkg_hash = str(response[0][1])
-                pkg_version = str(response[0][2])
-                pkg_release = str(response[0][3])
+                pkg_hash = str(response[0][1])  # type: ignore
+                pkg_version = str(response[0][2])  # type: ignore
+                pkg_release = str(response[0][3])  # type: ignore
 
             delete_task_info["task_changed"] = datetime_to_iso(
                 delete_task_info["task_changed"]
@@ -589,7 +603,7 @@ class PackagesBinaryListInfo(APIWorker):
             ["hash", "name", "version", "release", "arch"],
         )
 
-        retval = [PkgMeta(*el)._asdict() for el in response]
+        retval = [PkgMeta(*el)._asdict() for el in response]  # type: ignore
 
         # get package versions
         pkg_versions = []
@@ -602,8 +616,8 @@ class PackagesBinaryListInfo(APIWorker):
             return self.error
         PkgVersions = namedtuple("PkgVersions", ["branch", "version", "release"])
         # sort package versions by branch
-        pkg_branches = sort_branches([el[0] for el in response])
-        pkg_versions = tuplelist_to_dict(response, 3)
+        pkg_branches = sort_branches([el[0] for el in response])  # type: ignore
+        pkg_versions = tuplelist_to_dict(response, 3)  # type: ignore
         # FIXME: workaround for multiple versions of returned for certain branch
         pkg_versions = [
             PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
