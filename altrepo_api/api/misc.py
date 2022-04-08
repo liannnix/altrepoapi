@@ -262,6 +262,8 @@ class LookupTables:
 
     known_image_components = ["iso", "rpms", "altinst", "live", "rescue"]
 
+    known_image_platform = ["tegra", "rpi4", "baikalm", "mcom02"]
+
     known_image_editions = [
         "alt-server",
         "alt-server-v",

@@ -59,6 +59,7 @@ __known_img_editions = set(lut.known_image_editions)
 __known_img_releases = set(lut.known_image_releases)
 __known_img_variants = set(lut.known_image_variants)
 __known_img_components = set(lut.known_image_components)
+__known_img_platforms = set(lut.known_image_platform)
 __known_img_types = set(lut.known_image_types)
 
 
@@ -345,6 +346,17 @@ def img_component_type(value: Any) -> str:
     return value
 
 img_component_type.__schema__ = {"type": "string"}
+
+
+def img_platform_type(value: Any) -> str:
+    """Image platform validator."""
+
+    value = __get_string(value)
+    if value not in __known_img_platforms:
+        raise ValueError("Invalid image platform: {0}".format(value))
+    return value
+
+img_platform_type.__schema__ = {"type": "string"}
 
 
 def img_flavor_type(value: Any) -> str:
