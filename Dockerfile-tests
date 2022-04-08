@@ -14,9 +14,6 @@ RUN \
     && echo "rpm [p10] http://ftp.altlinux.org/pub/distributions/ALTLinux p10/branch/noarch classic" >> /etc/apt/sources.list.d/alt.list \
     # installing packages
     && apt-get update \
-    && yes | apt-get install apt-repo \
-    && apt-repo add 296613 \
-    && apt-get update \
     && yes | apt-get dist-upgrade \
     && yes | apt-get install \
         python3-module-flask \
