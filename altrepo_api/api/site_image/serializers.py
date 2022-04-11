@@ -30,6 +30,7 @@ pkgs_versions_from_images_el__el_model = ns.model(
         "version_sub": fields.Integer(description="Image version sub"),
         "img_arch": fields.String(description="Image architecture"),
         "platform": fields.String(description="Image platform"),
+        "variant": fields.String(description="Image variant"),
         "type": fields.String(description="Image type"),
         "hash": fields.String(description="package hash UInt64 as string"),
         "name": fields.String(description="package name"),

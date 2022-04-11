@@ -69,6 +69,7 @@ class PackageVersionsFromImages(APIWorker):
                 "uuid",
                 "tag",
                 "platform",
+                "variant",
                 "version_major",
                 "version_minor",
                 "version_sub",
