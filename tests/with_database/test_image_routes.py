@@ -10,6 +10,9 @@ UUID_NOT_VALID = "00000-0000-0000-0000-000000000000"
 UUID_NOT_DB = "00000000-0000-0000-0000-000000000000"
 CATEGORY_VALID = "Security/Networking"
 CATEGORY_NOT_DB = "Security/Abcd"
+EDITION_IN_DB = 'alt-workstation'
+IMG_VERSION_IN_VALID = '9.2.0'
+IMG_VERSION_NOT_VALID = '9.2'
 
 
 @pytest.mark.parametrize(
@@ -389,3 +392,74 @@ def test_last_packages_image_with_cve_fixed(client, kwargs):
     if response.status_code == 200:
         assert data != {}
         assert data["packages"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "branch": BRANCH_IN_DB[0],
+            "edition": None,
+            "version": None,
+            "release": None,
+            "variant": None,
+            "type": None,
+            "status_code": 200
+        },
+        {
+            "branch": BRANCH_IN_DB[0],
+            "edition": EDITION_IN_DB,
+            "version": IMG_VERSION_IN_VALID,
+            "release": 'release',
+            "variant": 'install',
+            "type": 'iso',
+            "status_code": 200
+        },
+        {
+            "uuid": BRANCH_NOT_DB,
+            "edition": EDITION_IN_DB,
+            "version": IMG_VERSION_IN_VALID,
+            "release": 'release',
+            "variant": 'install',
+            "type": 'iso',
+            "status_code": 400
+        },
+        {
+            "branch": BRANCH_IN_DB[0],
+            "edition": EDITION_IN_DB,
+            "version": IMG_VERSION_NOT_VALID,
+            "release": 'release',
+            "variant": 'install',
+            "type": 'iso',
+            "status_code": 400
+        },
+        {
+            "branch": None,
+            "edition": EDITION_IN_DB,
+            "version": IMG_VERSION_IN_VALID,
+            "release": 'release',
+            "variant": 'install',
+            "type": 'iso',
+            "status_code": 400
+        },
+        {
+            "branch": BRANCH_IN_DB[2],
+            "edition": EDITION_IN_DB,
+            "version": IMG_VERSION_IN_VALID,
+            "release": 'release',
+            "variant": 'install',
+            "type": 'iso',
+            "status_code": 404
+        },
+    ]
+)
+def test_active_images(client, kwargs):
+    params = {k: v for k, v in kwargs.items() if k != "status_code"}
+
+    url = url_for("api.image_route_active_images")
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["images"] != []
