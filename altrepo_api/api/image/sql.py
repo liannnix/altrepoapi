@@ -757,5 +757,35 @@ INNER JOIN
 ) AS PKG ON PKG.chlg_hash = changelog_with_cve.chlog_hash
 """
 
+    get_active_images = """
+WITH editions_status AS (
+    SELECT img_edition,
+           argMax(img_show, ts) AS edition_show
+    FROM ImageStatus
+    GROUP BY img_edition
+),
+tags_status AS (
+    SELECT img_tag,
+           argMax(img_show, ts) AS tag_show
+    FROM ImageTagStatus
+    GROUP BY img_tag
+)
+SELECT DISTINCT
+    img_edition,
+    groupUniqArray(TT.img_tag) as tags
+FROM ImagePackageSetName
+LEFT JOIN (
+    SELECT img_edition, img_tag
+    FROM ImagePackageSetName
+    WHERE img_tag IN (select img_tag FROM tags_status WHERE tag_show = 'show')
+    {image_clause}
+    GROUP BY img_edition, img_tag
+) AS TT ON TT.img_edition = ImagePackageSetName.img_edition
+WHERE img_edition IN (select img_edition FROM editions_status WHERE edition_show = 'show')
+    AND img_branch = '{branch}'
+GROUP BY img_edition
+ORDER BY tags ASC, img_edition ASC
+"""
+
 
 sql = SQL()

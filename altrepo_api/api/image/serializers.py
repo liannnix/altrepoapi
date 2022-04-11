@@ -504,3 +504,23 @@ image_categories_model = ns.model(
         ),
     },
 )
+
+active_images_el_model = ns.model(
+    "ActiveImagesElementModel",
+    {
+        "edition": fields.String(description="ISO image edition"),
+        "tags": fields.List(fields.String, as_list=True, description="active tags list"),
+    }
+)
+active_images_model = ns.model(
+    "ActiveImagesModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of images found"),
+        "images": fields.Nested(
+            active_images_el_model,
+            description="active images list",
+            as_list=True,
+        ),
+    }
+)

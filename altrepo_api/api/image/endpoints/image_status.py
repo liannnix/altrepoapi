@@ -257,3 +257,107 @@ class ImageTagStatus(APIWorker):
         res = {"tags": res}
 
         return res, 200
+
+
+class ActiveImages(APIWorker):
+    """
+    Get information on active images.
+    """
+
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def check_params_get(self):
+        self.logger.debug(f"args : {self.args}")
+        self.validation_results = []
+
+        if self.args["branch"] not in lut.known_branches:
+            self.validation_results.append(
+                f"unknown package set name : {self.args['branch']}"
+            )
+            self.validation_results.append(
+                f"allowed package set names are : {lut.known_branches}"
+            )
+
+        if self.validation_results != []:
+            return False
+        else:
+            return True
+
+    def _parse_version(self, version: str) -> tuple[int, int, int]:
+        try:
+            major_ = minor_ = sub_ = 0
+            s = version.strip().split(".")
+            major_ = int(s[0])
+
+            if len(s) >= 2:
+                minor_ = int(s[1])
+            if len(s) == 3:
+                sub_ = int(s[2])
+            if len(s) > 3:
+                raise ValueError
+
+            return major_, minor_, sub_
+        except ValueError:
+            msg = "Failed to parse version: '{0}'.".format(version)
+            raise ValueError(msg)
+
+        return tuple()
+
+    def get(self):
+        branch = self.args["branch"]
+        edition = self.args["edition"]
+        version = self.args["version"]
+        release = self.args["release"]
+        variant = self.args["variant"]
+        img_type = self.args["type"]
+
+        image_clause = f" AND img_branch = '{branch}'"
+
+        if edition:
+            image_clause += f" AND img_edition = '{edition}'"
+        if version:
+            v = self._parse_version(version)
+            image_clause += (
+                f" AND (img_version_major, img_version_minor, img_version_sub) = {v}"
+            )
+        if release:
+            image_clause += f" AND img_release = '{release}'"
+        if variant:
+            image_clause += f" AND img_variant = '{variant}'"
+        if img_type:
+            image_clause += f" AND img_type = '{img_type}'"
+
+        self.conn.request_line = self.sql.get_active_images.format(image_clause=image_clause, branch=branch)
+
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+
+        if not response:
+            self._store_error(
+                {"message": f"No data not found in database", "args": self.args},
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        ActiveImagesInfo = namedtuple(
+            "ActiveImagesInfo",
+            [
+                "edition",
+                "tags"
+            ],
+        )
+
+        res = [ActiveImagesInfo(*el)._asdict() for el in response]
+
+        res = {
+            "request_args": self.args,
+            "length": len(res),
+            "images": res}
+        return res, 200

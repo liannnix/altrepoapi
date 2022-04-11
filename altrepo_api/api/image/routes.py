@@ -26,7 +26,7 @@ from altrepo_api.api.base import (
     GET_RESPONSES_400_404,
     POST_RESPONSE_400_404,
 )
-from .endpoints.image_status import ImageStatus, ImageTagStatus
+from .endpoints.image_status import ImageStatus, ImageTagStatus, ActiveImages
 
 from .namespace import get_namespace
 from .endpoints.image_info import (
@@ -47,6 +47,7 @@ from .parsers import (
     image_categories_args,
     image_packages_args,
     image_with_cve_fix_args,
+    active_images_args,
 )
 from .serializers import (
     all_iso_model,
@@ -62,6 +63,7 @@ from .serializers import (
     image_tag_uuid_model,
     image_categories_model,
     last_packages_image_model,
+    active_images_model,
 )
 
 ns = get_namespace()
@@ -297,4 +299,23 @@ class routeLastImagePackagesWithCveFix(Resource):
         url_logging(logger, g.url)
         args = image_with_cve_fix_args.parse_args(strict=True)
         w = LastImagePackagesWithCVEFix(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/active_images",
+    doc={
+        "description": (
+            "Get active images for a given repository"
+        ),
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeActiveImages(Resource):
+    @ns.expect(active_images_args)
+    @ns.marshal_with(active_images_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = active_images_args.parse_args(strict=True)
+        w = ActiveImages(g.connection, **args)
         return run_worker(worker=w, args=args)
