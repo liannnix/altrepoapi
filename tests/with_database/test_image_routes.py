@@ -175,42 +175,42 @@ def test_image_tag_status_post(client, kwargs):
             "branch": BRANCH_IN_DB[1],
             "uuid": ROOT_UUID_VALID,
             "packages_limit": 10,
-            "component": False,
+            "component": None,
             "status_code": 200
         },
         {
             "branch": BRANCH_IN_DB[1],
             "uuid": ROOT_UUID_VALID,
             "packages_limit": 10,
-            "component": True,
+            "component": "live",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB[1],
+            "uuid": COMPONENT_UUID_VALID,
+            "packages_limit": 10,
+            "component": None,
             "status_code": 404
         },
         {
             "branch": BRANCH_IN_DB[1],
             "uuid": COMPONENT_UUID_VALID,
             "packages_limit": 10,
-            "component": False,
+            "component": None,
             "status_code": 404
-        },
-        {
-            "branch": BRANCH_IN_DB[1],
-            "uuid": COMPONENT_UUID_VALID,
-            "packages_limit": 10,
-            "component": True,
-            "status_code": 200
         },
         {
             "branch": BRANCH_NOT_DB,
             "uuid": UUID_NOT_VALID,
             "packages_limit": 10,
-            "component": True,
+            "component": None,
             "status_code": 400
         },
         {
             "branch": BRANCH_IN_DB[1],
             "uuid": UUID_NOT_DB,
             "packages_limit": 10,
-            "component": True,
+            "component": None,
             "status_code": 404
         },
     ]
@@ -358,27 +358,46 @@ def test_image_packages(client, kwargs):
     "kwargs",
     [
         {
+            "branch": BRANCH_IN_DB[1],
             "uuid": ROOT_UUID_VALID,
+            "packages_limit": 10,
+            "component": None,
             "status_code": 200
         },
         {
+            "branch": BRANCH_IN_DB[1],
             "uuid": ROOT_UUID_VALID,
+            "packages_limit": 10,
             "component": "live",
-            "status_code": 200
+            "status_code": 200,
         },
         {
+            "branch": BRANCH_IN_DB[1],
             "uuid": COMPONENT_UUID_VALID,
-            "component": "live",
+            "packages_limit": 10,
+            "component": None,
             "status_code": 404
         },
         {
-            "uuid": ROOT_UUID_VALID,
-            "component": "invalid",
+            "branch": BRANCH_IN_DB[1],
+            "uuid": COMPONENT_UUID_VALID,
+            "packages_limit": 10,
+            "component": None,
+            "status_code": 404
+        },
+        {
+            "branch": BRANCH_NOT_DB,
+            "uuid": UUID_NOT_VALID,
+            "packages_limit": 10,
+            "component": None,
             "status_code": 400
         },
         {
-            "uuid": UUID_NOT_VALID,
-            "status_code": 400
+            "branch": BRANCH_IN_DB[1],
+            "uuid": UUID_NOT_DB,
+            "packages_limit": 10,
+            "component": None,
+            "status_code": 404
         },
     ]
 )
