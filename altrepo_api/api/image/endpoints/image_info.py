@@ -246,9 +246,10 @@ class ImageInfo(APIWorker):
 
 
 class LastImagePackages(APIWorker):
-    def __init__(self, connection, **kwargs):
+    def __init__(self, connection, is_cve=False, **kwargs):
         self.conn = connection
         self.args = kwargs
+        self.is_cve = is_cve
         self.sql = sql
         super().__init__()
 
@@ -272,15 +273,24 @@ class LastImagePackages(APIWorker):
         packages_limit = self.args["packages_limit"]
         component = self.args["component"]
 
-        tmp_pkg_hashes = "tmp_pkg_hashes"
-        if component is False:
-            self.conn.request_line = self.sql.get_last_image_all_pkg_diff.format(
-                tmp_table=tmp_pkg_hashes, uuid=uuid
-            )
+        if packages_limit:
+            limit = f"LIMIT {packages_limit}"
         else:
-            self.conn.request_line = self.sql.get_last_image_cmp_pkg_diff.format(
-                tmp_table=tmp_pkg_hashes, uuid=uuid, component=component
-            )
+            limit = ""
+
+        if self.is_cve:
+            cve = "AND match(chlog_text, 'CVE-\d{4}-(\d{7}|\d{6}|\d{5}|\d{4})')"
+        else:
+            cve = ""
+
+        tmp_pkg_hashes = "tmp_pkg_hashes"
+        if component is not None:
+            component = f"AND pkgset_nodename = '{component}'"
+        else:
+            component = ""
+        self.conn.request_line = self.sql.get_last_image_cmp_pkg_diff.format(
+            tmp_table=tmp_pkg_hashes, uuid=uuid, component=component
+        )
 
         status, response = self.conn.send_request()
         if not status:
@@ -314,10 +324,12 @@ class LastImagePackages(APIWorker):
                 self.ll.INFO,
                 404,
             )
+
         self.conn.request_line = self.sql.get_last_image_pkgs_info.format(
             tmp_table=tmp_table,
             branch=branch,
-            limit=packages_limit
+            cve=cve,
+            limit=limit
         )
         status, response = self.conn.send_request()
         if not status:
@@ -549,63 +561,4 @@ class ImagePackages(APIWorker):
             subcategories = [el[0] for el in response]
 
         res = {"request_args": self.args, "length": len(retval), "subcategories": subcategories, "packages": retval}
-        return res, 200
-
-
-class LastImagePackagesWithCVEFix(APIWorker):
-    def __init__(self, connection, **kwargs):
-        self.conn = connection
-        self.args = kwargs
-        self.sql = sql
-        super().__init__()
-
-    def get(self):
-        uuid = self.args["uuid"]
-        component = self.args["component"]
-
-        if component is not None:
-            component = f"AND pkgset_nodename = '{component}'"
-        else:
-            component = ""
-
-        self.conn.request_line = self.sql.get_last_image_packages_with_cve_fixes.format(
-            uuid=uuid, component=component
-        )
-
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
-        if not response:
-            self._store_error(
-                {
-                    "message": f"No data found in database for given parameters",
-                    "args": self.args,
-                },
-                self.ll.INFO,
-                404,
-            )
-            return self.error
-
-        PkgMeta = namedtuple(
-            "PkgMeta",
-            [
-                "hash",
-                "pkg_name",
-                "pkg_version",
-                "pkg_release",
-                "pkg_arch",
-                "pkg_summary",
-                "pkg_buildtime",
-                "changelog_hash",
-                "changelog_text",
-            ],
-        )
-
-        retval = [PkgMeta(*el)._asdict() for el in response]
-        res = {
-            "request_args": self.args,
-            "length": len(retval),
-            "packages": retval,
-        }
         return res, 200

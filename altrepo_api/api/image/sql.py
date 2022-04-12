@@ -478,32 +478,17 @@ WHERE img_tag IN (
 GROUP BY img_tag
 """
 
-    get_last_image_all_pkg_diff = """
-CREATE TEMPORARY TABLE {tmp_table} AS
-SELECT pkg_hash FROM
-(
-    SELECT DISTINCT pkg_hash
-        FROM PackageSet
-        WHERE pkgset_uuid IN (
-            SELECT pkgset_uuid
-            FROM PackageSetName
-            WHERE pkgset_ruuid = '{uuid}'
-            AND pkgset_depth = 1
-    )
-)    
-"""
-
     get_last_image_cmp_pkg_diff = """
 CREATE TEMPORARY TABLE {tmp_table} AS
 SELECT pkg_hash FROM
 (
     SELECT DISTINCT pkg_hash
-        FROM PackageSet
-        WHERE pkgset_uuid IN (
-            SELECT pkgset_uuid
-            FROM PackageSetName
-            WHERE pkgset_uuid = '{uuid}'
-                AND pkgset_depth = 1
+    FROM PackageSet
+    WHERE pkgset_uuid IN (
+        SELECT pkgset_uuid
+        FROM PackageSetName
+        WHERE pkgset_ruuid = '{uuid}'
+        {component}
     )
 )    
 """
@@ -573,8 +558,10 @@ WHERE (pkg_name, pkg_arch) IN (
     )
     AND pkgset_name = '{branch}'
     AND pkg_sourcepackage = 0
+    AND IMG.pkg_hash < pkg_hash
+    {cve}
 ORDER BY task_changed DESC
-LIMIT {limit}
+{limit}
 """
 
     get_image_uuid_by_tag = """
@@ -695,66 +682,54 @@ WHERE pkg_hash IN
 """
 
     get_last_image_packages_with_cve_fixes = """
-WITH
-pkg_info AS
-(
 SELECT
+    task_id,
+    task_changed,
+    tplan_action,
+    pkgset_name,
     pkg_hash,
-    pkg_changelog.hash[1] AS hash
-FROM Packages
-WHERE pkg_hash IN (
-    SELECT DISTINCT pkg_hash
-    FROM PackageSet
-    WHERE pkgset_uuid IN (
-        SELECT pkgset_uuid
-        FROM PackageSetName
-        WHERE pkgset_ruuid = '{uuid}'
-            {component}
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_arch,
+    chlog_date,
+    chlog_name,
+    chlog_nick,
+    chlog_evr,
+    chlog_text,
+    IMG.pkg_hash,
+    IMG.pkg_summary,
+    IMG.pkg_version,
+    IMG.pkg_release
+FROM BranchPackageHistory
+LEFT JOIN (
+    SELECT DISTINCT *
+    FROM {tmp_table}
+) AS IMG ON IMG.pkg_name = BranchPackageHistory.pkg_name and IMG.pkg_arch = BranchPackageHistory.pkg_arch
+WHERE (pkg_name, pkg_arch) IN (
+    SELECT pkg_name, pkg_arch FROM {tmp_table}
     )
-)
-),
-changelog_with_cve AS
-(
-    SELECT DISTINCT
-        chlog_hash,
-        chlog_text
-    FROM Changelog
-    WHERE match(chlog_text, 'CVE-\d{{4}}-(\d{{7}}|\d{{6}}|\d{{5}}|\d{{4}})')
-        AND chlog_hash IN (
-            SELECT hash FROM pkg_info
-        )
-)
-SELECT
-    PKG.*,
-    chlog_text
-FROM changelog_with_cve
-INNER JOIN
-(
-    SELECT DISTINCT
-        pkg_hash,
-        TT.pkg_name,
-        TT.pkg_version,
-        TT.pkg_release,
-        TT.pkg_arch,
-        TT.pkg_summary,
-        TT.pkg_buildtime,
-        pkg_changelog.hash[1] AS chlg_hash
-    FROM Packages
-    LEFT JOIN (
+    AND (task_id, pkg_name, pkg_arch, tplan_action) IN (
         SELECT
-            pkg_hash,
+            task_id,
             pkg_name,
-            pkg_version,
-            pkg_release,
             pkg_arch,
-            pkg_summary,
-            pkg_buildtime
-        FROM Packages
-        ) AS TT ON TT.pkg_hash = Packages.pkg_hash
-    WHERE pkg_hash IN (
-        SELECT pkg_hash FROM pkg_info
+            if(has(groupUniqArray(tplan_action), 0), 'add', 'delete') AS actions
+        FROM BranchPackageHistory
+        WHERE (pkg_name, pkg_arch) IN (
+            SELECT pkg_name, pkg_arch FROM {tmp_table}
+            )
+            AND pkgset_name = '{branch}'
+            AND pkg_sourcepackage = 0
+        GROUP BY
+            task_id,
+            pkg_name,
+            pkg_arch
     )
-) AS PKG ON PKG.chlg_hash = changelog_with_cve.chlog_hash
+    AND pkgset_name = '{branch}'
+    AND pkg_sourcepackage = 0
+    AND match(chlog_text, 'CVE-\d{{4}}-(\d{{7}}|\d{{6}}|\d{{5}}|\d{{4}})')
+ORDER BY task_changed DESC
 """
 
     get_active_images = """

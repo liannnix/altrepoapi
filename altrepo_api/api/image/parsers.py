@@ -113,8 +113,7 @@ img_uuid_opt = parser.register_item(
 pkgs_limit = parser.register_item(
     "packages_limit",
     type=int,
-    default=10,
-    required=True,
+    required=False,
     help="number of last packages to get",
     location="args",
 )
@@ -164,8 +163,7 @@ active_images_args = parser.build_parser(
     img_type_opt
 )
 image_tag_args = parser.build_parser(branch, img_edition_opt)
-image_last_packages_args = parser.build_parser(branch, img_uuid_opt, pkgs_limit, img_component_input_opt)
-image_with_cve_fix_args = parser.build_parser(img_uuid_opt, img_component_opt)
+image_last_packages_args = parser.build_parser(branch, img_uuid_opt, pkgs_limit, img_component_opt)
 image_uuid_args = parser.build_parser(img_tag_opt)
 image_categories_args = parser.build_parser(img_uuid_opt, img_component_opt)
 image_packages_args = parser.build_parser(img_uuid_opt, group, img_component_opt)

@@ -35,8 +35,7 @@ from .endpoints.image_info import (
     LastImagePackages,
     ImageTagUUID,
     ImageCategoriesCount,
-    ImagePackages,
-    LastImagePackagesWithCVEFix
+    ImagePackages
 )
 from .endpoints.packages import CheckPackages
 from .parsers import (
@@ -46,7 +45,6 @@ from .parsers import (
     image_uuid_args,
     image_categories_args,
     image_packages_args,
-    image_with_cve_fix_args,
     active_images_args,
 )
 from .serializers import (
@@ -293,12 +291,12 @@ class routeImagePackages(Resource):
     },
 )
 class routeLastImagePackagesWithCveFix(Resource):
-    @ns.expect(image_with_cve_fix_args)
-    @ns.marshal_with(packages_image_model)
+    @ns.expect(image_last_packages_args)
+    @ns.marshal_with(last_packages_image_model)
     def get(self):
         url_logging(logger, g.url)
-        args = image_with_cve_fix_args.parse_args(strict=True)
-        w = LastImagePackagesWithCVEFix(g.connection, **args)
+        args = image_last_packages_args.parse_args(strict=True)
+        w = LastImagePackages(g.connection, is_cve=True, **args)
         return run_worker(worker=w, args=args)
 
 
