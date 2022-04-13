@@ -499,12 +499,18 @@ SELECT * FROM
 (
     SELECT
         pkg_hash,
+        TT.task_changed as task_ch,
         pkg_summary,
         pkg_name,
         pkg_arch,
         pkg_version,
         pkg_release
     FROM Packages
+    LEFT JOIN (
+        SELECT pkg_hash, task_changed
+        FROM BranchPackageHistory
+        WHERE pkg_hash IN (select pkg_hash from {tmp_pkg_hashes})
+        ) AS TT ON TT.pkg_hash = Packages.pkg_hash
     WHERE pkg_hash IN (
         SELECT pkg_hash FROM {tmp_pkg_hashes}
         )
@@ -558,7 +564,7 @@ WHERE (pkg_name, pkg_arch) IN (
     )
     AND pkgset_name = '{branch}'
     AND pkg_sourcepackage = 0
-    AND IMG.pkg_hash < pkg_hash
+    AND IMG.task_ch < task_changed
     {cve}
 ORDER BY task_changed DESC
 {limit}
