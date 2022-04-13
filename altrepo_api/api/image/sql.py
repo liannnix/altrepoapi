@@ -518,7 +518,7 @@ SELECT * FROM
     """
 
     get_last_image_pkgs_info = """
-SELECT
+SELECT DISTINCT
     task_id,
     task_changed,
     tplan_action,
