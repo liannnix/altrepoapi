@@ -163,46 +163,47 @@ class PackageInfo(APIWorker):
             ],
         )
 
-        self.conn.request_line = self.sql.get_task_gears_by_hash.format(
-            pkghash=self.pkghash
-        )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
-        if response:
-            for task in [SubtaskMeta(*el)._asdict() for el in response]:  # type: ignore
-                if task["repo"] == self.branch:
-                    pkg_task = task["id"]
-                    pkg_task_date = datetime_to_iso(task["changed"])
-                    if task["type"] != "copy":
-                        gear_link = self._parse_task_gear(
-                            pkg_info["name"], task, lut.gitalt_base
-                        )
-                        pkg_tasks.append(
-                            {"type": "build", "id": pkg_task, "date": pkg_task_date}
-                        )
-                        break
-                    else:
-                        pkg_tasks.append(
-                            {"type": "copy", "id": pkg_task, "date": pkg_task_date}
-                        )
-                else:
-                    if task["type"] != "copy":
-                        pkg_task = task["id"]
-                        pkg_task_date = datetime_to_iso(task["changed"])
-                        gear_link = self._parse_task_gear(
-                            pkg_info["name"], task, lut.gitalt_base
-                        )
-                        pkg_tasks.append(
-                            {"type": "build", "id": pkg_task, "date": pkg_task_date}
-                        )
-                        break
-        # clear pkg_tasks fro taskless branches
+        # clear pkg_tasks for taskless branches
         if self.branch in lut.taskless_branches:
             pkg_task = 0
             pkg_tasks = []
             pkg_task_date = None
+        else:
+            self.conn.request_line = self.sql.get_task_gears_by_hash.format(
+                pkghash=self.pkghash
+            )
+            status, response = self.conn.send_request()
+            if not status:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return self.error
+            if response:
+                for task in [SubtaskMeta(*el)._asdict() for el in response]:  # type: ignore
+                    if task["repo"] == self.branch:
+                        pkg_task = task["id"]
+                        pkg_task_date = datetime_to_iso(task["changed"])
+                        if task["type"] != "copy":
+                            gear_link = self._parse_task_gear(
+                                pkg_info["name"], task, lut.gitalt_base
+                            )
+                            pkg_tasks.append(
+                                {"type": "build", "id": pkg_task, "date": pkg_task_date}
+                            )
+                            break
+                        else:
+                            pkg_tasks.append(
+                                {"type": "copy", "id": pkg_task, "date": pkg_task_date}
+                            )
+                    else:
+                        if task["type"] != "copy":
+                            pkg_task = task["id"]
+                            pkg_task_date = datetime_to_iso(task["changed"])
+                            gear_link = self._parse_task_gear(
+                                pkg_info["name"], task, lut.gitalt_base
+                            )
+                            pkg_tasks.append(
+                                {"type": "build", "id": pkg_task, "date": pkg_task_date}
+                            )
+                            break
         # get package maintainers from changelog
         pkg_maintainers = []
         self.conn.request_line = self.sql.get_pkg_maintainers.format(

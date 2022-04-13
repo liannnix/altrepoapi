@@ -107,6 +107,7 @@ WHERE (task_id, subtask_id) IN
         subtask_id
     FROM TaskIterations
     WHERE titer_srcrpm_hash = {pkghash}
+        OR has(titer_pkgs_hash, {pkghash})
 )
 AND task_id IN
 (
