@@ -58,6 +58,8 @@ def format_po_file(packages: list[PkgInfo], uniq_only: bool = False) -> BytesIO:
 
     def format_message(msg):
         res = ""
+        if "%" in msg:
+            msg = msg.replace("%", "%%")
         if "\n" in msg:
             lines = msg.split("\n")
             res += 'msgid ""\n'
