@@ -6,6 +6,42 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.7.0] - yyyy-mm-dd
+
+Merge new features in master branch for production use.
+
+### Added
+### Changed
+### Fixed
+- fixed image information related routes
+
+## [1.6.3] - 2022-04-13
+
+Regular API code updates and fixes.
+
+### Added
+- image/active_images route
+- build task information for binary packages in site/package_info route
+### Changed
+- update parser
+- requires BranchPackageHistory in DB
+### Fixed
+- added '%' symbol escaping in export/translation
+
+## [1.6.2] - 2022-04-08
+
+Regular API code updates and fixes.
+
+### Added
+- 'export/translation' route
+- 'license/*' routes
+- 'site_image/*' routes
+- 'license/*' routes
+### Changed
+### Fixed
+- added missing download links for 'x86_64-i568' (arepo) binary packages
+- packages from task in tests Docker image
+
 ## [1.6.1] - 2022-03-18
 
 Regular API code updates and fixes.
