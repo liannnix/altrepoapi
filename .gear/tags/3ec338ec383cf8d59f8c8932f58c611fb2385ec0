@@ -1,0 +1,6 @@
+object 2900d1413ae3d46c99ea2b2918e08184316b3e16
+type commit
+tag v1.7.0
+tagger Danil Shein <dshein@altlinux.org> 1649939568 +0300
+
+new version 1.7.0
