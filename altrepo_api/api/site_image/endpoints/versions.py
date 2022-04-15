@@ -74,6 +74,7 @@ class PackageVersionsFromImages(APIWorker):
                 "version_minor",
                 "version_sub",
                 "img_arch",
+                "img_flavor",
                 "type"
             ],
         )

@@ -89,6 +89,7 @@ SELECT
     TAGS.img_version_minor,
     TAGS.img_version_sub,
     TAGS.img_arch,
+    TAGS.img_flavor,
     TAGS.img_type
 FROM
 (
@@ -117,6 +118,7 @@ LEFT JOIN
         img_version_minor,
         img_version_sub,
         img_arch,
+        img_flavor,
         img_type
     FROM ImagePackageSetName
 ) AS TAGS ON TAGS.pkgset_uuid = PKGS.ruuid
