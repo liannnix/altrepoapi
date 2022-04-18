@@ -38,6 +38,7 @@ WITH pkg_changelog AS
             pkg_hash,
             pkg_changelog.date AS date,
             pkg_changelog.name as name,
+            extract(replaceOne(extract(pkg_changelog.name, '<(.+@?.+)>+'), ' at ', '@'), '(.*)@') AS nick,
             pkg_changelog.evr AS evr,
             pkg_changelog.hash AS hash
         FROM Packages
@@ -49,6 +50,7 @@ SELECT DISTINCT
     pkg_hash,
     date,
     name,
+    nick,
     evr,
     Chg.chlog_text as text
 FROM pkg_changelog

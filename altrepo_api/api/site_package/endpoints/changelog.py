@@ -65,7 +65,7 @@ class PackageChangelog(APIWorker):
             )
             return self.error
 
-        Changelog = namedtuple("Changelog", ["date", "name", "evr", "message"])
+        Changelog = namedtuple("Changelog", ["date", "name", "nick", "evr", "message"])
         changelog_list = [Changelog(*el[1:])._asdict() for el in response]
 
         res = {
