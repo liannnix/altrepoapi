@@ -314,7 +314,7 @@ class PackageInfo(APIWorker):
             )
             return self.error
 
-        Changelog = namedtuple("Changelog", ["date", "name", "evr", "message"])
+        Changelog = namedtuple("Changelog", ["date", "name", "nick", "evr", "message"])
         changelog_list = [
             Changelog(datetime_to_iso(el[1]), *el[2:])._asdict() for el in response  # type: ignore
         ]

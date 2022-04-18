@@ -33,6 +33,7 @@ package_info_changelog_el_model = ns.model(
     {
         "date": fields.String(description="changelog date"),
         "name": fields.String(description="changelog name"),
+        "nick": fields.String(description="changelog nickname"),
         "evr": fields.String(description="changelog EVR"),
         "message": fields.String(description="changelog message"),
     },
