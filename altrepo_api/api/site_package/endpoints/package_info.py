@@ -386,6 +386,14 @@ class PackageInfo(APIWorker):
         else:
             return lp.error
 
+        # fix gear_link for binary packages
+        if source == 0:
+            pkgname_binary = pkg_info["name"]
+            pkgname_source = list(package_archs.keys())[0]
+            in_ = f"{pkgname_binary[0]}/{pkgname_binary}.git"
+            out_ = f"{pkgname_source[0]}/{pkgname_source}.git"
+            gear_link = gear_link.replace(in_, out_)
+
         res = {
             "pkghash": str(self.pkghash),
             "request_args": self.args,
