@@ -82,6 +82,13 @@ arch_opt = parser.register_item(
     help="arch of binary packages",
     location="args",
 )
+pkg_name_opt = parser.register_item(
+    "name",
+    type=pkg_name_type,
+    required=False,
+    help="package name",
+    location="args",
+)
 
 # build parsesr
 src_downloads_args = parser.build_parser(branch)
@@ -93,3 +100,4 @@ pkgs_versions_args = parser.build_parser(src_pkg_name, pkg_type, arch_opt)
 pkgs_binary_list_args = parser.build_parser(branch, bin_pkg_name)
 package_info_args = parser.build_parser(branch, changelog, pkg_type)
 deleted_package_args = parser.build_parser(branch, pkg_name, pkg_type, arch_opt)
+pkg_nvr_by_hash_args = parser.build_parser(pkg_name_opt)

@@ -639,3 +639,61 @@ class PackagesBinaryListInfo(APIWorker):
             "versions": pkg_versions,
         }
         return res, 200
+
+
+class PackageNVRByHash(APIWorker):
+    """Retrieves package changelog from DB."""
+
+    def __init__(self, connection, pkghash, **kwargs):
+        self.pkghash = pkghash
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def get(self):
+        self.conn.request_line = self.sql.get_package_nvr_by_hash.format(
+            pkghash=self.pkghash
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {
+                    "message": f"No packages found in DB with hash {self.pkghash}",
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        PkgInfo = namedtuple(
+            "PkgInfo", ["hash", "name", "version", "release", "is_source"]
+        )
+        pkg_info = PkgInfo(*response[0])  # type: ignore
+
+        # check if name from args matches with name from DB
+        if self.args["name"] is not None and self.args["name"] != pkg_info.name:
+            self._store_error(
+                {
+                    "message": "Package name mismatching",
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        res = {
+            "request_args": self.args,
+            "hash": str(pkg_info.hash),
+            "name": pkg_info.name,
+            "version": pkg_info.version,
+            "release": pkg_info.release,
+            "is_source": bool(pkg_info.is_source),
+        }
+
+        return res, 200

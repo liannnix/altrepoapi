@@ -671,5 +671,16 @@ WHERE pkg_hash = {pkghash}
         ) 
 """
 
+    get_package_nvr_by_hash = """
+SELECT DISTINCT
+    pkg_hash,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_sourcepackage
+FROM Packages
+WHERE pkg_hash = {pkghash}
+"""
+
 
 sql = SQL()

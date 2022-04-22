@@ -504,3 +504,36 @@ def test_package_log_bin(client, kwargs):
         assert data["subtask_arch"] != ""
         assert data["buildlog_hash"] != ""
         assert data["link"] != ""
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"pkghash": SRC_PKG_HASH_IN_DB, "name": None, "status_code": 200},
+        {"pkghash": BIN_PKG_HASH_IN_DB, "name": None, "status_code": 200},
+        {"pkghash": SRC_PKG_HASH_IN_DB, "name": "curl", "status_code": 200},
+        {"pkghash": BIN_PKG_HASH_IN_DB, "name": "curl", "status_code": 200},
+        {"pkghash": BIN_PKG_HASH_IN_DB, "name": PACKAGE_NOT_IN_DB, "status_code": 404},
+        {"pkghash": PKG_HASH_NOT_IN_DB, "name": None, "status_code": 404},
+        {"pkghash": SRC_PKG_HASH_IN_DB, "name": " ", "status_code": 400},
+        {"pkghash": SRC_PKG_HASH_IN_DB, "name": "**abc#", "status_code": 400},
+    ],
+)
+def test_package_nvr_by_hash(client, kwargs):
+    url = url_for(
+        "api.site_route_package_nvr_by_hash", **{"pkghash": kwargs["pkghash"]}
+    )
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("pkghash", "status_code"):
+            continue
+        if v is not None:
+            params[k] = v
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["hash"] != ""
+        assert data["name"] != ""
+        assert data["is_source"] in (True, False)
