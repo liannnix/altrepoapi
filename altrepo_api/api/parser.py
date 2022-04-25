@@ -79,7 +79,7 @@ __dp_name_match = re.compile("^[\w\/\(\)\.\:\-]{2,}$")  # type: ignore
 ## image name
 __uuid_string_match = re.compile("^[0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12}$")  # type: ignore
 __image_tag_match = re.compile("^[a-zA-Z0-9\-\.\_:]+:[a-z]+$")  # type: ignore
-__image_version_match = re.compile("^[0-9]+\.[0-9]\.[0-9]$")  # type: ignore
+__image_version_match = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
 __image_flavor_match = re.compile("^[a-zA-Z\-]+$")  # type: ignore
 ## licenses
 __license_string_match = re.compile(r"^[A-Za-z0-9\(\)\+ .\-/&,]+$")
