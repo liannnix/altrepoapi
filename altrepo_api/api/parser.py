@@ -64,23 +64,23 @@ __known_img_types = set(lut.known_image_types)
 
 
 # regex patterns
-__pkg_cs_match = re.compile("^[a-fA-F0-9]+$")
-__pkg_name_match = re.compile("^[\w\.\+\-]{2,}$")  # type: ignore
-__pkg_name_list_match = re.compile("^([\w\.\+\-]{2,}[,]?)+$")  # type: ignore
-__pkg_VR_match = re.compile("^[\w\.\+]+$")  # type: ignore
-__pkg_groups_match = re.compile("^[A-Z][a-zA-Z0-9\+\ \/-]+$")  # type: ignore
-__pkg_disttag_match = re.compile("^[a-z0-9\+\.]+$")  # type: ignore
-__packager_name_match = re.compile("^[a-zA-Z]+[\w\.\ \-\@]*$")  # type: ignore
-__packager_email_match = re.compile("^[\w\.\-]+@[\w\.\-]+$")  # type: ignore
-__packager_nickname_match = re.compile("^[\w\-]{2,}$")  # type: ignore
+__pkg_cs_match = re.compile(r"^[a-fA-F0-9]+$")
+__pkg_name_match = re.compile(r"^[\w\.\+\-]{2,}$")
+__pkg_name_list_match = re.compile(r"^([\w\.\+\-]{2,}[,]?)+$")
+__pkg_VR_match = re.compile(r"^[\w\.\+]+$")
+__pkg_groups_match = re.compile(r"^[A-Z][a-zA-Z0-9\+\ \/-]+$")
+__pkg_disttag_match = re.compile(r"^[a-z0-9\+\.]+$")
+__packager_name_match = re.compile(r"^[a-zA-Z]+[\w\.\ \-\@]*$")
+__packager_email_match = re.compile(r"^[\w\.\-]+@[\w\.\-]+$")
+__packager_nickname_match = re.compile(r"^[\w\-]{2,}$")
 ## file name match allows '*' wildcard symbol
-__file_name_wc_match = re.compile("^[\w\-.\/\*]{2,}$")  # type: ignore
-__dp_name_match = re.compile("^[\w\/\(\)\.\:\-\+]{2,}$")  # type: ignore
+__file_name_wc_match = re.compile(r"^[\w\-.\/\*]{2,}$")
+__dp_name_match = re.compile(r"^[\w\/\(\)\.\:\-\+]{2,}$")
 ## image name
-__uuid_string_match = re.compile("^[0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12}$")  # type: ignore
-__image_tag_match = re.compile("^[a-zA-Z0-9\-\.\_:]+:[a-z]+$")  # type: ignore
+__uuid_string_match = re.compile(r"^[0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12}$")
+__image_tag_match = re.compile(r"^[a-zA-Z0-9\-\.\_:]+:[a-z]+$")
 __image_version_match = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
-__image_flavor_match = re.compile("^[a-zA-Z\-]+$")  # type: ignore
+__image_flavor_match = re.compile(r"^[a-zA-Z\-]+$")
 ## licenses
 __license_string_match = re.compile(r"^[A-Za-z0-9\(\)\+ .\-/&,]+$")
 __license_id_match = re.compile(r"^[A-Za-z0-9\-\.\+]+$")
