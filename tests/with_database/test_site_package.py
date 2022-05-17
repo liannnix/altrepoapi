@@ -11,6 +11,7 @@ BIN_PACKAGE_IN_DB = "libcurl"
 PACKAGE_NOT_IN_DB = "fakepackage"
 BIN_PKG_HASH_IN_DB = 2737734146634739740  # curl-7.80.0-alt1.x86_64.rpm
 SRC_PKG_HASH_IN_DB = 2737731585263144792  # curl-7.80.0-alt1.src.rpm
+AREPO_BIN_PKG_HASH_IN_DB = 2737737572126530378  # i586-libcurl-7.80.0-alt1.i586.rpm
 PKG_HASH_NOT_IN_DB = 1234567890
 BIN_PKG_HASH_IN_DB_W_SCRIPTS = (
     2741769951412931821  # docker-engine-20.10.11-alt1.x86_64.rpm
@@ -31,6 +32,13 @@ DELETED_SRC_PACKAGE = "python3-module-flask-script"
         },
         {
             "pkghash": BIN_PKG_HASH_IN_DB,
+            "branch": BRANCH_IN_DB,
+            "package_type": "binary",
+            "changelog_last": None,
+            "status_code": 200,
+        },
+        {
+            "pkghash": AREPO_BIN_PKG_HASH_IN_DB,
             "branch": BRANCH_IN_DB,
             "package_type": "binary",
             "changelog_last": None,
@@ -88,7 +96,8 @@ def test_package_info(client, kwargs):
         assert data != {}
         assert data["pkghash"] != ""
         assert data["maintainers"] != []
-        assert data["package_archs"] != []
+        if kwargs["pkghash"] != AREPO_BIN_PKG_HASH_IN_DB:
+            assert data["package_archs"] != []
         if kwargs["package_type"] == "source":
             assert data["tasks"] != []
         assert data["changelog"] != []
