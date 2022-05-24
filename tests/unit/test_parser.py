@@ -534,3 +534,22 @@ def test_pkg_name_list_type(test_input, expected_exception, expected):
         assert parser.pkg_name_list_type(test_input) == expected
     else:
         pytest.raises(expected_exception, parser.pkg_name_list_type, test_input)
+
+
+@pytest.mark.parametrize(
+    "test_input,expected_exception,expected",
+    [
+        ("core", None, "core"),
+        ("@qa_p10", None, "@qa_p10"),
+        ("", ValueError, None),
+        ("@", ValueError, None),
+        (" core", ValueError, None),
+        ("core ", ValueError, None),
+        ("core+", ValueError, None),
+    ],
+)
+def test_acl_group_type(test_input, expected_exception, expected):
+    if not expected_exception:
+        assert parser.acl_group_type(test_input) == expected
+    else:
+        pytest.raises(expected_exception, parser.acl_group_type, test_input)
