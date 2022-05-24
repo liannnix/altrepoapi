@@ -73,17 +73,20 @@ __pkg_disttag_match = re.compile(r"^[a-z0-9\+\.]+$")
 __packager_name_match = re.compile(r"^[a-zA-Z]+[\w\.\ \-\@]*$")
 __packager_email_match = re.compile(r"^[\w\.\-]+@[\w\.\-]+$")
 __packager_nickname_match = re.compile(r"^[\w\-]{2,}$")
-## file name match allows '*' wildcard symbol
+# file name match allows '*' wildcard symbol
 __file_name_wc_match = re.compile(r"^[\w\-.\/\*]{2,}$")
 __dp_name_match = re.compile(r"^[\w\/\(\)\.\:\-\+]{2,}$")
-## image name
+# image name
 __uuid_string_match = re.compile(r"^[0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12}$")
 __image_tag_match = re.compile(r"^[a-zA-Z0-9\-\.\_:]+:[a-z]+$")
 __image_version_match = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
 __image_flavor_match = re.compile(r"^[a-zA-Z\-]+$")
-## licenses
+# licenses
 __license_string_match = re.compile(r"^[A-Za-z0-9\(\)\+ .\-/&,]+$")
 __license_id_match = re.compile(r"^[A-Za-z0-9\-\.\+]+$")
+# acl
+__acl_group_match = re.compile(r"^@?[a-z0-9\_]+$")
+
 
 # custom validators
 def __get_string(value: Any) -> str:
@@ -393,7 +396,7 @@ img_type.__schema__ = {"type": "string"}
 
 
 def license_string_type(value: Any) -> str:
-    """Package name validator."""
+    """License string validator."""
 
     value = __get_string(value)
     if not __license_string_match.search(value):
@@ -404,7 +407,7 @@ license_string_type.__schema__ = {"type": "string", "pattern": __license_string_
 
 
 def license_id_type(value: Any) -> str:
-    """Package name validator."""
+    """License ID validator."""
 
     value = __get_string(value)
     if not __license_id_match.search(value):
@@ -412,3 +415,14 @@ def license_id_type(value: Any) -> str:
     return value
 
 license_id_type.__schema__ = {"type": "string", "pattern": __license_id_match.pattern}
+
+
+def acl_group_type(value: Any) -> str:
+    """ACL group validator."""
+
+    value = __get_string(value)
+    if not __acl_group_match.search(value):
+        raise ValueError("Invalid ACL group: {0}".format(value))
+    return value
+
+acl_group_type.__schema__ = {"type": "string", "pattern": __acl_group_match.pattern}
