@@ -36,6 +36,7 @@ from altrepo_api.api.site_packageset import ns as site_packageset_ns
 from altrepo_api.api.export import ns as export_ns
 from altrepo_api.api.image import ns as image_ns
 from altrepo_api.api.license import ns as license_ns
+from altrepo_api.api.acl import ns as acl_ns
 
 
 authorizations = {
@@ -59,6 +60,7 @@ api = Api(
 api.add_namespace(task_ns)
 api.add_namespace(package_ns)
 api.add_namespace(packageset_ns)
+api.add_namespace(acl_ns)
 api.add_namespace(bug_ns)
 api.add_namespace(dependencies_ns)
 api.add_namespace(site_task_ns)
