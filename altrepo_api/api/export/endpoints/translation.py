@@ -82,7 +82,10 @@ def format_po_file(packages: list[PkgInfo], uniq_only: bool = False) -> BytesIO:
         str_ = ""
         if pkg.summary not in uniq_summary and pkg.summary not in uniq_description:
             str_ += f"#: {pkg.name}\n"
-            str_ += f"#. homepage: {pkg.url}\n"
+            if pkg.url:
+                str_ += f"#. homepage: {pkg.url}\n"
+            else:
+                str_ += "#. homepage:\n"
             str_ += "#. summary\n"
             str_ += format_message(pkg.summary)
             str_ += 'msgstr ""\n\n'
@@ -90,7 +93,10 @@ def format_po_file(packages: list[PkgInfo], uniq_only: bool = False) -> BytesIO:
                 uniq_summary.add(pkg.summary)
         if pkg.description not in uniq_description and pkg.description not in uniq_summary:
             str_ += f"#: {pkg.name}\n"
-            str_ += f"#. homepage: {pkg.url}\n"
+            if pkg.url:
+                str_ += f"#. homepage: {pkg.url}\n"
+            else:
+                str_ += "#. homepage:\n"
             str_ += "#. description\n"
             str_ += format_message(pkg.description)
             str_ += 'msgstr ""\n\n'
@@ -123,7 +129,7 @@ class TranslationExport(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No data found in DB",
+                    "message": "No data found in DB",
                     "args": self.args,
                 },
                 self.ll.INFO,
