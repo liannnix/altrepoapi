@@ -44,9 +44,9 @@ class PackagesetPackages(APIWorker):
             if self.args["group"] not in lut.pkg_groups:
                 for el in lut.pkg_groups:
                     if (
-                        (el.startswith(self.args["group"]) and self.args["group"][-1] == "/")
-                        or el.startswith(self.args["group"] + '/')
-                    ):
+                        el.startswith(self.args["group"])
+                        and self.args["group"][-1] == "/"
+                    ) or el.startswith(self.args["group"] + "/"):
                         match = True
                         break
             else:
@@ -61,7 +61,7 @@ class PackagesetPackages(APIWorker):
 
         if self.args["buildtime"] and self.args["buildtime"] < 0:
             self.validation_results.append(
-                f"package build time should be integer UNIX time representation"
+                "package build time should be integer UNIX time representation"
             )
 
         if self.validation_results != []:
@@ -75,8 +75,16 @@ class PackagesetPackages(APIWorker):
         self.group = self.args["group"]
         self.buildtime = self.args["buildtime"]
 
+        def escape_string(s: str) -> str:
+            return s.replace("/", r"\/").replace("+", r"\+")
+
         if self.group is not None:
-            group = f"AND pkg_group_ LIKE '{self.group}%%'"
+            # case insensitive regex matches groups and subgroups
+            group = (
+                r"AND match(pkg_group_, '(?i)"
+                + escape_string(self.group)
+                + r"(\/[\w\+\ \-]+|$)+')"
+            )
         else:
             group = ""
             self.group = ""
@@ -95,7 +103,7 @@ class PackagesetPackages(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No data found in database for given parameters",
+                    "message": "No data found in database for given parameters",
                     "args": self.args,
                 },
                 self.ll.INFO,
@@ -162,7 +170,7 @@ class AllPackagesetsByHash(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )
@@ -187,7 +195,7 @@ class LastBranchPackages(APIWorker):
 
         if self.args["packages_limit"] < 1:
             self.validation_results.append(
-                f"last packages limit should be greater or equal to 1"
+                "last packages limit should be greater or equal to 1"
             )
 
         if self.validation_results != []:
@@ -217,14 +225,14 @@ class LastBranchPackages(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No data found in database for given parameters",
+                    "message": "No data found in database for given parameters",
                     "args": self.args,
                 },
                 self.ll.INFO,
                 404,
             )
             return self.error
-        last_branch_date = response[0][0]
+        last_branch_date = response[0][0]  # type: ignore
 
         if self.packager:
             tmp_table = self.sql.get_last_branch_hsh_source.format(branch=self.branch)
@@ -248,7 +256,7 @@ class LastBranchPackages(APIWorker):
             if not status:
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
-            src_diff_count = response[0][0]
+            src_diff_count = response[0][0]  # type: ignore
             t_date = last_branch_date
             if src_diff_count == 0:
                 # try to go back in branch history
@@ -279,13 +287,13 @@ class LastBranchPackages(APIWorker):
                     if not status:
                         self._store_sql_error(response, self.ll.ERROR, 500)
                         return self.error
-                    src_diff_count = response[0][0]
+                    src_diff_count = response[0][0]  # type: ignore
                     if src_diff_count != 0:
                         break
             if src_diff_count == 0:
                 self._store_error(
                     {
-                        "message": f"Failed to get branch state diff from database",
+                        "message": "Failed to get branch state diff from database",
                         "args": self.args,
                     },
                     self.ll.INFO,
@@ -306,7 +314,7 @@ class LastBranchPackages(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No data found in database for packages",
+                    "message": "No data found in database for packages",
                     "args": self.args,
                 },
                 self.ll.INFO,

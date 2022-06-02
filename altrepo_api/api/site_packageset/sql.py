@@ -47,7 +47,7 @@ SELECT DISTINCT
     pkg_group_,
     CHLG.chlog_text
 FROM last_packages
-LEFT JOIN 
+LEFT JOIN
 (
     SELECT
         pkg_hash,
@@ -68,7 +68,7 @@ FROM last_packages
 WHERE pkgset_name = %(branch)s
     AND pkg_sourcepackage IN {src}
     AND pkg_name NOT LIKE '%%-debuginfo'
-    AND pkg_group_ like '{group}%%'
+    AND pkg_group_ like '{group}/%%'
     AND pkg_group_ != '{group}'
 """
 
@@ -144,7 +144,7 @@ FROM Packages
 INNER JOIN lp_preselect2 AS LP2 USING (pkg_hash)
 WHERE pkg_name NOT ILIKE '%{name}%'
     AND pkg_sourcepackage = 1
-    AND pkg_sourcerpm IN 
+    AND pkg_sourcerpm IN
     (
         SELECT pkg_sourcerpm
         FROM Packages
@@ -183,11 +183,11 @@ WHERE pkgset_name = '{branch}'
     get_all_pkgsets_by_hash = """
 SELECT DISTINCT pkgset_nodename
 FROM PackageSetName
-WHERE (pkgset_ruuid IN 
+WHERE (pkgset_ruuid IN
 (
     SELECT pkgset_ruuid
     FROM PackageSetName
-    WHERE pkgset_uuid IN 
+    WHERE pkgset_uuid IN
     (
         SELECT pkgset_uuid
         FROM PackageSet
