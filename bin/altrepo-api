@@ -24,7 +24,7 @@ Usage:
 """
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     path = os.path.dirname(altrepo_api.__file__)
 
     # print usage
@@ -34,18 +34,19 @@ if __name__ == '__main__':
             os._exit(0)
         else:
             pass
-    elif (os.getenv(settings.CONFIG_ENV_VAR) is None and
-        not os.path.isfile(settings.CONFIG_FILE)):
+    elif os.getenv(settings.CONFIG_ENV_VAR) is None and not os.path.isfile(
+        settings.CONFIG_FILE
+    ):
         print("\n\033[91m* No ALTRepo API configuration file found *\033[0m\n")
         print(usage)
         os._exit(0)
 
     # import application and run
-    from altrepo_api.app import app
+    from altrepo_api.app import app  # noqa: F401
 
     # set workers number as 2*CPU_CORES + 1 if not set in config
     if int(settings.WORKER_PROCESSES) <= 0:
-        num_of_workers = str(multiprocessing.cpu_count()*2 + 1)
+        num_of_workers = str(multiprocessing.cpu_count() * 2 + 1)
     else:
         num_of_workers = settings.WORKER_PROCESSES
 
