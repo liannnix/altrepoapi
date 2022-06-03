@@ -26,7 +26,7 @@ def auth_required(f):
 
     @wraps(f)
     def decorated(*args, **kwargs):
-        token_payload = _check_access_auth(admin_only=False)
+        token_payload = _check_access_auth(admin_only=False)  # noqa
         # for name, val in token_payload.items():
         #     setattr(decorated, name, val)
         return f(*args, **kwargs)
