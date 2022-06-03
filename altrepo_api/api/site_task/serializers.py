@@ -129,7 +129,7 @@ pkgs_versions_from_tasks_el_model = ns.model(
         "name": fields.String(description="package name"),
         "version": fields.String(description="package version"),
         "release": fields.String(description="package release"),
-    }
+    },
 )
 pkgs_versions_from_tasks_model = ns.model(
     "SItePackagesVersionsFromTasksModel",
@@ -141,5 +141,5 @@ pkgs_versions_from_tasks_model = ns.model(
             description="package versions list",
             as_list=True,
         ),
-    }
+    },
 )
