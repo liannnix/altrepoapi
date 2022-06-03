@@ -10,16 +10,42 @@ PKG_HASH_NOT_IN_DB = 1234567890
 DP_NAME_IN_DB = "curl"
 DP_NAME_NOT_IN_DB = "fakepackage"
 
+
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"branch": BRANCH_IN_DB, "dp_name": DP_NAME_IN_DB, "dp_type": None, "status_code": 200},
-        {"branch": BRANCH_IN_DB, "dp_name": DP_NAME_IN_DB, "dp_type": "provide", "status_code": 200},
-        {"branch": BRANCH_IN_DB, "dp_name": DP_NAME_NOT_IN_DB, "dp_type": None, "status_code": 404},
-        {"branch": BRANCH_NOT_IN_DB, "dp_name": DP_NAME_IN_DB, "dp_type": None, "status_code": 400},
+        {
+            "branch": BRANCH_IN_DB,
+            "dp_name": DP_NAME_IN_DB,
+            "dp_type": None,
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "dp_name": DP_NAME_IN_DB,
+            "dp_type": "provide",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "dp_name": DP_NAME_NOT_IN_DB,
+            "dp_type": None,
+            "status_code": 404,
+        },
+        {
+            "branch": BRANCH_NOT_IN_DB,
+            "dp_name": DP_NAME_IN_DB,
+            "dp_type": None,
+            "status_code": 400,
+        },
         {"branch": None, "dp_name": DP_NAME_IN_DB, "dp_type": None, "status_code": 400},
         {"branch": BRANCH_IN_DB, "dp_name": None, "dp_type": None, "status_code": 400},
-        {"branch": BRANCH_IN_DB, "dp_name": DP_NAME_IN_DB, "dp_type": "abc", "status_code": 400},
+        {
+            "branch": BRANCH_IN_DB,
+            "dp_name": DP_NAME_IN_DB,
+            "dp_type": "abc",
+            "status_code": 400,
+        },
     ],
 )
 def test_packages_by_dependency(client, kwargs):

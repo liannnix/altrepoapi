@@ -10,9 +10,9 @@ UUID_NOT_VALID = "00000-0000-0000-0000-000000000000"
 UUID_NOT_DB = "00000000-0000-0000-0000-000000000000"
 CATEGORY_VALID = "Security/Networking"
 CATEGORY_NOT_DB = "Security/Abcd"
-EDITION_IN_DB = 'alt-workstation'
-IMG_VERSION_IN_VALID = '9.2.0'
-IMG_VERSION_NOT_VALID = '9.2'
+EDITION_IN_DB = "alt-workstation"
+IMG_VERSION_IN_VALID = "9.2.0"
+IMG_VERSION_NOT_VALID = "9.2"
 
 
 @pytest.mark.parametrize(
@@ -28,11 +28,11 @@ IMG_VERSION_NOT_VALID = '9.2'
             "flavor": None,
             "component": None,
             "type": None,
-            "status_code": 200
+            "status_code": 200,
         },
         {
             "branch": BRANCH_IN_DB[0],
-            "edition": 'cloud',
+            "edition": "cloud",
             "version": "9.2.0",
             "release": "release",
             "variant": "install",
@@ -40,7 +40,7 @@ IMG_VERSION_NOT_VALID = '9.2'
             "flavor": "workstation",
             "component": None,
             "type": "qcow",
-            "status_code": 200
+            "status_code": 200,
         },
         {
             "branch": BRANCH_NOT_DB,
@@ -52,11 +52,11 @@ IMG_VERSION_NOT_VALID = '9.2'
             "flavor": None,
             "component": None,
             "type": "zip",
-            "status_code": 400
+            "status_code": 400,
         },
         {
             "branch": BRANCH_IN_DB[1],
-            "edition": 'slinux',
+            "edition": "slinux",
             "version": "10.0.0",
             "release": "release",
             "variant": None,
@@ -64,7 +64,7 @@ IMG_VERSION_NOT_VALID = '9.2'
             "flavor": None,
             "component": None,
             "type": "img",
-            "status_code": 404
+            "status_code": 404,
         },
     ],
 )
@@ -113,11 +113,11 @@ def test_image_status_get(client):
                     "img_end_date": "2022-03-10T14:26:43.284",
                     "img_mailing_list": "https://lists.altlinux.org/mailman/listinfo/devel-ports",
                     "img_name_bugzilla": "p9",
-                    "img_json": {}
+                    "img_json": {},
                 }
-            ]
+            ],
         }
-    ]
+    ],
 )
 def test_image_status_post(client, kwargs):
     url = url_for("api.image_route_image_status")
@@ -133,7 +133,7 @@ def test_image_status_post(client, kwargs):
         {"branch": BRANCH_NOT_DB, "edition": "alt-kworkstation", "status_code": 400},
         {"branch": BRANCH_IN_DB[0], "edition": "test", "status_code": 400},
         {"branch": BRANCH_IN_DB[2], "edition": "alt-kworkstation", "status_code": 404},
-    ]
+    ],
 )
 def test_image_tag_status_get(client, kwargs):
     params = {k: v for k, v in kwargs.items() if k != "status_code"}
@@ -156,11 +156,11 @@ def test_image_tag_status_get(client, kwargs):
             "tags": [
                 {
                     "img_tag": "branch:edition:flavor:platform:release.ver_major.ver_minor.ver_sub:arch:variant:type",
-                    "img_show": "hide"
+                    "img_show": "hide",
                 }
             ]
         }
-    ]
+    ],
 )
 def test_image_tag_status_post(client, kwargs):
     url = url_for("api.image_route_image_tag_status")
@@ -176,7 +176,7 @@ def test_image_tag_status_post(client, kwargs):
             "uuid": ROOT_UUID_VALID,
             "packages_limit": 10,
             "component": None,
-            "status_code": 200
+            "status_code": 200,
         },
         {
             "branch": BRANCH_IN_DB[1],
@@ -190,30 +190,30 @@ def test_image_tag_status_post(client, kwargs):
             "uuid": COMPONENT_UUID_VALID,
             "packages_limit": 10,
             "component": None,
-            "status_code": 404
+            "status_code": 404,
         },
         {
             "branch": BRANCH_IN_DB[1],
             "uuid": COMPONENT_UUID_VALID,
             "packages_limit": 10,
             "component": None,
-            "status_code": 404
+            "status_code": 404,
         },
         {
             "branch": BRANCH_NOT_DB,
             "uuid": UUID_NOT_VALID,
             "packages_limit": 10,
             "component": None,
-            "status_code": 400
+            "status_code": 400,
         },
         {
             "branch": BRANCH_IN_DB[1],
             "uuid": UUID_NOT_DB,
             "packages_limit": 10,
             "component": None,
-            "status_code": 404
+            "status_code": 404,
         },
-    ]
+    ],
 )
 def test_last_packages_by_image(client, kwargs):
     params = {k: v for k, v in kwargs.items() if k != "status_code"}
@@ -241,19 +241,10 @@ def test_all_images(client):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {
-            "tag": "p9:slinux::mcom02:release.9.1.0:armh:install:img",
-            "status_code": 200
-        },
-        {
-            "tag": "p5:slinux::mcom02:release.9.1.0:armh:install:img",
-            "status_code": 404
-        },
-        {
-            "tag": "p9:slinux:mcom02:release.9.1.0:install:img",
-            "status_code": 404
-        },
-    ]
+        {"tag": "p9:slinux::mcom02:release.9.1.0:armh:install:img", "status_code": 200},
+        {"tag": "p5:slinux::mcom02:release.9.1.0:armh:install:img", "status_code": 404},
+        {"tag": "p9:slinux:mcom02:release.9.1.0:install:img", "status_code": 404},
+    ],
 )
 def test_image_uuid_by_tag(client, kwargs):
     params = {k: v for k, v in kwargs.items() if k != "status_code"}
@@ -272,31 +263,12 @@ def test_image_uuid_by_tag(client, kwargs):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {
-            "uuid": ROOT_UUID_VALID,
-            "status_code": 200
-        },
-        {
-            "uuid": ROOT_UUID_VALID,
-            "component": "live",
-            "status_code": 200
-        },
-        {
-            "uuid": COMPONENT_UUID_VALID,
-            "component": "live",
-            "status_code": 404
-        },
-        {
-            "uuid": ROOT_UUID_VALID,
-            "component": "invalid",
-            "status_code": 400
-        },
-        {
-            "uuid": UUID_NOT_VALID,
-            "component": "invalid",
-            "status_code": 400
-        },
-    ]
+        {"uuid": ROOT_UUID_VALID, "status_code": 200},
+        {"uuid": ROOT_UUID_VALID, "component": "live", "status_code": 200},
+        {"uuid": COMPONENT_UUID_VALID, "component": "live", "status_code": 404},
+        {"uuid": ROOT_UUID_VALID, "component": "invalid", "status_code": 400},
+        {"uuid": UUID_NOT_VALID, "component": "invalid", "status_code": 400},
+    ],
 )
 def test_image_categories_count(client, kwargs):
     params = {k: v for k, v in kwargs.items() if k != "status_code"}
@@ -313,34 +285,22 @@ def test_image_categories_count(client, kwargs):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {
-            "uuid": ROOT_UUID_VALID,
-            "group": CATEGORY_VALID,
-            "status_code": 200
-        },
+        {"uuid": ROOT_UUID_VALID, "group": CATEGORY_VALID, "status_code": 200},
         {
             "uuid": ROOT_UUID_VALID,
             "group": CATEGORY_VALID,
             "component": "live",
-            "status_code": 200
+            "status_code": 200,
         },
         {
             "uuid": COMPONENT_UUID_VALID,
             "group": CATEGORY_VALID,
             "component": "live",
-            "status_code": 404
+            "status_code": 404,
         },
-        {
-            "uuid": ROOT_UUID_VALID,
-            "group": CATEGORY_NOT_DB,
-            "status_code": 400
-        },
-        {
-            "uuid": UUID_NOT_VALID,
-            "group": CATEGORY_VALID,
-            "status_code": 400
-        },
-    ]
+        {"uuid": ROOT_UUID_VALID, "group": CATEGORY_NOT_DB, "status_code": 400},
+        {"uuid": UUID_NOT_VALID, "group": CATEGORY_VALID, "status_code": 400},
+    ],
 )
 def test_image_packages(client, kwargs):
     params = {k: v for k, v in kwargs.items() if k != "status_code"}
@@ -362,7 +322,7 @@ def test_image_packages(client, kwargs):
             "uuid": ROOT_UUID_VALID,
             "packages_limit": 10,
             "component": None,
-            "status_code": 200
+            "status_code": 200,
         },
         {
             "branch": BRANCH_IN_DB[1],
@@ -376,30 +336,30 @@ def test_image_packages(client, kwargs):
             "uuid": COMPONENT_UUID_VALID,
             "packages_limit": 10,
             "component": None,
-            "status_code": 404
+            "status_code": 404,
         },
         {
             "branch": BRANCH_IN_DB[1],
             "uuid": COMPONENT_UUID_VALID,
             "packages_limit": 10,
             "component": None,
-            "status_code": 404
+            "status_code": 404,
         },
         {
             "branch": BRANCH_NOT_DB,
             "uuid": UUID_NOT_VALID,
             "packages_limit": 10,
             "component": None,
-            "status_code": 400
+            "status_code": 400,
         },
         {
             "branch": BRANCH_IN_DB[1],
             "uuid": UUID_NOT_DB,
             "packages_limit": 10,
             "component": None,
-            "status_code": 404
+            "status_code": 404,
         },
-    ]
+    ],
 )
 def test_last_packages_image_with_cve_fixed(client, kwargs):
     params = {k: v for k, v in kwargs.items() if k != "status_code"}
@@ -423,54 +383,54 @@ def test_last_packages_image_with_cve_fixed(client, kwargs):
             "release": None,
             "variant": None,
             "type": None,
-            "status_code": 200
+            "status_code": 200,
         },
         {
             "branch": BRANCH_IN_DB[0],
             "edition": EDITION_IN_DB,
             "version": IMG_VERSION_IN_VALID,
-            "release": 'release',
-            "variant": 'install',
-            "type": 'iso',
-            "status_code": 200
+            "release": "release",
+            "variant": "install",
+            "type": "iso",
+            "status_code": 200,
         },
         {
             "uuid": BRANCH_NOT_DB,
             "edition": EDITION_IN_DB,
             "version": IMG_VERSION_IN_VALID,
-            "release": 'release',
-            "variant": 'install',
-            "type": 'iso',
-            "status_code": 400
+            "release": "release",
+            "variant": "install",
+            "type": "iso",
+            "status_code": 400,
         },
         {
             "branch": BRANCH_IN_DB[0],
             "edition": EDITION_IN_DB,
             "version": IMG_VERSION_NOT_VALID,
-            "release": 'release',
-            "variant": 'install',
-            "type": 'iso',
-            "status_code": 400
+            "release": "release",
+            "variant": "install",
+            "type": "iso",
+            "status_code": 400,
         },
         {
             "branch": None,
             "edition": EDITION_IN_DB,
             "version": IMG_VERSION_IN_VALID,
-            "release": 'release',
-            "variant": 'install',
-            "type": 'iso',
-            "status_code": 400
+            "release": "release",
+            "variant": "install",
+            "type": "iso",
+            "status_code": 400,
         },
         {
             "branch": BRANCH_IN_DB[2],
             "edition": EDITION_IN_DB,
             "version": IMG_VERSION_IN_VALID,
-            "release": 'release',
-            "variant": 'install',
-            "type": 'iso',
-            "status_code": 404
+            "release": "release",
+            "variant": "install",
+            "type": "iso",
+            "status_code": 404,
         },
-    ]
+    ],
 )
 def test_active_images(client, kwargs):
     params = {k: v for k, v in kwargs.items() if k != "status_code"}

@@ -37,10 +37,22 @@ def test_tasks_by_package(client, kwargs):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "status_code": 200},
-        {"branch": BRANCH_NOT_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "status_code": 400},
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_NOT_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "status_code": 400,
+        },
         {"branch": BRANCH_IN_DB, "maintainer_nickname": "", "status_code": 400},
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_NOT_IN_DB, "status_code": 404},
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_NOT_IN_DB,
+            "status_code": 404,
+        },
     ],
 )
 def test_tasks_by_maintainer(client, kwargs):
@@ -89,12 +101,42 @@ def test_package_versions_from_tasks(client, kwargs):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"branch": BRANCH_IN_DB, "tasks_limit": 10, "task_owner": None, "status_code": 200},
-        {"branch": BRANCH_IN_DB, "tasks_limit": 10, "task_owner": MAINTAINER_IN_DB, "status_code": 200},
-        {"branch": BRANCH_NOT_IN_DB, "tasks_limit": 10, "task_owner": None, "status_code": 400},
-        {"branch": BRANCH_IN_DB, "tasks_limit": 0, "task_owner": None, "status_code": 400},
-        {"branch": BRANCH_IN_DB, "tasks_limit": -10, "task_owner": None, "status_code": 400},
-        {"branch": BRANCH_IN_DB, "tasks_limit": 10, "task_owner": MAINTAINER_NOT_IN_DB, "status_code": 404},
+        {
+            "branch": BRANCH_IN_DB,
+            "tasks_limit": 10,
+            "task_owner": None,
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "tasks_limit": 10,
+            "task_owner": MAINTAINER_IN_DB,
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_NOT_IN_DB,
+            "tasks_limit": 10,
+            "task_owner": None,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "tasks_limit": 0,
+            "task_owner": None,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "tasks_limit": -10,
+            "task_owner": None,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "tasks_limit": 10,
+            "task_owner": MAINTAINER_NOT_IN_DB,
+            "status_code": 404,
+        },
     ],
 )
 def test_last_packages_by_tasks(client, kwargs):
@@ -119,12 +161,42 @@ def test_last_packages_by_tasks(client, kwargs):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"branch": BRANCH_IN_DB, "tasks_limit": 10, "task_owner": None, "status_code": 200},
-        {"branch": BRANCH_IN_DB, "tasks_limit": 10, "task_owner": MAINTAINER_IN_DB, "status_code": 200},
-        {"branch": BRANCH_NOT_IN_DB, "tasks_limit": 10, "task_owner": None, "status_code": 400},
-        {"branch": BRANCH_IN_DB, "tasks_limit": 0, "task_owner": None, "status_code": 400},
-        {"branch": BRANCH_IN_DB, "tasks_limit": -10, "task_owner": None, "status_code": 400},
-        {"branch": BRANCH_IN_DB, "tasks_limit": 10, "task_owner": MAINTAINER_NOT_IN_DB, "status_code": 404},
+        {
+            "branch": BRANCH_IN_DB,
+            "tasks_limit": 10,
+            "task_owner": None,
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "tasks_limit": 10,
+            "task_owner": MAINTAINER_IN_DB,
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_NOT_IN_DB,
+            "tasks_limit": 10,
+            "task_owner": None,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "tasks_limit": 0,
+            "task_owner": None,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "tasks_limit": -10,
+            "task_owner": None,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "tasks_limit": 10,
+            "task_owner": MAINTAINER_NOT_IN_DB,
+            "status_code": 404,
+        },
     ],
 )
 def test_last_packages(client, kwargs):

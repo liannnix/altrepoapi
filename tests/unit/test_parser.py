@@ -329,7 +329,11 @@ def test_date_string_type(test_input, expected_exception, expected):
 @pytest.mark.parametrize(
     "test_input,expected_exception,expected",
     [
-        ("12345678-abcd-ef01-2345-67890abcdef0", None, "12345678-abcd-ef01-2345-67890abcdef0"),
+        (
+            "12345678-abcd-ef01-2345-67890abcdef0",
+            None,
+            "12345678-abcd-ef01-2345-67890abcdef0",
+        ),
         ("", ValueError, None),
         ("x2345678-abcd-ef01-2345-67890abcdef0", ValueError, None),
         (" 12345678-abcd-ef01-2345-67890abcdef0", ValueError, None),
