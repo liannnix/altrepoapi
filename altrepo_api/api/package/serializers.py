@@ -391,7 +391,9 @@ specfile_model = ns.model(
         "pkg_release": fields.String(description="source package release"),
         "specfile_name": fields.String(description="spec file name"),
         "specfile_date": fields.String(description="spec file mtime"),
-        "specfile_content": fields.String(description="spec file base64 encoded raw contents"),
+        "specfile_content": fields.String(
+            description="spec file base64 encoded raw contents"
+        ),
     },
 )
 
@@ -403,8 +405,10 @@ package_files_el_model = ns.model(
         "file_class": fields.String(description="file class"),
         "symlink": fields.String(description="link path"),
         "file_mtime": fields.DateTime(description="file modification time"),
-        "file_mode": fields.String(description="file permissions string representation")
-    }
+        "file_mode": fields.String(
+            description="file permissions string representation"
+        ),
+    },
 )
 package_files_model = ns.model(
     "PackageFilesModel",
@@ -414,5 +418,5 @@ package_files_model = ns.model(
         "files": fields.Nested(
             package_files_el_model, description="package file list", as_list=True
         ),
-    }
+    },
 )
