@@ -37,7 +37,9 @@ class AclGroups(APIWorker):
         if name is not None:
             if name.startswith("@"):
                 name = name[1:]
-            self.conn.request_line = self.sql.get_acl_group.format(branch=branch, acl_group=name)
+            self.conn.request_line = self.sql.get_acl_group.format(
+                branch=branch, acl_group=name
+            )
         else:
             self.conn.request_line = self.sql.get_all_acl_groups.format(branch=branch)
 
