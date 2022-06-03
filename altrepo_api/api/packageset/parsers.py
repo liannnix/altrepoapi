@@ -18,13 +18,25 @@ from altrepo_api.api.parser import parser, branch_name_type, arch_name_type
 
 # register parser items
 branch = parser.register_item(
-    "branch", type=branch_name_type, required=True, help="name of packageset", location="args"
+    "branch",
+    type=branch_name_type,
+    required=True,
+    help="name of packageset",
+    location="args",
 )
 packageset_1 = parser.register_item(
-    "pkgset1", type=branch_name_type, required=True, help="first packageset name", location="args"
+    "pkgset1",
+    type=branch_name_type,
+    required=True,
+    help="first packageset name",
+    location="args",
 )
 packageset_2 = parser.register_item(
-    "pkgset2", type=branch_name_type, required=True, help="second packageset name", location="args"
+    "pkgset2",
+    type=branch_name_type,
+    required=True,
+    help="second packageset name",
+    location="args",
 )
 package_type_opt = parser.register_item(
     "package_type",
