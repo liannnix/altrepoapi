@@ -47,7 +47,7 @@ class TaskRepoState(APIWorker):
             self._store_sql_error(response, self.ll.INFO, 500)
             return False
 
-        if response[0][0] == 0:
+        if response[0][0] == 0:  # type: ignore
             return False
         return True
 
@@ -72,7 +72,7 @@ class TaskRepoState(APIWorker):
                 500,
             )
             return None
-        self.task_repo = response[0][0]
+        self.task_repo = response[0][0]  # type: ignore
         # get task state
         self.conn.request_line = self.sql.task_state.format(id=self.task_id)
         status, response = self.conn.send_request()
@@ -86,7 +86,7 @@ class TaskRepoState(APIWorker):
                 500,
             )
             return None
-        task_state = response[0][0]
+        task_state = response[0][0]  # type: ignore
         if task_state not in ("DONE", "EPERM", "TESTED", "FAILED"):
             self._store_error(
                 {"Error": f"task state {task_state} not supported for data query"},
@@ -111,9 +111,9 @@ class TaskRepoState(APIWorker):
         task_try = 0
         task_iter = 0
         for el in response:
-            task_archs.add(el[0])
+            task_archs.add(el[0])  # type: ignore
             task_try = el[1]
-            task_iter = el[2]
+            task_iter = el[2]  # type: ignore
         #  get task plan
         task_tplan_hashes = set()
         for arch in task_archs:
@@ -195,7 +195,7 @@ class TaskRepoState(APIWorker):
 
             last_repo_pkgs = set(join_tuples(response))  # type: ignore
         else:
-            # if task state is 'EPERM', 'TESTED', 'POSTPONED' or 'FAILED' 
+            # if task state is 'EPERM', 'TESTED', 'POSTPONED' or 'FAILED'
             # use latest repo and apply all 'DONE' on top of it
             self.conn.request_line = self.sql.repo_last_repo_tasks_diff_list.format(
                 repo=self.task_repo
@@ -269,7 +269,9 @@ class TaskRepoState(APIWorker):
             tasks_diff_add_hshs = set()
             tasks_diff_del_hshs = set()
 
-        task_base_repo_pkgs = (last_repo_pkgs - tasks_diff_del_hshs) | tasks_diff_add_hshs
+        task_base_repo_pkgs = (
+            last_repo_pkgs - tasks_diff_del_hshs
+        ) | tasks_diff_add_hshs
         task_current_repo_pkgs = (task_base_repo_pkgs - task_del_pkgs) | task_add_pkgs
 
         if keep_artefacts:
@@ -301,7 +303,7 @@ class TaskRepo(APIWorker):
             self._store_sql_error(response, self.ll.INFO, 500)
             return False
 
-        if response[0][0] == 0:
+        if response[0][0] == 0:  # type: ignore
             return False
         return True
 
@@ -335,7 +337,7 @@ class TaskRepo(APIWorker):
             )
             return None
 
-        self.last_repo_contents = response[0]
+        self.last_repo_contents = response[0]  # type: ignore
 
         self.status = True
         return None
@@ -393,22 +395,22 @@ class TaskRepo(APIWorker):
                 return self.error
         else:
             for el in response:
-                if el[5] == 1:
+                if el[5] == 1:  # type: ignore
                     repo_pkgs["SRPM"].append(
                         {
                             "name": el[0],
                             "version": el[1],
-                            "release": el[2],
-                            "filename": el[4],
+                            "release": el[2],  # type: ignore
+                            "filename": el[4],  # type: ignore
                         }
                     )
                 else:
-                    repo_pkgs[el[3]].append(
+                    repo_pkgs[el[3]].append(  # type: ignore
                         {
                             "name": el[0],
                             "version": el[1],
-                            "release": el[2],
-                            "filename": el[4],
+                            "release": el[2],  # type: ignore
+                            "filename": el[4],  # type: ignore
                         }
                     )
 
@@ -418,7 +420,7 @@ class TaskRepo(APIWorker):
             "base_repository": {
                 "name": self.last_repo_contents[0],
                 "date": self.last_repo_contents[1].isoformat(),  # type: ignore
-                "tag":self.last_repo_contents[2],
+                "tag": self.last_repo_contents[2],
             },
             "task_diff_list": self.repo.task_diff_list,
             "archs": [],
@@ -443,7 +445,9 @@ class LastRepoStateFromTask(APIWorker):
     def build_repo_state(self) -> None:
         last_task_id = 0
         # get list of done tasks from last branch state
-        self.conn.request_line = self.sql.repo_last_repo_tasks_diff_list.format(repo=self.branch)
+        self.conn.request_line = self.sql.repo_last_repo_tasks_diff_list.format(
+            repo=self.branch
+        )
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -453,7 +457,7 @@ class LastRepoStateFromTask(APIWorker):
             self.status = True
             return None
 
-        last_task_id = int(response[0][0])
+        last_task_id = int(response[0][0])  # type: ignore
 
         tr = TaskRepoState(self.conn, last_task_id)
         tr.build_task_repo(keep_artefacts=False)

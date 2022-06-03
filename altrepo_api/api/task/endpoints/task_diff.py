@@ -15,12 +15,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from collections import defaultdict, namedtuple
-import datetime
 
 from altrepo_api.utils import join_tuples, datetime_to_iso
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.misc import lut
 from ..sql import sql
 from altrepo_api.api.task.endpoints.task_repo import TaskRepoState
 
@@ -42,7 +40,7 @@ class TaskDiff(APIWorker):
             self._store_sql_error(response, self.ll.INFO, 500)
             return False
 
-        if response[0][0] == 0:
+        if response[0][0] == 0:  # type: ignore
             return False
         return True
 
@@ -112,8 +110,8 @@ class TaskDiff(APIWorker):
 
             if response:
                 for el in response:
-                    p_name, p_arch, p_fname = el
-                    if p_fname.endswith(".src.rpm"):
+                    p_name, p_arch, p_fname = el  # type: ignore
+                    if p_fname.endswith(".src.rpm"):  # type: ignore
                         p_arch = "src"
                     if p_fname not in result_dict[p_arch][p_name]["del"]:
                         result_dict[p_arch][p_name]["del"].append(p_fname)
@@ -147,8 +145,8 @@ class TaskDiff(APIWorker):
 
             if response:
                 for el in response:
-                    p_name, p_arch, p_fname = el
-                    if p_fname.endswith(".src.rpm"):
+                    p_name, p_arch, p_fname = el  # type: ignore
+                    if p_fname.endswith(".src.rpm"):  # type: ignore
                         p_arch = "src"
                     if p_fname not in result_dict[p_arch][p_name]["add"]:
                         result_dict[p_arch][p_name]["add"].append(p_fname)
@@ -208,7 +206,7 @@ class TaskDiff(APIWorker):
             )
             return self.error
 
-        repo_pkgs_filtered = join_tuples(response)
+        repo_pkgs_filtered = join_tuples(response)  # type: ignore
 
         # get dependencies for packages from current repository state
         self.conn.request_line = self.sql.truncate_tmp_table.format(table="tmpRepoHshs")
@@ -336,14 +334,14 @@ class TaskHistory(APIWorker):
             self.args["start_task"] != 0 and self.args["start_date"] is not None
         ):
             self.validation_results.append(
-                f"one and only one start condition argument should be specified"
+                "one and only one start condition argument should be specified"
             )
 
         if (self.args["end_task"] == 0 and self.args["end_date"] is None) or (
             self.args["end_task"] != 0 and self.args["end_date"] is not None
         ):
             self.validation_results.append(
-                f"one and only one end condition argument should be specified"
+                "one and only one end condition argument should be specified"
             )
 
         if self.validation_results != []:
@@ -360,7 +358,7 @@ class TaskHistory(APIWorker):
             self._store_sql_error(response, self.ll.INFO, 500)
             return False
 
-        if response[0][0] == 0:
+        if response[0][0] == 0:  # type: ignore
             return False
         return True
 
@@ -371,7 +369,7 @@ class TaskHistory(APIWorker):
             self._store_sql_error(response, self.ll.INFO, 500)
             return False
 
-        if response[0][0] == 0:
+        if response[0][0] == 0:  # type: ignore
             return False
         return True
 
@@ -432,7 +430,7 @@ class TaskHistory(APIWorker):
                 )
                 return self.error
 
-            start_date = response[0][0]
+            start_date = response[0][0]  # type: ignore
         # get end date from task
         if end_date is None:
             self.conn.request_line = self.sql.done_task_last_changed.format(id=end_task)
@@ -448,13 +446,13 @@ class TaskHistory(APIWorker):
                 )
                 return self.error
 
-            end_date = response[0][0]
+            end_date = response[0][0]  # type: ignore
         else:
             end_date = end_date.replace(hour=23, minute=59, second=59)
 
         if start_date >= end_date:  # type: ignore
             self._store_error(
-                {"Error": f"Task history end date should be greater than start date"},
+                {"Error": "Task history end date should be greater than start date"},
                 self.ll.ERROR,
                 400,
             )
@@ -470,7 +468,7 @@ class TaskHistory(APIWorker):
             return self.error
         if not response:
             self._store_sql_error(
-                {"Error": f"Failed to get task history"},
+                {"Error": "Failed to get task history"},
                 self.ll.ERROR,
                 500,
             )
