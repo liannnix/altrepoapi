@@ -17,13 +17,12 @@
 from collections import namedtuple
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.misc import lut
 from ..sql import sql
 
 
 class FindPackageset(APIWorker):
     """Retrieves binary packages in package sets by source packages."""
-    
+
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
@@ -53,7 +52,7 @@ class FindPackageset(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No results found in last package sets for given parameters",
+                    "message": "No results found in last package sets for given parameters",
                     "args": self.args,
                 },
                 self.ll.INFO,

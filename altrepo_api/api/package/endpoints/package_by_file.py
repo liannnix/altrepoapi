@@ -69,7 +69,7 @@ class PackageByFileName(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No data found in database for given parameters",
+                    "message": "No data found in database for given parameters",
                     "args": self.args,
                 },
                 self.ll.INFO,
@@ -105,7 +105,7 @@ class PackageByFileName(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No data found in database for given parameters",
+                    "message": "No data found in database for given parameters",
                     "args": self.args,
                 },
                 self.ll.INFO,
@@ -113,7 +113,7 @@ class PackageByFileName(APIWorker):
             )
             return self.error
 
-        ids_filename_dict = tuplelist_to_dict(response, 1)
+        ids_filename_dict = tuplelist_to_dict(response, 1)  # type: ignore
 
         new_ids_filename_dict = {}
 
@@ -132,7 +132,7 @@ class PackageByFileName(APIWorker):
             return self.error
 
         output_values = []
-        for package in response:
+        for package in response:  # type: ignore
             package += (ids_filename_dict[package[0]],)  # type: ignore
             output_values.append(package[1:])
 
@@ -203,7 +203,7 @@ class PackageByFileMD5(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No data found in database for given parameters",
+                    "message": "No data found in database for given parameters",
                     "args": self.args,
                 },
                 self.ll.INFO,
@@ -211,7 +211,7 @@ class PackageByFileMD5(APIWorker):
             )
             return self.error
 
-        ids_filename_dict = tuplelist_to_dict(response, 1)
+        ids_filename_dict = tuplelist_to_dict(response, 1)  # type: ignore
 
         file_names = {}
         # 1. collect all files_hashname
@@ -230,7 +230,7 @@ class PackageByFileMD5(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No data found in database for given parameters",
+                    "message": "No data found in database for given parameters",
                     "args": self.args,
                 },
                 self.ll.INFO,
@@ -258,7 +258,7 @@ class PackageByFileMD5(APIWorker):
             return self.error
 
         output_values = []
-        for package in response:
+        for package in response:  # type: ignore
             package += (ids_filename_dict[package[0]],)  # type: ignore
             output_values.append(package[1:])
 

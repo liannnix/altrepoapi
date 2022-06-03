@@ -55,12 +55,12 @@ class BinaryPackageLog(APIWorker):
             ],
         )
 
-        res = BuildLog(*response[0])
+        res = BuildLog(*response[0])  # type: ignore
         return {
             "pkg_hash": str(self.pkghash),
             "task_id": res.task_id,
             "subtask_id": res.subtask_id,
             "subtask_arch": res.subtask_arch,
             "buildlog_hash": str(res.buildlog_hash),
-            "link": f"{lut.gitalt_base}/tasks/{str(res.task_id)}/build/{str(res.subtask_id)}/{res.subtask_arch}/log"
+            "link": f"{lut.gitalt_base}/tasks/{str(res.task_id)}/build/{str(res.subtask_id)}/{res.subtask_arch}/log",
         }, 200

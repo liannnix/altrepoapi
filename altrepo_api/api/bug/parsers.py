@@ -19,7 +19,13 @@ from altrepo_api.api.parser import parser, pkg_name_type, packager_nick_type
 by_acl_opt = parser.register_item(
     "by_acl",
     type=str,
-    choices=("none", "by_nick", "by_nick_leader", "by_nick_or_group", "by_nick_leader_and_group"),
+    choices=(
+        "none",
+        "by_nick",
+        "by_nick_leader",
+        "by_nick_or_group",
+        "by_nick_leader_and_group",
+    ),
     default="none",
     required=False,
     help="search maintainer's packages by ACL",

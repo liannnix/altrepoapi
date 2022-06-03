@@ -17,7 +17,6 @@
 from altrepo_api.utils import get_logger, join_tuples
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.misc import lut
 from ..sql import sql
 from altrepo_api.libs.package_dependencies import PackageDependencies
 from altrepo_api.libs.exceptions import SqlRequestError
@@ -57,7 +56,7 @@ class BuildDependencySet(APIWorker):
             )
             return
 
-        hshs = join_tuples(response)
+        hshs = join_tuples(response)  # type: ignore
 
         pkg_deps = PackageDependencies(
             self.conn, hshs, self.branch, self.archs, self.DEBUG
@@ -68,7 +67,7 @@ class BuildDependencySet(APIWorker):
         except SqlRequestError as e:
             self._store_error(
                 {
-                    "message": f"Error occured in ConflictFilter",
+                    "message": "Error occured in ConflictFilter",
                     "error": e.error_details,
                 },
                 self.ll.ERROR,
@@ -82,7 +81,7 @@ class BuildDependencySet(APIWorker):
 
 class PackageBuildDependencySet:
     """Retrieves packages build dependencies."""
-    
+
     def __init__(self, connection, **kwargs) -> None:
         self.conn = connection
         self.args = kwargs

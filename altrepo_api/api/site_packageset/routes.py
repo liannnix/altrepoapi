@@ -24,7 +24,7 @@ from .namespace import get_namespace
 from .endpoints.find_package import (
     PackagesetFindPackages,
     FastPackagesSearchLookup,
-    PackagesetPkghashByNVR
+    PackagesetPkghashByNVR,
 )
 from .endpoints.package_hash import (
     PackagesetPackageHash,
@@ -81,9 +81,7 @@ class routePackagesetPackages(Resource):
 @ns.route(
     "/pkghash_by_name",
     doc={
-        "description": (
-            "Get source package hash by package name and package set name"
-        ),
+        "description": ("Get source package hash by package name and package set name"),
         "responses": GET_RESPONSES_400_404,
     },
 )

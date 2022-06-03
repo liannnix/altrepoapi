@@ -17,7 +17,6 @@
 from collections import namedtuple
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.misc import lut
 from ..sql import sql
 
 
@@ -51,7 +50,7 @@ class PackagesetCompare(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No data found in database for given parameters",
+                    "message": "No data found in database for given parameters",
                     "args": self.args,
                 },
                 self.ll.INFO,

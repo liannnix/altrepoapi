@@ -46,7 +46,7 @@ class PackageInfo(APIWorker):
 
         if self.args["changelog_last"] < 1:
             self.validation_results.append(
-                f"changelog history length should be not less than 1"
+                "Changelog history length should be not less than 1"
             )
 
         if self.validation_results != []:
@@ -290,7 +290,7 @@ class PackageInfo(APIWorker):
             if source:
                 pkg_info["buildtime"] = response[0][2]  # type: ignore
                 for elem in response:  # type: ignore
-                    package_archs[elem[0]] = {el[0]: str(el[1]) for el in elem[1]}
+                    package_archs[elem[0]] = {el[0]: str(el[1]) for el in elem[1]}  # type: ignore
             else:
                 for elem in response:  # type: ignore
                     package_archs[elem[0]] = {"src": str(elem[1])}
@@ -603,7 +603,7 @@ class PackagesBinaryListInfo(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No found",
+                    "message": "No data found",
                     "args": self.args,
                 },
                 self.ll.INFO,

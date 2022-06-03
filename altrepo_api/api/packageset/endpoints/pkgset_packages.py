@@ -23,7 +23,7 @@ from ..sql import sql
 
 class PackagesetPackages(APIWorker):
     """Retrieves package set packages information."""
-    
+
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
@@ -60,7 +60,7 @@ class PackagesetPackages(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No data found in database for given parameters",
+                    "message": "No data found in database for given parameters",
                     "args": self.args,
                 },
                 self.ll.INFO,

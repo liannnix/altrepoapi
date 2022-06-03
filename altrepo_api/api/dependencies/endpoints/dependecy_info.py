@@ -43,7 +43,7 @@ class DependsBinPackage(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No found",
+                    "message": "No found",
                     "args": self.pkghash,
                 },
                 self.ll.INFO,
@@ -72,7 +72,7 @@ class DependsBinPackage(APIWorker):
         # get package versions
         pkg_versions = []
         self.conn.request_line = self.sql.get_pkg_binary_versions.format(
-            name=response[0][0], arch=response[0][1]
+            name=response[0][0], arch=response[0][1]  # type: ignore
         )
         status, response = self.conn.send_request()
         if not status:
@@ -82,7 +82,7 @@ class DependsBinPackage(APIWorker):
             "PkgVersions", ["branch", "version", "release", "pkghash"]
         )
         # sort package versions by branch
-        pkg_branches = sort_branches([el[0] for el in response])
+        pkg_branches = sort_branches([el[0] for el in response])  # type: ignore
         pkg_versions = tuplelist_to_dict(response, 3)  # type: ignore
 
         pkg_versions = [
@@ -128,7 +128,7 @@ class PackagesDependence(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No packages found in last packages with hash",
+                    "message": "No packages found in last packages with hash",
                     "args": self.args,
                 },
                 self.ll.INFO,
@@ -172,7 +172,7 @@ class PackagesDependence(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No data found in database for given parameters",
+                    "message": "No data found in database for given parameters",
                     "args": self.args,
                 },
                 self.ll.INFO,
@@ -213,8 +213,8 @@ class PackagesDependence(APIWorker):
             return self.error
         PkgCount = namedtuple("PkgCount", ["branch", "count"])
         # sort package counts by branch
-        pkg_branches = sort_branches([el[1] for el in response])
-        pkg_counts = {el[1]: el[0] for el in response}
+        pkg_branches = sort_branches([el[1] for el in response])  # type: ignore
+        pkg_counts = {el[1]: el[0] for el in response}  # type: ignore
         all_branches = [PkgCount(*(b, pkg_counts[b]))._asdict() for b in pkg_branches]
 
         res = {
@@ -242,7 +242,7 @@ class DependsSrcPackage(APIWorker):
 
         if self.args["depth"] is not None and self.args["depth"] != 1:
             self.validation_results.append(
-                f"Depth level other than 1 is not supported yet"
+                "Depth level other than 1 is not supported yet"
             )
 
         if self.validation_results != []:
@@ -265,7 +265,7 @@ class DependsSrcPackage(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No data found in database for given parameters",
+                    "message": "No data found in database for given parameters",
                     "args": self.args,
                 },
                 self.ll.INFO,
@@ -277,7 +277,7 @@ class DependsSrcPackage(APIWorker):
             "PkgInfo", ["name", "epoch", "version", "release", "buildtime"]
         )
 
-        pkg_info = PkgInfo(*response[0])
+        pkg_info = PkgInfo(*response[0])  # type: ignore
 
         # build dependencies
         tmp_table = "_TmpSrcDepends"
@@ -290,14 +290,16 @@ class DependsSrcPackage(APIWorker):
             return self.error
 
         # read binary dependencies
-        self.conn.request_line = self.sql.select_all_tmp_table.format(tmp_table=tmp_table)
+        self.conn.request_line = self.sql.select_all_tmp_table.format(
+            tmp_table=tmp_table
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
 
         PkgDependencies = namedtuple("PkgDependencies", ["name", "version", "flag"])
-        pkg_dependencies = [PkgDependencies(*el)._asdict() for el in response]
+        pkg_dependencies = [PkgDependencies(*el)._asdict() for el in response]  # type: ignore
 
         for el in pkg_dependencies:
             el["type"] = "require"
@@ -321,8 +323,10 @@ class DependsSrcPackage(APIWorker):
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
 
-        SrcPkgInfo = namedtuple("SrcPkgInfo", ["pkghash", "name", "version", "release", "summary"])
-        src_pkg_dependencies = [SrcPkgInfo(*el)._asdict() for el in response]
+        SrcPkgInfo = namedtuple(
+            "SrcPkgInfo", ["pkghash", "name", "version", "release", "summary"]
+        )
+        src_pkg_dependencies = [SrcPkgInfo(*el)._asdict() for el in response]  # type: ignore
         for pkg in src_pkg_dependencies:
             pkg["pkghash"] = str(pkg["pkghash"])
 

@@ -113,7 +113,7 @@ LEFT JOIN
     GROUP BY hash
 ) AS BPKG ON BPKG.hash = Packages.pkg_hash
 WHERE pkg_sourcepackage = 1
-    AND pkg_hash IN (SELECT * FROM src_hashes) 
+    AND pkg_hash IN (SELECT * FROM src_hashes)
 """
 
     get_branch_source_packages = """

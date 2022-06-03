@@ -45,7 +45,7 @@ last_task_states AS
 SELECT
     T1.*,
     groupUniqArray(tuple(T2.*)) AS gears
-FROM 
+FROM
 (
     SELECT DISTINCT
         task_id,
@@ -88,7 +88,7 @@ FROM
             FROM last_task_states
         )
 ) AS T1
-LEFT JOIN 
+LEFT JOIN
 (
     SELECT
         task_id,
@@ -222,7 +222,7 @@ SELECT DISTINCT
     CHLG.chlog_date,
     CHLG.chlog_text
 FROM Packages
-LEFT JOIN 
+LEFT JOIN
 (
     SELECT
         pkg_hash,

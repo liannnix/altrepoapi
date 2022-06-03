@@ -72,7 +72,13 @@ def test_package_versions_from_images(client, kwargs):
                     v != ""
                     for k, v in version.items()
                     if k
-                    not in ("platform", "flavor", "version_major", "version_minor", "version_sub")
+                    not in (
+                        "platform",
+                        "flavor",
+                        "version_major",
+                        "version_minor",
+                        "version_sub",
+                    )
                 ]
             )
             assert type(version["version_major"]) == int

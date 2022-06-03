@@ -38,7 +38,7 @@ class LastTaskPackages(APIWorker):
 
         if self.args["tasks_limit"] < 1:
             self.validation_results.append(
-                f"last tasks limit should be greater or equal to 1"
+                "last tasks limit should be greater or equal to 1"
             )
 
         if self.validation_results != []:
@@ -52,7 +52,7 @@ class LastTaskPackages(APIWorker):
         self.task_owner = self.args["task_owner"]
 
         if self.task_owner is not None:
-            task_owner_sub = f"AND task_owner = %(task_owner)s"
+            task_owner_sub = "AND task_owner = %(task_owner)s"
         else:
             self.task_owner = ""
             task_owner_sub = ""
@@ -73,7 +73,7 @@ class LastTaskPackages(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No data found in database for given parameters",
+                    "message": "No data found in database for given parameters",
                     "args": self.args,
                 },
                 self.ll.INFO,
@@ -129,7 +129,7 @@ class LastTaskPackages(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No data found in database for packages",
+                    "message": "No data found in database for packages",
                     "args": self.args,
                 },
                 self.ll.INFO,
@@ -222,8 +222,8 @@ class LastTaskPackages(APIWorker):
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
             if response:
-                last_branch_task = response[0][0]
-                last_branch_date = datetime_to_iso(response[0][1])
+                last_branch_task = response[0][0]  # type: ignore
+                last_branch_date = datetime_to_iso(response[0][1])  # type: ignore
 
         retval = [{"task_id": k, **v} for k, v in retval.items()]
 

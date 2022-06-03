@@ -131,7 +131,7 @@ class PackageDownloadLinks(APIWorker):
             if not response:
                 self._store_error(
                     {
-                        "message": f"No package fienames info found in DB",
+                        "message": "No package fienames info found in DB",
                         "args": self.args,
                     },
                     self.ll.INFO,
@@ -154,7 +154,9 @@ class PackageDownloadLinks(APIWorker):
                     # store filenames and archs as dict
                     arepo_filenames = {el[0]: PkgInfo(*el[1:]) for el in response}
                     # filter packages using package file name from 'i586' arch
-                    i586_pkg_files = {p.file for p in filenames.values() if p.arch == 'i586'}
+                    i586_pkg_files = {
+                        p.file for p in filenames.values() if p.arch == "i586"
+                    }
                     for hash, pkg in list(arepo_filenames.items()):
                         fname = pkg.file.replace("i586-", "")
                         if fname not in i586_pkg_files:
@@ -176,7 +178,7 @@ class PackageDownloadLinks(APIWorker):
             if not response:
                 self._store_error(
                     {
-                        "message": f"No package filenames info found in DB",
+                        "message": "No package filenames info found in DB",
                         "args": self.args,
                     },
                     self.ll.INFO,
@@ -202,7 +204,7 @@ class PackageDownloadLinks(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No package MD5 info found in DB",
+                    "message": "No package MD5 info found in DB",
                     "args": self.args,
                 },
                 self.ll.INFO,
@@ -247,8 +249,8 @@ class PackageDownloadLinks(APIWorker):
             "PkgVersions", ["branch", "version", "release", "pkghash"]
         )
         # sort package versions by branch
-        pkg_branches = sort_branches([el[0] for el in response])
-        pkg_versions = tuplelist_to_dict(response, 3)
+        pkg_branches = sort_branches([el[0] for el in response])  # type: ignore
+        pkg_versions = tuplelist_to_dict(response, 3)  # type: ignore
         # workaround for multiple versions of returned for certain branch
         pkg_versions = [
             PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
@@ -446,7 +448,7 @@ class BinaryPackageDownloadLinks(APIWorker):
         if response:
             #  use hashes from task
             use_task = True
-            subtask = TaskInfo(*response[0])._asdict()
+            subtask = TaskInfo(*response[0])._asdict()  # type: ignore
             # get package file name
             self.conn.request_line = self.sql.get_pkgs_filename_by_hshs.format(
                 hshs=(self.pkghash,)
@@ -458,7 +460,7 @@ class BinaryPackageDownloadLinks(APIWorker):
             if not response:
                 self._store_error(
                     {
-                        "message": f"No package fienames info found in DB",
+                        "message": "No package fienames info found in DB",
                         "args": self.args,
                     },
                     self.ll.INFO,
@@ -466,7 +468,7 @@ class BinaryPackageDownloadLinks(APIWorker):
                 )
                 return self.error
             # store package file info
-            filename = PkgInfo(*response[0][1:])
+            filename = PkgInfo(*response[0][1:])  # type: ignore
         else:
             # no task found -> use ftp.altlinux.org
             use_task = False
@@ -481,7 +483,7 @@ class BinaryPackageDownloadLinks(APIWorker):
             if not response:
                 self._store_error(
                     {
-                        "message": f"No package info found in DB",
+                        "message": "No package info found in DB",
                         "args": self.args,
                     },
                     self.ll.INFO,
@@ -489,7 +491,7 @@ class BinaryPackageDownloadLinks(APIWorker):
                 )
                 return self.error
             # store package file info
-            filename = PkgInfo(*response[0][1:])
+            filename = PkgInfo(*response[0][1:])  # type: ignore
 
         # get package files MD5 checksum
         self.conn.request_line = self.sql.get_pkgs_md5_by_hshs.format(
@@ -502,14 +504,14 @@ class BinaryPackageDownloadLinks(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No package MD5 info found in DB",
+                    "message": "No package MD5 info found in DB",
                     "args": self.args,
                 },
                 self.ll.INFO,
                 404,
             )
             return self.error
-        md5_sum = response[0][1]
+        md5_sum = response[0][1]  # type: ignore
 
         # get package versions
         pkg_versions = []
@@ -524,8 +526,8 @@ class BinaryPackageDownloadLinks(APIWorker):
             "PkgVersions", ["branch", "version", "release", "pkghash", "arch"]
         )
         # sort package versions by branch
-        pkg_branches = sort_branches([el[0] for el in response])
-        pkg_versions = tuplelist_to_dict(response, 4)
+        pkg_branches = sort_branches([el[0] for el in response])  # type: ignore
+        pkg_versions = tuplelist_to_dict(response, 4)  # type: ignore
         # workaround for multiple versions of returned for certain branch
         pkg_versions = [
             PkgVersions(*(b, *pkg_versions[b][-4:]))._asdict() for b in pkg_branches

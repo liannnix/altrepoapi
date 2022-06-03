@@ -26,6 +26,7 @@ from altrepo_api.api_v1 import blueprint as api_bp
 app = Flask(__name__)
 logger = get_logger(__name__)
 
+
 @app.route("/")
 def hello():
     return redirect("api", code=302)
@@ -42,7 +43,7 @@ def drop_connection(exception):
     g.connection.drop_connection()  # type: ignore
 
 
-@app.errorhandler
+@app.errorhandler  # type: ignore
 def default_error_handler(e):
     message = "An unhandled exception occurred."
     logger.exception(message)

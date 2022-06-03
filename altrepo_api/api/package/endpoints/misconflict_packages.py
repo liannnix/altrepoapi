@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from collections import defaultdict, namedtuple
+from typing import Optional
 
 from altrepo_api.utils import get_logger, tuplelist_to_dict, remove_duplicate
 
@@ -38,7 +39,11 @@ class MisconflictPackages(APIWorker):
         self.result = {}
         super().__init__()
 
-    def find_conflicts(self, pkg_hashes: tuple[int] = None, task_repo_hashes: tuple[int] = None):
+    def find_conflicts(
+        self,
+        pkg_hashes: Optional[tuple[int]] = None,
+        task_repo_hashes: Optional[tuple[int]] = None,
+    ):
         # do all kind of black magic here
         self.packages = tuple(self.packages)
         if self.archs:
@@ -104,10 +109,8 @@ class MisconflictPackages(APIWorker):
             return
 
         self.conn.request_line = (
-            self.sql.insert_into_tmp_table.format(
-                tmp_table=tmp_pkg_hshs
-            ),
-            ((hsh,) for hsh in input_pkg_hshs)
+            self.sql.insert_into_tmp_table.format(tmp_table=tmp_pkg_hshs),
+            ((hsh,) for hsh in input_pkg_hshs),
         )
         status, response = self.conn.send_request()
         if status is False:
@@ -126,10 +129,8 @@ class MisconflictPackages(APIWorker):
         if task_repo_hashes is not None:
             # use repository hashes from task
             self.conn.request_line = (
-                self.sql.insert_into_tmp_table.format(
-                    tmp_table=tmp_repo_state
-                ),
-                ((hsh,) for hsh in task_repo_hashes)
+                self.sql.insert_into_tmp_table.format(tmp_table=tmp_repo_state),
+                ((hsh,) for hsh in task_repo_hashes),
             )
             status, response = self.conn.send_request()
             if status is False:
@@ -155,8 +156,7 @@ class MisconflictPackages(APIWorker):
             return
         # insert source packages hashes
         self.conn.request_line = self.sql.insert_pkgs_hshs_filtered_src.format(
-            tmp_table=tmp_repo_state_filtered,
-            tmp_table2=tmp_repo_state
+            tmp_table=tmp_repo_state_filtered, tmp_table2=tmp_repo_state
         )
         status, response = self.conn.send_request()
         if status is False:
@@ -166,7 +166,7 @@ class MisconflictPackages(APIWorker):
         self.conn.request_line = self.sql.insert_pkgs_hshs_filtered_bin.format(
             tmp_table=tmp_repo_state_filtered,
             tmp_table2=tmp_repo_state,
-            arch=tuple(self.archs)
+            arch=tuple(self.archs),
         )
         status, response = self.conn.send_request()
         if status is False:
@@ -198,9 +198,7 @@ class MisconflictPackages(APIWorker):
         hshs_files = response
 
         # drop input package hashes temporary table
-        self.conn.request_line = self.sql.drop_tmp_table.format(
-            tmp_table=tmp_pkg_hshs
-        )
+        self.conn.request_line = self.sql.drop_tmp_table.format(tmp_table=tmp_pkg_hshs)
         status, response = self.conn.send_request()
         if status is False:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -209,7 +207,7 @@ class MisconflictPackages(APIWorker):
         # 1. collect all files_hashnames
         f_hashnames = set()
         for el in hshs_files:
-            [f_hashnames.add(x) for x in el[2]]
+            [f_hashnames.add(x) for x in el[2]]  # type: ignore
         # 2. select real file names from DB
         self.conn.request_line = (
             self.sql.misconflict_get_fnames_by_fnhashs,
@@ -221,7 +219,7 @@ class MisconflictPackages(APIWorker):
             return self.result
         if not response:
             self._store_error(
-                {"message": f"Failed to get file names from database by hash"},
+                {"message": "Failed to get file names from database by hash"},
                 self.ll.INFO,
                 500,
             )
@@ -233,7 +231,7 @@ class MisconflictPackages(APIWorker):
         # 3. replace hashes by names in result
         new_hshs_files = []
         for el in hshs_files:
-            new_hshs_files.append((*el[:2], [f_hashnames[x] for x in el[2]], *el[3:]))
+            new_hshs_files.append((*el[:2], [f_hashnames[x] for x in el[2]], *el[3:]))  # type: ignore
         hshs_files = new_hshs_files
 
         # list of conflicting package pairs
@@ -250,7 +248,7 @@ class MisconflictPackages(APIWorker):
         except SqlRequestError as e:
             self._store_error(
                 {
-                    "message": f"Error occured in ConflictFilter",
+                    "message": "Error occured in ConflictFilter",
                     "error": e.error_details,
                 },
                 self.ll.ERROR,
@@ -311,7 +309,7 @@ class MisconflictPackages(APIWorker):
 
         # form dict name - package info
         name_info_dict = {}
-        for pkg in response:
+        for pkg in response:  # type: ignore
             name_info_dict[pkg[0]] = pkg[1:]
 
         # form list of tuples (input pkg | conflict pkg | pkg info | conflict files)

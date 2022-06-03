@@ -124,7 +124,7 @@ def test_task_diff(client, kwargs):
     assert response.status_code == kwargs["status_code"]
     if response.status_code == 200:
         assert data != {}
-        assert data["task_have_plan"] == True
+        assert data["task_have_plan"] is True
         assert data["task_diff"] != []
 
 
@@ -257,4 +257,4 @@ def test_task_misconflict(client, kwargs):
                 "archs": None,
                 "files_with_conflict": None,
             }
-        data["request_args"]["packages"] != 0
+        assert data["request_args"]["packages"] != 0

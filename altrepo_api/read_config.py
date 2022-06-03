@@ -45,7 +45,7 @@ PARAMS = {
         "log_level": ("LOG_LEVEL", "log_level"),
         "sql_debug": ("SQL_DEBUG", "bool"),
         "log_to_file": ("LOG_TO_FILE", "bool"),
-        "log_to_syslog": ("LOG_TO_SYSLOG", "bool"),            
+        "log_to_syslog": ("LOG_TO_SYSLOG", "bool"),
     },
 }
 
@@ -58,7 +58,7 @@ def read_config(config_file: str, params: dict, namespace: object) -> bool:
 
     def _log_level(section, option):
         ll = config.getint(section, option)
-        if ll is None :
+        if ll is None:
             return None
         if ll == 0:
             return logging.CRITICAL
@@ -77,7 +77,7 @@ def read_config(config_file: str, params: dict, namespace: object) -> bool:
         "str": config.get,
         "int": config.getint,
         "bool": config.getboolean,
-        "log_level": _log_level
+        "log_level": _log_level,
     }
 
     # update settings with values from config file
@@ -91,6 +91,7 @@ def read_config(config_file: str, params: dict, namespace: object) -> bool:
                 namespace.__setattr__(param[0], val)
 
     return True
+
 
 # check python version
 assert sys.version_info >= (3, 7), "Pyhton version 3.7 or newer is required!"

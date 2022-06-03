@@ -113,7 +113,7 @@ class routeTranslationExport(Resource):
         if not w.check_params():
             abort(
                 400,
-                message=f"Request parameters validation error",
+                message="Request parameters validation error",
                 args=args,
                 validation_message=w.validation_results,
             )

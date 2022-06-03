@@ -18,5 +18,6 @@ from flask_restx import Namespace
 
 namespace = Namespace("package", description="packages information API")
 
+
 def get_namespace():
     return namespace

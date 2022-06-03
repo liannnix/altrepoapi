@@ -54,7 +54,9 @@ pkgset_packages_model = ns.model(
     {
         "request_args": fields.Raw(description="request arguments"),
         "length": fields.Integer(description="number of packages found"),
-        "subcategories": fields.List(fields.String, description="list of subcategories"),
+        "subcategories": fields.List(
+            fields.String, description="list of subcategories"
+        ),
         "packages": fields.Nested(
             pkgset_packages_el_model,
             description="unpackaged directories information",
@@ -104,8 +106,8 @@ fast_pkgs_search_el_model = ns.model(
     {
         "name": fields.String(description="package name"),
         "sourcepackage": fields.String(description="package type"),
-        "branches": fields.List(fields.String, description="list of package branches")
-    }
+        "branches": fields.List(fields.String, description="list of package branches"),
+    },
 )
 fast_pkgs_search_model = ns.model(
     "SiteFastPackagesSearchModel",
@@ -115,8 +117,9 @@ fast_pkgs_search_model = ns.model(
         "packages": fields.Nested(
             fast_pkgs_search_el_model,
             description="list of found packages",
-            as_list=True,)
-    }
+            as_list=True,
+        ),
+    },
 )
 
 pkgsets_by_hash_model = ns.model(
@@ -132,9 +135,7 @@ pkgsets_by_hash_model = ns.model(
 last_packages_branch_pkg_model = ns.model(
     "SiteLastBranchPackagesPackageModel",
     {
-        "hash": fields.String(
-            description="package hash UInt64 as string"
-        ),
+        "hash": fields.String(description="package hash UInt64 as string"),
         "name": fields.String(attribute="pkg_name", description="package name"),
         "version": fields.String(
             attribute="pkg_version", description="package version"
@@ -156,7 +157,7 @@ last_packages_branch_pkg_model = ns.model(
             description="package last changelog message date"
         ),
         "changelog_text": fields.String(description="package last changelog message"),
-    }
+    },
 )
 last_packages_branch_model = ns.model(
     "SiteLastBranchPackagesModel",
@@ -169,15 +170,13 @@ last_packages_branch_model = ns.model(
             as_list=True,
         ),
         "last_branch_date": fields.String(description="last loaded branch date"),
-    }
+    },
 )
 
 pkgset_pkghash_by_nvr_model = ns.model(
     "SitePackagesetPackageHashByNameVersionRelease",
     {
         "request_args": fields.Raw(description="request arguments"),
-        "pkghash": fields.String(
-            description="package hash UInt64 as string"
-        ),
-    }
+        "pkghash": fields.String(description="package hash UInt64 as string"),
+    },
 )

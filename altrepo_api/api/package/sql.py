@@ -143,7 +143,7 @@ WHERE pkg_hash IN
 INSERT INTO {tmp_table}
 SELECT DISTINCT pkg_name
 FROM Packages
-WHERE 
+WHERE
 (
     pkg_filename IN
     (
@@ -257,7 +257,7 @@ FROM
    FROM last_packages_with_source
    INNER JOIN
     (
-        SELECT DISTINCT 
+        SELECT DISTINCT
             BinDeps.pkg_name,
             pkg_name
         FROM
@@ -296,31 +296,31 @@ WHERE sourcepkgname IN
 """
 
     insert_src_deps = (
-# get source packages that provides dependencies required by input list
-# 'BinDeps.pkg_name' - input source package
-# 'sourcepkgname' - source packages that provides binary packages required by 'BinDeps.pkg_name'
-"""
+        # get source packages that provides dependencies required by input list
+        # 'BinDeps.pkg_name' - input source package
+        # 'sourcepkgname' - source packages that provides binary packages required by 'BinDeps.pkg_name'
+        """
 INSERT INTO {tmp_deps} (pkgname,reqname)
 SELECT DISTINCT
     BinDeps.pkg_name,
     sourcepkgname
 FROM
 ("""
-# get 'sourcepkgname' by 'pkg_name'
-"""
+        # get 'sourcepkgname' by 'pkg_name'
+        """
     SELECT DISTINCT
         BinDeps.pkg_name,
         pkg_name,
         sourcepkgname
     FROM
     (
-        SELECT DISTINCT 
+        SELECT DISTINCT
             pkg_name AS `BinDeps.pkg_name`,
             SrcDeps.pkg_name AS pkg_name_
         FROM
         ("""
-# get binary packages ('SrcDeps.pkg_name') required in 'dp_name' by 'pkg_name'
-"""
+        # get binary packages ('SrcDeps.pkg_name') required in 'dp_name' by 'pkg_name'
+        """
             SELECT DISTINCT
                 SrcDeps.pkg_name,
                 pkg_name,
@@ -467,7 +467,7 @@ WHERE pkgname NOT IN %(pkgs)s
 """
 
     get_output_data = """
-SELECT DISTINCT 
+SELECT DISTINCT
     SrcPkg.pkg_name,
     SrcPkg.pkg_version,
     SrcPkg.pkg_release,
@@ -685,7 +685,7 @@ GROUP BY pkg_name
 """
 
     misconflict_get_meta_by_hshs = """
-SELECT 
+SELECT
     pkg_name,
     pkg_version,
     pkg_release,
@@ -698,7 +698,7 @@ WHERE pkg_name IN {pkgs}
         SELECT pkg_hash FROM {tmp_table}
     )
     AND pkg_sourcepackage = 0
-GROUP BY 
+GROUP BY
 (
     pkg_name,
     pkg_version,

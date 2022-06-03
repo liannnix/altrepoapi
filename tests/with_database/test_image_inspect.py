@@ -12,7 +12,7 @@ PKG_REGULAR_IN_DB = {
     "pkg_release": "alt1",
     "pkg_arch": "x86_64",
     "pkg_disttag": "sisyphus+278099.100.1.1",
-    "pkg_buildtime": 1626027306
+    "pkg_buildtime": 1626027306,
 }
 PKG_REGULAR_IN_TASK = {
     # "pkg_hash": "2758010506349322063",
@@ -32,24 +32,54 @@ PKG_REGULAR_NOT_IN_DB = {
     "pkg_release": "alt1",
     "pkg_arch": "i586",
     "pkg_disttag": "sisyphus+275725.100.1.1",
-    "pkg_buildtime": 1626030376
+    "pkg_buildtime": 1626030376,
 }
 
 
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"payload": PKG_INVALID, "branch": TEST_BRANCH, "not_in_branch": 0, "found_in_tasks": 0, "not_found_in_db": 0, "status_code": 400},
-        {"payload": PKG_REGULAR_NOT_IN_DB, "branch": TEST_BRANCH, "not_in_branch": 1, "found_in_tasks": 0, "not_found_in_db": 1, "status_code": 200},
-        {"payload": PKG_REGULAR_IN_DB, "branch": TEST_BRANCH, "not_in_branch": 0, "found_in_tasks": 0, "not_found_in_db": 0, "status_code": 200},
-        {"payload": PKG_REGULAR_IN_DB, "branch": FAKE_BRANCH, "not_in_branch": 0, "found_in_tasks": 0, "not_found_in_db": 0, "status_code": 400},
-    ]
+        {
+            "payload": PKG_INVALID,
+            "branch": TEST_BRANCH,
+            "not_in_branch": 0,
+            "found_in_tasks": 0,
+            "not_found_in_db": 0,
+            "status_code": 400,
+        },
+        {
+            "payload": PKG_REGULAR_NOT_IN_DB,
+            "branch": TEST_BRANCH,
+            "not_in_branch": 1,
+            "found_in_tasks": 0,
+            "not_found_in_db": 1,
+            "status_code": 200,
+        },
+        {
+            "payload": PKG_REGULAR_IN_DB,
+            "branch": TEST_BRANCH,
+            "not_in_branch": 0,
+            "found_in_tasks": 0,
+            "not_found_in_db": 0,
+            "status_code": 200,
+        },
+        {
+            "payload": PKG_REGULAR_IN_DB,
+            "branch": FAKE_BRANCH,
+            "not_in_branch": 0,
+            "found_in_tasks": 0,
+            "not_found_in_db": 0,
+            "status_code": 400,
+        },
+    ],
 )
 def test_image_inspect_regular(client, kwargs):
     url = "api/image/inspect/regular"
     payload = {
         "branch": kwargs["branch"],
-        "packages": [kwargs["payload"],]
+        "packages": [
+            kwargs["payload"],
+        ],
     }
     response = client.post(url, json=payload, content_type="application/json")
     data = response.json
@@ -68,17 +98,51 @@ def test_image_inspect_regular(client, kwargs):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"payload": PKG_INVALID, "branch": TEST_BRANCH, "in_branch": 0, "not_in_branch": 0, "found_in_tasks": 0, "not_found_in_db": 0, "status_code": 400},
-        {"payload": PKG_REGULAR_NOT_IN_DB, "branch": TEST_BRANCH, "in_branch": 0, "not_in_branch": 1, "found_in_tasks": 0, "not_found_in_db": 1, "status_code": 200},
-        {"payload": PKG_REGULAR_IN_DB, "branch": TEST_BRANCH, "in_branch": 1, "not_in_branch": 0, "found_in_tasks": 0, "not_found_in_db": 0, "status_code": 200},
-        {"payload": PKG_REGULAR_IN_DB, "branch": FAKE_BRANCH, "in_branch": 0, "not_in_branch": 0, "found_in_tasks": 0, "not_found_in_db": 0, "status_code": 400},
-    ]
+        {
+            "payload": PKG_INVALID,
+            "branch": TEST_BRANCH,
+            "in_branch": 0,
+            "not_in_branch": 0,
+            "found_in_tasks": 0,
+            "not_found_in_db": 0,
+            "status_code": 400,
+        },
+        {
+            "payload": PKG_REGULAR_NOT_IN_DB,
+            "branch": TEST_BRANCH,
+            "in_branch": 0,
+            "not_in_branch": 1,
+            "found_in_tasks": 0,
+            "not_found_in_db": 1,
+            "status_code": 200,
+        },
+        {
+            "payload": PKG_REGULAR_IN_DB,
+            "branch": TEST_BRANCH,
+            "in_branch": 1,
+            "not_in_branch": 0,
+            "found_in_tasks": 0,
+            "not_found_in_db": 0,
+            "status_code": 200,
+        },
+        {
+            "payload": PKG_REGULAR_IN_DB,
+            "branch": FAKE_BRANCH,
+            "in_branch": 0,
+            "not_in_branch": 0,
+            "found_in_tasks": 0,
+            "not_found_in_db": 0,
+            "status_code": 400,
+        },
+    ],
 )
 def test_image_inspect_sp(client, kwargs):
     url = "api/image/inspect/sp"
     payload = {
         "branch": kwargs["branch"],
-        "packages": [kwargs["payload"],]
+        "packages": [
+            kwargs["payload"],
+        ],
     }
     response = client.post(url, json=payload, content_type="application/json")
     data = response.json

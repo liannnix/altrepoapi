@@ -113,11 +113,11 @@ LEFT JOIN
 WHERE bz_assignee IN (
     SELECT bz_assignee
     FROM bugs
-) 
+)
 """
 
     get_bugzilla_info_by_last_acl_with_group = """
-WITH acl_package AS 
+WITH acl_package AS
 (
 SELECT DISTINCT bin_pkg_name
 FROM PackagesSourceAndBinaries

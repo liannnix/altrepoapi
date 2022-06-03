@@ -49,17 +49,28 @@ class PackageFiles(APIWorker):
             )
             return self.error
 
-        PkgFiles = namedtuple("PkgFiles",
-                              ["file_name", "file_size", "file_class", "symlink", "file_mtime", "file_mode"])
+        PkgFiles = namedtuple(
+            "PkgFiles",
+            [
+                "file_name",
+                "file_size",
+                "file_class",
+                "symlink",
+                "file_mtime",
+                "file_mode",
+            ],
+        )
         pkg_files = [PkgFiles(*el)._asdict() for el in response]
 
         for elem in pkg_files:
-            elem["file_mode"] = full_file_permissions(elem["file_class"], elem["file_mode"])
+            elem["file_mode"] = full_file_permissions(
+                elem["file_class"], elem["file_mode"]
+            )
             elem["file_size"] = bytes2human(elem["file_size"])
 
         res = {
             "request_args": self.pkghash,
             "length": len(pkg_files),
-            "files": pkg_files
+            "files": pkg_files,
         }
         return res, 200

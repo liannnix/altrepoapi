@@ -18,7 +18,6 @@ import datetime as dt
 from collections import namedtuple
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.misc import lut
 from ..sql import sql
 
 
@@ -78,7 +77,7 @@ class Repocop(APIWorker):
 
     def get(self):
         self.source_pakage = self.args["package_name"]
-        branch = self.args['branch']
+        branch = self.args["branch"]
         self.pkg_type = self.args["package_type"]
 
         pkg_type_to_sql = {"source": 1, "binary": 0}
@@ -90,10 +89,14 @@ class Repocop(APIWorker):
         if source == 1:
             name_cond = f"AND rc_srcpkg_name = '{self.args['package_name']}'"
             if self.args["package_version"] is not None:
-                version_cond = f"AND rc_srcpkg_version = '{self.args['package_version']}'"
+                version_cond = (
+                    f"AND rc_srcpkg_version = '{self.args['package_version']}'"
+                )
 
             if self.args["package_release"] is not None:
-                release_cond = f"AND rc_srcpkg_release = '{self.args['package_release']}'"
+                release_cond = (
+                    f"AND rc_srcpkg_release = '{self.args['package_release']}'"
+                )
         else:
             name_cond = f"AND pkg_name = '{self.args['package_name']}'"
             if self.args["package_version"] is not None:
@@ -110,7 +113,7 @@ class Repocop(APIWorker):
             srcpkg_version=version_cond,
             srcpkg_release=release_cond,
             branch=branch,
-            arch=arch_cond
+            arch=arch_cond,
         )
 
         status, response = self.conn.send_request()
@@ -121,7 +124,7 @@ class Repocop(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No results found in database for given parameters",
+                    "message": "No results found in database for given parameters",
                     "args": self.args,
                 },
                 self.ll.INFO,
