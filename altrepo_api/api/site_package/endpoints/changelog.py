@@ -36,7 +36,7 @@ class PackageChangelog(APIWorker):
 
         if self.args["changelog_last"] < 1:
             self.validation_results.append(
-                f"changelog history length should be not less than 1"
+                "changelog history length should be not less than 1"
             )
 
         if self.validation_results != []:
