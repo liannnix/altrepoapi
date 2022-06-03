@@ -21,8 +21,7 @@ from collections import namedtuple
 from altrepo_api.api.base import APIWorker
 from ..sql import sql
 
-ESCAPING = str.maketrans({"\"": r"\"",
-                          "\\": r"\\"})
+ESCAPING = str.maketrans({'"': r"\"", "\\": r"\\"})
 
 ZIP_FILE_NAME = "packages_POT.zip"
 PO_FILE_NAME_BASE = "packages_{symbol}.pot"
@@ -43,7 +42,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\\n"
 "Content-Transfer-Encoding: 8bit\\n"
 
-"""
+"""  # noqa: W291
 
 PkgInfo = namedtuple(
     "PkgInfo", ["name", "url", "summary", "description", "src_pkg_name"]
@@ -91,7 +90,10 @@ def format_po_file(packages: list[PkgInfo], uniq_only: bool = False) -> BytesIO:
             str_ += 'msgstr ""\n\n'
             if uniq_only:
                 uniq_summary.add(pkg.summary)
-        if pkg.description not in uniq_description and pkg.description not in uniq_summary:
+        if (
+            pkg.description not in uniq_description
+            and pkg.description not in uniq_summary
+        ):
             str_ += f"#: {pkg.name}\n"
             if pkg.url:
                 str_ += f"#. homepage: {pkg.url}\n"

@@ -38,9 +38,7 @@ class RepologyExport(APIWorker):
         self.validation_results = []
 
         if self.branch == "" or self.branch not in lut.repology_export_branches:
-            self.validation_results.append(
-                f"unknown package set name : {self.branch}"
-            )
+            self.validation_results.append(f"unknown package set name : {self.branch}")
             self.validation_results.append(
                 f"allowed package set names are : {lut.repology_export_branches}"
             )
@@ -69,7 +67,9 @@ class RepologyExport(APIWorker):
             return self.error
 
         RepoStat = namedtuple("RepoStat", ["arch", "cnt"])
-        repo_date, repo_stat = response[0][0], [RepoStat(*el)._asdict() for el in response[0][1]]
+        repo_date, repo_stat = response[0][0], [  # type: ignore
+            RepoStat(*el)._asdict() for el in response[0][1]  # type: ignore
+        ]
 
         # get package info
         self.conn.request_line = self.sql.get_branch_pkg_info.format(branch=self.branch)
@@ -114,10 +114,16 @@ class RepologyExport(APIWorker):
             src["binaries"] = [BinPkgInfo(*el)._asdict() for el in src["binaries"]]
             src["homepage"] = f'{lut.packages_base}/{self.branch}/srpms/{src["name"]}/'
             _specfile = src["recipe"]
-            src["recipe"] = f'{lut.packages_base}/{self.branch}/srpms/{src["name"]}/specfiles/'
-            src["recipe_raw"] = f'{lut.packages_base}/{self.branch}/srpms/{src["name"]}/specfiles/{_specfile}'
+            src[
+                "recipe"
+            ] = f'{lut.packages_base}/{self.branch}/srpms/{src["name"]}/specfiles/'
+            src[
+                "recipe_raw"
+            ] = f'{lut.packages_base}/{self.branch}/srpms/{src["name"]}/specfiles/{_specfile}'
             src["CPE"] = ""  # TODO: add CPE info for packages when ready
-            src["bugzilla"] = f'{lut.bugzilla_base}/buglist.cgi?quicksearch={src["name"]}'
+            src[
+                "bugzilla"
+            ] = f'{lut.bugzilla_base}/buglist.cgi?quicksearch={src["name"]}'
 
         res = {
             "branch": self.branch,

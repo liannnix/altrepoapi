@@ -16,8 +16,6 @@
 
 from collections import namedtuple
 
-from altrepo_api.utils import datetime_to_iso
-
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
 from ..sql import sql
@@ -38,9 +36,7 @@ class PackageSetBinaries(APIWorker):
         self.validation_results = []
 
         if self.branch == "" or self.branch not in lut.repology_export_branches:
-            self.validation_results.append(
-                f"unknown package set name : {self.branch}"
-            )
+            self.validation_results.append(f"unknown package set name : {self.branch}")
             self.validation_results.append(
                 f"allowed package set names are : {lut.repology_export_branches}"
             )
