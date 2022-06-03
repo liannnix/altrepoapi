@@ -46,7 +46,9 @@ pkgs_versions_from_images_model = ns.model(
         "request_args": fields.Raw(description="request arguments"),
         "length": fields.Integer(description="number of images found"),
         "versions": fields.Nested(
-            pkgs_versions_from_images_el__el_model, as_list=True, description="all package versions"
+            pkgs_versions_from_images_el__el_model,
+            as_list=True,
+            description="all package versions",
         ),
     },
 )
