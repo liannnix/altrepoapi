@@ -29,7 +29,7 @@ from altrepo_api.api.parser import (
     img_flavor_type,
     image_tag_type,
     pkg_groups_type,
-    img_platform_type
+    img_platform_type,
 )
 
 # register items
@@ -104,11 +104,7 @@ img_type_opt = parser.register_item(
     location="args",
 )
 img_uuid_opt = parser.register_item(
-    "uuid",
-    type=uuid_type,
-    required=True,
-    help="Image UUID",
-    location="args"
+    "uuid", type=uuid_type, required=True, help="Image UUID", location="args"
 )
 pkgs_limit = parser.register_item(
     "packages_limit",
@@ -151,7 +147,7 @@ image_info_args = parser.build_parser(
     img_arch_opt,
     img_component_opt,
     img_platform_opt,
-    img_type_opt
+    img_type_opt,
 )
 
 active_images_args = parser.build_parser(
@@ -160,10 +156,12 @@ active_images_args = parser.build_parser(
     img_version_opt,
     img_release_opt,
     img_variant_opt,
-    img_type_opt
+    img_type_opt,
 )
 image_tag_args = parser.build_parser(branch, img_edition_opt)
-image_last_packages_args = parser.build_parser(branch, img_uuid_opt, pkgs_limit, img_component_opt)
+image_last_packages_args = parser.build_parser(
+    branch, img_uuid_opt, pkgs_limit, img_component_opt
+)
 image_uuid_args = parser.build_parser(img_tag_opt)
 image_categories_args = parser.build_parser(img_uuid_opt, img_component_opt)
 image_packages_args = parser.build_parser(img_uuid_opt, group, img_component_opt)

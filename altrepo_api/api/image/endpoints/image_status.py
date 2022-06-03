@@ -51,12 +51,19 @@ class ImageStatus(APIWorker):
 
         # decode base64
         try:
-            self.payload["img_description_ru"] = base64.b64decode(self.payload["img_description_ru"])
-            self.payload["img_description_en"] = base64.b64decode(self.payload["img_description_en"])
+            self.payload["img_description_ru"] = base64.b64decode(
+                self.payload["img_description_ru"]
+            )
+            self.payload["img_description_en"] = base64.b64decode(
+                self.payload["img_description_en"]
+            )
         except binascii.Error:
             self.validation_results.append("description must be in base64 format")
 
-        if self.payload["img_description_ru"] == "" or self.payload["img_description_en"] == "":
+        if (
+            self.payload["img_description_ru"] == ""
+            or self.payload["img_description_en"] == ""
+        ):
             self.validation_results.append("description cannot be misleading")
 
         if self.validation_results != []:
@@ -130,7 +137,7 @@ class ImageStatus(APIWorker):
 
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )
@@ -206,10 +213,7 @@ class ImageTagStatus(APIWorker):
         )
 
         def img2ntuple(p: dict) -> Tags:
-            return Tags(
-                tag=p["img_tag"],
-                show=p["img_show"]
-            )
+            return Tags(tag=p["img_tag"], show=p["img_show"])
 
         images = [img2ntuple(p) for p in self.payload["tags"]]
         self.conn.request_line = (self.sql.insert_image_tag_status, images)
@@ -224,13 +228,15 @@ class ImageTagStatus(APIWorker):
         """
         Get information about a iso image
         """
-        branch = self.args['branch']
-        if self.args['edition'] is not None:
+        branch = self.args["branch"]
+        if self.args["edition"] is not None:
             edition = f"AND img_edition = '{self.args['edition']}'"
         else:
             edition = ""
 
-        self.conn.request_line = self.sql.get_img_tag_status.format(branch=branch, edition=edition)
+        self.conn.request_line = self.sql.get_img_tag_status.format(
+            branch=branch, edition=edition
+        )
 
         status, response = self.conn.send_request()
         if not status:
@@ -239,7 +245,7 @@ class ImageTagStatus(APIWorker):
 
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )
@@ -331,7 +337,9 @@ class ActiveImages(APIWorker):
         if img_type:
             image_clause += f" AND img_type = '{img_type}'"
 
-        self.conn.request_line = self.sql.get_active_images.format(image_clause=image_clause, branch=branch)
+        self.conn.request_line = self.sql.get_active_images.format(
+            image_clause=image_clause, branch=branch
+        )
 
         status, response = self.conn.send_request()
         if not status:
@@ -340,7 +348,7 @@ class ActiveImages(APIWorker):
 
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )
@@ -348,16 +356,10 @@ class ActiveImages(APIWorker):
 
         ActiveImagesInfo = namedtuple(
             "ActiveImagesInfo",
-            [
-                "edition",
-                "tags"
-            ],
+            ["edition", "tags"],
         )
 
         res = [ActiveImagesInfo(*el)._asdict() for el in response]
 
-        res = {
-            "request_args": self.args,
-            "length": len(res),
-            "images": res}
+        res = {"request_args": self.args, "length": len(res), "images": res}
         return res, 200

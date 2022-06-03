@@ -459,7 +459,7 @@ SELECT
     argMax(img_name_bugzilla, ts) AS img_name_bugzilla,
     argMax(img_json, ts) AS img_json
 FROM ImageStatus
-GROUP BY 
+GROUP BY
     img_branch,
     img_edition
 """
@@ -490,7 +490,7 @@ SELECT pkg_hash FROM
         WHERE pkgset_ruuid = '{uuid}'
         {component}
     )
-)    
+)
 """
 
     get_img_pkg_info = """
@@ -514,7 +514,7 @@ SELECT * FROM
     WHERE pkg_hash IN (
         SELECT pkg_hash FROM {tmp_pkg_hashes}
         )
-)    
+)
     """
 
     get_last_image_pkgs_info = """
@@ -613,7 +613,7 @@ WHERE pkg_hash IN
 )
 AND pkg_name NOT LIKE '%%-debuginfo'
 GROUP BY pkg_group_
-ORDER BY pkg_group_ ASC    
+ORDER BY pkg_group_ ASC
 """
 
     get_image_packages = """
