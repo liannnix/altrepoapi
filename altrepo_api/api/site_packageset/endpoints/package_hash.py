@@ -15,7 +15,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.misc import lut
 from ..sql import sql
 
 
@@ -56,9 +55,9 @@ class PackagesetPackageHash(APIWorker):
 
         res = {
             "request_args": self.args,
-            "pkghash": str(response[0][0]),
-            "version": response[0][1],
-            "release": response[0][2],
+            "pkghash": str(response[0][0]),  # type: ignore
+            "version": response[0][1],  # type: ignore
+            "release": response[0][2],  # type: ignore
         }
         return res, 200
 
@@ -101,8 +100,8 @@ class PackagesetPackageBinaryHash(APIWorker):
 
         res = {
             "request_args": self.args,
-            "pkghash": str(response[0][0]),
-            "version": response[0][1],
-            "release": response[0][2],
+            "pkghash": str(response[0][0]),  # type: ignore
+            "version": response[0][1],  # type: ignore
+            "release": response[0][2],  # type: ignore
         }
         return res, 200
