@@ -17,7 +17,11 @@
 from altrepo_api.api.parser import parser, branch_name_type, dp_name_type
 
 branch = parser.register_item(
-    "branch", type=branch_name_type, required=True, help="packageset name", location="args"
+    "branch",
+    type=branch_name_type,
+    required=True,
+    help="packageset name",
+    location="args",
 )
 dp_name = parser.register_item(
     "dp_name", type=dp_name_type, required=True, help="dependency name", location="args"

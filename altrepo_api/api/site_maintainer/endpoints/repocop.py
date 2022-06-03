@@ -17,7 +17,6 @@
 from collections import namedtuple
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.misc import lut
 from ..sql import sql
 
 
@@ -55,24 +54,24 @@ class RepocopByMaintainer(APIWorker):
             ],
         )
 
-        if self.args['by_acl'] == 'by_nick_leader_and_group':
+        if self.args["by_acl"] == "by_nick_leader_and_group":
             self.conn.request_line = self.sql.get_repocop_by_last_acl_with_group.format(
                 maintainer_nickname=maintainer_nickname, branch=branch, order_g=order_g
             )
-        if self.args['by_acl'] == 'by_nick_leader':
+        if self.args["by_acl"] == "by_nick_leader":
             order_g = "AND order_g=0"
             self.conn.request_line = self.sql.get_repocop_by_last_acl_with_group.format(
                 maintainer_nickname=maintainer_nickname, branch=branch, order_g=order_g
             )
-        if self.args['by_acl'] == 'by_nick':
+        if self.args["by_acl"] == "by_nick":
             self.conn.request_line = self.sql.get_repocop_by_nick_acl.format(
                 maintainer_nickname=maintainer_nickname, branch=branch
             )
-        if self.args['by_acl'] == 'by_nick_or_group':
+        if self.args["by_acl"] == "by_nick_or_group":
             self.conn.request_line = self.sql.get_repocop_by_nick_or_group_acl.format(
                 maintainer_nickname=maintainer_nickname, branch=branch
             )
-        if self.args['by_acl'] == 'none':
+        if self.args["by_acl"] == "none":
             self.conn.request_line = self.sql.get_maintainer_repocop.format(
                 maintainer_nickname=maintainer_nickname, branch=branch
             )
@@ -82,7 +81,7 @@ class RepocopByMaintainer(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )

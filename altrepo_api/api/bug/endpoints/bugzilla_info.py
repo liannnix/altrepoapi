@@ -48,7 +48,7 @@ class Bugzilla(APIWorker):
             if not status:
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
-            if not response or response[0][0] == []:
+            if not response or response[0][0] == []:  # type: ignore
                 self._store_error(
                     {
                         "message": f"No data found in database for {package_name} source package",
@@ -69,7 +69,7 @@ class Bugzilla(APIWorker):
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
-        if not response or response[0][0] == []:
+        if not response or response[0][0] == []:  # type: ignore
             self._store_error(
                 {
                     "message": f"No data found in database for packages: {packages}",
@@ -105,27 +105,33 @@ class Bugzilla(APIWorker):
 
     def get_bug_by_maintainer(self):
         maintainer_nickname = self.args["maintainer_nickname"]
-        by_acl = self.args['by_acl']
+        by_acl = self.args["by_acl"]
         order_g = ""
 
-        if by_acl == 'by_nick':
+        if by_acl == "by_nick":
             self.conn.request_line = self.sql.get_bugzilla_info_by_nick_acl.format(
                 maintainer_nickname=maintainer_nickname
             )
-        if by_acl == 'by_nick_leader':
-            order_g = 'AND order_g = 0'
-            self.conn.request_line = self.sql.get_bugzilla_info_by_last_acl_with_group.format(
-                maintainer_nickname=maintainer_nickname, order_g=order_g
+        if by_acl == "by_nick_leader":
+            order_g = "AND order_g = 0"
+            self.conn.request_line = (
+                self.sql.get_bugzilla_info_by_last_acl_with_group.format(
+                    maintainer_nickname=maintainer_nickname, order_g=order_g
+                )
             )
-        if by_acl == 'by_nick_or_group':
-            self.conn.request_line = self.sql.get_beehive_errors_by_nick_or_group_acl.format(
-                maintainer_nickname=maintainer_nickname
+        if by_acl == "by_nick_or_group":
+            self.conn.request_line = (
+                self.sql.get_beehive_errors_by_nick_or_group_acl.format(
+                    maintainer_nickname=maintainer_nickname
+                )
             )
-        if by_acl == 'by_nick_leader_and_group':
-            self.conn.request_line = self.sql.get_bugzilla_info_by_last_acl_with_group.format(
-                maintainer_nickname=maintainer_nickname, order_g=order_g
+        if by_acl == "by_nick_leader_and_group":
+            self.conn.request_line = (
+                self.sql.get_bugzilla_info_by_last_acl_with_group.format(
+                    maintainer_nickname=maintainer_nickname, order_g=order_g
+                )
             )
-        if by_acl == 'none':
+        if by_acl == "none":
             self.conn.request_line = self.sql.get_bugzilla_info_by_maintainer.format(
                 maintainer_nickname=maintainer_nickname
             )
@@ -134,7 +140,7 @@ class Bugzilla(APIWorker):
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
-        if not response or response[0][0] == []:
+        if not response or response[0][0] == []:  # type: ignore
             self._store_error(
                 {
                     "message": f"No data found in database for {maintainer_nickname}",

@@ -15,13 +15,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from collections import namedtuple
-from typing import Tuple
+from typing import Optional
 
 from altrepo_api.settings import namespace as settings
 from altrepo_api.utils import get_logger, tuplelist_to_dict, join_tuples
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.misc import lut
 from ..sql import sql
 from altrepo_api.libs.dependency_sorting import SortList
 from altrepo_api.api.task.endpoints.task_repo import LastRepoStateFromTask
@@ -61,7 +60,7 @@ class BuildDependency(APIWorker):
         self.result = {}
         super().__init__()
 
-    def build_dependencies(self, task_repo_hashes: Tuple[int, ...] = None):
+    def build_dependencies(self, task_repo_hashes: Optional[tuple[int]] = None):
         # do all kind of black magic here
         input_pkgs = self.packages
         depends_type_to_sql = {"source": (1,), "binary": (0,), "both": (1, 0)}
@@ -92,7 +91,7 @@ class BuildDependency(APIWorker):
             status, response = self.conn.send_request()
             if not status:
                 return False
-            pkgs = [el[0] for el in response]
+            pkgs = [el[0] for el in response]  # type: ignore
             pkgs_prev_level = []
             for p in levels_dict.values():
                 pkgs_prev_level += p
@@ -113,10 +112,8 @@ class BuildDependency(APIWorker):
         if task_repo_hashes is not None:
             # use repository hashes from task
             self.conn.request_line = (
-                self.sql.insert_into_tmp_table.format(
-                    tmp_table=tmp_repo_state
-                ),
-                ((hsh,) for hsh in task_repo_hashes)
+                self.sql.insert_into_tmp_table.format(tmp_table=tmp_repo_state),
+                ((hsh,) for hsh in task_repo_hashes),
             )
             status, response = self.conn.send_request()
             if status is False:
@@ -142,8 +139,7 @@ class BuildDependency(APIWorker):
             return
         # insert source packages hashes
         self.conn.request_line = self.sql.insert_pkgs_hshs_filtered_src.format(
-            tmp_table=tmp_repo_state_filtered,
-            tmp_table2=tmp_repo_state
+            tmp_table=tmp_repo_state_filtered, tmp_table2=tmp_repo_state
         )
         status, response = self.conn.send_request()
         if status is False:
@@ -153,7 +149,7 @@ class BuildDependency(APIWorker):
         self.conn.request_line = self.sql.insert_pkgs_hshs_filtered_bin.format(
             tmp_table=tmp_repo_state_filtered,
             tmp_table2=tmp_repo_state,
-            arch=tuple(self.arch)
+            arch=tuple(self.arch),
         )
         status, response = self.conn.send_request()
         if status is False:
@@ -244,7 +240,11 @@ class BuildDependency(APIWorker):
                     self.sql.insert_result_for_depth_level.format(
                         wrapper=deep_wrapper, tmp_table=tmp_table_name
                     ),
-                    {"sfilter": sourcef, "branch": self.branch, "archs": tuple(self.arch)},
+                    {
+                        "sfilter": sourcef,
+                        "branch": self.branch,
+                        "archs": tuple(self.arch),
+                    },
                 )
                 status, response = self.conn.send_request()
                 if status is False:
@@ -310,7 +310,7 @@ class BuildDependency(APIWorker):
             src_pkgs_by_level[2] = tuple(
                 {
                     pkg
-                    for pkg in [el[1] for el in response]
+                    for pkg in [el[1] for el in response]  # type: ignore
                     if pkg in src_pkgs_by_level[2]
                 }
             )
@@ -343,8 +343,8 @@ class BuildDependency(APIWorker):
             return
 
         pkg_acl_dict = {}
-        for pkg in response:
-            pkg_acl_dict[pkg[0]] = pkg[1][0]
+        for pkg in response:  # type: ignore
+            pkg_acl_dict[pkg[0]] = pkg[1][0]  # type: ignore
 
         # create temporary table for package dependencies
         tmp_table_pkg_dep = "package_dependency"
@@ -364,7 +364,11 @@ class BuildDependency(APIWorker):
                 self.sql.insert_src_deps.format(
                     tmp_deps=tmp_table_pkg_dep, tmp_table=tmp_table_name
                 ),
-                {"branch": self.branch, "pkgs": list(input_pkgs), "archs": tuple(self.arch)},
+                {
+                    "branch": self.branch,
+                    "pkgs": list(input_pkgs),
+                    "archs": tuple(self.arch),
+                },
             )
             status, response = self.conn.send_request()
             if status is False:
@@ -379,7 +383,11 @@ class BuildDependency(APIWorker):
                 self.sql.insert_binary_deps.format(
                     tmp_table=tmp_table_name, tmp_req=tmp_table_pkg_dep
                 ),
-                {"branch": self.branch, "archs": tuple(self.arch), "pkgs": list(input_pkgs)},
+                {
+                    "branch": self.branch,
+                    "archs": tuple(self.arch),
+                    "pkgs": list(input_pkgs),
+                },
             )
             status, response = self.conn.send_request()
             if status is False:
@@ -395,7 +403,7 @@ class BuildDependency(APIWorker):
             self._store_sql_error(response, self.ll.ERROR, 500)
             return
 
-        pkgs_to_sort_dict = tuplelist_to_dict(response, 1)
+        pkgs_to_sort_dict = tuplelist_to_dict(response, 1)  # type: ignore
 
         if not pkgs_to_sort_dict:
             # nothing left after filtering
@@ -418,7 +426,7 @@ class BuildDependency(APIWorker):
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return
 
-            filter_by_tops = join_tuples(response)
+            filter_by_tops = join_tuples(response)  # type: ignore
 
         # check leaf, if true, get dependencies of leaf package
         if self.leaf:
@@ -485,7 +493,7 @@ class BuildDependency(APIWorker):
 
         # form list of packages with it information
         pkg_info_list = []
-        for info in response:
+        for info in response:  # type: ignore
             for pkg, c_deps in result_dict.items():
                 if info[0] == pkg:
                     # add empty list if not acl
@@ -493,7 +501,7 @@ class BuildDependency(APIWorker):
                         pkg_acl_dict[pkg] = []
 
                     pkg_info_list.append(
-                        info        # type: ignore
+                        info  # type: ignore
                         + (c_deps,)
                         + (pkgs_to_sort_dict[pkg],)
                         + (pkg_acl_dict[pkg],)
@@ -508,14 +516,18 @@ class BuildDependency(APIWorker):
             else:
                 self.conn.request_line = (
                     self.sql.req_filter_by_src,
-                    {"srcpkg": self.reqfiltersrc, "branch": self.branch, "archs": tuple(self.arch)},
+                    {
+                        "srcpkg": self.reqfiltersrc,
+                        "branch": self.branch,
+                        "archs": tuple(self.arch),
+                    },
                 )
                 status, response = self.conn.send_request()
                 if status is False:
                     self._store_sql_error(response, self.ll.ERROR, 500)
                     return
 
-                reqfilter_binpkgs = join_tuples(response)
+                reqfilter_binpkgs = join_tuples(response)  # type: ignore
 
             base_query = self.sql.req_filter_by_binary.format(
                 pkg="{pkg}", tmp_table=tmp_table_name
@@ -545,7 +557,7 @@ class BuildDependency(APIWorker):
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return
 
-            filter_pkgs = join_tuples(response)
+            filter_pkgs = join_tuples(response)  # type: ignore
 
         # sort pkg info list
         sorted_dict = {}
@@ -609,7 +621,7 @@ class PackageBuildDependency:
 
         if None not in (self.args["filter_by_source"], self.args["filter_by_package"]):
             self.validation_results.append(
-                f"Parameters 'filter_by_src' and 'filter_by_package' can't be used together"
+                "Parameters 'filter_by_src' and 'filter_by_package' can't be used together"
             )
 
         if self.validation_results != []:

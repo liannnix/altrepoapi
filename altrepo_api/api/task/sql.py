@@ -225,11 +225,11 @@ SELECT
     pkg_arch,
     pkg_sourcepackage
 FROM Packages
-WHERE pkg_hash IN 
+WHERE pkg_hash IN
 (
     SELECT pkgh_mmh
     FROM PackageHash
-    WHERE pkgh_sha256 IN 
+    WHERE pkgh_sha256 IN
     (
         SELECT tplan_sha256
         FROM TaskPlanPkgHash
@@ -458,7 +458,7 @@ TRUNCATE TABLE {table}
 """
 
     repo_packages_by_hshs = """
-SELECT DISTINCT 
+SELECT DISTINCT
     pkg_name,
     pkg_version,
     pkg_release,
@@ -473,7 +473,7 @@ WHERE pkg_hash IN
 """
 
     diff_packages_by_hshs = """
-SELECT 
+SELECT
     pkg_name,
     pkg_arch,
     pkg_filename
@@ -572,7 +572,7 @@ WHERE task_id = {id}
 """
 
     misconflict_get_pkgs_of_task = """
-WITH 
+WITH
     (
         SELECT max(task_changed)
         FROM TaskIterations
@@ -582,7 +582,7 @@ SELECT DISTINCT
     pkg_name,
     pkg_hash
 FROM Packages
-WHERE pkg_hash IN 
+WHERE pkg_hash IN
 (
     SELECT arrayJoin(titer_pkgs_hash)
     FROM TaskIterations

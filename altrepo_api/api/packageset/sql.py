@@ -168,7 +168,7 @@ FROM (
         img_edition,
         argMax(img_show, ts) AS img_show
     FROM ImageStatus
-    GROUP BY 
+    GROUP BY
         img_branch,
         img_edition
 )

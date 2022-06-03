@@ -610,9 +610,24 @@ def test_specfile_by_name(client, kwargs):
     "kwargs",
     [
         {"branch": BRANCH_IN_DB, "packager": "ldv", "archs": None, "status_code": 200},
-        {"branch": BRANCH_NOT_IN_DB, "packager": "ldv", "archs": None, "status_code": 400},
-        {"branch": BRANCH_IN_DB, "packager": "ldv", "archs": "fakearch", "status_code": 400},
-        {"branch": BRANCH_IN_DB, "packager": "fakepackager", "archs": None, "status_code": 404},
+        {
+            "branch": BRANCH_NOT_IN_DB,
+            "packager": "ldv",
+            "archs": None,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "packager": "ldv",
+            "archs": "fakearch",
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "packager": "fakepackager",
+            "archs": None,
+            "status_code": 404,
+        },
     ],
 )
 def test_unpackaged_dirs(client, kwargs):
@@ -637,10 +652,21 @@ def test_unpackaged_dirs(client, kwargs):
     [
         {"branch": BRANCH_IN_DB, "packages": "curl", "depth": None, "status_code": 200},
         {"branch": BRANCH_IN_DB, "packages": "mc,bash", "depth": 2, "status_code": 200},
-        {"branch": BRANCH_IN_DB, "packages": "curl", "depth": 1, "use_last_tasks": "true", "status_code": 200},
+        {
+            "branch": BRANCH_IN_DB,
+            "packages": "curl",
+            "depth": 1,
+            "use_last_tasks": "true",
+            "status_code": 200,
+        },
         {"branch": BRANCH_IN_DB, "packages": "", "depth": None, "status_code": 400},
         {"branch": BRANCH_IN_DB, "packages": "mc,x", "depth": None, "status_code": 400},
-        {"branch": BRANCH_NOT_IN_DB, "packages": "curl", "depth": None, "status_code": 400},
+        {
+            "branch": BRANCH_NOT_IN_DB,
+            "packages": "curl",
+            "depth": None,
+            "status_code": 400,
+        },
     ],
 )
 def test_wds(client, kwargs):

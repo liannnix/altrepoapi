@@ -428,7 +428,7 @@ SELECT DISTINCT
     pkg_changelog.date[1],
     CHLG.chlog_text
 FROM Packages
-LEFT JOIN 
+LEFT JOIN
 (
     SELECT * FROM changelog_with_cve
 ) AS CHLG ON CHLG.chlog_hash = (pkg_changelog.hash[1])
@@ -601,7 +601,7 @@ INNER JOIN
     FROM Packages
     WHERE pkg_sourcepackage = 0
         AND pkg_name = pkgname
-        AND pkg_arch = '{arch}' 
+        AND pkg_arch = '{arch}'
 ) AS PA ON PA.pkg_hash  = static_last_packages.pkg_hash
 WHERE pkg_name = pkgname
     AND pkg_sourcepackage = 0
@@ -668,7 +668,7 @@ WHERE pkg_hash = {pkghash}
                 task_changed
             FROM TaskStates
             WHERE task_state = 'DONE'
-        ) 
+        )
 """
 
     get_package_nvr_by_hash = """

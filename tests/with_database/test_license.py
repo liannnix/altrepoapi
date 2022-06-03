@@ -13,7 +13,7 @@ from altrepo_api.api.license.endpoints.license import parse_license_tokens
                 "aliases": {"BSD": "BSD-3_Clause"},
                 "spdx_ids": {"BSD-3_Clause", "BSD-4_Clause"},
             },
-            {"BSD": "BSD-3_Clause"}
+            {"BSD": "BSD-3_Clause"},
         ),
         (
             {
@@ -21,7 +21,7 @@ from altrepo_api.api.license.endpoints.license import parse_license_tokens
                 "aliases": {"BSD": "BSD-3_Clause", "MIT": "MIT"},
                 "spdx_ids": {"BSD-3_Clause", "BSD-4_Clause"},
             },
-            {"MIT": "MIT"}
+            {"MIT": "MIT"},
         ),
         (
             {
@@ -29,7 +29,7 @@ from altrepo_api.api.license.endpoints.license import parse_license_tokens
                 "aliases": {"BSD": "BSD-3_Clause"},
                 "spdx_ids": {"BSD-3_Clause", "BSD-4_Clause", "MIT"},
             },
-            {"MIT": "MIT"}
+            {"MIT": "MIT"},
         ),
         (
             {
@@ -37,7 +37,7 @@ from altrepo_api.api.license.endpoints.license import parse_license_tokens
                 "aliases": {"BSD": "BSD-3_Clause"},
                 "spdx_ids": {"BSD-3_Clause", "BSD-4_Clause"},
             },
-            {}
+            {},
         ),
     ],
 )
@@ -48,27 +48,12 @@ def test_pkg_name_type(test_input, expected):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {
-            "license": "LGPLv2",
-            "status_code": 200
-        },
-        {
-            "license": "GPLv3+ and (MIT or BSD)",
-            "status_code": 200
-        },
-        {
-            "license": "modified BSD",
-            "status_code": 404
-        },
-        {
-            "license": "not-a-license",
-            "status_code": 404
-        },
-        {
-            "license": "!invalid_license$",
-            "status_code": 400
-        },
-    ]
+        {"license": "LGPLv2", "status_code": 200},
+        {"license": "GPLv3+ and (MIT or BSD)", "status_code": 200},
+        {"license": "modified BSD", "status_code": 404},
+        {"license": "not-a-license", "status_code": 404},
+        {"license": "!invalid_license$", "status_code": 400},
+    ],
 )
 def test_license_tokens(client, kwargs):
     params = {k: v for k, v in kwargs.items() if k != "status_code"}
@@ -86,31 +71,13 @@ def test_license_tokens(client, kwargs):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {
-            "license": "LGPL-3.0",
-            "status_code": 200
-        },
-        {
-            "license": "BSD",
-            "status_code": 200
-        },
-        {
-            "license": "LGPL-3.0-linking-exception",
-            "status_code": 200
-        },
-        {
-            "license": "LGPLv3+",
-            "status_code": 200
-        },
-        {
-            "license": "not-a-license",
-            "status_code": 404
-        },
-        {
-            "license": "!invalid license$",
-            "status_code": 400
-        },
-    ]
+        {"license": "LGPL-3.0", "status_code": 200},
+        {"license": "BSD", "status_code": 200},
+        {"license": "LGPL-3.0-linking-exception", "status_code": 200},
+        {"license": "LGPLv3+", "status_code": 200},
+        {"license": "not-a-license", "status_code": 404},
+        {"license": "!invalid license$", "status_code": 400},
+    ],
 )
 def test_license_infor(client, kwargs):
     params = {k: v for k, v in kwargs.items() if k != "status_code"}

@@ -469,7 +469,7 @@ FROM last_packages
 WHERE pkg_packager_email LIKE '{maintainer_nickname}@%'
     AND pkg_sourcepackage = 1
 GROUP BY
-    pkgset_name    
+    pkgset_name
 """
 
     get_maintainer_pkg = """

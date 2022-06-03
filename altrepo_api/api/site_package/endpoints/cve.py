@@ -19,7 +19,6 @@ from collections import namedtuple
 from altrepo_api.utils import datetime_to_iso
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.misc import lut
 from ..sql import sql
 
 
@@ -74,7 +73,7 @@ class LastPackagesWithCVEFix(APIWorker):
             dict(hash=str(el[0]), **PackageMeta(*el[1:])._asdict()) for el in response
         ]
         for package in packages:
-            package["changelog_date"] = datetime_to_iso(package["changelog_date"])
+            package["changelog_date"] = datetime_to_iso(package["changelog_date"])  # type: ignore
 
         res = {"request_args": self.args, "length": len(packages), "packages": packages}
 

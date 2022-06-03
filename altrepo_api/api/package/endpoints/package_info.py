@@ -14,7 +14,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from altrepo_api.utils import datetime_to_iso, tuplelist_to_dict, convert_to_dict, join_tuples
+from altrepo_api.utils import (
+    datetime_to_iso,
+    tuplelist_to_dict,
+    convert_to_dict,
+    join_tuples,
+)
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
@@ -23,7 +28,7 @@ from ..sql import sql
 
 class PackageInfo(APIWorker):
     """Retrieves package information by various arguments."""
-    
+
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
@@ -116,7 +121,7 @@ class PackageInfo(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No packages found in last packages for given parameters",
+                    "message": "No packages found in last packages for given parameters",
                     "args": self.args,
                 },
                 self.ll.INFO,
@@ -124,10 +129,10 @@ class PackageInfo(APIWorker):
             )
             return self.error
 
-        retval = convert_to_dict(["pkg_hash"] + output_params, response)
+        retval = convert_to_dict(["pkg_hash"] + output_params, response)  # type: ignore
 
-        if self.args["full"] and len(response) > 0:
-            pkghashs = join_tuples(response)
+        if self.args["full"] and len(response) > 0:  # type: ignore
+            pkghashs = join_tuples(response)  # type: ignore
             # changelogs
             self.conn.request_line = (
                 self.sql.pkg_info_get_changelog,
@@ -143,7 +148,7 @@ class PackageInfo(APIWorker):
             for hsh in pkghashs:
                 changelog_dict[hsh] = {}
 
-            dict_ = tuplelist_to_dict(response, 1)
+            dict_ = tuplelist_to_dict(response, 1)  # type: ignore
             for pkghash, changelog in dict_.items():
                 i = 0
                 for v in changelog:
@@ -164,7 +169,7 @@ class PackageInfo(APIWorker):
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
 
-            files_dict = tuplelist_to_dict(response, 1)
+            files_dict = tuplelist_to_dict(response, 1)  # type: ignore
 
             # add empty list if package has no files
             for hsh in pkghashs:
@@ -181,7 +186,7 @@ class PackageInfo(APIWorker):
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
 
-            depends_dict = tuplelist_to_dict(response, 2)
+            depends_dict = tuplelist_to_dict(response, 2)  # type: ignore
 
             depends_struct = {}
             for pkg in depends_dict:

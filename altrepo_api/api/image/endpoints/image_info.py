@@ -17,7 +17,7 @@
 from uuid import UUID
 from collections import namedtuple
 
-from altrepo_api.utils import bytes2human, datetime_to_iso
+from altrepo_api.utils import bytes2human
 from altrepo_api.api.base import APIWorker
 from ..sql import sql
 from ...misc import lut
@@ -40,7 +40,7 @@ class AllISOImages(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )
@@ -129,7 +129,7 @@ class ImageInfo(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )
@@ -166,7 +166,7 @@ class ImageInfo(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )
@@ -206,7 +206,9 @@ class ImageInfo(APIWorker):
 
         def make_download_mirrors(url: str) -> list[str]:
             # build mirror.yandex.ru alternative download links
-            res = [url,]
+            res = [
+                url,
+            ]
             if url.startswith(
                 "http://ftp.altlinux.org/pub/distributions/ALTLinux/images"
             ):
@@ -259,7 +261,7 @@ class LastImagePackages(APIWorker):
 
         if self.args["packages_limit"] and self.args["packages_limit"] < 1:
             self.validation_results.append(
-                f"last packages limit should be greater or equal to 1"
+                "last packages limit should be greater or equal to 1"
             )
 
         if self.validation_results != []:
@@ -279,7 +281,7 @@ class LastImagePackages(APIWorker):
             limit = ""
 
         if self.is_cve:
-            cve = "AND match(chlog_text, 'CVE-\d{4}-(\d{7}|\d{6}|\d{5}|\d{4})')"
+            cve = "AND match(chlog_text, 'CVE-\d{4}-(\d{7}|\d{6}|\d{5}|\d{4})')"  # noqa: W605
         else:
             cve = ""
 
@@ -299,7 +301,7 @@ class LastImagePackages(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No data found in database for given parameters",
+                    "message": "No data found in database for given parameters",
                     "args": self.args,
                 },
                 self.ll.INFO,
@@ -318,7 +320,7 @@ class LastImagePackages(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No data found in database for given parameters",
+                    "message": "No data found in database for given parameters",
                     "args": self.args,
                 },
                 self.ll.INFO,
@@ -326,10 +328,7 @@ class LastImagePackages(APIWorker):
             )
 
         self.conn.request_line = self.sql.get_last_image_pkgs_info.format(
-            tmp_table=tmp_table,
-            branch=branch,
-            cve=cve,
-            limit=limit
+            tmp_table=tmp_table, branch=branch, cve=cve, limit=limit
         )
         status, response = self.conn.send_request()
         if not status:
@@ -338,7 +337,7 @@ class LastImagePackages(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No data found in database for packages",
+                    "message": "No data found in database for packages",
                     "args": self.args,
                 },
                 self.ll.INFO,
@@ -396,7 +395,10 @@ class ImageTagUUID(APIWorker):
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
 
-        if not response or str(response[0][0]) == "00000000-0000-0000-0000-000000000000":
+        if (
+            not response
+            or str(response[0][0]) == "00000000-0000-0000-0000-000000000000"  # type: ignore
+        ):
             self._store_error(
                 {
                     "message": f"Image tag '{img_tag}' not found.",
@@ -423,7 +425,7 @@ class ImageTagUUID(APIWorker):
             "uuid": img_info.uuid,
             "file": img_info.file,
             "type": img_info.type,
-            "components": img_info.components
+            "components": img_info.components,
         }
         return res, 200
 
@@ -452,7 +454,7 @@ class ImageCategoriesCount(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )
@@ -480,9 +482,9 @@ class ImagePackages(APIWorker):
             if self.args["group"] not in lut.pkg_groups:
                 for el in lut.pkg_groups:
                     if (
-                        (el.startswith(self.args["group"]) and self.args["group"][-1] == "/")
-                        or el.startswith(self.args["group"] + '/')
-                    ):
+                        el.startswith(self.args["group"])
+                        and self.args["group"][-1] == "/"
+                    ) or el.startswith(self.args["group"] + "/"):
                         match = True
                         break
             else:
@@ -515,7 +517,9 @@ class ImagePackages(APIWorker):
         else:
             component = ""
 
-        self.conn.request_line = self.sql.get_image_packages.format(uuid=uuid, group=group_clause, component=component)
+        self.conn.request_line = self.sql.get_image_packages.format(
+            uuid=uuid, group=group_clause, component=component
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -523,7 +527,7 @@ class ImagePackages(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No data found in database for given parameters",
+                    "message": "No data found in database for given parameters",
                     "args": self.args,
                 },
                 self.ll.INFO,
@@ -551,7 +555,9 @@ class ImagePackages(APIWorker):
         retval = [PkgMeta(*el)._asdict() for el in response]
 
         subcategories = []
-        self.conn.request_line = self.sql.get_group_subgroups.format(uuid=uuid, group=group, component=component)
+        self.conn.request_line = self.sql.get_group_subgroups.format(
+            uuid=uuid, group=group, component=component
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
@@ -560,5 +566,10 @@ class ImagePackages(APIWorker):
         if response:
             subcategories = [el[0] for el in response]
 
-        res = {"request_args": self.args, "length": len(retval), "subcategories": subcategories, "packages": retval}
+        res = {
+            "request_args": self.args,
+            "length": len(retval),
+            "subcategories": subcategories,
+            "packages": retval,
+        }
         return res, 200

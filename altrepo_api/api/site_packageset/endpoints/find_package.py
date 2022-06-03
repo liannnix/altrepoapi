@@ -83,7 +83,7 @@ class PackagesetFindPackages(APIWorker):
             )
             return self.error
 
-        pkgs_sorted = self._relevance_sort(tuplelist_to_dict(response, 5), self.name)
+        pkgs_sorted = self._relevance_sort(tuplelist_to_dict(response, 5), self.name)  # type: ignore
 
         res = []
         PkgMeta = namedtuple("PkgMeta", ["branch", "version", "release", "pkghash"])
@@ -158,7 +158,7 @@ class FastPackagesSearchLookup(APIWorker):
             )
             return self.error
 
-        pkgs_sorted = self._relevance_sort(tuplelist_to_dict(response, 3), self.name)
+        pkgs_sorted = self._relevance_sort(tuplelist_to_dict(response, 3), self.name)  # type: ignore
 
         res = []
         for pkg in pkgs_sorted:
@@ -207,7 +207,7 @@ class PackagesetPkghashByNVR(APIWorker):
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
-        if not response or response[0][0] == 0:
+        if not response or response[0][0] == 0:  # type: ignore
             self._store_error(
                 {
                     "message": (
@@ -221,4 +221,4 @@ class PackagesetPkghashByNVR(APIWorker):
             )
             return self.error
 
-        return {"request_args": self.args, "pkghash": str(response[0][0])}, 200
+        return {"request_args": self.args, "pkghash": str(response[0][0])}, 200  # type: ignore

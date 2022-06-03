@@ -98,8 +98,12 @@ task_diff_model = ns.model(
     "TaskDiffModel",
     {
         "task_id": fields.Integer(description="task id"),
-        "task_have_plan": fields.Boolean(description="task have package hashses add/delete plan"),
-        "task_diff": fields.Nested(task_diff_archs_model, as_list=True, description="task diff"),
+        "task_have_plan": fields.Boolean(
+            description="task have package hashses add/delete plan"
+        ),
+        "task_diff": fields.Nested(
+            task_diff_archs_model, as_list=True, description="task diff"
+        ),
     },
 )
 
@@ -336,9 +340,13 @@ task_history_el_model = ns.model(
     "TaskHistoryElementModel",
     {
         "task_id": fields.Integer(description="task id"),
-        "task_commited": fields.String(description="task commited date in ISO8601 format"),
-        "branch_commited": fields.String(description="branch commited date in ISO8601 format"),
-    }
+        "task_commited": fields.String(
+            description="task commited date in ISO8601 format"
+        ),
+        "branch_commited": fields.String(
+            description="branch commited date in ISO8601 format"
+        ),
+    },
 )
 task_history_model = ns.model(
     "TaskHistoryModel",

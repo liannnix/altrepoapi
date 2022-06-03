@@ -6,6 +6,7 @@ BRANCH_NOT_IN_DB = "fakebranch"
 MAINTAINER_IN_DB = "rider"
 MAINTAINER_NOT_IN_DB = "fakemaintainer"
 
+
 @pytest.mark.parametrize(
     "kwargs",
     [
@@ -33,9 +34,21 @@ def test_all_maintainers(client, kwargs):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "status_code": 200},
-        {"branch": BRANCH_NOT_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "status_code": 400},
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_NOT_IN_DB, "status_code": 404},
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_NOT_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_NOT_IN_DB,
+            "status_code": 404,
+        },
     ],
 )
 def test_maintainer_info(client, kwargs):
@@ -60,15 +73,60 @@ def test_maintainer_info(client, kwargs):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": None, "status_code": 200},
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "none", "status_code": 200},
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "by_nick", "status_code": 200},
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "by_nick_leader", "status_code": 200},
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "by_nick_or_group", "status_code": 200},
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "by_nick_leader_and_group", "status_code": 200},
-        {"branch": BRANCH_NOT_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": None, "status_code": 400},
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "abc", "status_code": 400},
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_NOT_IN_DB, "by_acl": None, "status_code": 404},
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": None,
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "none",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "by_nick",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "by_nick_leader",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "by_nick_or_group",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "by_nick_leader_and_group",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_NOT_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": None,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "abc",
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_NOT_IN_DB,
+            "by_acl": None,
+            "status_code": 404,
+        },
     ],
 )
 def test_maintainer_packages(client, kwargs):
@@ -115,15 +173,60 @@ def test_maintainer_branches(client, kwargs):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": None, "status_code": 200},
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "none", "status_code": 200},
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "by_nick", "status_code": 200},
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "by_nick_leader", "status_code": 200},
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "by_nick_or_group", "status_code": 200},
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "by_nick_leader_and_group", "status_code": 200},
-        {"branch": BRANCH_NOT_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": None, "status_code": 400},
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "abc", "status_code": 400},
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_NOT_IN_DB, "by_acl": None, "status_code": 404},
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": None,
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "none",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "by_nick",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "by_nick_leader",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "by_nick_or_group",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "by_nick_leader_and_group",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_NOT_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": None,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "abc",
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_NOT_IN_DB,
+            "by_acl": None,
+            "status_code": 404,
+        },
     ],
 )
 def test_repocop_by_maintainer(client, kwargs):
@@ -146,15 +249,60 @@ def test_repocop_by_maintainer(client, kwargs):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": None, "status_code": 200},
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "none", "status_code": 200},
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "by_nick", "status_code": 200},
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "by_nick_leader", "status_code": 200},
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "by_nick_or_group", "status_code": 200},
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "by_nick_leader_and_group", "status_code": 200},
-        {"branch": BRANCH_NOT_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": None, "status_code": 400},
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "abc", "status_code": 400},
-        {"branch": BRANCH_IN_DB, "maintainer_nickname": MAINTAINER_NOT_IN_DB, "by_acl": None, "status_code": 404},
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": None,
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "none",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "by_nick",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "by_nick_leader",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "by_nick_or_group",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "by_nick_leader_and_group",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_NOT_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": None,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "abc",
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_NOT_IN_DB,
+            "by_acl": None,
+            "status_code": 404,
+        },
     ],
 )
 def test_beehive_errors_by_maintainer(client, kwargs):
@@ -179,12 +327,32 @@ def test_beehive_errors_by_maintainer(client, kwargs):
     [
         {"maintainer_nickname": MAINTAINER_IN_DB, "by_acl": None, "status_code": 200},
         {"maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "none", "status_code": 200},
-        {"maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "by_nick", "status_code": 200},
-        {"maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "by_nick_leader", "status_code": 200},
-        {"maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "by_nick_or_group", "status_code": 200},
-        {"maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "by_nick_leader_and_group", "status_code": 200},
+        {
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "by_nick",
+            "status_code": 200,
+        },
+        {
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "by_nick_leader",
+            "status_code": 200,
+        },
+        {
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "by_nick_or_group",
+            "status_code": 200,
+        },
+        {
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "by_nick_leader_and_group",
+            "status_code": 200,
+        },
         {"maintainer_nickname": MAINTAINER_IN_DB, "by_acl": "abc", "status_code": 400},
-        {"maintainer_nickname": MAINTAINER_NOT_IN_DB, "by_acl": None, "status_code": 404},
+        {
+            "maintainer_nickname": MAINTAINER_NOT_IN_DB,
+            "by_acl": None,
+            "status_code": 404,
+        },
     ],
 )
 def test_watch_by_maintainer(client, kwargs):

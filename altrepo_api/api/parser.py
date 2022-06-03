@@ -77,7 +77,9 @@ __packager_nickname_match = re.compile(r"^[\w\-]{2,}$")
 __file_name_wc_match = re.compile(r"^[\w\-.\/\*]{2,}$")
 __dp_name_match = re.compile(r"^[\w\/\(\)\.\:\-\+]{2,}$")
 # image name
-__uuid_string_match = re.compile(r"^[0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12}$")
+__uuid_string_match = re.compile(
+    r"^[0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12}$"
+)
 __image_tag_match = re.compile(r"^[a-zA-Z0-9\-\.\_:]+:[a-z]+$")
 __image_version_match = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
 __image_flavor_match = re.compile(r"^[a-zA-Z\-]+$")
@@ -104,6 +106,7 @@ def pkg_name_type(value: Any) -> str:
         raise ValueError("Invalid package name: {0}".format(value))
     return value
 
+
 pkg_name_type.__schema__ = {"type": "string", "pattern": __pkg_name_match.pattern}
 
 
@@ -115,7 +118,11 @@ def pkg_name_list_type(value: Any) -> str:
         raise ValueError("Invalid package name: {0}".format(value))
     return value
 
-pkg_name_list_type.__schema__ = {"type": "string", "pattern": __pkg_name_list_match.pattern}
+
+pkg_name_list_type.__schema__ = {
+    "type": "string",
+    "pattern": __pkg_name_list_match.pattern,
+}
 
 
 def pkg_version_type(value: Any) -> str:
@@ -125,6 +132,7 @@ def pkg_version_type(value: Any) -> str:
     if not __pkg_VR_match.search(value):
         raise ValueError("Invalid package version: {0}".format(value))
     return value
+
 
 pkg_version_type.__schema__ = {"type": "string", "pattern": __pkg_VR_match.pattern}
 
@@ -137,6 +145,7 @@ def pkg_release_type(value: Any) -> str:
         raise ValueError("Invalid package release: {0}".format(value))
     return value
 
+
 pkg_release_type.__schema__ = {"type": "string", "pattern": __pkg_VR_match.pattern}
 
 
@@ -147,6 +156,7 @@ def branch_name_type(value: Any) -> str:
     if value not in __known_branches:
         raise ValueError("Invalid branch name: {0}".format(value))
     return value
+
 
 branch_name_type.__schema__ = {"type": "string"}
 
@@ -159,6 +169,7 @@ def arch_name_type(value: Any) -> str:
         raise ValueError("Invalid architecture name: {0}".format(value))
     return value
 
+
 arch_name_type.__schema__ = {"type": "string"}
 
 
@@ -169,6 +180,7 @@ def pkg_groups_type(value: Any) -> str:
     if not __pkg_groups_match.search(value):
         raise ValueError("Invalid package category: {0}".format(value))
     return value
+
 
 pkg_groups_type.__schema__ = {"type": "string", "pattern": __pkg_groups_match.pattern}
 
@@ -181,7 +193,11 @@ def packager_email_type(value: Any) -> str:
         raise ValueError("Invalid packager's email: {0}".format(value))
     return value
 
-packager_email_type.__schema__ = {"type": "string", "pattern": __packager_email_match.pattern}
+
+packager_email_type.__schema__ = {
+    "type": "string",
+    "pattern": __packager_email_match.pattern,
+}
 
 
 def packager_name_type(value: Any) -> str:
@@ -192,7 +208,11 @@ def packager_name_type(value: Any) -> str:
         raise ValueError("Invalid packager's name: {0}".format(value))
     return value
 
-packager_name_type.__schema__ = {"type": "string", "pattern": __packager_name_match.pattern}
+
+packager_name_type.__schema__ = {
+    "type": "string",
+    "pattern": __packager_name_match.pattern,
+}
 
 
 def packager_nick_type(value: Any) -> str:
@@ -203,7 +223,11 @@ def packager_nick_type(value: Any) -> str:
         raise ValueError("Invalid packager's nickname: {0}".format(value))
     return value
 
-packager_nick_type.__schema__ = {"type": "string", "pattern": __packager_nickname_match.pattern}
+
+packager_nick_type.__schema__ = {
+    "type": "string",
+    "pattern": __packager_nickname_match.pattern,
+}
 
 
 def maintainer_nick_type(value: Any) -> str:
@@ -214,7 +238,11 @@ def maintainer_nick_type(value: Any) -> str:
         raise ValueError("Invalid maintainer's nickname: {0}".format(value))
     return value
 
-maintainer_nick_type.__schema__ = {"type": "string", "pattern": __packager_nickname_match.pattern}
+
+maintainer_nick_type.__schema__ = {
+    "type": "string",
+    "pattern": __packager_nickname_match.pattern,
+}
 
 
 def checksum_type(value: Any) -> str:
@@ -224,6 +252,7 @@ def checksum_type(value: Any) -> str:
     if not __pkg_cs_match.search(value):
         raise ValueError("Invalid checksum hexadecimal string: {0}".format(value))
     return value
+
 
 checksum_type.__schema__ = {"type": "string", "pattern": __pkg_cs_match.pattern}
 
@@ -236,6 +265,7 @@ def disttag_type(value: Any) -> str:
         raise ValueError("Invalid Disttag string: {0}".format(value))
     return value
 
+
 disttag_type.__schema__ = {"type": "string", "pattern": __pkg_disttag_match.pattern}
 
 
@@ -247,7 +277,11 @@ def file_name_wc_type(value: Any) -> str:
         raise ValueError("Invalid file name: {0}".format(value))
     return value
 
-file_name_wc_type.__schema__ = {"type": "string", "pattern": __file_name_wc_match.pattern}
+
+file_name_wc_type.__schema__ = {
+    "type": "string",
+    "pattern": __file_name_wc_match.pattern,
+}
 
 
 def dp_name_type(value: Any) -> str:
@@ -257,6 +291,7 @@ def dp_name_type(value: Any) -> str:
     if not __dp_name_match.search(value):
         raise ValueError("Invalid dependency name: {0}".format(value))
     return value
+
 
 dp_name_type.__schema__ = {"type": "string", "pattern": __dp_name_match.pattern}
 
@@ -271,6 +306,7 @@ def date_string_type(value: Any) -> datetime.datetime:
     except ValueError:
         raise ValueError("Invalid date: {0}".format(value))
 
+
 date_string_type.__schema__ = {"type": "string", "format": "date"}
 
 
@@ -281,6 +317,7 @@ def uuid_type(value: Any) -> str:
     if not __uuid_string_match.search(value):
         raise ValueError("Invalid UUID string: {0}".format(value))
     return value
+
 
 uuid_type.__schema__ = {"type": "string", "pattern": __uuid_string_match.pattern}
 
@@ -293,6 +330,7 @@ def image_tag_type(value: Any) -> str:
         raise ValueError("Invalid image name: {0}".format(value))
     return value
 
+
 image_tag_type.__schema__ = {"type": "string", "pattern": __image_tag_match.pattern}
 
 
@@ -304,7 +342,11 @@ def image_version_type(value: Any) -> str:
         raise ValueError("Invalid image version: {0}".format(value))
     return value
 
-image_version_type.__schema__ = {"type": "string", "pattern": __image_version_match.pattern}
+
+image_version_type.__schema__ = {
+    "type": "string",
+    "pattern": __image_version_match.pattern,
+}
 
 
 def img_edition_type(value: Any) -> str:
@@ -314,6 +356,7 @@ def img_edition_type(value: Any) -> str:
     if value not in __known_img_editions:
         raise ValueError("Invalid image edition: {0}".format(value))
     return value
+
 
 img_edition_type.__schema__ = {"type": "string"}
 
@@ -326,6 +369,7 @@ def img_arch_type(value: Any) -> str:
         raise ValueError("Invalid image architecture: {0}".format(value))
     return value
 
+
 img_arch_type.__schema__ = {"type": "string"}
 
 
@@ -336,6 +380,7 @@ def img_variant_type(value: Any) -> str:
     if value not in __known_img_variants:
         raise ValueError("Invalid image variant: {0}".format(value))
     return value
+
 
 img_variant_type.__schema__ = {"type": "string"}
 
@@ -348,6 +393,7 @@ def img_component_type(value: Any) -> str:
         raise ValueError("Invalid image component: {0}".format(value))
     return value
 
+
 img_component_type.__schema__ = {"type": "string"}
 
 
@@ -358,6 +404,7 @@ def img_platform_type(value: Any) -> str:
     if value not in __known_img_platforms:
         raise ValueError("Invalid image platform: {0}".format(value))
     return value
+
 
 img_platform_type.__schema__ = {"type": "string"}
 
@@ -370,6 +417,7 @@ def img_flavor_type(value: Any) -> str:
         raise ValueError("Invalid image flavor: {0}".format(value))
     return value
 
+
 img_flavor_type.__schema__ = {"type": "string"}
 
 
@@ -380,6 +428,7 @@ def img_release_type(value: Any) -> str:
     if value not in __known_img_releases:
         raise ValueError("Invalid image release: {0}".format(value))
     return value
+
 
 img_release_type.__schema__ = {"type": "string"}
 
@@ -392,6 +441,7 @@ def img_type(value: Any) -> str:
         raise ValueError("Invalid image type: {0}".format(value))
     return value
 
+
 img_type.__schema__ = {"type": "string"}
 
 
@@ -403,7 +453,11 @@ def license_string_type(value: Any) -> str:
         raise ValueError("Invalid license string: {0}".format(value))
     return value
 
-license_string_type.__schema__ = {"type": "string", "pattern": __license_string_match.pattern}
+
+license_string_type.__schema__ = {
+    "type": "string",
+    "pattern": __license_string_match.pattern,
+}
 
 
 def license_id_type(value: Any) -> str:
@@ -413,6 +467,7 @@ def license_id_type(value: Any) -> str:
     if not __license_id_match.search(value):
         raise ValueError("Invalid license string: {0}".format(value))
     return value
+
 
 license_id_type.__schema__ = {"type": "string", "pattern": __license_id_match.pattern}
 
@@ -424,5 +479,6 @@ def acl_group_type(value: Any) -> str:
     if not __acl_group_match.search(value):
         raise ValueError("Invalid ACL group: {0}".format(value))
     return value
+
 
 acl_group_type.__schema__ = {"type": "string", "pattern": __acl_group_match.pattern}

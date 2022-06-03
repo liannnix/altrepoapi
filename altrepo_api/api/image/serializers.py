@@ -112,7 +112,7 @@ pkg_inspect_el1_model = ns.model(
         "release": fields.String(description="package release"),
         "disttag": fields.String(description="package disttag"),
         "buildtime": fields.Integer(description="package build time"),
-    }
+    },
 )
 pkg_inspect_el2_model = ns.inherit(
     "ImagePackagesElement2Model",
@@ -120,16 +120,22 @@ pkg_inspect_el2_model = ns.inherit(
     {
         "task_id": fields.Integer(description="build task id"),
         "subtask_id": fields.Integer(description="build task subtask id"),
-    }
+    },
 )
 pkg_inspect_regular_model = ns.model(
     "ImagePackagesInspectRegularModel",
     {
         "request_args": fields.Raw(description="request arguments"),
         "input_pakages": fields.Integer(description="number of input packages"),
-        "not_in_branch": fields.Integer(description="number of packages not found in branch"),
-        "found_in_tasks": fields.Integer(description="number of packages found in build tasks"),
-        "not_found_in_db": fields.Integer(description="number of packages not found in database"),
+        "not_in_branch": fields.Integer(
+            description="number of packages not found in branch"
+        ),
+        "found_in_tasks": fields.Integer(
+            description="number of packages found in build tasks"
+        ),
+        "not_found_in_db": fields.Integer(
+            description="number of packages not found in database"
+        ),
         "packages_in_tasks": fields.Nested(
             pkg_inspect_el2_model,
             description="list of packages that not in branch but found in build tasks",
@@ -140,16 +146,21 @@ pkg_inspect_regular_model = ns.model(
             description="list of packages that not found in database",
             as_list=True,
         ),
-    }
+    },
 )
 
 pkg_inspect_sp_pkg_model = ns.model(
     "ImagePackagesInspectSPPackageModel",
     {
-        "found_in": fields.String(description="package found in [branch|task|last branch]"),
-        "version_check": fields.String(description="package version compared with last branch state"),
+        "found_in": fields.String(
+            description="package found in [branch|task|last branch]"
+        ),
+        "version_check": fields.String(
+            description="package version compared with last branch state"
+        ),
         "image": fields.Nested(
-            pkg_inspect_el1_model, description="package from image",
+            pkg_inspect_el1_model,
+            description="package from image",
         ),
         "database": fields.Nested(
             pkg_inspect_el1_model,
@@ -158,8 +169,8 @@ pkg_inspect_sp_pkg_model = ns.model(
         "last_branch": fields.Nested(
             pkg_inspect_el1_model,
             description="package matched from last branch state by NA",
-        )
-    }
+        ),
+    },
 )
 pkg_inspect_sp_model = ns.model(
     "ImagePackagesInspectSPModel",
@@ -167,31 +178,38 @@ pkg_inspect_sp_model = ns.model(
         "request_args": fields.Raw(description="request arguments"),
         "input_pakages": fields.Integer(description="number of input packages"),
         "in_branch": fields.Integer(description="number of packages found in branch"),
-        "not_in_branch": fields.Integer(description="number of packages not found in branch"),
-        "found_in_tasks": fields.Integer(description="number of packages found in build tasks"),
-        "not_found_in_db": fields.Integer(description="number of packages not found in database"),
+        "not_in_branch": fields.Integer(
+            description="number of packages not found in branch"
+        ),
+        "found_in_tasks": fields.Integer(
+            description="number of packages found in build tasks"
+        ),
+        "not_found_in_db": fields.Integer(
+            description="number of packages not found in database"
+        ),
         "packages": fields.Nested(
             pkg_inspect_sp_pkg_model,
             description="list of packages with inspection results",
             as_list=True,
         ),
-    }
+    },
 )
 
 # regex patterns for JSON validation
-hash_str_match = re.compile("^[0-9]{18,20}$")  # package hash string
-arch_match = re.compile("^[a-z0-9\-\_]{3,}$")  # type: ignore
-name_match = re.compile("^[\w\.\+\-]{2,}$")  # type: ignore # ref __pkg_name_match
-description_match = re.compile("|^[a-zA-Z0-9+/]+={0,3}$")
-url_match = re.compile("(|^https?://[^\"\s<>]+\w)")
-branch_match = re.compile("^[a-zA-Z0-9+/ _]+")
-name_bugzilla_match = re.compile("|^[a-zA-Z0-9+/ _]+")
-show_match = re.compile("^(hide|show)$")
-version_match = re.compile("^[\w\.\+]+$")  # type: ignore # ref __pkg_VR_match
-release_match = re.compile("^[\w\.\+]+$")  # type: ignore # ref __pkg_VR_match
-disttag_match = re.compile("^$|^[a-z0-9\+\.]+$")  # type: ignore # empty string allowed
+hash_str_match = re.compile(r"^[0-9]{18,20}$")  # package hash string
+arch_match = re.compile(r"^[a-z0-9\-\_]{3,}$")  # type: ignore
+name_match = re.compile(r"^[\w\.\+\-]{2,}$")  # type: ignore # ref __pkg_name_match
+description_match = re.compile(r"|^[a-zA-Z0-9+/]+={0,3}$")
+url_match = re.compile(r'(|^https?://[^"\s<>]+\w)')
+branch_match = re.compile(r"^[a-zA-Z0-9+/ _]+")
+name_bugzilla_match = re.compile(r"|^[a-zA-Z0-9+/ _]+")
+show_match = re.compile(r"^(hide|show)$")
+version_match = re.compile(r"^[\w\.\+]+$")  # type: ignore # ref __pkg_VR_match
+release_match = re.compile(r"^[\w\.\+]+$")  # type: ignore # ref __pkg_VR_match
+disttag_match = re.compile(r"^$|^[a-z0-9\+\.]+$")  # type: ignore # empty string allowed
 img_tag_match = re.compile(
-    "(^[a-z0-9\_]+):([\w\.\+\-]{2,}):(|[\w\.\+\-]{2,}):(|[[a-z0-9\+\_\.\-]+):([a-z0-9\+\_\.\-]+):([a-z0-9\-\_]{3,}):([a-z0-9\_\+\-\.]+):([a-z0-9\_\+\-\.]+)$")
+    r"(^[a-z0-9\_]+):([\w\.\+\-]{2,}):(|[\w\.\+\-]{2,}):(|[[a-z0-9\+\_\.\-]+):([a-z0-9\+\_\.\-]+):([a-z0-9\-\_]{3,}):([a-z0-9\_\+\-\.]+):([a-z0-9\_\+\-\.]+)$"
+)
 
 pkgs_json_el_model = ns.model(
     "ImagePackagesJSONElementModel",
@@ -243,7 +261,9 @@ pkgs_json_el_model = ns.model(
 pkgs_json_model = ns.model(
     "ImagePackagesJSONModel",
     {
-        "branch": fields.String(required=True, description="image base branch", example="p10"),
+        "branch": fields.String(
+            required=True, description="image base branch", example="p10"
+        ),
         "packages": fields.Nested(
             pkgs_json_el_model,
             description="list of packages",
@@ -270,11 +290,17 @@ img_json_el_model = ns.model(
             required=True,
             description="hide - hide image, show - show image",
             example="hide",
-            pattern=show_match.pattern
+            pattern=show_match.pattern,
         ),
-        "img_summary_ru": fields.String(description="image summary in Russian", example="Image summary in Russian"),
-        "img_summary_en": fields.String(description="image summary in English", example="Image summary in English"),
-        "img_start_date": fields.DateTime(required=True, description="support start date"),
+        "img_summary_ru": fields.String(
+            description="image summary in Russian", example="Image summary in Russian"
+        ),
+        "img_summary_en": fields.String(
+            description="image summary in English", example="Image summary in English"
+        ),
+        "img_start_date": fields.DateTime(
+            required=True, description="support start date"
+        ),
         "img_end_date": fields.DateTime(required=True, description="support end date"),
         "img_mailing_list": fields.String(
             description="link to mailing list",
@@ -284,19 +310,21 @@ img_json_el_model = ns.model(
         "img_name_bugzilla": fields.String(
             description="image name for bugzilla",
             example="p10",
-            pattern=name_bugzilla_match.pattern
+            pattern=name_bugzilla_match.pattern,
         ),
         "img_json": fields.Raw(
             required=True,
             description="image mirror's auxilary info as JSON substructure",
             example="{}",
         ),
-    }
+    },
 )
 img_json_model = ns.model(
     "ImageJSONModel",
     {
-        "img_branch": fields.String(required=True, description="image base branch", example="p10"),
+        "img_branch": fields.String(
+            required=True, description="image base branch", example="p10"
+        ),
         "img_description_ru": fields.String(
             description="html description in Russian in Base64 format",
             example="0YLQtdGB0YLQvtCy0L7QtSDQvtC/0LjRgdCw0L3QuNC1",
@@ -325,7 +353,9 @@ image_status_get_el_model = ns.model(
         "start_date": fields.DateTime(description="support start date"),
         "end_date": fields.DateTime(description="support end date"),
         "summary_ru": fields.String(description="image summary in Russian"),
-        "summary_en": fields.String(description="image summary in English", example="Image summary in English"),
+        "summary_en": fields.String(
+            description="image summary in English", example="Image summary in English"
+        ),
         "description_ru": fields.String(
             description="html description in Russian in Base64 format"
         ),
@@ -334,7 +364,9 @@ image_status_get_el_model = ns.model(
         ),
         "mailing_list": fields.String(description="link to mailing list"),
         "name_bugzilla": fields.String(description="image name for bugzilla"),
-        "json": fields.Raw(description="image mirror's auxilary info as JSON substructure"),
+        "json": fields.Raw(
+            description="image mirror's auxilary info as JSON substructure"
+        ),
     },
 )
 image_status_get_model = ns.model(
@@ -359,9 +391,9 @@ img_tag_json_el_model = ns.model(
             required=True,
             description="hide - hide image, show - show image",
             example="hide",
-            pattern=show_match.pattern
+            pattern=show_match.pattern,
         ),
-    }
+    },
 )
 img_tag_json_model = ns.model(
     "ImageTagJSONModel",
@@ -393,9 +425,7 @@ img_tag_status_get_model = ns.model(
 packages_image_el_model = ns.model(
     "ImagePackagesElementModel",
     {
-        "hash": fields.String(
-            description="package hash UInt64 as string"
-        ),
+        "hash": fields.String(description="package hash UInt64 as string"),
         "name": fields.String(attribute="pkg_name", description="package name"),
         "version": fields.String(
             attribute="pkg_version", description="package version"
@@ -403,9 +433,7 @@ packages_image_el_model = ns.model(
         "release": fields.String(
             attribute="pkg_release", description="package release"
         ),
-        "arch": fields.String(
-            attribute="pkg_arch", description="package architecture"
-        ),
+        "arch": fields.String(attribute="pkg_arch", description="package architecture"),
         "summary": fields.String(
             attribute="pkg_summary", description="package summary"
         ),
@@ -413,20 +441,22 @@ packages_image_el_model = ns.model(
             attribute="pkg_buildtime", description="last binary package buildtime"
         ),
         "changelog_text": fields.String(description="package last changelog message"),
-    }
+    },
 )
 packages_image_model = ns.model(
     "ImagePackagesModel",
     {
         "request_args": fields.Raw(description="request arguments"),
         "length": fields.Integer(description="number of packages found"),
-        "subcategories": fields.List(fields.String, description="list of subcategories"),
+        "subcategories": fields.List(
+            fields.String, description="list of subcategories"
+        ),
         "packages": fields.Nested(
             packages_image_el_model,
             description="last packages list",
             as_list=True,
         ),
-    }
+    },
 )
 
 last_packages_img_el_model = ns.model(
@@ -436,7 +466,10 @@ last_packages_img_el_model = ns.model(
         "task_changed": fields.DateTime(description="task changed date"),
         "tplan_action": fields.String(description="task type [add|delete]"),
         "branch": fields.String(description="package set name"),
-        "hash": fields.String(attribute="pkg_hash", description="package hash UInt64 as string in the repository"),
+        "hash": fields.String(
+            attribute="pkg_hash",
+            description="package hash UInt64 as string in the repository",
+        ),
         "name": fields.String(attribute="pkg_name", description="package name"),
         "version": fields.String(
             attribute="pkg_version", description="package version in the repository"
@@ -447,7 +480,10 @@ last_packages_img_el_model = ns.model(
         "arch": fields.String(
             attribute="pkg_arch", description="package architecture in the repository"
         ),
-        "img_hash": fields.String(attribute="img_pkg_hash", description="package hash UInt64 as string in the image"),
+        "img_hash": fields.String(
+            attribute="img_pkg_hash",
+            description="package hash UInt64 as string in the image",
+        ),
         "img_version": fields.String(
             attribute="img_pkg_version", description="package version in the image"
         ),
@@ -459,9 +495,11 @@ last_packages_img_el_model = ns.model(
         ),
         "chlog_name": fields.String(description="package last changelog name"),
         "chlog_nick": fields.String(description="maintainer nickname in the changelog"),
-        "chlog_date": fields.DateTime(description="package last changelog message date"),
+        "chlog_date": fields.DateTime(
+            description="package last changelog message date"
+        ),
         "chlog_text": fields.String(description="package last changelog message"),
-    }
+    },
 )
 last_packages_image_model = ns.model(
     "LastImagePackagesModel",
@@ -473,7 +511,7 @@ last_packages_image_model = ns.model(
             description="last packages list",
             as_list=True,
         ),
-    }
+    },
 )
 
 image_tag_uuid_model = ns.model(
@@ -509,8 +547,10 @@ active_images_el_model = ns.model(
     "ActiveImagesElementModel",
     {
         "edition": fields.String(description="ISO image edition"),
-        "tags": fields.List(fields.String, as_list=True, description="active tags list"),
-    }
+        "tags": fields.List(
+            fields.String, as_list=True, description="active tags list"
+        ),
+    },
 )
 active_images_model = ns.model(
     "ActiveImagesModel",
@@ -522,5 +562,5 @@ active_images_model = ns.model(
             description="active images list",
             as_list=True,
         ),
-    }
+    },
 )

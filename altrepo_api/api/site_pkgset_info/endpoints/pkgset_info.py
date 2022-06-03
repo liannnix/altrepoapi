@@ -19,7 +19,6 @@ from collections import namedtuple
 from altrepo_api.utils import sort_branches, datetime_to_iso
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.misc import lut
 from ..sql import sql
 
 
@@ -40,13 +39,13 @@ class AllPackagesets(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )
             return self.error
 
-        pkg_branches = sort_branches(response[0][0])
+        pkg_branches = sort_branches(response[0][0])  # type: ignore
         res = [{"branch": b, "count": 0} for b in pkg_branches]
 
         res = {"length": len(res), "branches": res}
@@ -60,7 +59,7 @@ class AllPackagesets(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )
@@ -83,7 +82,7 @@ class AllPackagesets(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )
@@ -114,7 +113,7 @@ class AllPackagesets(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )
@@ -138,7 +137,7 @@ class AllPackagesets(APIWorker):
 
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )
@@ -219,7 +218,7 @@ class PkgsetCategoriesCount(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )
@@ -255,13 +254,13 @@ class AllPackagesetArchs(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )
             return self.error
 
-        archs = sorted([x for x in response[0][0] if x not in ("x86_64-i586",)])
+        archs = sorted([x for x in response[0][0] if x not in ("x86_64-i586",)])  # type: ignore
         res = [x for x in archs if x.startswith("x")]
         res += [x for x in archs if x.startswith("i")]
         res += [x for x in archs if x.startswith("n")]
@@ -283,7 +282,7 @@ class AllPackagesetArchs(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )

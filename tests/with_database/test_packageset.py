@@ -48,9 +48,7 @@ def test_pkgset_status_get(client):
                     "rs_description_ru": "string",
                     "rs_description_en": "string",
                     "rs_mailing_list": "string",
-                    "rs_mirrors_json": [
-                        {}
-                    ]
+                    "rs_mirrors_json": [{}],
                 }
             ]
         }
@@ -65,11 +63,36 @@ def test_pkgset_status_post(client, kwargs):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"branch": BRANCH_IN_DB, "package_type": "source", "archs": None, "status_code": 200},
-        {"branch": BRANCH_IN_DB, "package_type": "binary", "archs": ARCHS_IN_DB, "status_code": 200},
-        {"branch": BRANCH_IN_DB, "package_type": "faketype", "archs": None, "status_code": 400},
-        {"branch": BRANCH_IN_DB, "package_type": "binary", "archs": ARCHS_NOT_IN_DB, "status_code": 400},
-        {"branch": BRANCH_NOT_IN_DB, "package_type": None, "archs": None, "status_code": 400},
+        {
+            "branch": BRANCH_IN_DB,
+            "package_type": "source",
+            "archs": None,
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "package_type": "binary",
+            "archs": ARCHS_IN_DB,
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "package_type": "faketype",
+            "archs": None,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "package_type": "binary",
+            "archs": ARCHS_NOT_IN_DB,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_NOT_IN_DB,
+            "package_type": None,
+            "archs": None,
+            "status_code": 400,
+        },
     ],
 )
 def test_repository_packages(client, kwargs):
@@ -120,8 +143,6 @@ def test_compare_packagesets(client, kwargs):
         for el in data["packages"]:
             assert el["pkgset1"] == kwargs["pkgset1"]
             assert el["pkgset2"] == kwargs["pkgset2"]
-            pkg_match.append(
-                el["package1"]["name"] == el["package2"]["name"]
-            )
+            pkg_match.append(el["package1"]["name"] == el["package2"]["name"])
         assert pkg_match.count(True) > 0
         assert pkg_match.count(False) > 0
