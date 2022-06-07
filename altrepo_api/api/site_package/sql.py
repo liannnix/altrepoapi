@@ -111,12 +111,13 @@ WHERE (task_id, subtask_id) IN
     WHERE titer_srcrpm_hash = {pkghash}
         OR has(titer_pkgs_hash, {pkghash})
 )
-AND task_id IN
+AND (task_id, task_changed) IN
 (
-    SELECT task_id
+    SELECT task_id, task_changed
     FROM TaskStates
     WHERE task_state = 'DONE'
 )
+AND subtask_deleted != 1
 ORDER BY task_changed DESC
 """
 
