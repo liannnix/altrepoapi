@@ -174,3 +174,49 @@ class Bugzilla(APIWorker):
         res = {"request_args": self.args, "length": len(res), "bugs": res}
 
         return res, 200
+
+    def get_bugs_by_image_edition(self):
+        """Get bugs filed for edition"""
+        branch = self.args["branch"]
+        edition = self.args["edition"]
+
+        self.conn.request_line = self.sql.get_bugzilla_info_by_image_edition.format(
+            branch=branch, edition=edition
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response or response[0][0] == []:
+            self._store_error(
+                {
+                    "message": f"No data found in database for edition: {edition}",
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        BugzillaInfo = namedtuple(
+            "BugzillaInfoModel",
+            [
+                "id",
+                "status",
+                "resolution",
+                "severity",
+                "product",
+                "version",
+                "platform",
+                "component",
+                "assignee",
+                "reporter",
+                "summary",
+                "last_changed",
+            ],
+        )
+
+        res = [BugzillaInfo(*el)._asdict() for el in response]
+        res = {"request_args": self.args, "length": len(res), "bugs": res}
+
+        return res, 200

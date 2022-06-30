@@ -70,6 +70,51 @@ WHERE bz_component IN (
 )
 """
 
+    get_bugzilla_info_by_image_edition = """
+WITH bugs AS
+(
+    SELECT DISTINCT
+        bz_id,
+        bz_product
+    FROM Bugzilla
+    WHERE bz_product IN (
+        SELECT DISTINCT img_name_bugzilla
+        FROM ImageStatus
+        WHERE img_branch = '{branch}'
+            AND img_edition = '{edition}'
+            AND img_name_bugzilla != ''
+    )
+)
+SELECT *
+FROM
+(
+    SELECT
+        bz_id,
+        argMax(bz_status, ts),
+        argMax(bz_resolution, ts),
+        argMax(bz_severity, ts),
+        argMax(bz_product, ts) AS product,
+        argMax(bz_version, ts),
+        argMax(bz_platform, ts),
+        argMax(bz_component, ts),
+        argMax(bz_assignee, ts),
+        argMax(bz_reporter, ts),
+        argMax(bz_summary, ts),
+        argMax(bz_last_changed, ts) as last_changed
+    FROM Bugzilla
+    WHERE bz_id IN (
+        SELECT bz_id
+        FROM bugs
+    )
+    GROUP BY bz_id
+    ORDER BY last_changed DESC
+)
+WHERE bz_product IN (
+    SELECT product
+    FROM bugs
+)
+"""
+
     get_bugzilla_info_by_maintainer = """
 WITH bugs AS
     (
