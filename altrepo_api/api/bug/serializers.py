@@ -36,7 +36,7 @@ bugzilla_info_el_model = ns.model(
         "assignee": fields.String(description="bug assigned to"),
         "reporter": fields.String(description="bug registered by"),
         "summary": fields.String(description="bug summary"),
-        "last_changed": fields.String(description="bug record last changed")
+        "last_changed": fields.String(description="bug record last changed"),
     },
 )
 bugzilla_info_model = ns.model(

@@ -14,11 +14,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from altrepo_api.api.parser import (parser,
-                                    pkg_name_type,
-                                    packager_nick_type,
-                                    branch_name_type,
-                                    img_edition_type)
+from altrepo_api.api.parser import (
+    parser,
+    pkg_name_type,
+    packager_nick_type,
+    branch_name_type,
+    img_edition_type,
+)
 
 by_acl_opt = parser.register_item(
     "by_acl",
@@ -74,5 +76,5 @@ img_edition_type = parser.register_item(
 )
 
 package_bugzilla_args = parser.build_parser(package_name, package_type_opt)
-bugzilla_by_edititon_args = parser.build_parser(branch, img_edition_type)
+bugzilla_by_edition_args = parser.build_parser(branch, img_edition_type)
 maintainer_bugzilla_args = parser.build_parser(maintainer_nickname, by_acl_opt)
