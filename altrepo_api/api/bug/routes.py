@@ -21,7 +21,11 @@ from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
 
 from .namespace import get_namespace
-from .parsers import package_bugzilla_args, maintainer_bugzilla_args
+from .parsers import (
+    package_bugzilla_args,
+    maintainer_bugzilla_args,
+    bugzilla_by_edition_args,
+)
 from .serializers import bugzilla_info_model
 from .endpoints.bugzilla_info import Bugzilla
 
@@ -45,6 +49,23 @@ class routeBugzillaByPackage(Resource):
         args = package_bugzilla_args.parse_args(strict=True)
         w = Bugzilla(g.connection, **args)
         return run_worker(worker=w, run_method=w.get_bug_by_package, args=args)
+
+
+@ns.route(
+    "/bugzilla_by_image_edition",
+    doc={
+        "description": "Get information from bugzilla by image edition",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeBugzillaByImageEdition(Resource):
+    @ns.expect(bugzilla_by_edition_args)
+    @ns.marshal_list_with(bugzilla_info_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = bugzilla_by_edition_args.parse_args(strict=True)
+        w = Bugzilla(g.connection, **args)
+        return run_worker(worker=w, run_method=w.get_bugs_by_image_edition, args=args)
 
 
 @ns.route(

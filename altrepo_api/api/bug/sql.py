@@ -51,21 +51,66 @@ FROM
         argMax(bz_resolution, ts),
         argMax(bz_severity, ts),
         argMax(bz_product, ts),
-        argMax(bz_component, ts) AS bz_component,
+        argMax(bz_component, ts) AS component,
         argMax(bz_assignee, ts),
         argMax(bz_reporter, ts),
         argMax(bz_summary, ts),
-        max(ts)
+        argMax(bz_last_changed, ts) as last_changed
     FROM Bugzilla
     WHERE bz_id IN (
         SELECT bz_id
         FROM bugs
     )
     GROUP BY bz_id
-    ORDER BY bz_id DESC
+    ORDER BY last_changed DESC
 )
-WHERE bz_component IN (
+WHERE component IN (
     SELECT bz_component
+    FROM bugs
+)
+"""
+
+    get_bugzilla_info_by_image_edition = """
+WITH bugs AS
+(
+    SELECT DISTINCT
+        bz_id,
+        bz_product
+    FROM Bugzilla
+    WHERE bz_product IN (
+        SELECT DISTINCT img_name_bugzilla
+        FROM ImageStatus
+        WHERE img_branch = '{branch}'
+            AND img_edition = '{edition}'
+            AND img_name_bugzilla != ''
+    )
+)
+SELECT *
+FROM
+(
+    SELECT
+        bz_id,
+        argMax(bz_status, ts),
+        argMax(bz_resolution, ts),
+        argMax(bz_severity, ts),
+        argMax(bz_product, ts) AS product,
+        argMax(bz_version, ts),
+        argMax(bz_platform, ts),
+        argMax(bz_component, ts),
+        argMax(bz_assignee, ts),
+        argMax(bz_reporter, ts),
+        argMax(bz_summary, ts),
+        argMax(bz_last_changed, ts) as last_changed
+    FROM Bugzilla
+    WHERE bz_id IN (
+        SELECT bz_id
+        FROM bugs
+    )
+    GROUP BY bz_id
+    ORDER BY last_changed DESC
+)
+WHERE product IN (
+    SELECT bz_product
     FROM bugs
 )
 """
@@ -90,17 +135,17 @@ FROM
         argMax(bz_severity, ts),
         argMax(bz_product, ts),
         argMax(bz_component, ts) AS bz_cmp,
-        argMax(bz_assignee, ts) AS bz_assignee,
+        argMax(bz_assignee, ts) AS assignee,
         argMax(bz_reporter, ts),
         argMax(bz_summary, ts),
-        max(ts)
+        argMax(bz_last_changed, ts) as last_changed
     FROM Bugzilla
     WHERE bz_id IN (
         SELECT bz_id
         FROM bugs
     )
     GROUP BY bz_id
-    ORDER BY bz_id DESC
+    ORDER BY last_changed DESC
 ) AS bugzilla
 LEFT JOIN
 (
@@ -110,7 +155,7 @@ LEFT JOIN
     FROM PackagesSourceAndBinaries
     GROUP BY bin_pkg_name
 ) AS TT ON TT.bin_pkg_name = bugzilla.bz_cmp
-WHERE bz_assignee IN (
+WHERE assignee IN (
     SELECT bz_assignee
     FROM bugs
 )
@@ -140,17 +185,17 @@ FROM
         argMax(bz_severity, ts),
         argMax(bz_product, ts),
         argMax(bz_component, ts) AS bz_cmp,
-        argMax(bz_assignee, ts) AS bz_assignee,
+        argMax(bz_assignee, ts) AS assignee,
         argMax(bz_reporter, ts),
         argMax(bz_summary, ts),
-        max(ts)
+        argMax(bz_last_changed, ts) as last_changed
     FROM Bugzilla
     WHERE bz_component IN (
         SELECT bin_pkg_name
         FROM acl_package
     )
     GROUP BY bz_id
-    ORDER BY bz_id DESC
+    ORDER BY last_changed DESC
 ) AS bugzilla
 LEFT JOIN
 (
@@ -162,7 +207,7 @@ LEFT JOIN
 ) AS TT ON TT.bin_pkg_name = bugzilla.bz_cmp
 """
 
-    get_beehive_errors_by_nick_or_group_acl = """
+    get_bugzilla_info_by_nick_or_group_acl = """
 WITH acl_package AS
 (
 SELECT DISTINCT bin_pkg_name
@@ -184,17 +229,17 @@ FROM
         argMax(bz_severity, ts),
         argMax(bz_product, ts),
         argMax(bz_component, ts) AS bz_cmp,
-        argMax(bz_assignee, ts) AS bz_assignee,
+        argMax(bz_assignee, ts) AS assignee,
         argMax(bz_reporter, ts),
         argMax(bz_summary, ts),
-        max(ts)
+        argMax(bz_last_changed, ts) as last_changed
     FROM Bugzilla
     WHERE bz_component IN (
         SELECT bin_pkg_name
         FROM acl_package
     )
     GROUP BY bz_id
-    ORDER BY bz_id DESC
+    ORDER BY last_changed DESC
 ) AS bugzilla
 LEFT JOIN
 (
@@ -236,17 +281,17 @@ FROM
         argMax(bz_severity, ts),
         argMax(bz_product, ts),
         argMax(bz_component, ts) AS bz_cmp,
-        argMax(bz_assignee, ts) AS bz_assignee,
+        argMax(bz_assignee, ts) AS assignee,
         argMax(bz_reporter, ts),
         argMax(bz_summary, ts),
-        max(ts)
+        argMax(bz_last_changed, ts) as last_changed
     FROM Bugzilla
     WHERE bz_component IN (
         SELECT bin_pkg_name
         FROM acl_package
     )
     GROUP BY bz_id
-    ORDER BY bz_id DESC
+    ORDER BY last_changed DESC
 ) AS bugzilla
 LEFT JOIN
 (
