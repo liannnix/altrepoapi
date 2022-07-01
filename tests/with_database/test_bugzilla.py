@@ -7,6 +7,11 @@ BIN_PACKAGE_IN_DB = "grep"
 PACKAGE_NOT_IN_DB = "fakepackage"
 MAINTAINER_IN_DB = "rider"
 MAINTAINER_NOT_IN_DB = "fakemaintainer"
+EDITION_IN_DB = 'slinux'
+EDITION_NOT_DB = 'fake'
+BRANCH_IN_DB = 'p10'
+BRANCH_NOT_DB = 'fake'
+
 
 
 @pytest.mark.parametrize(
@@ -80,6 +85,32 @@ def test_bugzilla_by_package(client, kwargs):
 )
 def test_bugzilla_by_maintainer(client, kwargs):
     url = url_for("api.bug_route_bugzilla_by_maintainer")
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("status_code",):
+            continue
+        if v is not None:
+            params[k] = v
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["length"] != 0
+        assert data["bugs"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"branch": BRANCH_IN_DB, "edition": EDITION_IN_DB, "status_code": 200},
+        {"branch": BRANCH_NOT_DB, "edition": EDITION_IN_DB, "status_code": 400},
+        {"branch": BRANCH_IN_DB, "edition": EDITION_NOT_DB, "status_code": 400},
+        {"branch": 'sisyphus', "edition": EDITION_IN_DB, "status_code": 404},
+    ],
+)
+def test_bugzilla_by_image_edition(client, kwargs):
+    url = url_for("api.bug_route_bugzilla_by_image_edition")
     params = {}
     for k, v in kwargs.items():
         if k in ("status_code",):
