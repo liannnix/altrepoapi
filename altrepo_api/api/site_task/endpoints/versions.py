@@ -17,7 +17,6 @@
 from collections import namedtuple
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.misc import lut
 from ..sql import sql
 
 
@@ -55,14 +54,24 @@ class PackageVersionsFromTasks(APIWorker):
 
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )
             return self.error
 
         PkgVersions = namedtuple(
-            "PkgVersions", ["task", "hash", "branch", "owner", "changed", "name", "version", "release"]
+            "PkgVersions",
+            [
+                "task",
+                "hash",
+                "branch",
+                "owner",
+                "changed",
+                "name",
+                "version",
+                "release",
+            ],
         )
         pkg_versions = [PkgVersions(*el)._asdict() for el in response]
         pkg_versions.sort(key=lambda val: val["changed"], reverse=True)

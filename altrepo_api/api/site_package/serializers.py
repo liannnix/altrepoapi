@@ -33,6 +33,7 @@ package_info_changelog_el_model = ns.model(
     {
         "date": fields.String(description="changelog date"),
         "name": fields.String(description="changelog name"),
+        "nick": fields.String(description="changelog nickname"),
         "evr": fields.String(description="changelog EVR"),
         "message": fields.String(description="changelog message"),
     },
@@ -166,6 +167,7 @@ package_chlog_el_model = ns.model(
     {
         "date": fields.String(description="changelog date"),
         "name": fields.String(description="changelog name"),
+        "nick": fields.String(description="changelog nickname"),
         "evr": fields.String(description="changelog EVR"),
         "message": fields.String(description="changelog message"),
     },
@@ -347,6 +349,19 @@ bin_package_log_el_model = ns.model(
         "subtask_id": fields.Integer(description="subtask id"),
         "subtask_arch": fields.String(description="package architecture"),
         "buildlog_hash": fields.String(description="hash of the log"),
-        "link": fields.String(description="link to the binary package build log")
-    }
+        "link": fields.String(description="link to the binary package build log"),
+    },
+)
+
+
+pkg_nvr_by_hash_model = ns.model(
+    "PackageNVRByHashModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "hash": fields.String(description="package hash UInt64 as string"),
+        "name": fields.String(description="package name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "is_source": fields.Boolean(description="is source package"),
+    },
 )

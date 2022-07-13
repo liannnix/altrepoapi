@@ -36,7 +36,7 @@ class PackageChangelog(APIWorker):
 
         if self.args["changelog_last"] < 1:
             self.validation_results.append(
-                f"changelog history length should be not less than 1"
+                "changelog history length should be not less than 1"
             )
 
         if self.validation_results != []:
@@ -65,7 +65,7 @@ class PackageChangelog(APIWorker):
             )
             return self.error
 
-        Changelog = namedtuple("Changelog", ["date", "name", "evr", "message"])
+        Changelog = namedtuple("Changelog", ["date", "name", "nick", "evr", "message"])
         changelog_list = [Changelog(*el[1:])._asdict() for el in response]
 
         res = {

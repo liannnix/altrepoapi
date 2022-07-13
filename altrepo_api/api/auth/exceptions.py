@@ -16,6 +16,7 @@
 
 from werkzeug.exceptions import Unauthorized, Forbidden
 
+
 class ApiUnauthorized(Unauthorized):
     """Raise status code 401 with customizable WWW-Authenticate header."""
 

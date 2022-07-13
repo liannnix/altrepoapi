@@ -18,11 +18,7 @@ from flask import g
 from flask_restx import Resource
 
 from altrepo_api.utils import get_logger, url_logging
-from altrepo_api.api.base import (
-    run_worker,
-    GET_RESPONSES_404,
-    GET_RESPONSES_400_404,
-)
+from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
 
 from .namespace import get_namespace
 from .endpoints.license import LicenseTokens, LicenseInfo

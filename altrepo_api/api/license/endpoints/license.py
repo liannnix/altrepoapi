@@ -88,16 +88,13 @@ class LicenseTokens(APIWorker):
         super().__init__()
 
     def get(self):
-        lp = LicenseParser(
-            connection=self.conn,
-            license_str=self.args["license"]
-        )
+        lp = LicenseParser(connection=self.conn, license_str=self.args["license"])
         lp.parse_license()
         if lp.status:
             if not lp.tokens:
                 self._store_error(
                     {
-                        "message": f"No valid license tokens found",
+                        "message": "No valid license tokens found",
                         "args": self.args,
                     },
                     self.ll.INFO,
@@ -124,16 +121,13 @@ class LicenseInfo(APIWorker):
         super().__init__()
 
     def get(self):
-        lp = LicenseParser(
-            connection=self.conn,
-            license_str=self.args["license"]
-        )
+        lp = LicenseParser(connection=self.conn, license_str=self.args["license"])
         lp.parse_license()
         if lp.status:
             if not lp.tokens:
                 self._store_error(
                     {
-                        "message": f"No valid license tokens found",
+                        "message": "No valid license tokens found",
                         "args": self.args,
                     },
                     self.ll.INFO,
@@ -150,13 +144,15 @@ class LicenseInfo(APIWorker):
 
             if not response:
                 self._store_error(
-                    {"message": f"No data not found in database", "args": self.args},
+                    {"message": "No data not found in database", "args": self.args},
                     self.ll.INFO,
                     404,
                 )
                 return self.error
 
-            LicenseInfo = namedtuple("LicenseInfo", ["id", "name", "text", "header", "urls", "type"])
+            LicenseInfo = namedtuple(
+                "LicenseInfo", ["id", "name", "text", "header", "urls", "type"]
+            )
             license_info = LicenseInfo(*response[0])  # type: ignore
 
             res = {
@@ -167,7 +163,9 @@ class LicenseInfo(APIWorker):
                 "type": license_info.type,
                 "urls": license_info.urls,
                 "header": license_info.header if license_info.type == "license" else "",
-                "comment": license_info.header if license_info.type == "exception" else "",
+                "comment": license_info.header
+                if license_info.type == "exception"
+                else "",
             }
             return res, 200
         else:

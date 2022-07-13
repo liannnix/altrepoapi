@@ -19,7 +19,11 @@ setup(
     author="Danil Shein",
     author_email="dshein@altlinux.org",
     python_requires=">=3.7",
-    packages=find_packages(exclude=["tests",]),
+    packages=find_packages(
+        exclude=[
+            "tests",
+        ]
+    ),
     url="https://git.altlinux.org/gears/a/altrepo-api.git",
     license="GNU AGPLv3",
     description="ALTRepo REST API",
@@ -42,5 +46,6 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
     ],
 )

@@ -39,27 +39,37 @@ class MaintainerBeehiveErrors(APIWorker):
     def get(self):
         maintainer_nickname = self.args["maintainer_nickname"]
         branch = self.args["branch"]
-        by_acl = self.args['by_acl']
+        by_acl = self.args["by_acl"]
         order_g = ""
 
-        if by_acl == 'by_nick':
+        if by_acl == "by_nick":
             self.conn.request_line = self.sql.get_beehive_errors_by_nick_acl.format(
                 maintainer_nickname=maintainer_nickname, branch=branch
             )
-        if by_acl == 'by_nick_leader':
-            order_g = 'AND order_g = 0'
-            self.conn.request_line = self.sql.get_beehive_errors_by_last_acl_with_group.format(
-                maintainer_nickname=maintainer_nickname, branch=branch, order_g=order_g
+        if by_acl == "by_nick_leader":
+            order_g = "AND order_g = 0"
+            self.conn.request_line = (
+                self.sql.get_beehive_errors_by_last_acl_with_group.format(
+                    maintainer_nickname=maintainer_nickname,
+                    branch=branch,
+                    order_g=order_g,
+                )
             )
-        if by_acl == 'by_nick_or_group':
-            self.conn.request_line = self.sql.get_beehive_errors_by_nick_or_group_acl.format(
-                maintainer_nickname=maintainer_nickname, branch=branch
+        if by_acl == "by_nick_or_group":
+            self.conn.request_line = (
+                self.sql.get_beehive_errors_by_nick_or_group_acl.format(
+                    maintainer_nickname=maintainer_nickname, branch=branch
+                )
             )
-        if by_acl == 'by_nick_leader_and_group':
-            self.conn.request_line = self.sql.get_beehive_errors_by_last_acl_with_group.format(
-                maintainer_nickname=maintainer_nickname, branch=branch, order_g=order_g
+        if by_acl == "by_nick_leader_and_group":
+            self.conn.request_line = (
+                self.sql.get_beehive_errors_by_last_acl_with_group.format(
+                    maintainer_nickname=maintainer_nickname,
+                    branch=branch,
+                    order_g=order_g,
+                )
             )
-        if by_acl == 'none':
+        if by_acl == "none":
             self.conn.request_line = self.sql.get_beehive_errors_by_maintainer.format(
                 maintainer_nickname=maintainer_nickname, branch=branch
             )
@@ -70,7 +80,7 @@ class MaintainerBeehiveErrors(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )
@@ -89,7 +99,7 @@ class MaintainerBeehiveErrors(APIWorker):
                 "updated",
                 "ftbfs_since",
                 "epoch",
-            ]
+            ],
         )
         res = [BeehiveStatus(*el)._asdict() for el in response]
 
@@ -100,20 +110,18 @@ class MaintainerBeehiveErrors(APIWorker):
             else:
                 epoch_version = str(epoch_) + ":" + el["version"]
 
-            url = "/".join((
-                lut.beehive_base,
-                "logs",
-                "Sisyphus" if el["branch"] == "sisyphus" else el["branch"],
-                el["arch"],
-                "archive",
-                el["updated"].strftime("%Y/%m%d"),
-                "error",
-                "-".join((
-                    el["name"],
-                    epoch_version,
-                    el["release"]
-                )),
-            ))
+            url = "/".join(
+                (
+                    lut.beehive_base,
+                    "logs",
+                    "Sisyphus" if el["branch"] == "sisyphus" else el["branch"],
+                    el["arch"],
+                    "archive",
+                    el["updated"].strftime("%Y/%m%d"),
+                    "error",
+                    "-".join((el["name"], epoch_version, el["release"])),
+                )
+            )
             el["url"] = url
             el["updated"] = datetime_to_iso(el["updated"])
             el["ftbfs_since"] = datetime_to_iso(el["ftbfs_since"])

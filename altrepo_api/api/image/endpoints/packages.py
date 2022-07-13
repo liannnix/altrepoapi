@@ -84,7 +84,8 @@ class CheckPackages(APIWorker):
         # create temporary table with input packages
         tmp_table = "_TmpInPkgs"
         self.conn.request_line = self.sql.create_tmp_table.format(
-            tmp_table=tmp_table, columns=self.sql.tmp_table_columns,
+            tmp_table=tmp_table,
+            columns=self.sql.tmp_table_columns,
         )
         status, response = self.conn.send_request()
         if status is False:
@@ -130,7 +131,7 @@ class CheckPackages(APIWorker):
                 return self.error
 
             PkgTask = namedtuple("PkgTask", ["hash", "taskid", "subtaskid"])
-            pkgs_tasks = [PkgTask(*el) for el in response]
+            pkgs_tasks = [PkgTask(*el) for el in response]  # type: ignore
             pkgs_in_tasks = {p.hash for p in pkgs_tasks}
 
         pkgs_not_in_db = pkgs_not_found - pkgs_in_tasks
@@ -256,7 +257,7 @@ class CheckPackages(APIWorker):
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
 
-        packages_in_branch = [Package(*el) for el in response]
+        packages_in_branch = [Package(*el) for el in response]  # type: ignore
 
         # get input and branch packages matching
         _empty_p = Package(0, "", 0, "", "", "", "", 0)
@@ -288,8 +289,9 @@ class CheckPackages(APIWorker):
             # 0 : equal, 1 : v1 > v2, -1 : v1 < v2
             return ConflictFilter._compare_version(
                 vv1=(p1.epoch, p1.version, p1.release, p1.disttag),
-                vv2=(p2.epoch, p2.version, p2.release, p2.disttag)
+                vv2=(p2.epoch, p2.version, p2.release, p2.disttag),
             )
+
         # get not found packages without disttag
         # search packages in last branch state by NAME+ARCH
         V_CMP_NONE = 127
@@ -304,7 +306,7 @@ class CheckPackages(APIWorker):
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
 
-            pkgs_nf_last = [Package(*el) for el in response]
+            pkgs_nf_last = [Package(*el) for el in response]  # type: ignore
 
             for p1 in (p for p in packages if p.hash in pkgs_not_found):
                 key = key_nevrda(p1)
@@ -346,7 +348,7 @@ class CheckPackages(APIWorker):
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
 
-            pkgs_tasks = [(tuple(el[1:3]), Package(*el[3:])) for el in response]
+            pkgs_tasks = [(tuple(el[1:3]), Package(*el[3:])) for el in response]  # type: ignore
             # update pkgs_compare dictionary wit packages from tasks
             for t, p in pkgs_tasks:
                 key = key_nevrda(p)
@@ -370,7 +372,7 @@ class CheckPackages(APIWorker):
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
 
-            for p in [Package(*el) for el in response]:
+            for p in [Package(*el) for el in response]:  # type: ignore
                 kp = key_nevra(p)
                 for pp, _, _ in pkgs_compare.values():
                     kpp = key_nevra(pp)
@@ -400,12 +402,7 @@ class CheckPackages(APIWorker):
             return self.error
 
         # build result response
-        ver_cmp_ = {
-            -1: "older",
-            0: "equal",
-            1: "newer",
-            V_CMP_NONE: "none"
-        }
+        ver_cmp_ = {-1: "older", 0: "equal", 1: "newer", V_CMP_NONE: "none"}
         res = []
         for p1, p2, s in pkgs_compare.values():
             ver_check_ = pkgs_compare_ver.get(key_nevrda(p1), None)
@@ -416,15 +413,15 @@ class CheckPackages(APIWorker):
                     ver_check_ = ver_cmp_[0]
                 branch_p_ = _empty_p
             else:
-                branch_p_ = ver_check_[1]
+                branch_p_ = ver_check_[1]  # type: ignore
                 ver_check_ = ver_cmp_[ver_check_[2]]
-            
+
             d = {
                 "image": p1._asdict(),
                 "database": p2._asdict(),
                 "last_branch": branch_p_._asdict(),
                 "found_in": s,
-                "version_check": ver_check_
+                "version_check": ver_check_,
             }
             # convert hashes to strings
             d["image"]["hash"] = str(d["image"]["hash"])

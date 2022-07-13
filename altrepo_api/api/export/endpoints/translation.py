@@ -21,8 +21,7 @@ from collections import namedtuple
 from altrepo_api.api.base import APIWorker
 from ..sql import sql
 
-ESCAPING = str.maketrans({"\"": r"\"",
-                          "\\": r"\\"})
+ESCAPING = str.maketrans({'"': r"\"", "\\": r"\\"})
 
 ZIP_FILE_NAME = "packages_POT.zip"
 PO_FILE_NAME_BASE = "packages_{symbol}.pot"
@@ -43,7 +42,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\\n"
 "Content-Transfer-Encoding: 8bit\\n"
 
-"""
+"""  # noqa: W291
 
 PkgInfo = namedtuple(
     "PkgInfo", ["name", "url", "summary", "description", "src_pkg_name"]
@@ -82,15 +81,24 @@ def format_po_file(packages: list[PkgInfo], uniq_only: bool = False) -> BytesIO:
         str_ = ""
         if pkg.summary not in uniq_summary and pkg.summary not in uniq_description:
             str_ += f"#: {pkg.name}\n"
-            str_ += f"#. homepage: {pkg.url}\n"
+            if pkg.url:
+                str_ += f"#. homepage: {pkg.url}\n"
+            else:
+                str_ += "#. homepage:\n"
             str_ += "#. summary\n"
             str_ += format_message(pkg.summary)
             str_ += 'msgstr ""\n\n'
             if uniq_only:
                 uniq_summary.add(pkg.summary)
-        if pkg.description not in uniq_description and pkg.description not in uniq_summary:
+        if (
+            pkg.description not in uniq_description
+            and pkg.description not in uniq_summary
+        ):
             str_ += f"#: {pkg.name}\n"
-            str_ += f"#. homepage: {pkg.url}\n"
+            if pkg.url:
+                str_ += f"#. homepage: {pkg.url}\n"
+            else:
+                str_ += "#. homepage:\n"
             str_ += "#. description\n"
             str_ += format_message(pkg.description)
             str_ += 'msgstr ""\n\n'
@@ -123,7 +131,7 @@ class TranslationExport(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No data found in DB",
+                    "message": "No data found in DB",
                     "args": self.args,
                 },
                 self.ll.INFO,

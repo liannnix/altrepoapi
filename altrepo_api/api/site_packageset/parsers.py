@@ -30,16 +30,28 @@ name = parser.register_item(
     "name", type=pkg_name_type, required=True, help="package name", location="args"
 )
 branch = parser.register_item(
-    "branch", type=branch_name_type, required=True, help="name of packageset", location="args"
+    "branch",
+    type=branch_name_type,
+    required=True,
+    help="name of packageset",
+    location="args",
 )
 branch_opt = parser.register_item(
-    "branch", type=branch_name_type, required=False, help="name of packageset", location="args"
+    "branch",
+    type=branch_name_type,
+    required=False,
+    help="name of packageset",
+    location="args",
 )
 arch = parser.register_item(
     "arch", type=arch_name_type, required=True, help="package arch", location="args"
 )
 arch_opt = parser.register_item(
-    "arch", type=arch_name_type, required=False, help="binary package arch", location="args"
+    "arch",
+    type=arch_name_type,
+    required=False,
+    help="binary package arch",
+    location="args",
 )
 package_type = parser.register_item(
     "package_type",
@@ -101,4 +113,6 @@ pkgset_pkg_binary_hash_args = parser.build_parser(branch, name, arch)
 pkgs_by_name_args = parser.build_parser(name, branch_opt, arch_opt)
 pkgs_search_by_name_args = parser.build_parser(name, branch_opt)
 last_pkgs_branch_args = parser.build_parser(branch, pkgs_limit, packager)
-pkgset_pkghash_by_nvr = parser.build_parser(name, branch, package_version, package_release)
+pkgset_pkghash_by_nvr = parser.build_parser(
+    name, branch, package_version, package_release
+)

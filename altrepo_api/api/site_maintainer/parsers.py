@@ -14,22 +14,30 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from flask_restx import inputs
-
 from altrepo_api.api.parser import parser, branch_name_type, maintainer_nick_type
 
 
 by_acl_opt = parser.register_item(
     "by_acl",
     type=str,
-    choices=("none", "by_nick", "by_nick_leader", "by_nick_or_group", "by_nick_leader_and_group"),
+    choices=(
+        "none",
+        "by_nick",
+        "by_nick_leader",
+        "by_nick_or_group",
+        "by_nick_leader_and_group",
+    ),
     default="none",
     required=False,
     help="search maintainer's packages by ACL",
     location="args",
 )
 branch = parser.register_item(
-    "branch", type=branch_name_type, required=True, help="name of packageset", location="args"
+    "branch",
+    type=branch_name_type,
+    required=True,
+    help="name of packageset",
+    location="args",
 )
 maintainer_nick = parser.register_item(
     "maintainer_nickname",

@@ -19,7 +19,6 @@ from collections import namedtuple
 from altrepo_api.utils import sort_branches
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.misc import lut
 from ..sql import sql
 
 
@@ -47,7 +46,7 @@ class MaintainerBranches(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )

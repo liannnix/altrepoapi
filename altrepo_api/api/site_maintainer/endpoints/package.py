@@ -17,7 +17,6 @@
 from collections import namedtuple
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.misc import lut
 from ..sql import sql
 
 
@@ -37,25 +36,31 @@ class MaintainerPackages(APIWorker):
     def get(self):
         maintainer_nickname = self.args["maintainer_nickname"]
         branch = self.args["branch"]
-        by_acl = self.args['by_acl']
+        by_acl = self.args["by_acl"]
 
-        if by_acl == 'by_nick':
+        if by_acl == "by_nick":
             self.conn.request_line = self.sql.get_maintainer_pkg_by_nick_acl.format(
                 maintainer_nickname=maintainer_nickname, branch=branch
             )
-        if by_acl == 'by_nick_leader':
-            self.conn.request_line = self.sql.get_maintainer_pkg_by_nick_leader_acl.format(
-                maintainer_nickname=maintainer_nickname, branch=branch
+        if by_acl == "by_nick_leader":
+            self.conn.request_line = (
+                self.sql.get_maintainer_pkg_by_nick_leader_acl.format(
+                    maintainer_nickname=maintainer_nickname, branch=branch
+                )
             )
-        if by_acl == 'by_nick_or_group':
-            self.conn.request_line = self.sql.get_maintainer_pkg_by_nick_or_group_acl.format(
-                maintainer_nickname=maintainer_nickname, branch=branch
+        if by_acl == "by_nick_or_group":
+            self.conn.request_line = (
+                self.sql.get_maintainer_pkg_by_nick_or_group_acl.format(
+                    maintainer_nickname=maintainer_nickname, branch=branch
+                )
             )
-        if by_acl == 'by_nick_leader_and_group':
-            self.conn.request_line = self.sql.get_maintainer_pkg_by_nick_leader_and_group_acl.format(
-                maintainer_nickname=maintainer_nickname, branch=branch
+        if by_acl == "by_nick_leader_and_group":
+            self.conn.request_line = (
+                self.sql.get_maintainer_pkg_by_nick_leader_and_group_acl.format(
+                    maintainer_nickname=maintainer_nickname, branch=branch
+                )
             )
-        if by_acl == 'none':
+        if by_acl == "none":
             self.conn.request_line = self.sql.get_maintainer_pkg.format(
                 maintainer_nickname=maintainer_nickname, branch=branch
             )
@@ -65,7 +70,7 @@ class MaintainerPackages(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )

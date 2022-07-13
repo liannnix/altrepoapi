@@ -18,5 +18,6 @@ from flask_restx import Namespace
 
 namespace = Namespace("image", description="images information API")
 
+
 def get_namespace():
     return namespace

@@ -97,45 +97,37 @@ You can build and run ALTRepo API Docker container using alt:p10 base image.
 
 ## Build Docker image
 
-
 Copy `.env.example`  file to `.env` and edit application external port environment variable.
 
     $ cp .env.example .env
     $ nano .env
 
+Copy `api.conf.docker.example` file to `api.conf.docker` and for proper configuration:
+
+    - set proper DB connection options
+    - set proper API administartor password
+    - set proper logging level and options
+    - set proper Gunicorn workers number ('0' means auto)
+
 Build ALTRepo API container with docker-compose:
 
-    [root@host]# docker-compose build
+    [root@host]# docker-compose build 
 
-Or you could just start the container with
-
-    [root@host]# docker-compose up
-
-and it will be built automatically.
+You can use `--no-cache` option to force image rebuild.
 
 ## Docker container persistent data
 
-Containered API uses two volumes to store persistent data for configuration and log files. By default it is located at: 
-
-    /var/lib/docker/volumes/altrepo-api_config/_data/api.conf
-    /var/lib/docker/volumes/altrepo-api_log/_data/api.log
+Containered API uses volume to store persistent data for log files. By default it is located at `/var/lib/docker/volumes/altrepo-api_log/_data/api.log`
 
 ## Run Docker container
 
-At first run the container to initialize persistent volumes:
+Run the container with docker-compose:
 
-    [root@host]# docker-compose up
+    [root@host]# docker-compose up -d
 
-API will fail due to default configuration has to be filled with actual settings. AT least you should configure DB connection and API administrator password.
 Stop the container with command:
 
     [root@host]# docker-compose down
-
-Then edit API config file in
-
-    [root@host]# nano /var/lib/docker/volumes/altrepo-api_config/_data/api.conf
-
-with actual DB connection data, administartor password and logging options. You could change Gunicorn workers number here as well (`0` value means auto).
 
 When ready run the container as daemon with:
 
@@ -152,6 +144,17 @@ behind load balancer with port range difined in `.env` file:
 
     [root@host]# docker-compose up -d --scale app=NUM_OF_INSTANCES
 
+### Access API logs
+
+To check whether API started and work properly you could use:
+
+    [root@host]# docker logs [-f] %container-id%
+
+To read the API log you could use:
+
+    [root@host]# docker exec -it %container-id% tail [-f] /log/api.log
+
+or access API log file at persistent volume at `/var/lib/docker/volumes/altrepo-api_log/_data/api.log`.
 ## Stop Docker container
 
 To stop the running API container, use:

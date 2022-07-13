@@ -14,16 +14,41 @@ IMAGE_TYPE_NOT_IN_DB = "faketype"
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"name": PKG_IN_DB, "branch": BRANCH_IN_DB, "edition": EDITION_IN_DB, "type": IMAGE_TYPE_IN_DB,
-         "status_code": 200},
-        {"name": PKG_NOT_IN_DB, "branch": BRANCH_IN_DB, "edition": EDITION_IN_DB, "type": IMAGE_TYPE_IN_DB,
-         "status_code": 404},
-        {"name": PKG_IN_DB, "branch": BRANCH_NOT_IN_DB, "edition": EDITION_IN_DB, "type": IMAGE_TYPE_IN_DB,
-         "status_code": 400},
-        {"name": PKG_IN_DB, "branch": BRANCH_IN_DB, "edition": EDITION_NOT_IN_DB, "type": IMAGE_TYPE_IN_DB,
-         "status_code": 400},
-        {"name": PKG_IN_DB, "branch": BRANCH_IN_DB, "edition": EDITION_IN_DB, "type": IMAGE_TYPE_NOT_IN_DB,
-         "status_code": 400},
+        {
+            "name": PKG_IN_DB,
+            "branch": BRANCH_IN_DB,
+            "edition": EDITION_IN_DB,
+            "type": IMAGE_TYPE_IN_DB,
+            "status_code": 200,
+        },
+        {
+            "name": PKG_NOT_IN_DB,
+            "branch": BRANCH_IN_DB,
+            "edition": EDITION_IN_DB,
+            "type": IMAGE_TYPE_IN_DB,
+            "status_code": 404,
+        },
+        {
+            "name": PKG_IN_DB,
+            "branch": BRANCH_NOT_IN_DB,
+            "edition": EDITION_IN_DB,
+            "type": IMAGE_TYPE_IN_DB,
+            "status_code": 400,
+        },
+        {
+            "name": PKG_IN_DB,
+            "branch": BRANCH_IN_DB,
+            "edition": EDITION_NOT_IN_DB,
+            "type": IMAGE_TYPE_IN_DB,
+            "status_code": 400,
+        },
+        {
+            "name": PKG_IN_DB,
+            "branch": BRANCH_IN_DB,
+            "edition": EDITION_IN_DB,
+            "type": IMAGE_TYPE_NOT_IN_DB,
+            "status_code": 400,
+        },
     ],
 )
 def test_package_versions_from_images(client, kwargs):
@@ -42,8 +67,20 @@ def test_package_versions_from_images(client, kwargs):
         assert data["length"] != 0
         assert data["versions"] != []
         for version in data["versions"]:
-            assert all([v != "" for k, v in version.items() if
-                        k not in ('platform', 'version_major', 'version_minor', 'version_sub')])
-            assert type(version['version_major']) == int
-            assert type(version['version_minor']) == int
-            assert type(version['version_sub']) == int
+            assert all(
+                [
+                    v != ""
+                    for k, v in version.items()
+                    if k
+                    not in (
+                        "platform",
+                        "flavor",
+                        "version_major",
+                        "version_minor",
+                        "version_sub",
+                    )
+                ]
+            )
+            assert type(version["version_major"]) == int
+            assert type(version["version_minor"]) == int
+            assert type(version["version_sub"]) == int

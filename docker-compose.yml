@@ -8,7 +8,7 @@ services:
     restart: unless-stopped
     command: ./run-api /config/api.conf
     volumes:
-      - config:/config
+      - ${PWD}/api.conf.docker:/config/api.conf
       - log:/log
     ports:
       - ${APP_PORT_EXT}:5000

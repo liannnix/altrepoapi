@@ -46,7 +46,7 @@ class PackageInfo(APIWorker):
 
         if self.args["changelog_last"] < 1:
             self.validation_results.append(
-                f"changelog history length should be not less than 1"
+                "Changelog history length should be not less than 1"
             )
 
         if self.validation_results != []:
@@ -290,7 +290,7 @@ class PackageInfo(APIWorker):
             if source:
                 pkg_info["buildtime"] = response[0][2]  # type: ignore
                 for elem in response:  # type: ignore
-                    package_archs[elem[0]] = {el[0]: str(el[1]) for el in elem[1]}
+                    package_archs[elem[0]] = {el[0]: str(el[1]) for el in elem[1]}  # type: ignore
             else:
                 for elem in response:  # type: ignore
                     package_archs[elem[0]] = {"src": str(elem[1])}
@@ -314,7 +314,7 @@ class PackageInfo(APIWorker):
             )
             return self.error
 
-        Changelog = namedtuple("Changelog", ["date", "name", "evr", "message"])
+        Changelog = namedtuple("Changelog", ["date", "name", "nick", "evr", "message"])
         changelog_list = [
             Changelog(datetime_to_iso(el[1]), *el[2:])._asdict() for el in response  # type: ignore
         ]
@@ -385,6 +385,18 @@ class PackageInfo(APIWorker):
                 ]
         else:
             return lp.error
+
+        # fix gear_link for binary packages
+        if source == 0:
+            pkgname_binary = pkg_info["name"]
+            try:
+                pkgname_source = list(package_archs.keys())[0]
+                in_ = f"{pkgname_binary[0]}/{pkgname_binary}.git"
+                out_ = f"{pkgname_source[0]}/{pkgname_source}.git"
+                gear_link = gear_link.replace(in_, out_)
+            except IndexError:
+                pkgname_source = ""
+                gear_link = ""
 
         res = {
             "pkghash": str(self.pkghash),
@@ -591,7 +603,7 @@ class PackagesBinaryListInfo(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No found",
+                    "message": "No data found",
                     "args": self.args,
                 },
                 self.ll.INFO,
@@ -630,4 +642,62 @@ class PackagesBinaryListInfo(APIWorker):
             "packages": retval,
             "versions": pkg_versions,
         }
+        return res, 200
+
+
+class PackageNVRByHash(APIWorker):
+    """Retrieves package changelog from DB."""
+
+    def __init__(self, connection, pkghash, **kwargs):
+        self.pkghash = pkghash
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def get(self):
+        self.conn.request_line = self.sql.get_package_nvr_by_hash.format(
+            pkghash=self.pkghash
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response, self.ll.ERROR, 500)
+            return self.error
+        if not response:
+            self._store_error(
+                {
+                    "message": f"No packages found in DB with hash {self.pkghash}",
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        PkgInfo = namedtuple(
+            "PkgInfo", ["hash", "name", "version", "release", "is_source"]
+        )
+        pkg_info = PkgInfo(*response[0])  # type: ignore
+
+        # check if name from args matches with name from DB
+        if self.args["name"] is not None and self.args["name"] != pkg_info.name:
+            self._store_error(
+                {
+                    "message": "Package name mismatching",
+                    "args": self.args,
+                },
+                self.ll.INFO,
+                404,
+            )
+            return self.error
+
+        res = {
+            "request_args": self.args,
+            "hash": str(pkg_info.hash),
+            "name": pkg_info.name,
+            "version": pkg_info.version,
+            "release": pkg_info.release,
+            "is_source": bool(pkg_info.is_source),
+        }
+
         return res, 200

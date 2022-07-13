@@ -38,6 +38,7 @@ WITH pkg_changelog AS
             pkg_hash,
             pkg_changelog.date AS date,
             pkg_changelog.name as name,
+            extract(replaceOne(extract(pkg_changelog.name, '<(.+@?.+)>+'), ' at ', '@'), '(.*)@') AS nick,
             pkg_changelog.evr AS evr,
             pkg_changelog.hash AS hash
         FROM Packages
@@ -49,6 +50,7 @@ SELECT DISTINCT
     pkg_hash,
     date,
     name,
+    nick,
     evr,
     Chg.chlog_text as text
 FROM pkg_changelog
@@ -109,12 +111,13 @@ WHERE (task_id, subtask_id) IN
     WHERE titer_srcrpm_hash = {pkghash}
         OR has(titer_pkgs_hash, {pkghash})
 )
-AND task_id IN
+AND (task_id, task_changed) IN
 (
-    SELECT task_id
+    SELECT task_id, task_changed
     FROM TaskStates
     WHERE task_state = 'DONE'
 )
+AND subtask_deleted != 1
 ORDER BY task_changed DESC
 """
 
@@ -426,7 +429,7 @@ SELECT DISTINCT
     pkg_changelog.date[1],
     CHLG.chlog_text
 FROM Packages
-LEFT JOIN 
+LEFT JOIN
 (
     SELECT * FROM changelog_with_cve
 ) AS CHLG ON CHLG.chlog_hash = (pkg_changelog.hash[1])
@@ -599,7 +602,7 @@ INNER JOIN
     FROM Packages
     WHERE pkg_sourcepackage = 0
         AND pkg_name = pkgname
-        AND pkg_arch = '{arch}' 
+        AND pkg_arch = '{arch}'
 ) AS PA ON PA.pkg_hash  = static_last_packages.pkg_hash
 WHERE pkg_name = pkgname
     AND pkg_sourcepackage = 0
@@ -666,7 +669,18 @@ WHERE pkg_hash = {pkghash}
                 task_changed
             FROM TaskStates
             WHERE task_state = 'DONE'
-        ) 
+        )
+"""
+
+    get_package_nvr_by_hash = """
+SELECT DISTINCT
+    pkg_hash,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_sourcepackage
+FROM Packages
+WHERE pkg_hash = {pkghash}
 """
 
 

@@ -280,7 +280,7 @@ def full_file_permissions(file_type: str, file_mode: int) -> str:
         "socket": "s",
         "block": "b",
         "char": "c",
-        "fifo": "p"
+        "fifo": "p",
     }
 
     def rwx(perms):

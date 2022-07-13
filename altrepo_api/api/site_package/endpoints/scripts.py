@@ -68,8 +68,8 @@ class BinaryPackageScripts(APIWorker):
 
         # get package versions
         pkg_versions = []
-        pkg_name = response[0][0]
-        pkg_arch = response[0][1]
+        pkg_name = response[0][0]  # type: ignore
+        pkg_arch = response[0][1]  # type: ignore
         self.conn.request_line = self.sql.get_pkg_binary_versions.format(
             name=pkg_name, arch=pkg_arch
         )
@@ -81,8 +81,8 @@ class BinaryPackageScripts(APIWorker):
             "PkgVersions", ["branch", "version", "release", "pkghash"]
         )
         # sort package versions by branch
-        pkg_branches = sort_branches([el[0] for el in response])
-        pkg_versions = tuplelist_to_dict(response, 3)
+        pkg_branches = sort_branches([el[0] for el in response])  # type: ignore
+        pkg_versions = tuplelist_to_dict(response, 3)  # type: ignore
 
         pkg_versions = [
             PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches

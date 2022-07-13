@@ -19,7 +19,6 @@ from collections import namedtuple
 from altrepo_api.utils import join_tuples
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.misc import lut
 from ..sql import sql
 
 
@@ -40,7 +39,7 @@ class FindPackageset(APIWorker):
             self._store_sql_error(response, self.ll.INFO, 500)
             return False
 
-        if response[0][0] == 0:
+        if response[0][0] == 0:  # type: ignore
             return False
         return True
 
@@ -65,7 +64,7 @@ class FindPackageset(APIWorker):
             )
             return self.error
 
-        packages = join_tuples(response)
+        packages = join_tuples(response)  # type: ignore
 
         if self.args["branches"]:
             branchs_cond = f"AND pkgset_name IN {tuple(self.args['branches'])}"
@@ -84,7 +83,7 @@ class FindPackageset(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No results found in last package sets for given parameters",
+                    "message": "No results found in last package sets for given parameters",
                     "args": self.args,
                 },
                 self.ll.INFO,

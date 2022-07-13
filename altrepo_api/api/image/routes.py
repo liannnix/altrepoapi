@@ -14,8 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from platform import release
-from flask import g, request
+from flask import g
 from flask_restx import Resource
 
 from altrepo_api.utils import get_logger, url_logging
@@ -35,7 +34,7 @@ from .endpoints.image_info import (
     LastImagePackages,
     ImageTagUUID,
     ImageCategoriesCount,
-    ImagePackages
+    ImagePackages,
 )
 from .endpoints.packages import CheckPackages
 from .parsers import (
@@ -201,10 +200,7 @@ class routeImageTagStatus(Resource):
         args = image_tag_args.parse_args(strict=True)
         w = ImageTagStatus(g.connection, payload=ns.payload, **args)
         return run_worker(
-            worker=w,
-            args=args,
-            check_method=w.check_params_get,
-            run_method=w.get
+            worker=w, args=args, check_method=w.check_params_get, run_method=w.get
         )
 
 
@@ -245,9 +241,7 @@ class routeImageTagUuid(Resource):
 @ns.route(
     "/image_categories_count",
     doc={
-        "description": (
-            "Get list of package categories with count for image"
-        ),
+        "description": ("Get list of package categories with count for image"),
         "responses": GET_RESPONSES_400_404,
     },
 )
@@ -264,9 +258,7 @@ class routeImageCategoriesCount(Resource):
 @ns.route(
     "/image_packages",
     doc={
-        "description": (
-            "Get list of image packages in accordance to given parameters"
-        ),
+        "description": ("Get list of image packages in accordance to given parameters"),
         "responses": GET_RESPONSES_400_404,
     },
 )
@@ -303,9 +295,7 @@ class routeLastImagePackagesWithCveFix(Resource):
 @ns.route(
     "/active_images",
     doc={
-        "description": (
-            "Get active images for a given repository"
-        ),
+        "description": ("Get active images for a given repository"),
         "responses": GET_RESPONSES_400_404,
     },
 )

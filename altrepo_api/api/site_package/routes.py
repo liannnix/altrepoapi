@@ -25,6 +25,7 @@ from .endpoints.package_info import (
     PackageInfo,
     DeletedPackageInfo,
     PackagesBinaryListInfo,
+    PackageNVRByHash,
 )
 from .endpoints.logs import BinaryPackageLog
 from .endpoints.changelog import PackageChangelog
@@ -42,6 +43,7 @@ from .parsers import (
     deleted_package_args,
     src_pkgs_versions_args,
     pkgs_versions_args,
+    pkg_nvr_by_hash_args,
 )
 from .serializers import (
     package_chlog_model,
@@ -53,6 +55,7 @@ from .serializers import (
     depends_packages_model,
     src_pkgs_versions_model,
     bin_package_log_el_model,
+    pkg_nvr_by_hash_model,
 )
 
 ns = get_namespace()
@@ -255,4 +258,25 @@ class routeBinaryPackageLog(Resource):
         url_logging(logger, g.url)
         args = {}
         w = BinaryPackageLog(g.connection, pkghash, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/package_nvr_by_hash/<int:pkghash>",
+    doc={
+        "params": {"pkghash": "package hash"},
+        "description": (
+            "Get package name< version, release and type by hash. "
+            "Check package name matching if provided."
+        ),
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routePackageNVRByHash(Resource):
+    @ns.expect(pkg_nvr_by_hash_args)
+    @ns.marshal_with(pkg_nvr_by_hash_model)
+    def get(self, pkghash):
+        url_logging(logger, g.url)
+        args = pkg_nvr_by_hash_args.parse_args(strict=True)
+        w = PackageNVRByHash(g.connection, pkghash, **args)
         return run_worker(worker=w, args=args)

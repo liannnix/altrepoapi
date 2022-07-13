@@ -50,7 +50,7 @@ class PackageVersionsFromImages(APIWorker):
         if not response:
             self._store_error(
                 {
-                    "message": f"No data found in database",
+                    "message": "No data found in database",
                     "args": self.args,
                 },
                 self.ll.INFO,
@@ -74,7 +74,8 @@ class PackageVersionsFromImages(APIWorker):
                 "version_minor",
                 "version_sub",
                 "img_arch",
-                "type"
+                "img_flavor",
+                "type",
             ],
         )
         versions = [PkgVersions(*el)._asdict() for el in response]  # type: ignore

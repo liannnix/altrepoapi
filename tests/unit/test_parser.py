@@ -285,12 +285,13 @@ def test_file_name_wc_type(test_input, expected_exception, expected):
     "test_input,expected_exception,expected",
     [
         ("a.b-c:123", None, "a.b-c:123"),
+        ("gcc-c++", None, "gcc-c++"),
         ("python(test)", None, "python(test)"),
         ("/test/Test", None, "/test/Test"),
         ("", ValueError, None),
         ("x", ValueError, None),
         (" test", ValueError, None),
-        ("a.b-c+123", ValueError, None),
+        ("a.b-c&123", ValueError, None),
         ("abc\\Test", ValueError, None),
         ("test;123", ValueError, None),
     ],
@@ -328,7 +329,11 @@ def test_date_string_type(test_input, expected_exception, expected):
 @pytest.mark.parametrize(
     "test_input,expected_exception,expected",
     [
-        ("12345678-abcd-ef01-2345-67890abcdef0", None, "12345678-abcd-ef01-2345-67890abcdef0"),
+        (
+            "12345678-abcd-ef01-2345-67890abcdef0",
+            None,
+            "12345678-abcd-ef01-2345-67890abcdef0",
+        ),
         ("", ValueError, None),
         ("x2345678-abcd-ef01-2345-67890abcdef0", ValueError, None),
         (" 12345678-abcd-ef01-2345-67890abcdef0", ValueError, None),
@@ -533,3 +538,22 @@ def test_pkg_name_list_type(test_input, expected_exception, expected):
         assert parser.pkg_name_list_type(test_input) == expected
     else:
         pytest.raises(expected_exception, parser.pkg_name_list_type, test_input)
+
+
+@pytest.mark.parametrize(
+    "test_input,expected_exception,expected",
+    [
+        ("core", None, "core"),
+        ("@qa_p10", None, "@qa_p10"),
+        ("", ValueError, None),
+        ("@", ValueError, None),
+        (" core", ValueError, None),
+        ("core ", ValueError, None),
+        ("core+", ValueError, None),
+    ],
+)
+def test_acl_group_type(test_input, expected_exception, expected):
+    if not expected_exception:
+        assert parser.acl_group_type(test_input) == expected
+    else:
+        pytest.raises(expected_exception, parser.acl_group_type, test_input)

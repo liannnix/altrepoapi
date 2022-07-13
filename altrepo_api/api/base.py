@@ -82,8 +82,8 @@ def abort_on_validation_error(worker: APIWorker, method: Callable, args: Any):
 
     if not method():
         abort(
-            400,
-            message=f"Request parameters validation error",
+            400,  # type: ignore
+            message="Request parameters validation error",
             args=args,
             validation_message=worker.validation_results,
         )
@@ -94,7 +94,7 @@ def abort_on_result_error(method: Callable[[], tuple[Any, int]], ok_code: int):
 
     result, code = method()
     if code != ok_code:
-        abort(code, **response_error_parser(result))
+        abort(code, **response_error_parser(result))  # type: ignore
     return result, code
 
 
@@ -107,11 +107,11 @@ def run_worker(
     ok_code: int = 200,
 ):
     """Calls APIWorker class's 'check_method' and 'run_method' and returns the result.
-    
-    Calls flask_restx abort() if check_method() returned False 
+
+    Calls flask_restx abort() if check_method() returned False
     or if run_method() returned code not equal to 'ok_code'.
     Otherwise returns run_method() results.
-    
+
     Default 'run_method' is worker.get().
     Default 'check_method' is worker.check_params()."""
 

@@ -62,7 +62,7 @@ class SourcePackageVersions(APIWorker):
         )
         # sort package versions by branch
         pkg_branches = sort_branches([el[0] for el in response])
-        pkg_versions = tuplelist_to_dict(response, 3)
+        pkg_versions = tuplelist_to_dict(response, 3)  # type: ignore
         # workaround for multiple versions of returned for certain branch
         pkg_versions = [
             PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
@@ -89,9 +89,9 @@ class PackageVersions(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["package_type"] == 'binary' and self.args["arch"] is None:
+        if self.args["package_type"] == "binary" and self.args["arch"] is None:
             self.validation_results.append(
-                f"package architecture should be specified for binary package"
+                "package architecture should be specified for binary package"
             )
             self.validation_results.append(f"allowed archs are : {lut.known_archs}")
 
@@ -102,7 +102,7 @@ class PackageVersions(APIWorker):
 
     def get(self):
         self.name = self.args["name"]
-        self.arch = self.args['arch']
+        self.arch = self.args["arch"]
         self.pkg_type = self.args["package_type"]
         pkg_type_to_sql = {"source": 1, "binary": 0}
         source = pkg_type_to_sql[self.pkg_type]
@@ -132,7 +132,7 @@ class PackageVersions(APIWorker):
         )
         # sort package versions by branch
         pkg_branches = sort_branches([el[0] for el in response])
-        pkg_versions = tuplelist_to_dict(response, 3)
+        pkg_versions = tuplelist_to_dict(response, 3)  # type: ignore
         # workaround for multiple versions of returned for certain branch
         pkg_versions = [
             PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches

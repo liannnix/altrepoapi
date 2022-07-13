@@ -45,4 +45,4 @@ USER $UNAME
 
 RUN cp $APP_HOME/bin/altrepo-api run-api
 
-ADD api.conf.docker /config/api.conf
+RUN touch /config/api.conf

@@ -17,7 +17,6 @@
 from altrepo_api.settings import namespace as settings
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.misc import lut
 from ..sql import sql
 from .task_repo import TaskRepoState
 from altrepo_api.api.package.endpoints.pkg_build_dependency import BuildDependency
@@ -40,7 +39,7 @@ class TaskBuildDependency(APIWorker):
             self._store_sql_error(response, self.ll.INFO, 500)
             return False
 
-        if response[0][0] == 0:
+        if response[0][0] == 0:  # type: ignore
             return False
         return True
 
@@ -55,7 +54,7 @@ class TaskBuildDependency(APIWorker):
 
         if None not in (self.args["filter_by_source"], self.args["filter_by_package"]):
             self.validation_results.append(
-                f"Parameters 'filter_by_src' and 'filter_by_package' can't be used together"
+                "Parameters 'filter_by_src' and 'filter_by_package' can't be used together"
             )
 
         if self.validation_results != []:
@@ -82,7 +81,7 @@ class TaskBuildDependency(APIWorker):
             )
             return self.error
 
-        self.args["branch"] = response[0][0]
+        self.args["branch"] = response[0][0]  # type: ignore
         # get task source packages
         self.conn.request_line = self.sql.build_task_src_packages.format(
             id=self.task_id

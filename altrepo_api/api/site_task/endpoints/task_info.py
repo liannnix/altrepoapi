@@ -49,6 +49,7 @@ class TasksByPackage(APIWorker):
         Returns:
             tuple: return package type [gear|srpm|copy|delete] and link (git)
         """
+
         def delete_epoch(evr):
             #  delete epoch from evr
             if ":" in evr:
@@ -146,7 +147,7 @@ class TasksByPackage(APIWorker):
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
             if response:
-                pkg_names = {(el[0], el[1]): el[2:] for el in response if el[2] != ""}
+                pkg_names = {(el[0], el[1]): el[2:] for el in response if el[2] != ""}  # type: ignore
 
         res = []
         SubtaskMeta = namedtuple(
@@ -175,7 +176,7 @@ class TasksByPackage(APIWorker):
             pkg_release = ""
             for s in task["packages"]:
                 subtask = SubtaskMeta(*s)._asdict()
-                pkg_name, pkg_version, pkg_release = pkg_names.get(
+                pkg_name, pkg_version, pkg_release = pkg_names.get(  # type: ignore
                     (int(subtask["id"]), int(subtask["sub_id"])), ("", "", "")
                 )
                 if subtask["package"] != "":
@@ -242,7 +243,7 @@ class TasksByMaintainer(APIWorker):
 
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )
@@ -289,7 +290,7 @@ class TasksByMaintainer(APIWorker):
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
             if response:
-                pkg_names = {(el[0], el[1]): el[2:] for el in response if el[2] != ""}
+                pkg_names = {(el[0], el[1]): el[2:] for el in response if el[2] != ""}  # type: ignore
 
         res = []
         SubtaskMeta = namedtuple(
@@ -318,7 +319,7 @@ class TasksByMaintainer(APIWorker):
             pkg_release = ""
             for s in task["packages"]:
                 subtask = SubtaskMeta(*s)._asdict()
-                pkg_name, pkg_version, pkg_release = pkg_names.get(
+                pkg_name, pkg_version, pkg_release = pkg_names.get(  # type: ignore
                     (int(subtask["id"]), int(subtask["sub_id"])), ("", "", "")
                 )
                 if subtask["package"] != "":

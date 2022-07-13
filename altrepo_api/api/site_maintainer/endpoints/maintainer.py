@@ -17,7 +17,6 @@
 from collections import namedtuple
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.misc import lut
 from ..sql import sql
 
 
@@ -45,14 +44,14 @@ class AllMaintainers(APIWorker):
             return self.error
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )
             return self.error
 
         res = [
-            {"packager_name": m[0], "packager_nickname": m[1], "count_source_pkg": m[2]}
+            {"packager_name": m[0], "packager_nickname": m[1], "count_source_pkg": m[2]}  # type: ignore
             for m in response
         ]
 
@@ -88,7 +87,7 @@ class MaintainerInfo(APIWorker):
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
-        if not response or response[0][0] == []:
+        if not response or response[0][0] == []:  # type: ignore
             self._store_error(
                 {
                     "message": f"No data found in database for {maintainer_nickname} on {branch}",
@@ -101,13 +100,9 @@ class MaintainerInfo(APIWorker):
 
         MaintainersInfo = namedtuple(
             "MaintainersInfoModel",
-            [
-                "packager_name",
-                "packager_nickname",
-                "count_source_pkg"
-            ],
+            ["packager_name", "packager_nickname", "count_source_pkg"],
         )
-        res = MaintainersInfo(*response[0])._asdict()
+        res = MaintainersInfo(*response[0])._asdict()  # type: ignore
         res = {"request_args": self.args, "information": res}
 
         return res, 200

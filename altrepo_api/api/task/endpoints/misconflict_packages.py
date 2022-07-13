@@ -15,7 +15,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.misc import lut
 from ..sql import sql
 from .task_repo import TaskRepoState
 from altrepo_api.api.package.endpoints.misconflict_packages import MisconflictPackages
@@ -38,7 +37,7 @@ class TaskMisconflictPackages(APIWorker):
             self._store_sql_error(response, self.ll.INFO, 500)
             return False
 
-        if response[0][0] == 0:
+        if response[0][0] == 0:  # type: ignore
             return False
         return True
 
@@ -65,7 +64,7 @@ class TaskMisconflictPackages(APIWorker):
             )
             return self.error
 
-        self.args["branch"] = response[0][0]
+        self.args["branch"] = response[0][0]  # type: ignore
         # get task source packages
         self.conn.request_line = self.sql.misconflict_get_pkgs_of_task.format(
             id=self.task_id
@@ -92,7 +91,7 @@ class TaskMisconflictPackages(APIWorker):
         mp = MisconflictPackages(
             self.conn,
             self.args["packages"],
-            self.args["branch"].lower(),
+            self.args["branch"].lower(),  # type: ignore
             self.args["archs"],
         )
 

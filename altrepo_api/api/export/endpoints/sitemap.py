@@ -16,8 +16,6 @@
 
 from collections import namedtuple
 
-from altrepo_api.utils import datetime_to_iso
-
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
 from ..sql import sql
@@ -38,9 +36,7 @@ class SitemapPackages(APIWorker):
         self.validation_results = []
 
         if self.branch == "" or self.branch not in lut.known_branches:
-            self.validation_results.append(
-                f"unknown package set name : {self.branch}"
-            )
+            self.validation_results.append(f"unknown package set name : {self.branch}")
             self.validation_results.append(
                 f"allowed package set names are : {lut.known_branches}"
             )
@@ -52,7 +48,9 @@ class SitemapPackages(APIWorker):
 
     def get(self):
         # get source packages
-        self.conn.request_line = self.sql.get_branch_source_packages.format(branch=self.branch)
+        self.conn.request_line = self.sql.get_branch_source_packages.format(
+            branch=self.branch
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)

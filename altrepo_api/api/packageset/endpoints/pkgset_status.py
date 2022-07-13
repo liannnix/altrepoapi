@@ -114,7 +114,7 @@ class RepositoryStatus(APIWorker):
 
         if not response:
             self._store_error(
-                {"message": f"No data not found in database", "args": self.args},
+                {"message": "No data not found in database", "args": self.args},
                 self.ll.INFO,
                 404,
             )
@@ -131,7 +131,7 @@ class RepositoryStatus(APIWorker):
                 "description_ru",
                 "description_en",
                 "url_mailing_list",
-                "mirrors_json"
+                "mirrors_json",
             ],
         )
 
@@ -175,7 +175,7 @@ class ActivePackagesets(APIWorker):
             return self.error
 
         if not response:
-            self.logger.debug(f"No active package sets found in DB")
+            self.logger.debug("No active package sets found in DB")
             res = {"packagesets": sort_branches(lut.known_branches)}
         else:
             res = {"packagesets": sort_branches([el[0] for el in response])}

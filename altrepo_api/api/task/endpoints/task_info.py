@@ -42,7 +42,7 @@ class TaskInfo(APIWorker):
             self._store_sql_error(response, self.ll.INFO, 500)
             return False
 
-        if response[0][0] == 0:
+        if response[0][0] == 0:  # type: ignore
             return False
         return True
 
@@ -55,13 +55,13 @@ class TaskInfo(APIWorker):
                 pass
             else:
                 self.validation_results.append(
-                    f"Task try and iteration parameters should be both greater than 0"
+                    "Task try and iteration parameters should be both greater than 0"
                 )
         elif self.args["try"] is None and self.args["iteration"] is None:
             pass
         else:
             self.validation_results.append(
-                f"Task try and iteration parameters should be both specified"
+                "Task try and iteration parameters should be both specified"
             )
 
         if self.validation_results != []:
@@ -89,8 +89,8 @@ class TaskInfo(APIWorker):
             )
             return None
 
-        self.task["branch"] = response[0][0]
-        self.task["user"] = response[0][1]
+        self.task["branch"] = response[0][0]  # type: ignore
+        self.task["user"] = response[0][1]  # type: ignore
 
         self.conn.request_line = self.sql.task_all_iterations.format(id=self.task_id)
         status, response = self.conn.send_request()
@@ -106,12 +106,12 @@ class TaskInfo(APIWorker):
             return None
 
         self.task["rebuilds"] = {
-            (i[0], i[1]): {"subtasks": [], "changed": i[3]} for i in response
+            (i[0], i[1]): {"subtasks": [], "changed": i[3]} for i in response  # type: ignore
         }
         for ti in self.task["rebuilds"].keys():
             for el in response:
                 if (el[0], el[1]) == ti:
-                    self.task["rebuilds"][ti]["subtasks"].append(el[2])
+                    self.task["rebuilds"][ti]["subtasks"].append(el[2])  # type: ignore
             self.task["rebuilds"][ti]["subtasks"] = sorted(
                 list(set(self.task["rebuilds"][ti]["subtasks"]))
             )
@@ -152,7 +152,7 @@ class TaskInfo(APIWorker):
             )
             return None
 
-        self.task["state_raw"] = dict(zip(self.sql.task_state_keys, response[0]))
+        self.task["state_raw"] = dict(zip(self.sql.task_state_keys, response[0]))  # type: ignore
 
         self.conn.request_line = self.sql.task_subtasks_by_task_changed.format(
             id=self.task_id, changed=task_changed
@@ -229,8 +229,8 @@ class TaskInfo(APIWorker):
             "PkgInfo", ("name", "version", "release", "filename", "arch")
         )
 
-        for el in response:
-            if el[6] == 1:
+        for el in response:  # type: ignore
+            if el[6] == 1:  # type: ignore
                 self.task["plan"]["add"]["src"][el[0]] = PkgInfo(*el[1:6])._asdict()
             else:
                 self.task["plan"]["add"]["bin"][el[0]] = PkgInfo(*el[1:6])._asdict()
@@ -243,8 +243,8 @@ class TaskInfo(APIWorker):
             self._store_sql_error(response, self.ll.ERROR, 500)
             return None
 
-        for el in response:
-            if el[6] == 1:
+        for el in response:  # type: ignore
+            if el[6] == 1:  # type: ignore
                 self.task["plan"]["del"]["src"][el[0]] = PkgInfo(*el[1:6])._asdict()
             else:
                 self.task["plan"]["del"]["bin"][el[0]] = PkgInfo(*el[1:6])._asdict()
@@ -276,12 +276,12 @@ class TaskInfo(APIWorker):
         if response:
             task_approvals = []
             tapp_keys = ("id", "date", "type", "name", "message", "revoked")
-            for i in range(len(response)):
+            for i in range(len(response)):  # type: ignore
                 task_approvals.append(
                     dict(
                         [
-                            (tapp_keys[j], response[i][0][j])
-                            for j in range(len(response[i][0]))
+                            (tapp_keys[j], response[i][0][j])  # type: ignore
+                            for j in range(len(response[i][0]))  # type: ignore
                         ]
                     )
                 )
@@ -303,14 +303,14 @@ class TaskInfo(APIWorker):
         self.task["version"] = self.task["state_raw"]["task_version"]
         self.task["prev"] = self.task["state_raw"]["task_prev"]
         self.task["last_changed"] = datetime_to_iso(
-            self.task["state_raw"]["task_changed"]
+            self.task["state_raw"]["task_changed"]  # type: ignore
         )
 
         for subtask in self.task["subtasks"].keys():
             contents = {"archs": []}
             for sub_ in self.task["subtasks_raw"]:
                 if sub_["subtask_id"] == subtask:
-                    contents["last_changed"] = datetime_to_iso(sub_["subtask_changed"])
+                    contents["last_changed"] = datetime_to_iso(sub_["subtask_changed"])  # type: ignore
                     contents["userid"] = sub_["subtask_userid"]
                     contents["dir"] = sub_["subtask_dir"]
                     contents["package"] = sub_["subtask_package"]
@@ -335,7 +335,7 @@ class TaskInfo(APIWorker):
                             iter_["titer_srcrpm_hash"]
                         ]
                     else:
-                        contents["source_package"] = {}
+                        contents["source_package"] = {}  # type: ignore
                     break
             for iter_ in self.task["iterations_raw"]:
                 if iter_["subtask_id"] == subtask:
@@ -360,16 +360,16 @@ class TaskInfo(APIWorker):
             subtasks.append(subtask_dict)
         self.task["subtasks"] = subtasks
 
-        self.task["plan"]["add"]["src"] = [
+        self.task["plan"]["add"]["src"] = [  # type: ignore
             x for x in self.task["plan"]["add"]["src"].values()
         ]
-        self.task["plan"]["add"]["bin"] = [
+        self.task["plan"]["add"]["bin"] = [  # type: ignore
             x for x in self.task["plan"]["add"]["bin"].values()
         ]
-        self.task["plan"]["del"]["src"] = [
+        self.task["plan"]["del"]["src"] = [  # type: ignore
             x for x in self.task["plan"]["del"]["src"].values()
         ]
-        self.task["plan"]["del"]["bin"] = [
+        self.task["plan"]["del"]["bin"] = [  # type: ignore
             x for x in self.task["plan"]["del"]["bin"].values()
         ]
 
