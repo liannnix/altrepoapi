@@ -1,0 +1,6 @@
+object 977ad04d4042e34989566cfc2a5efe0da83d277f
+type commit
+tag v1.8.0
+tagger Danil Shein <dshein@altlinux.org> 1657701103 +0300
+
+new version
