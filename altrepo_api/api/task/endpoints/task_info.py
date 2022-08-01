@@ -92,6 +92,28 @@ class TaskInfo(APIWorker):
         self.task["branch"] = response[0][0]  # type: ignore
         self.task["user"] = response[0][1]  # type: ignore
 
+        # check if task was deleted
+        is_task_deleted = False
+        if try_iter is None:
+            self.conn.request_line = self.sql.task_state_last.format(id=self.task_id)
+            status, response = self.conn.send_request()
+            if not status:
+                self._store_sql_error(response, self.ll.ERROR, 500)
+                return None
+            if not response:
+                self._store_sql_error(
+                    {"Error": f"No data found in database for task '{self.task_id}'"},
+                    self.ll.INFO,
+                    404,
+                )
+                return None
+
+            if response[0][0] == "DELETED":  # type: ignore
+                is_task_deleted = True
+                self.task["state"] = response[0][0]  # type: ignore
+                self.task["message"] = response[0][1]  # type: ignore
+                self.task["last_changed"] = datetime_to_iso(response[0][2])  # type: ignore
+
         self.conn.request_line = self.sql.task_all_iterations.format(id=self.task_id)
         status, response = self.conn.send_request()
         if not status:
@@ -129,6 +151,15 @@ class TaskInfo(APIWorker):
         else:
             try_iter = max(self.task["rebuilds"])
             self.task["try"], self.task["iter"] = try_iter
+
+        # return here for deleted task
+        if is_task_deleted:
+            self.status = True
+            self.task["rebuilds"] = [
+                (str(x[0]) + "." + str(x[1]))
+                for x in sorted(self.task["rebuilds"].keys())
+            ]
+            return None
 
         task_changed = self.task["rebuilds"][try_iter]["changed"]
         self.task["subtasks"] = {
@@ -249,7 +280,6 @@ class TaskInfo(APIWorker):
             else:
                 self.task["plan"]["del"]["bin"][el[0]] = PkgInfo(*el[1:6])._asdict()
 
-        # FIXME: Add warning message for tasks with inconsistent plan
         src_pkg_hashes_not_in_plan = [
             hsh
             for hsh in {
@@ -262,7 +292,8 @@ class TaskInfo(APIWorker):
 
         if src_pkg_hashes_not_in_plan:
             self.logger.warning(
-                f"Found source packages missing from plan!\nTask: {self.task_id}, hashes: {src_pkg_hashes_not_in_plan}"
+                f"Found source packages missing from plan!\nTask: {self.task_id},"
+                f" hashes: {src_pkg_hashes_not_in_plan}"
             )
 
         self.conn.request_line = self.sql.task_approvals.format(id=self.task_id)

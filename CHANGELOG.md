@@ -6,6 +6,25 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.8.0] - 2022-07-13
+
+Merge new features in master branch for production use.
+
+### Added
+- 'nick' fields in site_package/* routes
+- acl/* routes namespace
+- bug/bugzilla_by_image_edition route
+### Changed
+- tests excleuded from python package
+- 
+### Fixed
+- code style using black and flake8
+- image version valdiation
+- gear links for arepo packages
+- export/translation trailing whitespaces
+- package groups and subgroups matching
+- package build task search
+
 ## [1.7.0] - yyyy-mm-dd
 
 Merge new features in master branch for production use.
