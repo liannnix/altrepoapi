@@ -104,24 +104,7 @@ class PackageInfo(APIWorker):
 
         pkg_type_to_sql = {"source": 1, "binary": 0}
         source = pkg_type_to_sql[self.pkg_type]
-        PkgMeta = namedtuple(
-            "PkgMeta",
-            [
-                "name",
-                "version",
-                "release",
-                "arch",
-                "epoch",
-                "buildtime",
-                "url",
-                "license",
-                "summary",
-                "description",
-                "packager",
-                "packager_nickname",
-                "category",
-            ],
-        )
+
         # get package info
         pkg_src_or_bin = f"AND pkg_sourcepackage = {source}"
         self.conn.request_line = self.sql.get_pkg_info.format(
@@ -141,7 +124,27 @@ class PackageInfo(APIWorker):
                 404,
             )
             return self.error
+
+        PkgMeta = namedtuple(
+            "PkgMeta",
+            [
+                "name",
+                "version",
+                "release",
+                "arch",
+                "epoch",
+                "buildtime",
+                "url",
+                "license",
+                "summary",
+                "description",
+                "packager",
+                "packager_nickname",
+                "category",
+            ],
+        )
         pkg_info = PkgMeta(*response[0])._asdict()  # type: ignore
+
         # get package task
         pkg_task = 0
         pkg_tasks = []
@@ -204,6 +207,7 @@ class PackageInfo(APIWorker):
                                 {"type": "build", "id": pkg_task, "date": pkg_task_date}
                             )
                             break
+
         # get package maintainers from changelog
         pkg_maintainers = []
         self.conn.request_line = self.sql.get_pkg_maintainers.format(
@@ -218,6 +222,7 @@ class PackageInfo(APIWorker):
                 nickname = get_nickname_from_packager(el)
                 if nickname not in pkg_maintainers:
                     pkg_maintainers.append(nickname)
+
         # get package ACLs
         pkg_acl = []
         self.conn.request_line = self.sql.get_pkg_acl.format(
@@ -229,6 +234,7 @@ class PackageInfo(APIWorker):
             return self.error
         if response:
             pkg_acl = response[0][0]  # type: ignore
+
         # get package versions
         pkg_versions = []
         if source:
@@ -243,13 +249,14 @@ class PackageInfo(APIWorker):
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
-        PkgVersions = namedtuple(
-            "PkgVersions", ["branch", "version", "release", "pkghash"]
-        )
+
         # sort package versions by branch
         pkg_branches = sort_branches([el[0] for el in response])  # type: ignore
         pkg_versions = tuplelist_to_dict(response, 3)  # type: ignore
-        # FIXME: workaround for multiple versions of returned for certain branch
+        # XXX: workaround for multiple versions of returned for certain branch
+        PkgVersions = namedtuple(
+            "PkgVersions", ["branch", "version", "release", "pkghash"]
+        )
         pkg_versions = [
             PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
         ]
@@ -264,6 +271,7 @@ class PackageInfo(APIWorker):
             if not status:
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
+
             PkgDependencies = namedtuple("PkgDependencies", ["name", "version", "flag"])
             pkg_dependencies = [PkgDependencies(*el)._asdict() for el in response]  # type: ignore
 
@@ -294,6 +302,7 @@ class PackageInfo(APIWorker):
             else:
                 for elem in response:  # type: ignore
                     package_archs[elem[0]] = {"src": str(elem[1])}
+
         # get package changelog
         self.conn.request_line = (
             self.sql.get_pkg_changelog,
@@ -333,11 +342,13 @@ class PackageInfo(APIWorker):
             if not status:
                 self._store_sql_error(response, self.ll.ERROR, 500)
                 return self.error
+
             BeehiveStatus = namedtuple(
                 "BeehiveStatus",
                 ["arch", "status", "build_time", "updated", "ftbfs_since"],
             )
             bh_status = [BeehiveStatus(*el)._asdict() for el in response]  # type: ignore
+
             for bh in bh_status:
                 epoch_ = pkg_info["epoch"]
                 if epoch_ == 0:
@@ -459,10 +470,12 @@ class DeletedPackageInfo(APIWorker):
             self.conn.request_line = self.sql.get_deleted_package_task_by_bin.format(
                 name=self.name, branch=self.branch
             )
+
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
+
         TaskMeta = namedtuple(
             "TaskMeta",
             ["task_id", "subtask_id", "task_changed", "task_owner", "subtask_userid"],
@@ -501,6 +514,7 @@ class DeletedPackageInfo(APIWorker):
                         task_changed=delete_task_info["task_changed"],
                     )
                 )
+
             status, response = self.conn.send_request()
             if not status:
                 self._store_sql_error(response, self.ll.ERROR, 500)
@@ -526,6 +540,7 @@ class DeletedPackageInfo(APIWorker):
                     branch=self.branch,
                     task_changed=delete_task_info["task_changed"],
                 )
+
                 status, response = self.conn.send_request()
                 if not status:
                     self._store_sql_error(response, self.ll.ERROR, 500)
@@ -567,7 +582,7 @@ class DeletedPackageInfo(APIWorker):
                 arch_ = f"with {self.arch} arch "
             self._store_error(
                 {
-                    "message": f"No information about deleting package {self.name} {arch_}from {self.branch} was found",
+                    "message": f"No information about deleting package {self.name} {arch_} from {self.branch} was found",
                     "args": self.args,
                 },
                 self.ll.INFO,
@@ -615,7 +630,6 @@ class PackagesBinaryListInfo(APIWorker):
             "PkgMeta",
             ["hash", "name", "version", "release", "arch"],
         )
-
         retval = [PkgMeta(*el)._asdict() for el in response]  # type: ignore
 
         # get package versions
@@ -627,11 +641,13 @@ class PackagesBinaryListInfo(APIWorker):
         if not status:
             self._store_sql_error(response, self.ll.ERROR, 500)
             return self.error
-        PkgVersions = namedtuple("PkgVersions", ["branch", "version", "release"])
+
         # sort package versions by branch
         pkg_branches = sort_branches([el[0] for el in response])  # type: ignore
         pkg_versions = tuplelist_to_dict(response, 3)  # type: ignore
-        # FIXME: workaround for multiple versions of returned for certain branch
+
+        # XXX: workaround for multiple versions of returned for certain branch
+        PkgVersions = namedtuple("PkgVersions", ["branch", "version", "release"])
         pkg_versions = [
             PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
         ]
