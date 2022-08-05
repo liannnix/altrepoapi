@@ -16,6 +16,7 @@
 
 import types
 from time import sleep
+from typing import Any
 from clickhouse_driver import Client, errors, __version__ as chd_version
 
 from altrepo_api.settings import namespace as settings
@@ -99,7 +100,7 @@ class DBConnection:
 
         logger.debug(f"SQL request:\n{query}")
 
-    def send_request(self):
+    def send_request(self) -> tuple[bool, Any]:
         response_status = False
 
         try:
@@ -138,7 +139,7 @@ class Connection:
             settings.DATABASE_PASS,
         )
 
-    def send_request(self):
+    def send_request(self) -> tuple[bool, Any]:
         status = self.db_connection.connection_status
         if not status:
             for try_ in range(settings.TRY_CONNECTION_NUMBER):
@@ -154,9 +155,9 @@ class Connection:
             self.db_connection.db_query = self.request_line  # type: ignore
             return self.db_connection.send_request()
         else:
-            return False, "Database connection error."
+            return False, json_str_error("Database connection error.")
 
-    def drop_connection(self):
+    def drop_connection(self) -> None:
         if self.db_connection:
             self.db_connection.disconnect()
             logger.debug("Connection closed.")
