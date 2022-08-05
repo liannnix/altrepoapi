@@ -33,23 +33,18 @@ class DependsBinPackage(APIWorker):
         super().__init__()
 
     def get(self):
-        self.conn.request_line = self.sql.get_depends_bin_pkg.format(
-            pkghash=self.pkghash
+        response = self.send_sql_request(
+            self.sql.get_depends_bin_pkg.format(pkghash=self.pkghash)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
-                    "message": "No found",
+                    "message": "No data found in database",
                     "args": self.pkghash,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         PkgDependencies = namedtuple(
             "PkgDependencies", ["name", "version", "flag", "type"]
@@ -61,26 +56,26 @@ class DependsBinPackage(APIWorker):
             el["flag_decoded"] = dp_flags_decode(el["flag"], lut.rpmsense_flags)
 
         # get package name and arch
-        self.conn.request_line = self.sql.get_pkgs_name_and_arch.format(
-            pkghash=self.pkghash
+        response = self.send_sql_request(
+            self.sql.get_pkgs_name_and_arch.format(pkghash=self.pkghash)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
 
         # get package versions
         pkg_versions = []
-        self.conn.request_line = self.sql.get_pkg_binary_versions.format(
-            name=response[0][0], arch=response[0][1]  # type: ignore
+        response = self.send_sql_request(
+            self.sql.get_pkg_binary_versions.format(
+                name=response[0][0], arch=response[0][1]  # type: ignore
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
+
         PkgVersions = namedtuple(
             "PkgVersions", ["branch", "version", "release", "pkghash"]
         )
+
         # sort package versions by branch
         pkg_branches = sort_branches([el[0] for el in response])  # type: ignore
         pkg_versions = tuplelist_to_dict(response, 3)  # type: ignore
@@ -116,69 +111,61 @@ class PackagesDependence(APIWorker):
         dp_type = self.args["dp_type"]
         branch = self.args["branch"]
 
-        self.conn.request_line = self.sql.get_pkgs_depends.format(
-            dp_name=dp_name,
-            branch=branch,
-            dp_type=dp_type,
+        response = self.send_sql_request(
+            self.sql.get_pkgs_depends.format(
+                dp_name=dp_name,
+                branch=branch,
+                dp_type=dp_type,
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
-                    "message": "No packages found in last packages with hash",
+                    "message": "No data found in database for given parameters",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
         pkg_hash = response
 
         # create temporary table with pkg_hash
         tmp_table = "tmp_pkghash"
-        self.conn.request_line = self.sql.create_tmp_table.format(
-            tmp_table=tmp_table, columns="(pkg_hash UInt64)"
+        _ = self.send_sql_request(
+            self.sql.create_tmp_table.format(
+                tmp_table=tmp_table, columns="(pkg_hash UInt64)"
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
 
         # insert pkg_hash into temporary table
-        self.conn.request_line = (
-            self.sql.insert_into_tmp_table.format(tmp_table=tmp_table),
+        _ = self.send_sql_request(
             (
-                {
-                    "pkg_hash": el[0],
-                }
-                for el in pkg_hash
-            ),
+                self.sql.insert_into_tmp_table.format(tmp_table=tmp_table),
+                (
+                    {
+                        "pkg_hash": el[0],
+                    }
+                    for el in pkg_hash
+                ),
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
 
-        self.conn.request_line = self.sql.get_repo_packages.format(
-            tmp_table=tmp_table, branch=branch
+        response = self.send_sql_request(
+            self.sql.get_repo_packages.format(tmp_table=tmp_table, branch=branch)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No data found in database for given parameters",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         PkgMeta = namedtuple(
             "PkgMeta",
@@ -204,14 +191,14 @@ class PackagesDependence(APIWorker):
 
         # get pkgsetname dependency
         all_branches = []
-        self.conn.request_line = self.sql.get_pkgset_depends.format(
-            dp_name=dp_name, dp_type=dp_type
+        response = self.send_sql_request(
+            self.sql.get_pkgset_depends.format(dp_name=dp_name, dp_type=dp_type)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
+
         PkgCount = namedtuple("PkgCount", ["branch", "count"])
+
         # sort package counts by branch
         pkg_branches = sort_branches([el[1] for el in response])  # type: ignore
         pkg_counts = {el[1]: el[0] for el in response}  # type: ignore
@@ -257,21 +244,18 @@ class DependsSrcPackage(APIWorker):
             depth = 1
 
         # get package info
-        self.conn.request_line = self.sql.get_pkg_info.format(pkghash=self.pkghash)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(
+            self.sql.get_pkg_info.format(pkghash=self.pkghash)
+        )
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No data found in database for given parameters",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         PkgInfo = namedtuple(
             "PkgInfo", ["name", "epoch", "version", "release", "buildtime"]
@@ -281,21 +265,19 @@ class DependsSrcPackage(APIWorker):
 
         # build dependencies
         tmp_table = "_TmpSrcDepends"
-        self.conn.request_line = self.sql.make_src_depends_tmp.format(
-            tmp_table=tmp_table, pkghash=self.pkghash
+        _ = self.send_sql_request(
+            self.sql.make_src_depends_tmp.format(
+                tmp_table=tmp_table, pkghash=self.pkghash
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
 
         # read binary dependencies
-        self.conn.request_line = self.sql.select_all_tmp_table.format(
-            tmp_table=tmp_table
+        response = self.send_sql_request(
+            self.sql.select_all_tmp_table.format(tmp_table=tmp_table)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
 
         PkgDependencies = namedtuple("PkgDependencies", ["name", "version", "flag"])
@@ -307,20 +289,18 @@ class DependsSrcPackage(APIWorker):
 
         # get source packages from last branch state by dependency names
         tmp_table_2 = "_TmpSrcByBinDeps"
-        self.conn.request_line = self.sql.make_src_by_bin_deps_tmp.format(
-            tmp_table_2=tmp_table_2, tmp_table=tmp_table, branch=branch
+        _ = self.send_sql_request(
+            self.sql.make_src_by_bin_deps_tmp.format(
+                tmp_table_2=tmp_table_2, tmp_table=tmp_table, branch=branch
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
 
-        self.conn.request_line = self.sql.get_src_by_bin_deps.format(
-            tmp_table=tmp_table_2
+        response = self.send_sql_request(
+            self.sql.get_src_by_bin_deps.format(tmp_table=tmp_table_2)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
 
         SrcPkgInfo = namedtuple(
@@ -331,16 +311,16 @@ class DependsSrcPackage(APIWorker):
             pkg["pkghash"] = str(pkg["pkghash"])
 
         # drop temporary table
-        self.conn.request_line = self.sql.drop_tmp_table.format(tmp_table=tmp_table)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        _ = self.send_sql_request(
+            self.sql.drop_tmp_table.format(tmp_table=tmp_table)
+        )
+        if not self.sql_status:
             return self.error
 
-        self.conn.request_line = self.sql.drop_tmp_table.format(tmp_table=tmp_table_2)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        _ = self.send_sql_request(
+            self.sql.drop_tmp_table.format(tmp_table=tmp_table_2)
+        )
+        if not self.sql_status:
             return self.error
 
         res = {
