@@ -35,28 +35,25 @@ class PackageVersionsFromImages(APIWorker):
         edition = self.args["edition"]
         img_type = self.args["type"]
         taglike = f"{branch}:{edition}:%%:{img_type}"
-        # # get packages info
-        self.conn.request_line = self.sql.get_pkgs_versions_from_images.format(
-            name=name,
-            branch=branch,
-            edition=edition,
-            taglike=taglike,
-            img_type=img_type,
+
+        response = self.send_sql_request(
+            self.sql.get_pkgs_versions_from_images.format(
+                name=name,
+                branch=branch,
+                edition=edition,
+                taglike=taglike,
+                img_type=img_type,
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No data found in database",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         PkgVersions = namedtuple(
             "PkgVersions",
@@ -78,6 +75,7 @@ class PackageVersionsFromImages(APIWorker):
                 "type",
             ],
         )
+
         versions = [PkgVersions(*el)._asdict() for el in response]  # type: ignore
         for pkg in versions:
             pkg["hash"] = str(pkg["hash"])
