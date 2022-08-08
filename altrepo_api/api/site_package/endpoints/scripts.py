@@ -36,50 +36,44 @@ class BinaryPackageScripts(APIWorker):
         super().__init__()
 
     def get(self):
-        self.conn.request_line = self.sql.get_bin_pkg_scripts.format(
-            pkghash=self.pkghash
+        response = self.send_sql_request(
+            self.sql.get_bin_pkg_scripts.format(pkghash=self.pkghash)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": f"No information found in DB for package hash {self.pkghash}",
                     "args": self.pkghash,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         PkgScripts = namedtuple("PkgScripts", ["postin", "postun", "prein", "preun"])
         pkg_scripts = [PkgScripts(*el)._asdict() for el in response]
 
         # get package name and arch
-        self.conn.request_line = self.sql.get_pkgs_name_and_arch.format(
-            pkghash=self.pkghash
+        response = self.send_sql_request(
+            self.sql.get_pkgs_name_and_arch.format(pkghash=self.pkghash)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
 
         # get package versions
         pkg_versions = []
         pkg_name = response[0][0]  # type: ignore
         pkg_arch = response[0][1]  # type: ignore
-        self.conn.request_line = self.sql.get_pkg_binary_versions.format(
-            name=pkg_name, arch=pkg_arch
+
+        response = self.send_sql_request(
+            self.sql.get_pkg_binary_versions.format(name=pkg_name, arch=pkg_arch)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
+
         PkgVersions = namedtuple(
             "PkgVersions", ["branch", "version", "release", "pkghash"]
         )
+
         # sort package versions by branch
         pkg_branches = sort_branches([el[0] for el in response])  # type: ignore
         pkg_versions = tuplelist_to_dict(response, 3)  # type: ignore

@@ -41,28 +41,29 @@ class SourcePackageVersions(APIWorker):
 
     def get(self):
         self.name = self.args["name"]
-        self.conn.request_line = self.sql.get_pkg_versions.format(name=self.name)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+
+        response = self.send_sql_request(
+            self.sql.get_pkg_versions.format(name=self.name)
+        )
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": f"No information found for {self.name} in DB",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
+
         pkg_versions = []
         PkgVersions = namedtuple(
             "PkgVersions", ["branch", "version", "release", "pkghash"]
         )
+
         # sort package versions by branch
         pkg_branches = sort_branches([el[0] for el in response])
         pkg_versions = tuplelist_to_dict(response, 3)  # type: ignore
+
         # workaround for multiple versions of returned for certain branch
         pkg_versions = [
             PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
@@ -106,33 +107,35 @@ class PackageVersions(APIWorker):
         self.pkg_type = self.args["package_type"]
         pkg_type_to_sql = {"source": 1, "binary": 0}
         source = pkg_type_to_sql[self.pkg_type]
+        request_line = ""
+
         if source:
-            self.conn.request_line = self.sql.get_pkg_versions.format(name=self.name)
+            request_line = self.sql.get_pkg_versions.format(name=self.name)
         else:
-            self.conn.request_line = self.sql.get_pkg_binary_versions.format(
+            request_line = self.sql.get_pkg_binary_versions.format(
                 name=self.name, arch=self.arch
             )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+
+        response = self.send_sql_request(request_line)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": f"No information found for {self.name} in DB",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
+
         pkg_versions = []
         PkgVersions = namedtuple(
             "PkgVersions", ["branch", "version", "release", "pkghash"]
         )
+
         # sort package versions by branch
         pkg_branches = sort_branches([el[0] for el in response])
         pkg_versions = tuplelist_to_dict(response, 3)  # type: ignore
+
         # workaround for multiple versions of returned for certain branch
         pkg_versions = [
             PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches

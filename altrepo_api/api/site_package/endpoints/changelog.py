@@ -46,24 +46,22 @@ class PackageChangelog(APIWorker):
 
     def get(self):
         self.chlog_length = self.args["changelog_last"]
-        self.conn.request_line = (
-            self.sql.get_pkg_changelog,
-            {"pkghash": self.pkghash, "limit": self.chlog_length},
+
+        response = self.send_sql_request(
+            (
+                self.sql.get_pkg_changelog,
+                {"pkghash": self.pkghash, "limit": self.chlog_length},
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": f"No packages found in last packages with hash {self.pkghash}",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         Changelog = namedtuple("Changelog", ["date", "name", "nick", "evr", "message"])
         changelog_list = [Changelog(*el[1:])._asdict() for el in response]
