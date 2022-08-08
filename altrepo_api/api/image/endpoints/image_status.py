@@ -116,32 +116,25 @@ class ImageStatus(APIWorker):
             )
 
         images = [img2ntuple(p) for p in self.payload["images"]]
-        self.conn.request_line = (self.sql.insert_image_status, images)
-        status, response = self.conn.send_request()
 
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        _ = self.send_sql_request((self.sql.insert_image_status, images))
+        if not self.sql_status:
             return self.error
+
         return "data loaded successfully", 201
 
     def get(self):
         """
         Get information about a image
         """
-        self.conn.request_line = self.sql.get_img_status
 
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(self.sql.get_img_status)
+        if not self.sql_status:
             return self.error
-
         if not response:
-            self._store_error(
-                {"message": "No data not found in database", "args": self.args},
-                self.ll.INFO,
-                404,
+            return self.store_error(
+                {"message": "No data not found in database", "args": self.args}
             )
-            return self.error
 
         ImageStatusInfo = namedtuple(
             "RepositoryStatusInfo",
@@ -204,24 +197,16 @@ class ImageTagStatus(APIWorker):
         Load iso image data
         """
 
-        Tags = namedtuple(
-            "Tags",
-            [
-                "tag",
-                "show",
-            ],
-        )
+        Tags = namedtuple("Tags", ["tag", "show"])
 
         def img2ntuple(p: dict) -> Tags:
             return Tags(tag=p["img_tag"], show=p["img_show"])
 
         images = [img2ntuple(p) for p in self.payload["tags"]]
-        self.conn.request_line = (self.sql.insert_image_tag_status, images)
-        status, response = self.conn.send_request()
-
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        _ = self.send_sql_request((self.sql.insert_image_tag_status, images))
+        if not self.sql_status:
             return self.error
+
         return "data loaded successfully", 201
 
     def get(self):
@@ -234,30 +219,17 @@ class ImageTagStatus(APIWorker):
         else:
             edition = ""
 
-        self.conn.request_line = self.sql.get_img_tag_status.format(
-            branch=branch, edition=edition
+        response = self.send_sql_request(
+            self.sql.get_img_tag_status.format(branch=branch, edition=edition)
         )
-
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
-
         if not response:
-            self._store_error(
-                {"message": "No data not found in database", "args": self.args},
-                self.ll.INFO,
-                404,
+            return self.store_error(
+                {"message": "No data not found in database", "args": self.args}
             )
-            return self.error
 
-        ImageTagStatusInfo = namedtuple(
-            "ImageTagStatusInfo",
-            [
-                "tag",
-                "show",
-            ],
-        )
+        ImageTagStatusInfo = namedtuple("ImageTagStatusInfo", ["tag", "show"])
 
         res = [ImageTagStatusInfo(*el)._asdict() for el in response]
         res = {"tags": res}
@@ -311,8 +283,6 @@ class ActiveImages(APIWorker):
             msg = "Failed to parse version: '{0}'.".format(version)
             raise ValueError(msg)
 
-        return tuple()
-
     def get(self):
         branch = self.args["branch"]
         edition = self.args["edition"]
@@ -337,22 +307,15 @@ class ActiveImages(APIWorker):
         if img_type:
             image_clause += f" AND img_type = '{img_type}'"
 
-        self.conn.request_line = self.sql.get_active_images.format(
-            image_clause=image_clause, branch=branch
+        response = self.send_sql_request(
+            self.sql.get_active_images.format(image_clause=image_clause, branch=branch)
         )
-
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
-
         if not response:
-            self._store_error(
-                {"message": "No data not found in database", "args": self.args},
-                self.ll.INFO,
-                404,
+            return self.store_error(
+                {"message": "No data not found in database", "args": self.args}
             )
-            return self.error
 
         ActiveImagesInfo = namedtuple(
             "ActiveImagesInfo",

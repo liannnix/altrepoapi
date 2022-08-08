@@ -83,51 +83,48 @@ class CheckPackages(APIWorker):
 
         # create temporary table with input packages
         tmp_table = "_TmpInPkgs"
-        self.conn.request_line = self.sql.create_tmp_table.format(
-            tmp_table=tmp_table,
-            columns=self.sql.tmp_table_columns,
+        _ = self.send_sql_request(
+            self.sql.create_tmp_table.format(
+                tmp_table=tmp_table,
+                columns=self.sql.tmp_table_columns,
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if self.sql_status is False:
             return self.error
-        self.conn.request_line = (
-            self.sql.insert_into_tmp_table.format(tmp_table=tmp_table),
-            (tuple(p) for p in packages),
+
+        _ = self.send_sql_request(
+            (
+                self.sql.insert_into_tmp_table.format(tmp_table=tmp_table),
+                (tuple(p) for p in packages),
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if self.sql_status is False:
             return self.error
 
         pkgs_not_found = set()
         pkgs_not_in_db = set()
         pkgs_in_tasks = set()
         pkgs_tasks = list()
+
         # check if packages in DB for branch
-        self.conn.request_line = self.sql.get_pkgs_not_in_branch.format(
-            tmp_table=tmp_table, branch=self.branch
+        response = self.send_sql_request(
+            self.sql.get_pkgs_not_in_branch.format(
+                tmp_table=tmp_table, branch=self.branch
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if self.sql_status is False:
             return self.error
         if not response:
-            self._store_error(
-                {"message": "No data found in database"},
-                self.ll.ERROR,
-                404,
-            )
-            return self.error
+            return self.store_error({"message": "No data found in database"})
+
         pkgs_not_found = {x[0] for x in response if x[1] == 0}
+
         # get tasks for packages that are not in branch
         if pkgs_not_found:
-            self.conn.request_line = self.sql.get_pkgs_tasks.format(
-                hshs=tuple(pkgs_not_found)
+            response = self.send_sql_request(
+                self.sql.get_pkgs_tasks.format(hshs=tuple(pkgs_not_found))
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if self.sql_status is False:
                 return self.error
 
             PkgTask = namedtuple("PkgTask", ["hash", "taskid", "subtaskid"])
@@ -137,10 +134,8 @@ class CheckPackages(APIWorker):
         pkgs_not_in_db = pkgs_not_found - pkgs_in_tasks
 
         # drop temporary table
-        self.conn.request_line = self.sql.drop_tmp_table.format(tmp_table=tmp_table)
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        _ = self.send_sql_request(self.sql.drop_tmp_table.format(tmp_table=tmp_table))
+        if self.sql_status is False:
             return self.error
 
         # build result response
@@ -209,20 +204,21 @@ class CheckPackages(APIWorker):
 
         # create temporary table with input packages
         tmp_table = "_TmpInPkgs"
-        self.conn.request_line = self.sql.create_tmp_table.format(
-            tmp_table=tmp_table, columns=self.sql.tmp_table_columns
+        _ = self.send_sql_request(
+            self.sql.create_tmp_table.format(
+                tmp_table=tmp_table, columns=self.sql.tmp_table_columns
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if self.sql_status is False:
             return self.error
-        self.conn.request_line = (
-            self.sql.insert_into_tmp_table.format(tmp_table=tmp_table),
-            (tuple(p) for p in packages),
+
+        _ = self.send_sql_request(
+            (
+                self.sql.insert_into_tmp_table.format(tmp_table=tmp_table),
+                (tuple(p) for p in packages),
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if self.sql_status is False:
             return self.error
 
         pkgs_in_branch = set()
@@ -232,29 +228,27 @@ class CheckPackages(APIWorker):
 
         # create temporary table with packages in DB for branch
         tmp_table2 = "_TmpPkgsInBranch"
-        self.conn.request_line = self.sql.tmp_pkgs_in_branch.format(
-            tmp_table=tmp_table2, tmp_table2=tmp_table, branch=self.branch
+        _ = self.send_sql_request(
+            self.sql.tmp_pkgs_in_branch.format(
+                tmp_table=tmp_table2, tmp_table2=tmp_table, branch=self.branch
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if self.sql_status is False:
             return self.error
 
         tmp_table3 = "_TmpPkgHshsByNEVR"
-        self.conn.request_line = self.sql.tmp_pkgs_by_nevr.format(
-            tmp_table=tmp_table3, tmp_table2=tmp_table, branch=self.branch
+        _ = self.send_sql_request(
+            self.sql.tmp_pkgs_by_nevr.format(
+                tmp_table=tmp_table3, tmp_table2=tmp_table, branch=self.branch
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if self.sql_status is False:
             return self.error
 
-        self.conn.request_line = self.sql.select_all_tmp_table.format(
-            tmp_table=tmp_table2
+        response = self.send_sql_request(
+            self.sql.select_all_tmp_table.format(tmp_table=tmp_table2)
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if self.sql_status is False:
             return self.error
 
         packages_in_branch = [Package(*el) for el in response]  # type: ignore
@@ -297,13 +291,13 @@ class CheckPackages(APIWorker):
         V_CMP_NONE = 127
         pkgs_compare_ver: dict[tuple, list] = {}
         if pkgs_not_found:
-            self.conn.request_line = self.sql.get_pkgs_last_branch_by_na.format(
-                branch=self.branch,
-                na=[(p[1], p[6]) for p in packages if p.hash in pkgs_not_found],
+            response = self.send_sql_request(
+                self.sql.get_pkgs_last_branch_by_na.format(
+                    branch=self.branch,
+                    na=[(p[1], p[6]) for p in packages if p.hash in pkgs_not_found],
+                )
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if self.sql_status is False:
                 return self.error
 
             pkgs_nf_last = [Package(*el) for el in response]  # type: ignore
@@ -323,29 +317,25 @@ class CheckPackages(APIWorker):
 
         # search not found packages in tasks
         if pkgs_not_found:
-            self.conn.request_line = self.sql.truncate_tmp_table.format(
-                tmp_table=tmp_table
+            _ = self.send_sql_request(
+                self.sql.truncate_tmp_table.format(tmp_table=tmp_table)
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if self.sql_status is False:
                 return self.error
 
-            self.conn.request_line = (
-                self.sql.insert_into_tmp_table.format(tmp_table=tmp_table),
-                (tuple(p) for p in packages if p.hash in pkgs_not_found),
+            _ = self.send_sql_request(
+                (
+                    self.sql.insert_into_tmp_table.format(tmp_table=tmp_table),
+                    (tuple(p) for p in packages if p.hash in pkgs_not_found),
+                )
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if self.sql_status is False:
                 return self.error
 
-            self.conn.request_line = self.sql.get_pkgs_tasks_nevr.format(
-                tmp_table=tmp_table
+            response = self.send_sql_request(
+                self.sql.get_pkgs_tasks_nevr.format(tmp_table=tmp_table)
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if self.sql_status is False:
                 return self.error
 
             pkgs_tasks = [(tuple(el[1:3]), Package(*el[3:])) for el in response]  # type: ignore
@@ -363,18 +353,20 @@ class CheckPackages(APIWorker):
 
         # search packages in last branch state by NEVRA excluding disttag
         if pkgs_not_in_db:
-            self.conn.request_line = self.sql.get_pkgs_last_branch.format(
-                branch=self.branch,
-                nevra=[(*p[1:5], p[6]) for p in packages if p.hash in pkgs_not_found],
+            response = self.send_sql_request(
+                self.sql.get_pkgs_last_branch.format(
+                    branch=self.branch,
+                    nevra=[
+                        (*p[1:5], p[6]) for p in packages if p.hash in pkgs_not_found
+                    ],
+                )
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if self.sql_status is False:
                 return self.error
 
             for p in [Package(*el) for el in response]:  # type: ignore
                 kp = key_nevra(p)
-                for pp, _, _ in pkgs_compare.values():
+                for pp, *_ in pkgs_compare.values():
                     kpp = key_nevra(pp)
                     if pp.hash in pkgs_not_in_db and kpp == kp:
                         key = key_nevrda(pp)
@@ -383,27 +375,22 @@ class CheckPackages(APIWorker):
                             pkgs_compare[key][2] = "last branch"
 
         # drop temporary tables
-        self.conn.request_line = self.sql.drop_tmp_table.format(tmp_table=tmp_table)
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        _ = self.send_sql_request(self.sql.drop_tmp_table.format(tmp_table=tmp_table))
+        if self.sql_status is False:
             return self.error
 
-        self.conn.request_line = self.sql.drop_tmp_table.format(tmp_table=tmp_table2)
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        _ = self.send_sql_request(self.sql.drop_tmp_table.format(tmp_table=tmp_table2))
+        if self.sql_status is False:
             return self.error
 
-        self.conn.request_line = self.sql.drop_tmp_table.format(tmp_table=tmp_table3)
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        _ = self.send_sql_request(self.sql.drop_tmp_table.format(tmp_table=tmp_table3))
+        if self.sql_status is False:
             return self.error
 
         # build result response
         ver_cmp_ = {-1: "older", 0: "equal", 1: "newer", V_CMP_NONE: "none"}
         res = []
+
         for p1, p2, s in pkgs_compare.values():
             ver_check_ = pkgs_compare_ver.get(key_nevrda(p1), None)
             if ver_check_ is None or ver_check_[1] == _empty_p:
