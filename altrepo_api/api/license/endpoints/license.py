@@ -55,20 +55,16 @@ class LicenseParser(APIWorker):
 
     def parse_license(self):
         # get license aliases from database
-        self.conn.request_line = self.sql.get_aliases
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(self.sql.get_aliases)
+        if self.sql_status is False:
             return
         aliases = {}
         if response:
             for el in response:  # type: ignore
                 aliases[el[0]] = el[1]
         # get SPDX license names
-        self.conn.request_line = self.sql.get_spdx_ids
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(self.sql.get_spdx_ids)
+        if self.sql_status is False:
             return
         spdx_ids = set()
         if response:
@@ -92,15 +88,12 @@ class LicenseTokens(APIWorker):
         lp.parse_license()
         if lp.status:
             if not lp.tokens:
-                self._store_error(
+                return self.store_error(
                     {
                         "message": "No valid license tokens found",
                         "args": self.args,
-                    },
-                    self.ll.INFO,
-                    404,
+                    }
                 )
-                return self.error
             res = {
                 "request_args": self.args,
                 "length": len(lp.tokens),
@@ -125,30 +118,23 @@ class LicenseInfo(APIWorker):
         lp.parse_license()
         if lp.status:
             if not lp.tokens:
-                self._store_error(
+                return self.store_error(
                     {
                         "message": "No valid license tokens found",
                         "args": self.args,
-                    },
-                    self.ll.INFO,
-                    404,
+                    }
                 )
-                return self.error
 
             spdx_id = list(lp.tokens.values())[0]
-            self.conn.request_line = self.sql.get_license_info.format(id=spdx_id)
-            status, response = self.conn.send_request()
-            if not status:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            response = self.send_sql_request(
+                self.sql.get_license_info.format(id=spdx_id)
+            )
+            if not self.sql_status:
                 return self.error
-
             if not response:
-                self._store_error(
-                    {"message": "No data not found in database", "args": self.args},
-                    self.ll.INFO,
-                    404,
+                return self.store_error(
+                    {"message": "No data not found in database", "args": self.args}
                 )
-                return self.error
 
             LicenseInfo = namedtuple(
                 "LicenseInfo", ["id", "name", "text", "header", "urls", "type"]
