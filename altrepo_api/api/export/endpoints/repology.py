@@ -50,21 +50,18 @@ class RepologyExport(APIWorker):
 
     def get(self):
         # get branch stat
-        self.conn.request_line = self.sql.get_branch_stat.format(branch=self.branch)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(
+            self.sql.get_branch_stat.format(branch=self.branch)
+        )
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": f"No data found for branch '{self.branch}'",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         RepoStat = namedtuple("RepoStat", ["arch", "cnt"])
         repo_date, repo_stat = response[0][0], [  # type: ignore
@@ -72,21 +69,18 @@ class RepologyExport(APIWorker):
         ]
 
         # get package info
-        self.conn.request_line = self.sql.get_branch_pkg_info.format(branch=self.branch)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(
+            self.sql.get_branch_pkg_info.format(branch=self.branch)
+        )
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": f"No data found for branch '{self.branch}'",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         SrcPkgInfo = namedtuple(
             "SrcPkgInfo",

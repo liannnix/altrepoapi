@@ -48,23 +48,18 @@ class SitemapPackages(APIWorker):
 
     def get(self):
         # get source packages
-        self.conn.request_line = self.sql.get_branch_source_packages.format(
-            branch=self.branch
+        response = self.send_sql_request(
+            self.sql.get_branch_source_packages.format(branch=self.branch)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": f"No data found for branch '{self.branch}'",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         SrcPkg = namedtuple("SrcPkg", ["pkghash", "name", "buildtime"])
         src_packages = [SrcPkg(*el)._asdict() for el in response]
