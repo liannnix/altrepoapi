@@ -40,25 +40,21 @@ class FindPackageset(APIWorker):
         else:
             branchs_cond = ""
 
-        self.conn.request_line = (
-            self.sql.get_branch_with_pkgs.format(branchs=branchs_cond),
-            {"pkgs": self.packages},
+        response = self.send_sql_request(
+            (
+                self.sql.get_branch_with_pkgs.format(branchs=branchs_cond),
+                {"pkgs": self.packages},
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
-
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No results found in last package sets for given parameters",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         PkgsetInfo = namedtuple(
             "PkgsetInfo",

@@ -50,68 +50,57 @@ class PackageByFileName(APIWorker):
 
         file_names = {}
         # if file:
-        self.conn.request_line = (
-            self.sql.gen_table_fnhshs_by_file.format(tmp_table="TmpFileNames"),
-            {"elem": self.file},
+        _ = self.send_sql_request(
+            (
+                self.sql.gen_table_fnhshs_by_file.format(tmp_table="TmpFileNames"),
+                {"elem": self.file},
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
 
-        self.conn.request_line = self.sql.select_all_tmp_table.format(
-            tmp_table="TmpFileNames"
+        response = self.send_sql_request(
+            self.sql.select_all_tmp_table.format(tmp_table="TmpFileNames")
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No data found in database for given parameters",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         for f in response:
             file_names[f[0]] = f[1]
 
-        self.conn.request_line = (
-            self.sql.gen_table_hshs_by_file.format(
-                tmp_table="TmpFiles",
-                param=self.sql.gen_table_hshs_by_file_mod_hashname.format(
-                    tmp_table="TmpFileNames"
+        _ = self.send_sql_request(
+            (
+                self.sql.gen_table_hshs_by_file.format(
+                    tmp_table="TmpFiles",
+                    param=self.sql.gen_table_hshs_by_file_mod_hashname.format(
+                        tmp_table="TmpFileNames"
+                    ),
                 ),
-            ),
-            {"branch": self.branch, "arch": self.arch},
+                {"branch": self.branch, "arch": self.arch},
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
 
-        self.conn.request_line = self.sql.select_all_tmp_table.format(
-            tmp_table="TmpFiles"
+        response = self.send_sql_request(
+            self.sql.select_all_tmp_table.format(tmp_table="TmpFiles")
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
-
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No data found in database for given parameters",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         ids_filename_dict = tuplelist_to_dict(response, 1)  # type: ignore
 
@@ -122,13 +111,13 @@ class PackageByFileName(APIWorker):
 
         ids_filename_dict = new_ids_filename_dict
 
-        self.conn.request_line = (
-            self.sql.pkg_by_file_get_meta_by_hshs.format(tmp_table="TmpFiles"),
-            {"branch": self.branch},
+        response = self.send_sql_request(
+            (
+                self.sql.pkg_by_file_get_meta_by_hshs.format(tmp_table="TmpFiles"),
+                {"branch": self.branch},
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
 
         output_values = []
@@ -181,35 +170,29 @@ class PackageByFileMD5(APIWorker):
             self.arch = lut.known_archs
         self.arch = tuple(self.arch)
 
-        self.conn.request_line = (
-            self.sql.gen_table_hshs_by_file.format(
-                tmp_table="TmpFiles", param=self.sql.gen_table_hshs_by_file_mod_md5
-            ),
-            {"branch": self.branch, "arch": self.arch, "elem": self.md5},
+        _ = self.send_sql_request(
+            (
+                self.sql.gen_table_hshs_by_file.format(
+                    tmp_table="TmpFiles", param=self.sql.gen_table_hshs_by_file_mod_md5
+                ),
+                {"branch": self.branch, "arch": self.arch, "elem": self.md5},
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
 
-        self.conn.request_line = self.sql.select_all_tmp_table.format(
-            tmp_table="TmpFiles"
+        response = self.send_sql_request(
+            self.sql.select_all_tmp_table.format(tmp_table="TmpFiles")
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
-
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No data found in database for given parameters",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         ids_filename_dict = tuplelist_to_dict(response, 1)  # type: ignore
 
@@ -219,24 +202,19 @@ class PackageByFileMD5(APIWorker):
         for v in ids_filename_dict.values():
             [f_hashnames.add(x) for x in v]
         # 2. select real file names from DB
-        self.conn.request_line = self.sql.pkg_by_file_get_fnames_by_fnhashs.format(
-            tmp_table="TmpFiles"
+        response = self.send_sql_request(
+            self.sql.pkg_by_file_get_fnames_by_fnhashs.format(tmp_table="TmpFiles")
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
 
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No data found in database for given parameters",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         for r in response:
             file_names[r[0]] = r[1]
@@ -248,13 +226,13 @@ class PackageByFileMD5(APIWorker):
 
         ids_filename_dict = new_ids_filename_dict
 
-        self.conn.request_line = (
-            self.sql.pkg_by_file_get_meta_by_hshs.format(tmp_table="TmpFiles"),
-            {"branch": self.branch},
+        response = self.send_sql_request(
+            (
+                self.sql.pkg_by_file_get_meta_by_hshs.format(tmp_table="TmpFiles"),
+                {"branch": self.branch},
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
 
         output_values = []

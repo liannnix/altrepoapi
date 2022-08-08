@@ -55,24 +55,22 @@ class MisconflictPackages(APIWorker):
 
         if not pkg_hashes:
             # get hash for package names
-            self.conn.request_line = (
-                self.sql.misconflict_get_hshs_by_pkgs,
-                {"pkgs": self.packages, "branch": self.branch, "arch": self.archs},
+            response = self.send_sql_request(
+                (
+                    self.sql.misconflict_get_hshs_by_pkgs,
+                    {"pkgs": self.packages, "branch": self.branch, "arch": self.archs},
+                )
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return
             if not response:
-                self._store_error(
+                _ = self.store_error(
                     {
                         "message": (
                             f"Packages {list(self.packages)} not in package set '{self.branch}'"
                             f" for archs {list(self.archs)}"
                         )
-                    },
-                    self.ll.INFO,
-                    404,
+                    }
                 )
                 return
 
@@ -83,16 +81,14 @@ class MisconflictPackages(APIWorker):
             input_pkgs_names = {pkg[1] for pkg in response}
             if len(input_pkgs_names) != len(self.packages):
                 # return utils.json_str_error("Error of input data.")
-                self._store_error(
+                _ = self.store_error(
                     {
                         "message": (
                             f"Packages ({set(self.packages) - input_pkgs_names}) not in"
                             f" package set '{self.branch}'"
                             f" for archs {list(self.archs)}"
                         )
-                    },
-                    self.ll.INFO,
-                    404,
+                    }
                 )
                 return
         else:
@@ -100,95 +96,98 @@ class MisconflictPackages(APIWorker):
 
         # store input_pkg_hashes to temporary table
         tmp_pkg_hshs = "tmp_input_pkg_hshs"
-        self.conn.request_line = self.sql.create_tmp_table.format(
-            tmp_table=tmp_pkg_hshs, columns="(pkg_hash UInt64)"
+
+        _ = self.send_sql_request(
+            self.sql.create_tmp_table.format(
+                tmp_table=tmp_pkg_hshs, columns="(pkg_hash UInt64)"
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
 
-        self.conn.request_line = (
-            self.sql.insert_into_tmp_table.format(tmp_table=tmp_pkg_hshs),
-            ((hsh,) for hsh in input_pkg_hshs),
+        _ = self.send_sql_request(
+            (
+                self.sql.insert_into_tmp_table.format(tmp_table=tmp_pkg_hshs),
+                ((hsh,) for hsh in input_pkg_hshs),
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
 
         # create temporary table with repository state hashes
         tmp_repo_state = "tmp_repo_state_hshs"
-        self.conn.request_line = self.sql.create_tmp_table.format(
-            tmp_table=tmp_repo_state, columns="(pkg_hash UInt64)"
+
+        _ = self.send_sql_request(
+            self.sql.create_tmp_table.format(
+                tmp_table=tmp_repo_state, columns="(pkg_hash UInt64)"
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
+
         if task_repo_hashes is not None:
             # use repository hashes from task
-            self.conn.request_line = (
-                self.sql.insert_into_tmp_table.format(tmp_table=tmp_repo_state),
-                ((hsh,) for hsh in task_repo_hashes),
+            _ = self.send_sql_request(
+                (
+                    self.sql.insert_into_tmp_table.format(tmp_table=tmp_repo_state),
+                    ((hsh,) for hsh in task_repo_hashes),
+                )
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return
         else:
             # fill it from last_packages
-            self.conn.request_line = self.sql.insert_last_packages_hashes.format(
-                tmp_table=tmp_repo_state, branch=self.branch
+            _ = self.send_sql_request(
+                self.sql.insert_last_packages_hashes.format(
+                    tmp_table=tmp_repo_state, branch=self.branch
+                )
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return
         # delete unused binary packages arch hashes and '*-debuginfo' package hashes
         tmp_repo_state_filtered = "tmp_repo_state_hshs_filtered"
-        self.conn.request_line = self.sql.create_tmp_table.format(
-            tmp_table=tmp_repo_state_filtered, columns="(pkg_hash UInt64)"
+
+        _ = self.send_sql_request(
+            self.sql.create_tmp_table.format(
+                tmp_table=tmp_repo_state_filtered, columns="(pkg_hash UInt64)"
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
         # insert source packages hashes
-        self.conn.request_line = self.sql.insert_pkgs_hshs_filtered_src.format(
-            tmp_table=tmp_repo_state_filtered, tmp_table2=tmp_repo_state
+        _ = self.send_sql_request(
+            self.sql.insert_pkgs_hshs_filtered_src.format(
+                tmp_table=tmp_repo_state_filtered, tmp_table2=tmp_repo_state
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
         # insert binary packages hashes
-        self.conn.request_line = self.sql.insert_pkgs_hshs_filtered_bin.format(
-            tmp_table=tmp_repo_state_filtered,
-            tmp_table2=tmp_repo_state,
-            arch=tuple(self.archs),
+        _ = self.send_sql_request(
+            self.sql.insert_pkgs_hshs_filtered_bin.format(
+                tmp_table=tmp_repo_state_filtered,
+                tmp_table2=tmp_repo_state,
+                arch=tuple(self.archs),
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
         # drop initial repo state hashes temporary table
-        self.conn.request_line = self.sql.drop_tmp_table.format(
-            tmp_table=tmp_repo_state
+        _ = self.send_sql_request(
+            self.sql.drop_tmp_table.format(tmp_table=tmp_repo_state)
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
+
         tmp_repo_state = tmp_repo_state_filtered
 
         # get list of (input package | conflict package | conflict files)
-        self.conn.request_line = self.sql.misconflict_get_pkgs_with_conflict.format(
-            tmp_table=tmp_repo_state, tmp_table2=tmp_pkg_hshs
+        response = self.send_sql_request(
+            self.sql.misconflict_get_pkgs_with_conflict.format(
+                tmp_table=tmp_repo_state, tmp_table2=tmp_pkg_hshs
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
         if not response:
             # no conflict found
@@ -198,10 +197,10 @@ class MisconflictPackages(APIWorker):
         hshs_files = response
 
         # drop input package hashes temporary table
-        self.conn.request_line = self.sql.drop_tmp_table.format(tmp_table=tmp_pkg_hshs)
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        _ = self.send_sql_request(
+            self.sql.drop_tmp_table.format(tmp_table=tmp_pkg_hshs)
+        )
+        if not self.sql_status:
             return
 
         # 1. collect all files_hashnames
@@ -209,16 +208,16 @@ class MisconflictPackages(APIWorker):
         for el in hshs_files:
             [f_hashnames.add(x) for x in el[2]]  # type: ignore
         # 2. select real file names from DB
-        self.conn.request_line = (
-            self.sql.misconflict_get_fnames_by_fnhashs,
-            {"hshs": tuple(f_hashnames)},
+        response = self.send_sql_request(
+            (
+                self.sql.misconflict_get_fnames_by_fnhashs,
+                {"hshs": tuple(f_hashnames)},
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.result
         if not response:
-            self._store_error(
+            _ = self.store_error(
                 {"message": "Failed to get file names from database by hash"},
                 self.ll.INFO,
                 500,
@@ -246,7 +245,7 @@ class MisconflictPackages(APIWorker):
         try:
             filter_ls = c_filter.detect_conflict(in_confl_hshs)
         except SqlRequestError as e:
-            self._store_error(
+            _ = self.store_error(
                 {
                     "message": "Error occured in ConflictFilter",
                     "error": e.error_details,
@@ -280,12 +279,10 @@ class MisconflictPackages(APIWorker):
                 result_list.append(pkg)
 
         # get architectures of found packages
-        self.conn.request_line = self.sql.misconflict_get_pkg_archs.format(
-            hshs=tuple(output_pkgs)
+        response = self.send_sql_request(
+            self.sql.misconflict_get_pkg_archs.format(hshs=tuple(output_pkgs))
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
 
         pkg_archs_dict = tuplelist_to_dict(response, 1)  # type: ignore
@@ -299,12 +296,12 @@ class MisconflictPackages(APIWorker):
         confl_pkgs = remove_duplicate([pkg[1] for pkg in result_dict_cleanup.keys()])
 
         # get main information of packages by package hashes
-        self.conn.request_line = self.sql.misconflict_get_meta_by_hshs.format(
-            tmp_table=tmp_repo_state, pkgs=tuple(confl_pkgs)
+        response = self.send_sql_request(
+            self.sql.misconflict_get_meta_by_hshs.format(
+                tmp_table=tmp_repo_state, pkgs=tuple(confl_pkgs)
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
 
         # form dict name - package info

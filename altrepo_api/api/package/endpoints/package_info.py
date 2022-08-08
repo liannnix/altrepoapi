@@ -113,34 +113,31 @@ class PackageInfo(APIWorker):
             request_line = request_line.format("")
 
         # TODO: deal with 'Out of memory' from SQL server with all_packages - last_packages is OK
-        self.conn.request_line = (request_line, {"branch": self.args["branch"]})
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(
+            (request_line, {"branch": self.args["branch"]})
+        )
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No packages found in last packages for given parameters",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         retval = convert_to_dict(["pkg_hash"] + output_params, response)  # type: ignore
 
         if self.args["full"] and len(response) > 0:  # type: ignore
             pkghashs = join_tuples(response)  # type: ignore
             # changelogs
-            self.conn.request_line = (
-                self.sql.pkg_info_get_changelog,
-                {"pkghshs": pkghashs},
+            response = self.send_sql_request(
+                (
+                    self.sql.pkg_info_get_changelog,
+                    {"pkghshs": pkghashs},
+                )
             )
-            status, response = self.conn.send_request()
-            if not status:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return self.error
 
             changelog_dict = {}
@@ -160,13 +157,13 @@ class PackageInfo(APIWorker):
                     i += 1
 
             # files
-            self.conn.request_line = (
-                self.sql.pkg_info_get_files,
-                {"pkghshs": pkghashs},
+            response = self.send_sql_request(
+                (
+                    self.sql.pkg_info_get_files,
+                    {"pkghshs": pkghashs},
+                )
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return self.error
 
             files_dict = tuplelist_to_dict(response, 1)  # type: ignore
@@ -177,13 +174,13 @@ class PackageInfo(APIWorker):
                     files_dict[hsh] = []
 
             # depends
-            self.conn.request_line = (
-                self.sql.pkg_info_get_depends,
-                {"pkghshs": pkghashs},
+            response = self.send_sql_request(
+                (
+                    self.sql.pkg_info_get_depends,
+                    {"pkghshs": pkghashs},
+                )
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return self.error
 
             depends_dict = tuplelist_to_dict(response, 2)  # type: ignore
