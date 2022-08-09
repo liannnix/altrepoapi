@@ -40,51 +40,42 @@ class MaintainerBeehiveErrors(APIWorker):
         maintainer_nickname = self.args["maintainer_nickname"]
         branch = self.args["branch"]
         by_acl = self.args["by_acl"]
+        request_line = ""
         order_g = ""
 
         if by_acl == "by_nick":
-            self.conn.request_line = self.sql.get_beehive_errors_by_nick_acl.format(
+            request_line = self.sql.get_beehive_errors_by_nick_acl.format(
                 maintainer_nickname=maintainer_nickname, branch=branch
             )
         if by_acl == "by_nick_leader":
             order_g = "AND order_g = 0"
-            self.conn.request_line = (
-                self.sql.get_beehive_errors_by_last_acl_with_group.format(
-                    maintainer_nickname=maintainer_nickname,
-                    branch=branch,
-                    order_g=order_g,
-                )
+            request_line = self.sql.get_beehive_errors_by_last_acl_with_group.format(
+                maintainer_nickname=maintainer_nickname,
+                branch=branch,
+                order_g=order_g,
             )
         if by_acl == "by_nick_or_group":
-            self.conn.request_line = (
-                self.sql.get_beehive_errors_by_nick_or_group_acl.format(
-                    maintainer_nickname=maintainer_nickname, branch=branch
-                )
+            request_line = self.sql.get_beehive_errors_by_nick_or_group_acl.format(
+                maintainer_nickname=maintainer_nickname, branch=branch
             )
         if by_acl == "by_nick_leader_and_group":
-            self.conn.request_line = (
-                self.sql.get_beehive_errors_by_last_acl_with_group.format(
-                    maintainer_nickname=maintainer_nickname,
-                    branch=branch,
-                    order_g=order_g,
-                )
+            request_line = self.sql.get_beehive_errors_by_last_acl_with_group.format(
+                maintainer_nickname=maintainer_nickname,
+                branch=branch,
+                order_g=order_g,
             )
         if by_acl == "none":
-            self.conn.request_line = self.sql.get_beehive_errors_by_maintainer.format(
+            request_line = self.sql.get_beehive_errors_by_maintainer.format(
                 maintainer_nickname=maintainer_nickname, branch=branch
             )
 
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(request_line)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {"message": "No data not found in database", "args": self.args},
-                self.ll.INFO,
-                404,
             )
-            return self.error
 
         BeehiveStatus = namedtuple(
             "BeehiveStatus",
@@ -101,6 +92,7 @@ class MaintainerBeehiveErrors(APIWorker):
                 "epoch",
             ],
         )
+
         res = [BeehiveStatus(*el)._asdict() for el in response]
 
         for el in res:

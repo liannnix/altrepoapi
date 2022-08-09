@@ -37,49 +37,44 @@ class MaintainerPackages(APIWorker):
         maintainer_nickname = self.args["maintainer_nickname"]
         branch = self.args["branch"]
         by_acl = self.args["by_acl"]
+        request_line = ""
 
         if by_acl == "by_nick":
-            self.conn.request_line = self.sql.get_maintainer_pkg_by_nick_acl.format(
+            request_line = self.sql.get_maintainer_pkg_by_nick_acl.format(
                 maintainer_nickname=maintainer_nickname, branch=branch
             )
         if by_acl == "by_nick_leader":
-            self.conn.request_line = (
-                self.sql.get_maintainer_pkg_by_nick_leader_acl.format(
-                    maintainer_nickname=maintainer_nickname, branch=branch
-                )
+            request_line = self.sql.get_maintainer_pkg_by_nick_leader_acl.format(
+                maintainer_nickname=maintainer_nickname, branch=branch
             )
         if by_acl == "by_nick_or_group":
-            self.conn.request_line = (
-                self.sql.get_maintainer_pkg_by_nick_or_group_acl.format(
-                    maintainer_nickname=maintainer_nickname, branch=branch
-                )
+            request_line = self.sql.get_maintainer_pkg_by_nick_or_group_acl.format(
+                maintainer_nickname=maintainer_nickname, branch=branch
             )
         if by_acl == "by_nick_leader_and_group":
-            self.conn.request_line = (
+            request_line = (
                 self.sql.get_maintainer_pkg_by_nick_leader_and_group_acl.format(
                     maintainer_nickname=maintainer_nickname, branch=branch
                 )
             )
         if by_acl == "none":
-            self.conn.request_line = self.sql.get_maintainer_pkg.format(
+            request_line = self.sql.get_maintainer_pkg.format(
                 maintainer_nickname=maintainer_nickname, branch=branch
             )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+
+        response = self.send_sql_request(request_line)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
-                {"message": "No data not found in database", "args": self.args},
-                self.ll.INFO,
-                404,
+            return self.store_error(
+                {"message": "No data not found in database", "args": self.args}
             )
-            return self.error
 
         MaintainerPackages = namedtuple(
             "MaintainerPackagesModel",
             ["name", "buildtime", "url", "summary", "version", "release"],
         )
+
         res = [MaintainerPackages(*el)._asdict() for el in response]
         res = {"request_args": self.args, "length": len(res), "packages": res}
 

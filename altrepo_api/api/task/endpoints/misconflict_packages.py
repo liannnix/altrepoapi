@@ -31,15 +31,11 @@ class TaskMisconflictPackages(APIWorker):
         super().__init__()
 
     def check_task_id(self):
-        self.conn.request_line = self.sql.check_task.format(id=self.task_id)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.INFO, 500)
+        response = self.send_sql_request(self.sql.check_task.format(id=self.task_id))
+        if not self.sql_status:
             return False
 
-        if response[0][0] == 0:  # type: ignore
-            return False
-        return True
+        return response[0][0] != 0
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
@@ -49,44 +45,39 @@ class TaskMisconflictPackages(APIWorker):
         # arguments processing
         self.args["packages"] = []
         self.args["branch"] = None
+
         # get task source packages and branch
         # get task repo
-        self.conn.request_line = self.sql.task_repo.format(id=self.task_id)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(self.sql.task_repo.format(id=self.task_id))
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
-                {"message": f"No data found in database for task '{self.task_id}'"},
-                self.ll.INFO,
-                404,
+            return self.store_error(
+                {"message": f"No data found in database for task '{self.task_id}'"}
             )
-            return self.error
 
         self.args["branch"] = response[0][0]  # type: ignore
+
         # get task source packages
-        self.conn.request_line = self.sql.misconflict_get_pkgs_of_task.format(
-            id=self.task_id
+        response = self.send_sql_request(
+            self.sql.misconflict_get_pkgs_of_task.format(id=self.task_id)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
-                {"message": f"No packages found in database for task '{self.task_id}'"},
-                self.ll.INFO,
-                404,
+            return self.store_error(
+                {"message": f"No packages found in database for task '{self.task_id}'"}
             )
-            return self.error
+
         self.args["packages"] = tuple({pkg[0] for pkg in response})
         pkg_hashes = tuple({pkg[1] for pkg in response})
+
         # get task repo state
         tr = TaskRepoState(self.conn, self.task_id)
         tr.build_task_repo(keep_artefacts=False)
         if not tr.status:
             return tr.error
+
         # init MisconflictPackages class with args
         mp = MisconflictPackages(
             self.conn,

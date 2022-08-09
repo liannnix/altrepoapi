@@ -478,7 +478,7 @@ WHERE img_tag IN (
 GROUP BY img_tag
 """
 
-    get_last_image_cmp_pkg_diff = """
+    tmp_last_image_cmp_pkg_diff = """
 CREATE TEMPORARY TABLE {tmp_table} AS
 SELECT pkg_hash FROM
 (
@@ -493,7 +493,7 @@ SELECT pkg_hash FROM
 )
 """
 
-    get_img_pkg_info = """
+    tmp_img_pkg_info = """
 CREATE TEMPORARY TABLE {tmp_table} AS
 SELECT * FROM
 (

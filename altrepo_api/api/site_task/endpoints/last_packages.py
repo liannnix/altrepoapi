@@ -57,29 +57,28 @@ class LastTaskPackages(APIWorker):
             self.task_owner = ""
             task_owner_sub = ""
 
-        self.conn.request_line = (
-            self.sql.get_last_subtasks_from_tasks.format(task_owner_sub=task_owner_sub),
-            {
-                "branch": self.branch,
-                "task_owner": self.task_owner,
-                "limit": self.tasks_limit,
-                "limit2": (self.tasks_limit * 10),
-            },
+        response = self.send_sql_request(
+            (
+                self.sql.get_last_subtasks_from_tasks.format(
+                    task_owner_sub=task_owner_sub
+                ),
+                {
+                    "branch": self.branch,
+                    "task_owner": self.task_owner,
+                    "limit": self.tasks_limit,
+                    "limit2": (self.tasks_limit * 10),
+                },
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No data found in database for given parameters",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         TasksMeta = namedtuple(
             "TasksMeta",
@@ -104,38 +103,38 @@ class LastTaskPackages(APIWorker):
 
         # create temporary table for source package hashes
         tmp_table = "tmp_srcpkg_hashes"
-        self.conn.request_line = self.sql.create_tmp_table.format(
-            tmp_table=tmp_table, columns="(pkg_hash UInt64)"
+
+        _ = self.send_sql_request(
+            self.sql.create_tmp_table.format(
+                tmp_table=tmp_table, columns="(pkg_hash UInt64)"
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
+
         # insert package hashes into temporary table
-        self.conn.request_line = (
-            self.sql.insert_into_tmp_table.format(tmp_table=tmp_table),
-            ((x,) for x in src_pkg_hashes),
+        _ = self.send_sql_request(
+            (
+                self.sql.insert_into_tmp_table.format(tmp_table=tmp_table),
+                ((x,) for x in src_pkg_hashes),
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
+
         # select packages info by hashes
-        self.conn.request_line = self.sql.get_last_pkgs_info.format(tmp_table=tmp_table)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(
+            self.sql.get_last_pkgs_info.format(tmp_table=tmp_table)
+        )
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No data found in database for packages",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         PkgMeta = namedtuple(
             "PkgMeta",
@@ -154,6 +153,7 @@ class LastTaskPackages(APIWorker):
         packages = {el[0]: PkgMeta(*el[1:])._asdict() for el in response}
 
         retval = {}
+
         for subtask in tasks:
             task_id = subtask["task_id"]
             if task_id not in retval:
@@ -213,14 +213,14 @@ class LastTaskPackages(APIWorker):
         # get last branch task and date
         last_branch_task = 0
         last_branch_date = ""
+
         if self.branch not in lut.taskless_branches:
-            self.conn.request_line = self.sql.get_last_branch_task_and_date.format(
-                branch=self.branch
+            response = self.send_sql_request(
+                self.sql.get_last_branch_task_and_date.format(branch=self.branch)
             )
-            status, response = self.conn.send_request()
-            if not status:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return self.error
+
             if response:
                 last_branch_task = response[0][0]  # type: ignore
                 last_branch_date = datetime_to_iso(response[0][1])  # type: ignore
@@ -234,4 +234,5 @@ class LastTaskPackages(APIWorker):
             "last_branch_task": last_branch_task,
             "last_branch_date": last_branch_date,
         }
+
         return res, 200

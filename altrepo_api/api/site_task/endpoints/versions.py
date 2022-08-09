@@ -44,21 +44,17 @@ class PackageVersionsFromTasks(APIWorker):
             branch_sub = ""
 
         # get package versions from tasks
-        self.conn.request_line = self.sql.get_all_src_versions_from_tasks.format(
-            name=self.name, branch_sub=branch_sub
-        )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
-
-        if not response:
-            self._store_error(
-                {"message": "No data not found in database", "args": self.args},
-                self.ll.INFO,
-                404,
+        response = self.send_sql_request(
+            self.sql.get_all_src_versions_from_tasks.format(
+                name=self.name, branch_sub=branch_sub
             )
+        )
+        if not self.sql_status:
             return self.error
+        if not response:
+            return self.store_error(
+                {"message": "No data not found in database", "args": self.args},
+            )
 
         PkgVersions = namedtuple(
             "PkgVersions",
@@ -73,6 +69,7 @@ class PackageVersionsFromTasks(APIWorker):
                 "release",
             ],
         )
+
         pkg_versions = [PkgVersions(*el)._asdict() for el in response]
         pkg_versions.sort(key=lambda val: val["changed"], reverse=True)
 

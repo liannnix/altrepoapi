@@ -85,12 +85,13 @@ class BuildDependency(APIWorker):
             Returns:
                 bool: False - if error ocured during SQL request
             """
-            self.conn.request_line = self.sql.select_all_tmp_table.format(
-                tmp_table="tmp_pkg_ls"
+
+            response = self.send_sql_request(
+                self.sql.select_all_tmp_table.format(tmp_table="tmp_pkg_ls")
             )
-            status, response = self.conn.send_request()
-            if not status:
+            if not self.sql_status:
                 return False
+
             pkgs = [el[0] for el in response]  # type: ignore
             pkgs_prev_level = []
             for p in levels_dict.values():
@@ -102,128 +103,135 @@ class BuildDependency(APIWorker):
 
         # create temporary table with repository state hashes
         tmp_repo_state = "tmp_repo_state_hshs"
-        self.conn.request_line = self.sql.create_tmp_table.format(
-            tmp_table=tmp_repo_state, columns="(pkg_hash UInt64)"
+
+        _ = self.send_sql_request(
+            self.sql.create_tmp_table.format(
+                tmp_table=tmp_repo_state, columns="(pkg_hash UInt64)"
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
+
         if task_repo_hashes is not None:
             # use repository hashes from task
-            self.conn.request_line = (
-                self.sql.insert_into_tmp_table.format(tmp_table=tmp_repo_state),
-                ((hsh,) for hsh in task_repo_hashes),
+            _ = self.send_sql_request(
+                (
+                    self.sql.insert_into_tmp_table.format(tmp_table=tmp_repo_state),
+                    ((hsh,) for hsh in task_repo_hashes),
+                )
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return
         else:
             # fill it from last_packages
-            self.conn.request_line = self.sql.insert_last_packages_hashes.format(
-                tmp_table=tmp_repo_state, branch=self.branch
+            _ = self.send_sql_request(
+                self.sql.insert_last_packages_hashes.format(
+                    tmp_table=tmp_repo_state, branch=self.branch
+                )
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return
+
         # delete unused binary packages arch hashes and '*-debuginfo' package hashes
         tmp_repo_state_filtered = "tmp_repo_state_hshs_filtered"
-        self.conn.request_line = self.sql.create_tmp_table.format(
-            tmp_table=tmp_repo_state_filtered, columns="(pkg_hash UInt64)"
+
+        _ = self.send_sql_request(
+            self.sql.create_tmp_table.format(
+                tmp_table=tmp_repo_state_filtered, columns="(pkg_hash UInt64)"
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
+
         # insert source packages hashes
-        self.conn.request_line = self.sql.insert_pkgs_hshs_filtered_src.format(
-            tmp_table=tmp_repo_state_filtered, tmp_table2=tmp_repo_state
+        _ = self.send_sql_request(
+            self.sql.insert_pkgs_hshs_filtered_src.format(
+                tmp_table=tmp_repo_state_filtered, tmp_table2=tmp_repo_state
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
+
         # insert binary packages hashes
-        self.conn.request_line = self.sql.insert_pkgs_hshs_filtered_bin.format(
-            tmp_table=tmp_repo_state_filtered,
-            tmp_table2=tmp_repo_state,
-            arch=tuple(self.arch),
+        _ = self.send_sql_request(
+            self.sql.insert_pkgs_hshs_filtered_bin.format(
+                tmp_table=tmp_repo_state_filtered,
+                tmp_table2=tmp_repo_state,
+                arch=tuple(self.arch),
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
+
         # drop initial repo state hashes temporary table
-        self.conn.request_line = self.sql.drop_tmp_table.format(
-            tmp_table=tmp_repo_state
+        _ = self.send_sql_request(
+            self.sql.drop_tmp_table.format(tmp_table=tmp_repo_state)
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
+
         tmp_repo_state = tmp_repo_state_filtered
+
         # create shadow copy for last_depends and last_packages_with_source
         # proceed with last_packages_with_source
         # 1. create shadowing temporary table
-        self.conn.request_line = self.sql.create_shadow_last_pkgs_w_srcs
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        _ = self.send_sql_request(self.sql.create_shadow_last_pkgs_w_srcs)
+        if not self.sql_status:
             return
+
         # 2. fill shadowing temporary table
-        self.conn.request_line = self.sql.fill_shadow_last_pkgs_w_srcs.format(
-            tmp_table=tmp_repo_state, branch=self.branch
+        _ = self.send_sql_request(
+            self.sql.fill_shadow_last_pkgs_w_srcs.format(
+                tmp_table=tmp_repo_state, branch=self.branch
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
+
         # proceed with last_depends
         # 1. create shdowing temporary table
-        self.conn.request_line = self.sql.create_shadow_last_depends
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        _ = self.send_sql_request(self.sql.create_shadow_last_depends)
+        if not self.sql_status:
             return
+
         # 2. fill shadowing temporary table
-        self.conn.request_line = self.sql.fill_shadow_last_depends.format(
-            tmp_table=tmp_repo_state, branch=self.branch
+        _ = self.send_sql_request(
+            self.sql.fill_shadow_last_depends.format(
+                tmp_table=tmp_repo_state, branch=self.branch
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
 
         # create tmp table with list of packages
         tmp_table_name = "tmp_pkg_ls"
-        self.conn.request_line = self.sql.create_tmp_table.format(
-            tmp_table=tmp_table_name, columns="(pkgname String)"
+
+        _ = self.send_sql_request(
+            self.sql.create_tmp_table.format(
+                tmp_table=tmp_table_name, columns="(pkgname String)"
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
 
         # base query - first iteration, build requires depth 1
-        self.conn.request_line = (
-            self.sql.insert_build_req_deep_1.format(tmp_table=tmp_table_name),
-            {
-                "sfilter": sourcef,
-                "pkgs": input_pkgs,
-                "branch": self.branch,
-                "archs": tuple(self.arch),
-                "union": list(input_pkgs),
-            },
+        _ = self.send_sql_request(
+            (
+                self.sql.insert_build_req_deep_1.format(tmp_table=tmp_table_name),
+                {
+                    "sfilter": sourcef,
+                    "pkgs": input_pkgs,
+                    "branch": self.branch,
+                    "archs": tuple(self.arch),
+                    "union": list(input_pkgs),
+                },
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
+
         # store source packages level 1
         if not store_src_pkgs_levels(src_pkgs_by_level):
-            self._store_sql_error(response, self.ll.ERROR, 500)
             return
 
         #  set depth to 2 if in 'oneandhalf' mode
@@ -236,23 +244,22 @@ class BuildDependency(APIWorker):
 
             # process depth for every level and add results to pkg_ls
             for _ in range(self.depth - 1):
-                self.conn.request_line = (
-                    self.sql.insert_result_for_depth_level.format(
-                        wrapper=deep_wrapper, tmp_table=tmp_table_name
-                    ),
-                    {
-                        "sfilter": sourcef,
-                        "branch": self.branch,
-                        "archs": tuple(self.arch),
-                    },
+                _ = self.send_sql_request(
+                    (
+                        self.sql.insert_result_for_depth_level.format(
+                            wrapper=deep_wrapper, tmp_table=tmp_table_name
+                        ),
+                        {
+                            "sfilter": sourcef,
+                            "branch": self.branch,
+                            "archs": tuple(self.arch),
+                        },
+                    )
                 )
-                status, response = self.conn.send_request()
-                if status is False:
-                    self._store_sql_error(response, self.ll.ERROR, 500)
+                if not self.sql_status:
                     return
                 # store source packages level 2..n
                 if not store_src_pkgs_levels(src_pkgs_by_level):
-                    self._store_sql_error(response, self.ll.ERROR, 500)
                     return
 
         # if 'oneandhalf' is set search dependencies of level 1 source packages from level 2 binary packages
@@ -260,52 +267,53 @@ class BuildDependency(APIWorker):
         if self.oneandhalf:
             # create and fill temporary tables for source packages filtering
             # level 1 packages
-            self.conn.request_line = self.sql.create_tmp_table.format(
-                tmp_table="l1_pkgs", columns="(pkgname String)"
+            _ = self.send_sql_request(
+                self.sql.create_tmp_table.format(
+                    tmp_table="l1_pkgs", columns="(pkgname String)"
+                )
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return
 
-            self.conn.request_line = (
-                self.sql.insert_into_tmp_table.format(tmp_table="l1_pkgs"),
-                ((pkg,) for pkg in src_pkgs_by_level[1]),
+            _ = self.send_sql_request(
+                (
+                    self.sql.insert_into_tmp_table.format(tmp_table="l1_pkgs"),
+                    ((pkg,) for pkg in src_pkgs_by_level[1]),
+                )
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return
 
             # level 2 packages
-            self.conn.request_line = self.sql.create_tmp_table.format(
-                tmp_table="l2_pkgs", columns="(pkgname String)"
+            _ = self.send_sql_request(
+                self.sql.create_tmp_table.format(
+                    tmp_table="l2_pkgs", columns="(pkgname String)"
+                )
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return
 
-            self.conn.request_line = (
-                self.sql.insert_into_tmp_table.format(tmp_table="l2_pkgs"),
-                ((pkg,) for pkg in src_pkgs_by_level[2]),
+            _ = self.send_sql_request(
+                (
+                    self.sql.insert_into_tmp_table.format(tmp_table="l2_pkgs"),
+                    ((pkg,) for pkg in src_pkgs_by_level[2]),
+                )
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return
 
             # filter level 2 packages by level 1 packages dependencies
-            self.conn.request_line = (
-                self.sql.filter_l2_src_pkgs.format(
-                    tmp_table1="l1_pkgs", tmp_table2="l2_pkgs"
-                ),
-                {"branch": self.branch, "archs": tuple(self.arch)},
+            response = self.send_sql_request(
+                (
+                    self.sql.filter_l2_src_pkgs.format(
+                        tmp_table1="l1_pkgs", tmp_table2="l2_pkgs"
+                    ),
+                    {"branch": self.branch, "archs": tuple(self.arch)},
+                )
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return
+
             # replace level 2 with filtered packages
             src_pkgs_by_level[2] = tuple(
                 {
@@ -314,32 +322,31 @@ class BuildDependency(APIWorker):
                     if pkg in src_pkgs_by_level[2]
                 }
             )
+
             # refill sorce packages temporary table
-            self.conn.request_line = self.sql.truncate_tmp_table.format(
-                tmp_table=tmp_table_name
+            _ = self.send_sql_request(
+                self.sql.truncate_tmp_table.format(tmp_table=tmp_table_name)
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return
 
-            self.conn.request_line = (
-                self.sql.insert_into_tmp_table.format(tmp_table=tmp_table_name),
-                ((pkg,) for lvl in src_pkgs_by_level.values() for pkg in lvl),
+            _ = self.send_sql_request(
+                (
+                    self.sql.insert_into_tmp_table.format(tmp_table=tmp_table_name),
+                    ((pkg,) for lvl in src_pkgs_by_level.values() for pkg in lvl),
+                )
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return
 
         # get package acl
-        self.conn.request_line = (
-            self.sql.get_acl.format(tmp_table=tmp_table_name),
-            {"branch": self.branch},
+        response = self.send_sql_request(
+            (
+                self.sql.get_acl.format(tmp_table=tmp_table_name),
+                {"branch": self.branch},
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
 
         pkg_acl_dict = {}
@@ -348,59 +355,58 @@ class BuildDependency(APIWorker):
 
         # create temporary table for package dependencies
         tmp_table_pkg_dep = "package_dependency"
-        self.conn.request_line = self.sql.create_tmp_table.format(
-            tmp_table=tmp_table_pkg_dep, columns="(pkgname String, reqname String)"
+
+        _ = self.send_sql_request(
+            self.sql.create_tmp_table.format(
+                tmp_table=tmp_table_pkg_dep, columns="(pkgname String, reqname String)"
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
 
         # get source dependencies
         if self.dptype in ("source", "both"):
             # populate the temporary table with package names and their source
             # dependencies
-            self.conn.request_line = (
-                self.sql.insert_src_deps.format(
-                    tmp_deps=tmp_table_pkg_dep, tmp_table=tmp_table_name
-                ),
-                {
-                    "branch": self.branch,
-                    "pkgs": list(input_pkgs),
-                    "archs": tuple(self.arch),
-                },
+            _ = self.send_sql_request(
+                (
+                    self.sql.insert_src_deps.format(
+                        tmp_deps=tmp_table_pkg_dep, tmp_table=tmp_table_name
+                    ),
+                    {
+                        "branch": self.branch,
+                        "pkgs": list(input_pkgs),
+                        "archs": tuple(self.arch),
+                    },
+                )
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return
 
         # get binary dependencies
         if self.dptype in ("binary", "both"):
             # populate the temporary table with package names and their binary
             # dependencies
-            self.conn.request_line = (
-                self.sql.insert_binary_deps.format(
-                    tmp_table=tmp_table_name, tmp_req=tmp_table_pkg_dep
-                ),
-                {
-                    "branch": self.branch,
-                    "archs": tuple(self.arch),
-                    "pkgs": list(input_pkgs),
-                },
+            _ = self.send_sql_request(
+                (
+                    self.sql.insert_binary_deps.format(
+                        tmp_table=tmp_table_name, tmp_req=tmp_table_pkg_dep
+                    ),
+                    {
+                        "branch": self.branch,
+                        "archs": tuple(self.arch),
+                        "pkgs": list(input_pkgs),
+                    },
+                )
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return
 
         # select all filtered package with dependencies
-        self.conn.request_line = self.sql.get_all_filtred_pkgs_with_deps.format(
-            tmp_table=tmp_table_pkg_dep
+        response = self.send_sql_request(
+            self.sql.get_all_filtred_pkgs_with_deps.format(tmp_table=tmp_table_pkg_dep)
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
 
         pkgs_to_sort_dict = tuplelist_to_dict(response, 1)  # type: ignore
@@ -417,13 +423,13 @@ class BuildDependency(APIWorker):
                     if dep not in all_dependencies:
                         all_dependencies.append(dep)
 
-            self.conn.request_line = (
-                self.sql.select_finite_pkgs.format(tmp_table=tmp_table_name),
-                {"pkgs": tuple(all_dependencies)},
+            response = self.send_sql_request(
+                (
+                    self.sql.select_finite_pkgs.format(tmp_table=tmp_table_name),
+                    {"pkgs": tuple(all_dependencies)},
+                )
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return
 
             filter_by_tops = join_tuples(response)  # type: ignore
@@ -431,12 +437,10 @@ class BuildDependency(APIWorker):
         # check leaf, if true, get dependencies of leaf package
         if self.leaf:
             if self.leaf not in pkgs_to_sort_dict.keys():
-                self._store_error(
+                _ = self.store_error(
                     {
                         "message": f"Package {self.leaf} not in dependencies list for {self.packages}"
-                    },
-                    self.ll.INFO,
-                    404,
+                    }
                 )
                 return
 
@@ -481,14 +485,14 @@ class BuildDependency(APIWorker):
         sorted_pkgs = tuple(result_dict.keys())
 
         # get output data for sorted package list
-        self.conn.request_line = self.sql.get_output_data.format(
-            branch=self.branch,
-            tmp_table=tmp_table_name,
-            tmp_table2=tmp_repo_state,
+        response = self.send_sql_request(
+            self.sql.get_output_data.format(
+                branch=self.branch,
+                tmp_table=tmp_table_name,
+                tmp_table2=tmp_repo_state,
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
 
         # form list of packages with it information
@@ -514,17 +518,17 @@ class BuildDependency(APIWorker):
             if self.reqfilter:
                 reqfilter_binpkgs = tuple(self.reqfilter)
             else:
-                self.conn.request_line = (
-                    self.sql.req_filter_by_src,
-                    {
-                        "srcpkg": self.reqfiltersrc,
-                        "branch": self.branch,
-                        "archs": tuple(self.arch),
-                    },
+                response = self.send_sql_request(
+                    (
+                        self.sql.req_filter_by_src,
+                        {
+                            "srcpkg": self.reqfiltersrc,
+                            "branch": self.branch,
+                            "archs": tuple(self.arch),
+                        },
+                    )
                 )
-                status, response = self.conn.send_request()
-                if status is False:
-                    self._store_sql_error(response, self.ll.ERROR, 500)
+                if not self.sql_status:
                     return
 
                 reqfilter_binpkgs = join_tuples(response)  # type: ignore
@@ -548,13 +552,13 @@ class BuildDependency(APIWorker):
 
                 base_query = last_query
 
-            self.conn.request_line = (
-                self.sql.get_filter_pkgs.format(base_query=base_query),
-                {"branch": self.branch, "archs": tuple(self.arch)},
+            response = self.send_sql_request(
+                (
+                    self.sql.get_filter_pkgs.format(base_query=base_query),
+                    {"branch": self.branch, "archs": tuple(self.arch)},
+                )
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return
 
             filter_pkgs = join_tuples(response)  # type: ignore

@@ -33,36 +33,28 @@ class FindPackageset(APIWorker):
         super().__init__()
 
     def check_task_id(self):
-        self.conn.request_line = self.sql.check_task.format(id=self.task_id)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.INFO, 500)
+        response = self.send_sql_request(self.sql.check_task.format(id=self.task_id))
+        if not self.sql_status:
             return False
 
-        if response[0][0] == 0:  # type: ignore
-            return False
-        return True
+        return response[0][0] != 0
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
         return True
 
     def get(self):
-        self.conn.request_line = self.sql.task_src_packages.format(id=self.task_id)
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(
+            self.sql.task_src_packages.format(id=self.task_id)
+        )
+        if not self.sql_status:
             return self.error
-
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": f"No source packages found in database for task {self.task_id}"
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         packages = join_tuples(response)  # type: ignore
 
@@ -71,25 +63,21 @@ class FindPackageset(APIWorker):
         else:
             branchs_cond = ""
 
-        self.conn.request_line = (
-            self.sql.get_branch_with_pkgs.format(branchs=branchs_cond),
-            {"pkgs": packages},
+        response = self.send_sql_request(
+            (
+                self.sql.get_branch_with_pkgs.format(branchs=branchs_cond),
+                {"pkgs": packages},
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
-
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No results found in last package sets for given parameters",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         PkgsetInfo = namedtuple(
             "PkgsetInfo",

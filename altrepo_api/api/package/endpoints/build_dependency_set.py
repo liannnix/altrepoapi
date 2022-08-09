@@ -39,20 +39,16 @@ class BuildDependencySet(APIWorker):
         super().__init__()
 
     def build_dependency_set(self):
-        self.conn.request_line = self.sql.get_pkg_hshs.format(
-            pkgs=self.packages, branch=self.branch
+        response = self.send_sql_request(
+            self.sql.get_pkg_hshs.format(pkgs=self.packages, branch=self.branch)
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
         if not response:
-            self._store_error(
+            _ = self.store_error(
                 {
                     "message": f"Packages {list(self.packages)} not found in package set '{self.branch}'"
-                },
-                self.ll.INFO,
-                404,
+                }
             )
             return
 
@@ -65,7 +61,7 @@ class BuildDependencySet(APIWorker):
         try:
             self.result = pkg_deps.build_result()
         except SqlRequestError as e:
-            self._store_error(
+            _ = self.store_error(
                 {
                     "message": "Error occured in ConflictFilter",
                     "error": e.error_details,
@@ -76,7 +72,6 @@ class BuildDependencySet(APIWorker):
             return
 
         self.status = True
-        return
 
 
 class PackageBuildDependencySet:

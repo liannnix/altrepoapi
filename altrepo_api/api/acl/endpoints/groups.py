@@ -37,23 +37,17 @@ class AclGroups(APIWorker):
         if name is not None:
             if name.startswith("@"):
                 name = name[1:]
-            self.conn.request_line = self.sql.get_acl_group.format(
-                branch=branch, acl_group=name
-            )
+            request_line = self.sql.get_acl_group.format(branch=branch, acl_group=name)
         else:
-            self.conn.request_line = self.sql.get_all_acl_groups.format(branch=branch)
+            request_line = self.sql.get_all_acl_groups.format(branch=branch)
 
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(request_line)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
-                {"message": "No data not found in database", "args": self.args},
-                self.ll.INFO,
-                404,
+            return self.store_error(
+                {"message": "No data not found in database", "args": self.args}
             )
-            return self.error
 
         res = [
             {"group": m[0], "maintainers": m[1], "date": m[2]}  # type: ignore

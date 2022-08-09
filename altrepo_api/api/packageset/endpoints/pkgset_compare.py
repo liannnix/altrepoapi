@@ -37,26 +37,21 @@ class PackagesetCompare(APIWorker):
         self.pkgset1 = self.args["pkgset1"]
         self.pkgset2 = self.args["pkgset2"]
 
-        self.conn.request_line = (
-            self.sql.get_compare_info,
-            {"pkgset1": self.pkgset1, "pkgset2": self.pkgset2},
+        response = self.send_sql_request(
+            (
+                self.sql.get_compare_info,
+                {"pkgset1": self.pkgset1, "pkgset2": self.pkgset2},
+            )
         )
-
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
-
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No data found in database for given parameters",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         Package = namedtuple("Package", ["name", "version", "release"])
         retval = []

@@ -92,24 +92,21 @@ class PackagesetPackages(APIWorker):
         pkg_type_to_sql = {"source": (1,), "binary": (0,), "all": (1, 0)}
         sourcef = pkg_type_to_sql[self.pkg_type]
 
-        self.conn.request_line = (
-            self.sql.get_repo_packages.format(src=sourcef, group=group),
-            {"buildtime": self.buildtime, "branch": self.branch},
+        response = self.send_sql_request(
+            (
+                self.sql.get_repo_packages.format(src=sourcef, group=group),
+                {"buildtime": self.buildtime, "branch": self.branch},
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No data found in database for given parameters",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         PkgMeta = namedtuple(
             "PkgMeta",
@@ -128,15 +125,16 @@ class PackagesetPackages(APIWorker):
 
         retval = [PkgMeta(*el)._asdict() for el in response]
 
-        subcategories = []
-        self.conn.request_line = (
-            self.sql.get_group_subgroups.format(src=sourcef, group=self.group),
-            {"branch": self.branch},
+        response = self.send_sql_request(
+            (
+                self.sql.get_group_subgroups.format(src=sourcef, group=self.group),
+                {"branch": self.branch},
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
+
+        subcategories = []
 
         if response:
             subcategories = [el[0] for el in response]
@@ -147,6 +145,7 @@ class PackagesetPackages(APIWorker):
             "subcategories": subcategories,
             "packages": retval,
         }
+
         return res, 200
 
 
@@ -161,24 +160,20 @@ class AllPackagesetsByHash(APIWorker):
         super().__init__()
 
     def get(self):
-        self.conn.request_line = self.sql.get_all_pkgsets_by_hash.format(
-            pkghash=self.pkghash
+        response = self.send_sql_request(
+            self.sql.get_all_pkgsets_by_hash.format(pkghash=self.pkghash)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
-                {"message": "No data not found in database", "args": self.args},
-                self.ll.INFO,
-                404,
+            return self.store_error(
+                {"message": "No data not found in database", "args": self.args}
             )
-            return self.error
 
         res = sort_branches([el[0] for el in response])
 
         res = {"pkghash": str(self.pkghash), "length": len(res), "branches": res}
+
         return res, 200
 
 
@@ -215,23 +210,19 @@ class LastBranchPackages(APIWorker):
             packager_sub = ""
 
         # get last branch date
-        self.conn.request_line = self.sql.get_last_branch_date.format(
-            branch=self.branch
+        response = self.send_sql_request(
+            self.sql.get_last_branch_date.format(branch=self.branch)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No data found in database for given parameters",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
+
         last_branch_date = response[0][0]  # type: ignore
 
         if self.packager:
@@ -239,88 +230,88 @@ class LastBranchPackages(APIWorker):
         else:
             # get source packages diff from current branch state and previous one
             tmp_table = "tmp_srcpkg_hashes"
-            self.conn.request_line = self.sql.get_last_branch_src_diff.format(
-                tmp_table=tmp_table,
-                branch=self.branch,
-                last_pkgset_date=last_branch_date,
+
+            _ = self.send_sql_request(
+                self.sql.get_last_branch_src_diff.format(
+                    tmp_table=tmp_table,
+                    branch=self.branch,
+                    last_pkgset_date=last_branch_date,
+                )
             )
-            status, response = self.conn.send_request()
-            if not status:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return self.error
+
             # check if we have source packages diff from previous branch state
-            self.conn.request_line = self.sql.check_tmp_table_count.format(
-                tmp_table=tmp_table
+            response = self.send_sql_request(
+                self.sql.check_tmp_table_count.format(tmp_table=tmp_table)
             )
-            status, response = self.conn.send_request()
-            if not status:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return self.error
+
             src_diff_count = response[0][0]  # type: ignore
             t_date = last_branch_date
+
             if src_diff_count == 0:
                 # try to go back in branch history
                 for _ in range(MAX_BRANCH_HIST_REWIND):
                     # decrement date
                     t_date = t_date - timedelta(days=1)  # type: ignore
+
                     # drop temporary table
-                    self.conn.request_line = self.sql.drop_tmp_table.format(
-                        tmp_table=tmp_table
+                    _ = self.send_sql_request(
+                        self.sql.drop_tmp_table.format(tmp_table=tmp_table)
                     )
-                    status, response = self.conn.send_request()
-                    if not status:
-                        self._store_sql_error(response, self.ll.ERROR, 500)
+                    if not self.sql_status:
                         return self.error
+
                     # fill it again using new date
-                    self.conn.request_line = self.sql.get_last_branch_src_diff.format(
-                        tmp_table=tmp_table, branch=self.branch, last_pkgset_date=t_date
+                    _ = self.send_sql_request(
+                        self.sql.get_last_branch_src_diff.format(
+                            tmp_table=tmp_table,
+                            branch=self.branch,
+                            last_pkgset_date=t_date,
+                        )
                     )
-                    status, response = self.conn.send_request()
-                    if not status:
-                        self._store_sql_error(response, self.ll.ERROR, 500)
+                    if not self.sql_status:
                         return self.error
+
                     # check if we have source packages diff from previous branch state
-                    self.conn.request_line = self.sql.check_tmp_table_count.format(
-                        tmp_table=tmp_table
+                    response = self.send_sql_request(
+                        self.sql.check_tmp_table_count.format(tmp_table=tmp_table)
                     )
-                    status, response = self.conn.send_request()
-                    if not status:
-                        self._store_sql_error(response, self.ll.ERROR, 500)
+                    if not self.sql_status:
                         return self.error
+
                     src_diff_count = response[0][0]  # type: ignore
                     if src_diff_count != 0:
                         break
+
             if src_diff_count == 0:
-                self._store_error(
+                return self.store_error(
                     {
                         "message": "Failed to get branch state diff from database",
                         "args": self.args,
-                    },
-                    self.ll.INFO,
-                    404,
+                    }
                 )
-                return self.error
+
         # get source and binary packages info by hashes from temporary table
-        self.conn.request_line = self.sql.get_last_branch_pkgs_info.format(
-            branch=self.branch,
-            hsh_source=tmp_table,
-            packager=packager_sub,
-            limit=self.packages_limit,
+        response = self.send_sql_request(
+            self.sql.get_last_branch_pkgs_info.format(
+                branch=self.branch,
+                hsh_source=tmp_table,
+                packager=packager_sub,
+                limit=self.packages_limit,
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No data found in database for packages",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         PkgMeta = namedtuple(
             "PkgMeta",
@@ -338,13 +329,11 @@ class LastBranchPackages(APIWorker):
             ],
         )
 
-        packages = (PkgMeta(*el[1:])._asdict() for el in response)
-
         last_branch_date = datetime_to_iso(last_branch_date)  # type: ignore
 
         retval = []
 
-        for pkg in packages:
+        for pkg in (PkgMeta(*el[1:])._asdict() for el in response):
             pkg["changelog_date"] = datetime_to_iso(pkg["changelog_date"])
             retval.append(pkg)
 
@@ -354,4 +343,5 @@ class LastBranchPackages(APIWorker):
             "packages": retval,
             "last_branch_date": last_branch_date,
         }
+
         return res, 200

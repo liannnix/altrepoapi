@@ -35,23 +35,18 @@ class PackagesetPackageHash(APIWorker):
         self.branch = self.args["branch"]
         self.name = self.args["name"]
 
-        self.conn.request_line = self.sql.get_pkghash_by_name.format(
-            branch=self.branch, name=self.name
+        response = self.send_sql_request(
+            self.sql.get_pkghash_by_name.format(branch=self.branch, name=self.name)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": f"Package '{self.name}' not found in package set '{self.branch}'",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         res = {
             "request_args": self.args,
@@ -59,6 +54,7 @@ class PackagesetPackageHash(APIWorker):
             "version": response[0][1],  # type: ignore
             "release": response[0][2],  # type: ignore
         }
+
         return res, 200
 
 
@@ -80,23 +76,20 @@ class PackagesetPackageBinaryHash(APIWorker):
         self.arch = self.args["arch"]
         self.name = self.args["name"]
 
-        self.conn.request_line = self.sql.get_pkghash_by_binary_name.format(
-            branch=self.branch, arch=self.arch, name=self.name
+        response = self.send_sql_request(
+            self.sql.get_pkghash_by_binary_name.format(
+                branch=self.branch, arch=self.arch, name=self.name
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": f"Package '{self.name}' architecture {self.arch} not found in package set '{self.branch}'",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         res = {
             "request_args": self.args,
@@ -104,4 +97,5 @@ class PackagesetPackageBinaryHash(APIWorker):
             "version": response[0][1],  # type: ignore
             "release": response[0][2],  # type: ignore
         }
+
         return res, 200

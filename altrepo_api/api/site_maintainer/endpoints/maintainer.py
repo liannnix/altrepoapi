@@ -35,20 +35,16 @@ class AllMaintainers(APIWorker):
 
     def get(self):
         branch = self.args["branch"]
-        self.conn.request_line = self.sql.get_all_maintaners.format(
-            branch=branch, where_clause=""
+
+        response = self.send_sql_request(
+            self.sql.get_all_maintaners.format(branch=branch, where_clause="")
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {"message": "No data not found in database", "args": self.args},
-                self.ll.INFO,
-                404,
             )
-            return self.error
 
         res = [
             {"packager_name": m[0], "packager_nickname": m[1], "count_source_pkg": m[2]}  # type: ignore
@@ -77,32 +73,33 @@ class MaintainerInfo(APIWorker):
         maintainer_nickname = self.args["maintainer_nickname"]
         branch = self.args["branch"]
         where_clause = "WHERE packager_nick = %(nickname)s"
-        self.conn.request_line = (
-            self.sql.get_all_maintaners.format(
-                branch=branch, where_clause=where_clause
-            ),
-            {"nickname": maintainer_nickname},
+
+        response = self.send_sql_request(
+            (
+                self.sql.get_all_maintaners.format(
+                    branch=branch, where_clause=where_clause
+                ),
+                {"nickname": maintainer_nickname},
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response or response[0][0] == []:  # type: ignore
-            self._store_error(
+            return self.store_error(
                 {
                     "message": f"No data found in database for {maintainer_nickname} on {branch}",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         MaintainersInfo = namedtuple(
             "MaintainersInfoModel",
             ["packager_name", "packager_nickname", "count_source_pkg"],
         )
-        res = MaintainersInfo(*response[0])._asdict()  # type: ignore
-        res = {"request_args": self.args, "information": res}
+
+        res = {
+            "request_args": self.args,
+            "information": MaintainersInfo(*response[0])._asdict(),
+        }
 
         return res, 200

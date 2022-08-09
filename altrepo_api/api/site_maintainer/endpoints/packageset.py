@@ -37,28 +37,28 @@ class MaintainerBranches(APIWorker):
 
     def get(self):
         maintainer_nickname = self.args["maintainer_nickname"]
-        self.conn.request_line = self.sql.get_maintainer_branches.format(
-            maintainer_nickname=maintainer_nickname
+
+        response = self.send_sql_request(
+            self.sql.get_maintainer_branches.format(
+                maintainer_nickname=maintainer_nickname
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
-                {"message": "No data not found in database", "args": self.args},
-                self.ll.INFO,
-                404,
+            return self.store_error(
+                {"message": "No data not found in database", "args": self.args}
             )
-            return self.error
 
         MaintainerBranches = namedtuple("MaintainerBranches", ["branch", "count"])
         branches = []
+
         for branch in sort_branches([el[0] for el in response]):
             for el in [MaintainerBranches(*b)._asdict() for b in response]:
                 if el["branch"] == branch:
                     branches.append(el)
                     break
+
         res = {"request_args": self.args, "length": len(branches), "branches": branches}
 
         return res, 200

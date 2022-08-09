@@ -48,25 +48,20 @@ class PackagesetPackages(APIWorker):
         depends_type_to_sql = {"source": (1,), "binary": (0,), "all": (1, 0)}
         sourcef = depends_type_to_sql[self.pkg_type]
 
-        self.conn.request_line = self.sql.get_repo_packages.format(
-            branch=self.branch, archs=self.archs, src=sourcef
+        response = self.send_sql_request(
+            self.sql.get_repo_packages.format(
+                branch=self.branch, archs=self.archs, src=sourcef
+            )
         )
-
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
-
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No data found in database for given parameters",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         PkgMeta = namedtuple(
             "PkgMeta",

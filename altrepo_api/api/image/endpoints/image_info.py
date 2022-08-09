@@ -33,25 +33,22 @@ class AllISOImages(APIWorker):
         super().__init__()
 
     def get(self):
-        self.conn.request_line = self.sql.get_all_iso_images
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(self.sql.get_all_iso_images)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
-                {"message": "No data not found in database", "args": self.args},
-                self.ll.INFO,
-                404,
+            self.store_error(
+                {"message": "No data not found in database", "args": self.args}
             )
-            return self.error
 
         ImageInfo = namedtuple(
             "ImageInfo", ["branch", "name", "tag", "file", "uuid", "date"]
         )
+
         images = [ImageInfo(*r)._asdict() for r in response]  # type: ignore
 
         res = {"length": len(images), "images": images}
+
         return res, 200
 
 
@@ -120,20 +117,15 @@ class ImageInfo(APIWorker):
             image_clause += f" AND img_type = '{img_type}'"
 
         # get iso roots info
-        self.conn.request_line = self.sql.get_img_root_info.format(
-            image_clause=image_clause
+        response = self.send_sql_request(
+            self.sql.get_img_root_info.format(image_clause=image_clause)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
-                {"message": "No data not found in database", "args": self.args},
-                self.ll.INFO,
-                404,
+            return self.store_error(
+                {"message": "No data not found in database", "args": self.args}
             )
-            return self.error
 
         ImageRaw = namedtuple(
             "ImageRaw",
@@ -159,18 +151,15 @@ class ImageInfo(APIWorker):
         ruuids = [str(i.uuid) for i in images.values()]
 
         # get components info
-        self.conn.request_line = self.sql.get_iso_image_components.format(ruuids=ruuids)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(
+            self.sql.get_iso_image_components.format(ruuids=ruuids)
+        )
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
-                {"message": "No data not found in database", "args": self.args},
-                self.ll.INFO,
-                404,
+            return self.store_error(
+                {"message": "No data not found in database", "args": self.args}
             )
-            return self.error
 
         Component = namedtuple("Component", ["ruuid", "uuid", "name", "kv"])
 
@@ -281,7 +270,7 @@ class LastImagePackages(APIWorker):
             limit = ""
 
         if self.is_cve:
-            cve = "AND match(chlog_text, 'CVE-\d{4}-(\d{7}|\d{6}|\d{5}|\d{4})')"  # noqa: W605
+            cve = r"AND match(chlog_text, 'CVE-\d{4}-(\d{7}|\d{6}|\d{5}|\d{4})')"
         else:
             cve = ""
 
@@ -290,60 +279,38 @@ class LastImagePackages(APIWorker):
             component = f"AND pkgset_nodename = '{component}'"
         else:
             component = ""
-        self.conn.request_line = self.sql.get_last_image_cmp_pkg_diff.format(
-            tmp_table=tmp_pkg_hashes, uuid=uuid, component=component
-        )
 
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
-        if not response:
-            self._store_error(
-                {
-                    "message": "No data found in database for given parameters",
-                    "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+        _ = self.send_sql_request(
+            self.sql.tmp_last_image_cmp_pkg_diff.format(
+                tmp_table=tmp_pkg_hashes, uuid=uuid, component=component
             )
+        )
+        if not self.sql_status:
+            return self.error
 
         tmp_table = "tmp_img_pkg_info"
-        self.conn.request_line = self.sql.get_img_pkg_info.format(
-            tmp_table=tmp_table, tmp_pkg_hashes=tmp_pkg_hashes
-        )
-
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
-        if not response:
-            self._store_error(
-                {
-                    "message": "No data found in database for given parameters",
-                    "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+        _ = self.send_sql_request(
+            self.sql.tmp_img_pkg_info.format(
+                tmp_table=tmp_table, tmp_pkg_hashes=tmp_pkg_hashes
             )
-
-        self.conn.request_line = self.sql.get_last_image_pkgs_info.format(
-            tmp_table=tmp_table, branch=branch, cve=cve, limit=limit
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
+            return self.error
+
+        response = self.send_sql_request(
+            self.sql.get_last_image_pkgs_info.format(
+                tmp_table=tmp_table, branch=branch, cve=cve, limit=limit
+            )
+        )
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No data found in database for packages",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         PkgMeta = namedtuple(
             "PkgMeta",
@@ -389,25 +356,22 @@ class ImageTagUUID(APIWorker):
     def get(self):
         img_tag = self.args["tag"]
 
-        self.conn.request_line = self.sql.get_image_uuid_by_tag.format(img_tag=img_tag)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(
+            self.sql.get_image_uuid_by_tag.format(img_tag=img_tag)
+        )
+        if not self.sql_status:
             return self.error
 
         if (
             not response
             or str(response[0][0]) == "00000000-0000-0000-0000-000000000000"  # type: ignore
         ):
-            self._store_error(
+            return self.store_error(
                 {
                     "message": f"Image tag '{img_tag}' not found.",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         ImgInfo = namedtuple(
             "ImgInfo",
@@ -445,20 +409,17 @@ class ImageCategoriesCount(APIWorker):
         if component:
             component_clause += f"AND pkgset_nodename = '{component}'"
 
-        self.conn.request_line = self.sql.get_image_groups_count.format(
-            uuid=uuid, component=component_clause
+        response = self.send_sql_request(
+            self.sql.get_image_groups_count.format(
+                uuid=uuid, component=component_clause
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
-                {"message": "No data not found in database", "args": self.args},
-                self.ll.INFO,
-                404,
+            return self.store_error(
+                {"message": "No data not found in database", "args": self.args}
             )
-            return self.error
 
         res = [{"category": el[0], "count": el[1]} for el in response]
 
@@ -517,23 +478,20 @@ class ImagePackages(APIWorker):
         else:
             component = ""
 
-        self.conn.request_line = self.sql.get_image_packages.format(
-            uuid=uuid, group=group_clause, component=component
+        response = self.send_sql_request(
+            self.sql.get_image_packages.format(
+                uuid=uuid, group=group_clause, component=component
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No data found in database for given parameters",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         PkgMeta = namedtuple(
             "PkgMeta",
@@ -555,12 +513,12 @@ class ImagePackages(APIWorker):
         retval = [PkgMeta(*el)._asdict() for el in response]
 
         subcategories = []
-        self.conn.request_line = self.sql.get_group_subgroups.format(
-            uuid=uuid, group=group, component=component
+        response = self.send_sql_request(
+            self.sql.get_group_subgroups.format(
+                uuid=uuid, group=group, component=component
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
 
         if response:

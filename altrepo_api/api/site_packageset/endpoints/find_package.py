@@ -23,6 +23,27 @@ from altrepo_api.api.misc import lut
 from ..sql import sql
 
 
+def relevance_sort(pkgs_dict, pkg_name):
+    """Dumb sorting for package names by relevance."""
+
+    def relevance_weight(instr, substr):
+        return len(instr) + 100 * instr.find(substr)
+
+    l_in = []
+    l_out = []
+
+    for k in pkgs_dict.keys():
+        if k.lower().find(pkg_name.lower()) == -1:
+            l_out.append(k)
+        else:
+            l_in.append(k)
+
+    l_in.sort(key=lambda x: relevance_weight(x.lower(), pkg_name.lower()))
+    l_out.sort()
+
+    return [(name, *pkgs_dict[name]) for name in (l_in + l_out)]
+
+
 class PackagesetFindPackages(APIWorker):
     """Finds packages in given package set by name relevance."""
 
@@ -36,28 +57,11 @@ class PackagesetFindPackages(APIWorker):
         self.logger.debug(f"args : {self.args}")
         return True
 
-    @staticmethod
-    def _relevance_sort(pkgs_dict, pkg_name):
-        """Dumb sorting for package names by relevance."""
-
-        def relevance_weight(instr, substr):
-            return len(instr) + 100 * instr.find(substr)
-
-        l_in = []
-        l_out = []
-        for k in pkgs_dict.keys():
-            if k.lower().find(pkg_name.lower()) == -1:
-                l_out.append(k)
-            else:
-                l_in.append(k)
-        l_in.sort(key=lambda x: relevance_weight(x.lower(), pkg_name.lower()))
-        l_out.sort()
-        return [(name, *pkgs_dict[name]) for name in (l_in + l_out)]
-
     def get(self):
         self.name = self.args["name"]
         self.arch = ""
         self.branch = ""
+
         if self.args["branch"] is not None:
             self.branch = f"AND pkgset_name = '{self.args['branch']}'"
         if self.args["arch"] is not None:
@@ -65,28 +69,26 @@ class PackagesetFindPackages(APIWorker):
         else:
             self.arch = f"AND pkg_arch IN {(*lut.default_archs,)}"
 
-        self.conn.request_line = self.sql.get_find_packages_by_name.format(
-            branch=self.branch, name=self.name, arch=self.arch
+        response = self.send_sql_request(
+            self.sql.get_find_packages_by_name.format(
+                branch=self.branch, name=self.name, arch=self.arch
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": f"Packages like '{self.name}' not found in database",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
-        pkgs_sorted = self._relevance_sort(tuplelist_to_dict(response, 5), self.name)  # type: ignore
+        pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 5), self.name)  # type: ignore
 
         res = []
         PkgMeta = namedtuple("PkgMeta", ["branch", "version", "release", "pkghash"])
+
         for pkg in pkgs_sorted:
             res.append(
                 {
@@ -116,49 +118,28 @@ class FastPackagesSearchLookup(APIWorker):
         self.logger.debug(f"args : {self.args}")
         return True
 
-    @staticmethod
-    def _relevance_sort(pkgs_dict, pkg_name):
-        """Dumb sorting for package names by relevance."""
-
-        def relevance_weight(instr, substr):
-            return len(instr) + 100 * instr.find(substr)
-
-        l_in = []
-        l_out = []
-        for k in pkgs_dict.keys():
-            if k.lower().find(pkg_name.lower()) == -1:
-                l_out.append(k)
-            else:
-                l_in.append(k)
-        l_in.sort(key=lambda x: relevance_weight(x.lower(), pkg_name.lower()))
-        l_out.sort()
-        return [(name, *pkgs_dict[name]) for name in (l_in + l_out)]
-
     def get(self):
         self.name = self.args["name"]
         self.branch = ""
         if self.args["branch"] is not None:
             self.branch = f"AND pkgset_name = '{self.args['branch']}'"
 
-        self.conn.request_line = self.sql.get_fast_search_packages_by_name.format(
-            branch=self.branch, name=self.name
+        response = self.send_sql_request(
+            self.sql.get_fast_search_packages_by_name.format(
+                branch=self.branch, name=self.name
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": f"Packages like '{self.name}' not found in database",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
-        pkgs_sorted = self._relevance_sort(tuplelist_to_dict(response, 3), self.name)  # type: ignore
+        pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 3), self.name)  # type: ignore
 
         res = []
         for pkg in pkgs_sorted:
@@ -197,28 +178,25 @@ class PackagesetPkghashByNVR(APIWorker):
         self.version = self.args["version"]
         self.release = self.args["release"]
 
-        self.conn.request_line = self.sql.get_pkghash_by_BVR.format(
-            branch=self.branch,
-            name=self.name,
-            version=self.version,
-            release=self.release,
+        response = self.send_sql_request(
+            self.sql.get_pkghash_by_BVR.format(
+                branch=self.branch,
+                name=self.name,
+                version=self.version,
+                release=self.release,
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response or response[0][0] == 0:  # type: ignore
-            self._store_error(
+            return self.store_error(
                 {
                     "message": (
                         f"Package '{self.name}-{self.version}-{self.release}' "
                         f"not found in database for branch {self.branch}"
                     ),
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         return {"request_args": self.args, "pkghash": str(response[0][0])}, 200  # type: ignore

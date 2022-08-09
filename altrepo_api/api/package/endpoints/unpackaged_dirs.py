@@ -45,28 +45,25 @@ class UnpackagedDirs(APIWorker):
             self.archs = lut.default_archs
         self.archs = tuple(self.archs)
 
-        self.conn.request_line = (
-            self.sql.get_unpackaged_dirs,
-            {
-                "branch": self.branch,
-                "email": "{}@%".format(self.packager),
-                "archs": self.archs,
-            },
+        response = self.send_sql_request(
+            (
+                self.sql.get_unpackaged_dirs,
+                {
+                    "branch": self.branch,
+                    "email": "{}@%".format(self.packager),
+                    "archs": self.archs,
+                },
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No data found in database for given parameters",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         DirsInfo = namedtuple(
             "DirsInfo",
