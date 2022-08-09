@@ -6,6 +6,14 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.8.1] - 2022-08-09
+
+Refactored APIWorker base class to reduce SQL requests related boilerplate code.
+
+### Added
+### Changed
+### Fixed
+
 ## [1.8.0] - 2022-07-13
 
 Merge new features in master branch for production use.
