@@ -6,6 +6,16 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.8.2] - 2022-08-23
+
+Regular API code updates and fixes. 
+
+### Added
+- search for deleted packages (closes #43539)
+### Changed
+- **Breaking change**: `site/find_packages` route data model
+### Fixed
+
 ## [1.8.1] - 2022-08-09
 
 Refactored APIWorker base class to reduce SQL requests related boilerplate code.

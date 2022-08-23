@@ -157,6 +157,42 @@ GROUP BY pkg_name
 ORDER BY pkg_name
 """
 
+    get_find_deleted_packages_by_name = """
+WITH
+deleted_src_pkgs AS (
+    SELECT pkgset_name, pkg_name, hash
+    FROM lv_branch_deleted_packages
+    WHERE pkg_name ILIKE '%{name}%'
+    {branch}
+)
+SELECT
+    pkg_name,
+    groupUniqArray((pkgset_name, pkg_version, pkg_release, toString(pkg_hash))),
+    max(pkg_buildtime),
+    any(pkg_url),
+    any(pkg_summary),
+    any(pkg_group_)
+FROM (
+    SELECT *
+    FROM deleted_src_pkgs
+    LEFT JOIN (
+        SELECT
+            pkg_hash,
+            pkg_buildtime,
+            pkg_version,
+            pkg_release,
+            pkg_summary,
+            pkg_url,
+            pkg_group_
+        FROM Packages
+        WHERE pkg_sourcepackage = 1
+            AND pkg_hash IN (SELECT hash FROM deleted_src_pkgs)
+    ) AS PI ON PI.pkg_hash = hash
+)
+GROUP BY pkg_name
+ORDER BY pkg_name
+"""
+
     get_fast_search_packages_by_name = """
 SELECT DISTINCT
     pkg_name,
@@ -172,6 +208,18 @@ GROUP BY
 ORDER BY
     pkg_sourcepackage DESC,
     pkg_name
+"""
+
+    get_fast_search_deleted_packages_by_name = """
+SELECT DISTINCT
+    pkg_name,
+    1,
+    groupUniqArray(pkgset_name)
+FROM lv_branch_deleted_packages
+WHERE pkg_name ILIKE '%{name}%'
+{branch}
+GROUP BY pkg_name
+ORDER BY pkg_name
 """
 
     get_last_branch_date = """

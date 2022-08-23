@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from collections import namedtuple
+from typing import Any
 
 from altrepo_api.utils import tuplelist_to_dict, sort_branches
 
@@ -23,7 +24,7 @@ from altrepo_api.api.misc import lut
 from ..sql import sql
 
 
-def relevance_sort(pkgs_dict, pkg_name):
+def relevance_sort(pkgs_dict: dict[str, Any], pkg_name: str) -> list[tuple]:
     """Dumb sorting for package names by relevance."""
 
     def relevance_weight(instr, substr):
@@ -76,28 +77,68 @@ class PackagesetFindPackages(APIWorker):
         )
         if not self.sql_status:
             return self.error
-        if not response:
+
+        res = []
+        PkgMeta = namedtuple(
+            "PkgMeta",
+            ["branch", "version", "release", "pkghash", "deleted"],
+            defaults=[False],  # 'deleted' default
+        )
+
+        if response:
+            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 5), self.name)
+
+            for pkg in pkgs_sorted:
+                res.append(
+                    {
+                        "name": pkg[0],
+                        "buildtime": pkg[2],
+                        "url": pkg[3],
+                        "summary": pkg[4],
+                        "category": pkg[5],
+                        "versions": [PkgMeta(*el)._asdict() for el in pkg[1]],
+                    }
+                )
+
+        # search in deleted packages
+        response = self.send_sql_request(
+            self.sql.get_find_deleted_packages_by_name.format(
+                branch=self.branch, name=self.name
+            )
+        )
+        if not self.sql_status:
+            return self.error
+
+        if response:
+            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 5), self.name)
+
+            src_pkgs_found = {p["name"] for p in res}
+
+            for pkg in pkgs_sorted:
+                if pkg[0] not in src_pkgs_found:
+                    # add packages found as deleted if not overlapping with already found
+                    res.append(
+                        {
+                            "name": pkg[0],
+                            "buildtime": pkg[2],
+                            "url": pkg[3],
+                            "summary": pkg[4],
+                            "category": pkg[5],
+                            "versions": [PkgMeta(*el, True)._asdict() for el in pkg[1]],  # type: ignore
+                        }
+                    )
+                else:
+                    # update already found packages with deleted one
+                    for r in res:
+                        if r["name"] == pkg[0]:
+                            r["versions"] += [PkgMeta(*el, True)._asdict() for el in pkg[1]]  # type: ignore
+                        break
+
+        if not res:
             return self.store_error(
                 {
                     "message": f"Packages like '{self.name}' not found in database",
                     "args": self.args,
-                }
-            )
-
-        pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 5), self.name)  # type: ignore
-
-        res = []
-        PkgMeta = namedtuple("PkgMeta", ["branch", "version", "release", "pkghash"])
-
-        for pkg in pkgs_sorted:
-            res.append(
-                {
-                    "name": pkg[0],
-                    "buildtime": pkg[2],
-                    "url": pkg[3],
-                    "summary": pkg[4],
-                    "category": pkg[5],
-                    "versions": [PkgMeta(*el)._asdict() for el in pkg[1]],
                 }
             )
 
@@ -131,27 +172,62 @@ class FastPackagesSearchLookup(APIWorker):
         )
         if not self.sql_status:
             return self.error
-        if not response:
+
+        res = []
+
+        if response:
+            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 3), self.name)  # type: ignore
+
+            for pkg in pkgs_sorted:
+                if pkg[1] == 1:
+                    sourcepackage = "source"
+                else:
+                    sourcepackage = "binary"
+                res.append(
+                    {
+                        "name": pkg[0],
+                        "sourcepackage": sourcepackage,
+                        "branches": sort_branches(pkg[2]),
+                    }
+                )
+
+        # search for deleted packages
+        response = self.send_sql_request(
+            self.sql.get_fast_search_deleted_packages_by_name.format(
+                branch=self.branch, name=self.name
+            )
+        )
+        if not self.sql_status:
+            return self.error
+
+        if response:
+            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 5), self.name)
+            src_pkgs_found = {p["name"] for p in res if p["sourcepackage"] == "source"}
+
+            for pkg in pkgs_sorted:
+                if pkg[0] not in src_pkgs_found:
+                    if pkg[1] == 1:
+                        sourcepackage = "source"
+                    else:
+                        sourcepackage = "binary"
+                    res.append(
+                        {
+                            "name": pkg[0],
+                            "sourcepackage": sourcepackage,
+                            "branches": sort_branches(pkg[2]),
+                        }
+                    )
+                else:
+                    for r in res:
+                        if r["name"] == pkg[0]:
+                            r["branches"] = list(set(r["branches"] + sort_branches(pkg[2])))
+                        break
+
+        if not res:
             return self.store_error(
                 {
                     "message": f"Packages like '{self.name}' not found in database",
                     "args": self.args,
-                }
-            )
-
-        pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 3), self.name)  # type: ignore
-
-        res = []
-        for pkg in pkgs_sorted:
-            if pkg[1] == 1:
-                sourcepackage = "source"
-            else:
-                sourcepackage = "binary"
-            res.append(
-                {
-                    "name": pkg[0],
-                    "sourcepackage": sourcepackage,
-                    "branches": sort_branches(pkg[2]),
                 }
             )
 

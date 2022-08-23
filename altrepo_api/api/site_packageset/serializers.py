@@ -21,17 +21,6 @@ from .namespace import get_namespace
 ns = get_namespace()
 
 
-package_versions_el_model = ns.model(
-    "SitePackageVersionsElementModel",
-    {
-        "branch": fields.String(description="package set name"),
-        "version": fields.String(description="package version"),
-        "release": fields.String(description="package release"),
-        "pkghash": fields.String(description="package hash UInt64 as string"),
-    },
-)
-
-
 pkgset_packages_el_model = ns.model(
     "SitePackagesElementModel",
     {
@@ -77,6 +66,16 @@ pkgset_pkghash_model = ns.model(
 )
 
 
+fing_pkgs_by_name_pkg_el_model = ns.model(
+    "SitePackageVersionsElementModel",
+    {
+        "branch": fields.String(description="package set name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "pkghash": fields.String(description="package hash UInt64 as string"),
+        "deleted": fields.Boolean(description="package was deleted from branch")
+    },
+)
 fing_pkgs_by_name_pkg_model = ns.model(
     "SiteFingPackagesPackageModel",
     {
@@ -86,7 +85,7 @@ fing_pkgs_by_name_pkg_model = ns.model(
         "summary": fields.String(description="package summary"),
         "category": fields.String(description="package category"),
         "versions": fields.Nested(
-            package_versions_el_model, as_list=True, description="all package versions"
+            fing_pkgs_by_name_pkg_el_model, as_list=True, description="all package versions"
         ),
     },
 )
