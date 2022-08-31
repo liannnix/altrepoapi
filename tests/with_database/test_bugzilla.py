@@ -7,11 +7,10 @@ BIN_PACKAGE_IN_DB = "grep"
 PACKAGE_NOT_IN_DB = "fakepackage"
 MAINTAINER_IN_DB = "rider"
 MAINTAINER_NOT_IN_DB = "fakemaintainer"
-EDITION_IN_DB = 'slinux'
-EDITION_NOT_DB = 'fake'
-BRANCH_IN_DB = 'p10'
-BRANCH_NOT_DB = 'fake'
-
+EDITION_IN_DB = "slinux"
+EDITION_NOT_DB = "fake"
+BRANCH_IN_DB = "p10"
+BRANCH_NOT_DB = "fake"
 
 
 @pytest.mark.parametrize(
@@ -106,7 +105,7 @@ def test_bugzilla_by_maintainer(client, kwargs):
         {"branch": BRANCH_IN_DB, "edition": EDITION_IN_DB, "status_code": 200},
         {"branch": BRANCH_NOT_DB, "edition": EDITION_IN_DB, "status_code": 400},
         {"branch": BRANCH_IN_DB, "edition": EDITION_NOT_DB, "status_code": 400},
-        {"branch": 'sisyphus', "edition": EDITION_IN_DB, "status_code": 404},
+        {"branch": "sisyphus", "edition": EDITION_IN_DB, "status_code": 404},
     ],
 )
 def test_bugzilla_by_image_edition(client, kwargs):

@@ -311,15 +311,11 @@ class DependsSrcPackage(APIWorker):
             pkg["pkghash"] = str(pkg["pkghash"])
 
         # drop temporary table
-        _ = self.send_sql_request(
-            self.sql.drop_tmp_table.format(tmp_table=tmp_table)
-        )
+        _ = self.send_sql_request(self.sql.drop_tmp_table.format(tmp_table=tmp_table))
         if not self.sql_status:
             return self.error
 
-        _ = self.send_sql_request(
-            self.sql.drop_tmp_table.format(tmp_table=tmp_table_2)
-        )
+        _ = self.send_sql_request(self.sql.drop_tmp_table.format(tmp_table=tmp_table_2))
         if not self.sql_status:
             return self.error
 

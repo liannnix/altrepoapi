@@ -220,7 +220,9 @@ class FastPackagesSearchLookup(APIWorker):
                 else:
                     for r in res:
                         if r["name"] == pkg[0]:
-                            r["branches"] = list(set(r["branches"] + sort_branches(pkg[2])))
+                            r["branches"] = list(
+                                set(r["branches"] + sort_branches(pkg[2]))
+                            )
                         break
 
         if not res:
