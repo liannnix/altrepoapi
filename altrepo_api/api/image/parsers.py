@@ -30,13 +30,14 @@ from altrepo_api.api.parser import (
     image_tag_type,
     pkg_groups_type,
     img_platform_type,
+    pkg_name_type,
 )
 
 # register items
-branch = parser.register_item(
+branch_opt = parser.register_item(
     "branch",
     type=branch_name_type,
-    required=True,
+    required=False,
     help="name of packageset",
     location="args",
 )
@@ -135,10 +136,35 @@ group = parser.register_item(
     help="package category",
     location="args",
 )
+pkg_name_opt = parser.register_item(
+    "pkg_name",
+    type=pkg_name_type,
+    required=True,
+    help="package name",
+    location="args",
+)
+pkg_type_opt = parser.register_item(
+    "pkg_type",
+    type=str,
+    choices=("source", "binary"),
+    default="source",
+    required=False,
+    help="packages type [source|binary]",
+    location="args",
+)
+img_show_opt = parser.register_item(
+    "img_show",
+    type=str,
+    choices=("active", "all"),
+    default="all",
+    required=False,
+    help="show images[active|all]",
+    location="args",
+)
 
 # build parsers
 image_info_args = parser.build_parser(
-    branch,
+    branch_opt,
     img_edition_opt,
     img_version_opt,
     img_release_opt,
@@ -151,17 +177,20 @@ image_info_args = parser.build_parser(
 )
 
 active_images_args = parser.build_parser(
-    branch,
+    branch_opt,
     img_edition_opt,
     img_version_opt,
     img_release_opt,
     img_variant_opt,
     img_type_opt,
 )
-image_tag_args = parser.build_parser(branch, img_edition_opt)
+image_tag_args = parser.build_parser(branch_opt, img_edition_opt)
 image_last_packages_args = parser.build_parser(
-    branch, img_uuid_opt, pkgs_limit, img_component_opt
+    branch_opt, img_uuid_opt, pkgs_limit, img_component_opt
 )
 image_uuid_args = parser.build_parser(img_tag_opt)
 image_categories_args = parser.build_parser(img_uuid_opt, img_component_opt)
 image_packages_args = parser.build_parser(img_uuid_opt, group, img_component_opt)
+find_images_args = parser.build_parser(
+    branch_opt, pkg_name_opt, img_edition_opt, pkg_type_opt, img_show_opt
+)

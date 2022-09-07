@@ -764,5 +764,28 @@ GROUP BY img_edition
 ORDER BY tags ASC, img_edition ASC
 """
 
+    get_find_imgs_by_pkg_name = """
+SELECT DISTINCT
+    pkg_hash,
+    pkg_name,
+    img_branch,
+    pkg_version,
+    pkg_release,
+    pkg_arch,
+    img_edition,
+    img_tag,
+    img_file,
+    pkgset_date
+FROM lv_all_image_packages
+WHERE pkg_hash IN (
+    SELECT DISTINCT pkg_hash
+    FROM Packages
+    {pkg_type}
+)
+{branch}
+{edition}
+{img_show}
+"""
+
 
 sql = SQL()
