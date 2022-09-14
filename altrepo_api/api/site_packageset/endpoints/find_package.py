@@ -132,7 +132,7 @@ class PackagesetFindPackages(APIWorker):
                     for r in res:
                         if r["name"] == pkg[0]:
                             r["versions"] += [PkgMeta(*el, True)._asdict() for el in pkg[1]]  # type: ignore
-                        break
+                            break
 
         if not res:
             return self.store_error(
