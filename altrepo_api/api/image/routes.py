@@ -168,7 +168,7 @@ class routeImageStatus(Resource):
     def get(self):
         url_logging(logger, g.url)
         args = {}
-        w = ImageStatus(g.connection, payload=ns.payload, **args)
+        w = ImageStatus(g.connection, payload=None, **args)
         return run_worker(worker=w, args=args, run_method=w.get)
 
 
@@ -201,7 +201,7 @@ class routeImageTagStatus(Resource):
     def get(self):
         url_logging(logger, g.url)
         args = image_tag_args.parse_args(strict=True)
-        w = ImageTagStatus(g.connection, payload=ns.payload, **args)
+        w = ImageTagStatus(g.connection, payload=None, **args)
         return run_worker(
             worker=w, args=args, check_method=w.check_params_get, run_method=w.get
         )

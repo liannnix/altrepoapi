@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from flask import g, request
+from flask import g
 from flask_restx import Resource
 
 from altrepo_api.utils import get_logger, url_logging
@@ -93,7 +93,7 @@ class routeRepositoryStatus(Resource):
     def post(self):
         url_logging(logger, g.url)
         args = {}
-        w = RepositoryStatus(g.connection, json_data=request.json)
+        w = RepositoryStatus(g.connection, json_data=ns.payload)
         return run_worker(
             worker=w,
             run_method=w.post,
@@ -110,7 +110,7 @@ class routeRepositoryStatus(Resource):
     def get(self):
         url_logging(logger, g.url)
         args = {}
-        w = RepositoryStatus(g.connection, json_data=request.json)
+        w = RepositoryStatus(g.connection)
         return run_worker(worker=w, args=args)
 
 
