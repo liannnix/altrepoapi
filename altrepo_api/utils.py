@@ -14,20 +14,22 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import re
-from typing import Any, Iterable, Union
-from uuid import UUID
-
-import mmh3
-import json
-import time
-import logging
-from logging import handlers
 import datetime
-from collections import defaultdict
-from urllib.parse import unquote
-from dataclasses import dataclass
+import json
+import logging
+import mmh3
+import re
+import time
 
+from collections import defaultdict
+from dataclasses import dataclass
+from flask import send_file, __version__ as FLASK_VERSION
+from flask.wrappers import Response
+from logging import handlers
+from packaging import version
+from typing import Any, Iterable, Union
+from urllib.parse import unquote
+from uuid import UUID
 
 from altrepo_api.settings import namespace as settings
 
@@ -332,3 +334,32 @@ def bytes2human(size: Union[int, float]) -> str:
             return f"{size:3.1f} {unit}B"
         size /= 1024.0
     return f"{size:.1f} ZB"
+
+
+FLASK_BREAKING_CHANGE_VERSION = "2.2.0"
+
+
+def send_file_compat(
+    *,
+    file: str,
+    mimetype: str,
+    as_attachment: bool,
+    attachment_filename: str,
+) -> Response:
+    # check the version of Flask imported
+    flask_version = version.parse(FLASK_VERSION)
+    if flask_version < version.parse(FLASK_BREAKING_CHANGE_VERSION):
+        # use old 'send_file' arguments names
+        return send_file(
+            file,
+            mimetype=mimetype,
+            as_attachment=as_attachment,
+            attachment_filename=attachment_filename,  # type: ignore
+        )
+    # use new 'send_file' arguments names
+    return send_file(
+        file,
+        mimetype=mimetype,
+        as_attachment=as_attachment,
+        download_name=attachment_filename,
+    )
