@@ -14,13 +14,10 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from uuid import UUID
 from collections import namedtuple
 
-from altrepo_api.utils import bytes2human
 from altrepo_api.api.base import APIWorker
 from ..sql import sql
-from ...misc import lut
 
 
 class FindImagesByPackageName(APIWorker):
@@ -70,7 +67,9 @@ class FindImagesByPackageName(APIWorker):
             pkg_type_clause = """
             WHERE pkg_name = '{pkg_name}'
                 AND pkg_sourcepackage = 0
-            """.format(pkg_name=pkg_name)
+            """.format(
+                pkg_name=pkg_name
+            )
         else:
             pkg_type_clause = """
             WHERE pkg_srcrpm_hash IN (
@@ -80,7 +79,9 @@ class FindImagesByPackageName(APIWorker):
                   AND pkg_sourcepackage = 1
             )
               AND (pkg_sourcepackage = 0)
-            """.format(pkg_name=pkg_name)
+            """.format(
+                pkg_name=pkg_name
+            )
 
         response = self.send_sql_request(
             self.sql.get_find_imgs_by_pkg_name.format(
