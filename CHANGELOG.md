@@ -6,9 +6,20 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.8.3] - 2022-09-27
+
+Regular API code updates and fixes.
+
+### Added
+- python3-module-packaging dependency in docker files
+### Changed
+### Fixed
+- Flask 2.2.x library compatibility
+- updated requirements.txt
+
 ## [1.8.2] - 2022-08-23
 
-Regular API code updates and fixes. 
+Regular API code updates and fixes.
 
 ### Added
 - search for deleted packages (closes #43539)

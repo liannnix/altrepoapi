@@ -18,6 +18,7 @@ GNU AGPLv3
 * python3-module-mmh3
 * python3-module-rpm
 * python3-module-gunicorn
+* python3-module-packaging
 
 # Starting application
 
