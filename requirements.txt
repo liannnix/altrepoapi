@@ -1,5 +1,7 @@
+mmh3
 flask
 flask-restx
 gunicorn
 clickhouse-driver
+packaging
 - rpm
