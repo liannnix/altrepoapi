@@ -116,7 +116,7 @@ class ConflictFilter:
             {"hshs": tuple(hshs), "branch": self.pbranch, "arch": self.parch},
         )
         status, response = self.conn.send_request()
-        if status is False:
+        if not status:
             self._store_sql_error(response, ll.ERROR)
             raise SqlRequestError(self.error)
 
@@ -127,7 +127,7 @@ class ConflictFilter:
 
         self.conn.request_line = (self.sql.get_packages_info, {"hshs": tuple(hshs)})
         status, response = self.conn.send_request()
-        if status is False:
+        if not status:
             self._store_sql_error(response, ll.ERROR)
             raise SqlRequestError(self.error)
 
