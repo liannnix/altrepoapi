@@ -23,7 +23,7 @@ from altrepo_api.libs.exceptions import SqlRequestError
 
 
 class BuildDependencySet(APIWorker):
-    """Retrieves package build dependencies."""
+    """Retrieves source package build dependencies recursively."""
 
     def __init__(self, connection, packages, branch, archs, **kwargs):
         self.conn = connection
@@ -39,6 +39,7 @@ class BuildDependencySet(APIWorker):
         super().__init__()
 
     def build_dependency_set(self):
+        # get source packages hashes by names
         response = self.send_sql_request(
             self.sql.get_pkg_hshs.format(pkgs=self.packages, branch=self.branch)
         )
@@ -47,7 +48,7 @@ class BuildDependencySet(APIWorker):
         if not response:
             _ = self.store_error(
                 {
-                    "message": f"Packages {list(self.packages)} not found in package set '{self.branch}'"
+                    "message": f"Source packages {list(self.packages)} not found in package set '{self.branch}'"
                 }
             )
             return
@@ -74,13 +75,12 @@ class BuildDependencySet(APIWorker):
         self.status = True
 
 
-class PackageBuildDependencySet:
-    """Retrieves packages build dependencies."""
+class PackageBuildDependencySet(APIWorker):
+    """Retrieves source packages build dependencies."""
 
     def __init__(self, connection, **kwargs) -> None:
         self.conn = connection
         self.args = kwargs
-        self.validation_results = None
         self.logger = get_logger(__name__)
 
     def check_params(self):
