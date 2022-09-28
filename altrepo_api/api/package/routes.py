@@ -207,7 +207,7 @@ class routeUnpackagedDirs(Resource):
     doc={
         "description": (
             "Get list of packages required for build by given "
-            "packages list recursively"
+            "source packages list recursively"
         ),
         "responses": GET_RESPONSES_400_404,
     },
@@ -219,7 +219,7 @@ class routePackageBuildDependencySet(Resource):
         url_logging(logger, g.url)
         args = build_dep_set_args.parse_args(strict=True)
         w = PackageBuildDependencySet(g.connection, **args)
-        return run_worker(worker=w, args=args)  # type: ignore
+        return run_worker(worker=w, args=args)
 
 
 @ns.route("/repocop")
