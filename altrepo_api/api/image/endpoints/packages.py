@@ -89,7 +89,7 @@ class CheckPackages(APIWorker):
                 columns=self.sql.tmp_table_columns,
             )
         )
-        if self.sql_status is False:
+        if not self.sql_status:
             return self.error
 
         _ = self.send_sql_request(
@@ -98,7 +98,7 @@ class CheckPackages(APIWorker):
                 (tuple(p) for p in packages),
             )
         )
-        if self.sql_status is False:
+        if not self.sql_status:
             return self.error
 
         pkgs_not_found = set()
@@ -112,7 +112,7 @@ class CheckPackages(APIWorker):
                 tmp_table=tmp_table, branch=self.branch
             )
         )
-        if self.sql_status is False:
+        if not self.sql_status:
             return self.error
         if not response:
             return self.store_error({"message": "No data found in database"})
@@ -124,7 +124,7 @@ class CheckPackages(APIWorker):
             response = self.send_sql_request(
                 self.sql.get_pkgs_tasks.format(hshs=tuple(pkgs_not_found))
             )
-            if self.sql_status is False:
+            if not self.sql_status:
                 return self.error
 
             PkgTask = namedtuple("PkgTask", ["hash", "taskid", "subtaskid"])
@@ -135,7 +135,7 @@ class CheckPackages(APIWorker):
 
         # drop temporary table
         _ = self.send_sql_request(self.sql.drop_tmp_table.format(tmp_table=tmp_table))
-        if self.sql_status is False:
+        if not self.sql_status:
             return self.error
 
         # build result response
@@ -209,7 +209,7 @@ class CheckPackages(APIWorker):
                 tmp_table=tmp_table, columns=self.sql.tmp_table_columns
             )
         )
-        if self.sql_status is False:
+        if not self.sql_status:
             return self.error
 
         _ = self.send_sql_request(
@@ -218,7 +218,7 @@ class CheckPackages(APIWorker):
                 (tuple(p) for p in packages),
             )
         )
-        if self.sql_status is False:
+        if not self.sql_status:
             return self.error
 
         pkgs_in_branch = set()
@@ -233,7 +233,7 @@ class CheckPackages(APIWorker):
                 tmp_table=tmp_table2, tmp_table2=tmp_table, branch=self.branch
             )
         )
-        if self.sql_status is False:
+        if not self.sql_status:
             return self.error
 
         tmp_table3 = "_TmpPkgHshsByNEVR"
@@ -242,13 +242,13 @@ class CheckPackages(APIWorker):
                 tmp_table=tmp_table3, tmp_table2=tmp_table, branch=self.branch
             )
         )
-        if self.sql_status is False:
+        if not self.sql_status:
             return self.error
 
         response = self.send_sql_request(
             self.sql.select_all_tmp_table.format(tmp_table=tmp_table2)
         )
-        if self.sql_status is False:
+        if not self.sql_status:
             return self.error
 
         packages_in_branch = [Package(*el) for el in response]  # type: ignore
@@ -297,7 +297,7 @@ class CheckPackages(APIWorker):
                     na=[(p[1], p[6]) for p in packages if p.hash in pkgs_not_found],
                 )
             )
-            if self.sql_status is False:
+            if not self.sql_status:
                 return self.error
 
             pkgs_nf_last = [Package(*el) for el in response]  # type: ignore
@@ -320,7 +320,7 @@ class CheckPackages(APIWorker):
             _ = self.send_sql_request(
                 self.sql.truncate_tmp_table.format(tmp_table=tmp_table)
             )
-            if self.sql_status is False:
+            if not self.sql_status:
                 return self.error
 
             _ = self.send_sql_request(
@@ -329,13 +329,13 @@ class CheckPackages(APIWorker):
                     (tuple(p) for p in packages if p.hash in pkgs_not_found),
                 )
             )
-            if self.sql_status is False:
+            if not self.sql_status:
                 return self.error
 
             response = self.send_sql_request(
                 self.sql.get_pkgs_tasks_nevr.format(tmp_table=tmp_table)
             )
-            if self.sql_status is False:
+            if not self.sql_status:
                 return self.error
 
             pkgs_tasks = [(tuple(el[1:3]), Package(*el[3:])) for el in response]  # type: ignore
@@ -361,7 +361,7 @@ class CheckPackages(APIWorker):
                     ],
                 )
             )
-            if self.sql_status is False:
+            if not self.sql_status:
                 return self.error
 
             for p in [Package(*el) for el in response]:  # type: ignore
@@ -376,15 +376,15 @@ class CheckPackages(APIWorker):
 
         # drop temporary tables
         _ = self.send_sql_request(self.sql.drop_tmp_table.format(tmp_table=tmp_table))
-        if self.sql_status is False:
+        if not self.sql_status:
             return self.error
 
         _ = self.send_sql_request(self.sql.drop_tmp_table.format(tmp_table=tmp_table2))
-        if self.sql_status is False:
+        if not self.sql_status:
             return self.error
 
         _ = self.send_sql_request(self.sql.drop_tmp_table.format(tmp_table=tmp_table3))
-        if self.sql_status is False:
+        if not self.sql_status:
             return self.error
 
         # build result response

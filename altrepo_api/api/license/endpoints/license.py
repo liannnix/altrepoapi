@@ -56,7 +56,7 @@ class LicenseParser(APIWorker):
     def parse_license(self):
         # get license aliases from database
         response = self.send_sql_request(self.sql.get_aliases)
-        if self.sql_status is False:
+        if not self.sql_status:
             return
         aliases = {}
         if response:
@@ -64,7 +64,7 @@ class LicenseParser(APIWorker):
                 aliases[el[0]] = el[1]
         # get SPDX license names
         response = self.send_sql_request(self.sql.get_spdx_ids)
-        if self.sql_status is False:
+        if not self.sql_status:
             return
         spdx_ids = set()
         if response:
