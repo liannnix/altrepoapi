@@ -23,7 +23,8 @@ from altrepo_api.libs.exceptions import SqlRequestError
 
 
 class BuildDependencySet(APIWorker):
-    """Retrieves source package build dependencies recursively."""
+    """Retrieves source package build dependencies recursively.
+    """
 
     def __init__(self, connection, packages, branch, archs, **kwargs):
         self.conn = connection

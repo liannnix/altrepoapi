@@ -303,6 +303,9 @@ build_dep_set_pkg_model = ns.model(
         "release": fields.String(description="package release"),
         "epoch": fields.Integer(description="package epoch"),
         "archs": fields.List(fields.String, description="binary packages archs"),
+        "requires": fields.List(
+            fields.String, description="binary packages require dependencies"
+        ),
     },
 )
 build_dep_set_pkgs_model = ns.model(

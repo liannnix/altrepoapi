@@ -16,8 +16,10 @@
 
 from dataclasses import dataclass
 from collections import namedtuple
+from typing import Iterable, Union
 
-from altrepo_api.utils import get_logger, logger_level as ll
+from altrepo_api.api.base import ConnectionProto
+from altrepo_api.utils import get_logger
 
 from .exceptions import SqlRequestError
 
@@ -95,95 +97,94 @@ GROUP BY
 
 class PackageDependencies:
     """
-    Retrieves package dependencies drom database.
+    Retrieves source packages dependencies from database.
 
-    In this class, temporary tables are used to record the results of queries.
-    This is necessary in order to avoid exceeding the limit count of input data
-    in clickhouse database.
+    Result list contains binary packages that providing required dependencies.
+    Dependency tree resolved recursively until all related packages are collected.
     """
 
-    def __init__(self, connection, packages, branch, archs, debug_):
+    def __init__(
+        self,
+        connection: ConnectionProto,
+        source_packages_hashes: Iterable[int],
+        branch: str,
+        archs: list[str],
+        debug_sql: bool = False,
+    ):
         self.conn = connection
         self.sql = PackageDependenciesSQL()
-        self.packages = packages
-        self.branch = branch
+        self.source_packages_hashes = source_packages_hashes
         self.archs = archs
-        self.dep_dict = {}
+        self.branch = branch
+        self.dependencies_dict = {}
+        self.deps_tree_dict: dict[int, set[int]] = {}
+        self.error = ""
+        self._debug = debug_sql
         self._tmp_table = "tmp_pkg_hshs"
-        self.DEBUG = debug_
 
-    def _log_error(self, severity):
-        if severity == ll.CRITICAL:
-            logger.critical(self.error)
-        elif severity == ll.ERROR:
-            logger.error(self.error)
-        elif severity == ll.WARNING:
-            logger.warning(self.error)
-        elif severity == ll.INFO:
-            logger.info(self.error)
-        else:
-            logger.debug(self.error)
-
-    def _store_sql_error(self, message, severity):
-        def build_sql_error(message):
-            response = {"message": message}
-            if self.DEBUG:
-                response["module"] = self.__class__.__name__
-                requestline = self.conn.request_line
-                if isinstance(requestline, tuple):
-                    response["sql_request"] = [
-                        line for line in requestline[0].split("\n") if len(line) > 0
-                    ]
-                else:
-                    response["sql_request"] = [line for line in requestline.split("\n")]
-            return response
-
-        self.error = build_sql_error(message)
-        self.status = False
-        self._log_error(severity)
-
-    def _store_error(self, message, severity):
+    def _store_sql_error(self, message):
         self.error = {"message": message}
-        self.status = False
-        self._log_error(severity)
 
-    def _get_package_dep_set(self, pkgs=None, first=False):
+        if self._debug:
+            self.error["module"] = self.__class__.__name__
+            requestline = self.conn.request_line
 
+            if isinstance(requestline, tuple):
+                self.error["sql_request"] = [
+                    line for line in requestline[0].split("\n") if len(line) > 0
+                ]
+            else:
+                self.error["sql_request"] = [line for line in requestline.split("\n")]
+
+        logger.error(self.error)
+
+    def _get_package_dep_set(
+        self, pkgs_hshs_sql_clause: Union[str, Iterable[int]], first: bool = False
+    ):
+        # get binary packages hashes that provides dependencies required by
+        # source packages defined by hashes form pkgs
         self.conn.request_line = self.sql.get_srchsh_for_binary.format(
-            pkgs=pkgs, branch=self.branch, archs=tuple(self.archs)
+            pkgs=pkgs_hshs_sql_clause, branch=self.branch, archs=tuple(self.archs)
         )
         status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, ll.ERROR)
+        if not status:
+            self._store_sql_error(response)
             raise SqlRequestError(self.error)
 
         tmp_list = []
+
         for key, val in response:
+            # update dependencies_tree_dict
+            if key not in self.deps_tree_dict:
+                self.deps_tree_dict[key] = set(val)
+            else:
+                self.deps_tree_dict[key].update(val)
+            # process dependencies
             if first:
-                self.dep_dict[key] = val
+                self.dependencies_dict[key] = val
                 tmp_list += list(set(val) - set(tmp_list))
             else:
-                for pkg, hshs in self.dep_dict.items():
+                for pkg, hshs in self.dependencies_dict.items():
                     hshs_set = set(hshs)
                     if key in hshs_set:
                         uniq_hshs = list(set(val) - hshs_set)
-                        self.dep_dict[pkg] += uniq_hshs
+                        self.dependencies_dict[pkg] += uniq_hshs
                         tmp_list += uniq_hshs
 
         self.conn.request_line = self.sql.drop_tmp_table.format(
             tmp_table=self._tmp_table
         )
         status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, ll.ERROR)
+        if not status:
+            self._store_sql_error(response)
             raise SqlRequestError(self.error)
 
         self.conn.request_line = self.sql.create_tmp_table.format(
             tmp_table=self._tmp_table
         )
         status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, ll.ERROR)
+        if not status:
+            self._store_sql_error(response)
             raise SqlRequestError(self.error)
 
         self.conn.request_line = (
@@ -191,28 +192,36 @@ class PackageDependencies:
             ((hsh,) for hsh in tmp_list),
         )
         status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, ll.ERROR)
+        if not status:
+            self._store_sql_error(response)
             raise SqlRequestError(self.error)
 
         if not tmp_list:
-            return self.dep_dict
+            return
 
+        # recursive call untill all dependencies are resolved
         return self._get_package_dep_set(
-            pkgs=self.sql.select_from_tmp_table.format(tmp_table=self._tmp_table)
+            pkgs_hshs_sql_clause=self.sql.select_from_tmp_table.format(
+                tmp_table=self._tmp_table
+            )
         )
 
     def build_result(self):
-        hsh_dict = self._get_package_dep_set(self.packages, first=True)
         tmp_table = "all_hshs"
+
+        self._get_package_dep_set(self.source_packages_hashes, first=True)
+
+        # print(f"DBG: {self.deps_tree_dict}")
+        # print(f"DBG: {self.dependencies_dict}")
+
         self.conn.request_line = self.sql.create_tmp_table.format(tmp_table=tmp_table)
         status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, ll.ERROR)
+        if not status:
+            self._store_sql_error(response)
             raise SqlRequestError(self.error)
 
-        hsh_list = tuple(hsh_dict.keys()) + tuple(
-            [hsh for val in hsh_dict.values() for hsh in val]
+        hsh_list = self.dependencies_dict.keys() | set(
+            [hsh for val in self.dependencies_dict.values() for hsh in val]
         )
 
         self.conn.request_line = (
@@ -220,14 +229,15 @@ class PackageDependencies:
             ((hsh,) for hsh in hsh_list),
         )
         status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, ll.ERROR)
+        if not status:
+            self._store_sql_error(response)
             raise SqlRequestError(self.error)
+
         # get information for all packages in hsh_dict (keys and values)
         self.conn.request_line = self.sql.get_meta_by_hshs.format(tmp_table=tmp_table)
         status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, ll.ERROR)
+        if not status:
+            self._store_sql_error(response)
             raise SqlRequestError(self.error)
 
         dict_info = dict([(tuple(r[0]), r[1:]) for r in response])
@@ -237,7 +247,7 @@ class PackageDependencies:
         )
         result_list = []
 
-        for pkg, hshs in hsh_dict.items():
+        for pkg, hshs in self.dependencies_dict.items():
             counter = 0
             control_list = set()
             pkg_req_list = []
@@ -249,7 +259,16 @@ class PackageDependencies:
 
                 if control_list_el not in control_list:
                     control_list.add(control_list_el)
-                    pkg_req_list.append(PkgInfo(*dict_info_val)._asdict())
+                    # add packages names that required by deps
+                    pkg_req_list_record = PkgInfo(*dict_info_val)._asdict()
+                    pkg_req_list_record["requires"] = []
+
+                    for hsh_ in self.deps_tree_dict.get(dict_info_key[0], []):
+                        pkg_ = dict_info.get((hsh_,))
+                        if pkg_:
+                            pkg_req_list_record["requires"].append(pkg_[0])
+
+                    pkg_req_list.append(pkg_req_list_record)
                     counter += 1
 
             pkg_key = [k for k in dict_info.keys() if pkg in k][0]
