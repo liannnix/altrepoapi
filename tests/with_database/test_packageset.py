@@ -146,3 +146,28 @@ def test_compare_packagesets(client, kwargs):
             pkg_match.append(el["package1"]["name"] == el["package2"]["name"])
         assert pkg_match.count(True) > 0
         assert pkg_match.count(False) > 0
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"branch": BRANCH_IN_DB, "status_code": 200},
+        {"branch": None, "status_code": 200},
+        {"branch": BRANCH_NOT_IN_DB, "status_code": 400},
+    ],
+)
+def test_repository_statistics(client, kwargs):
+    url = url_for("api.packageset_route_repository_statistics")
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("status_code",):
+            continue
+        if v is not None:
+            params[k] = v
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["length"] != 0
+        assert data["branches"] != []
