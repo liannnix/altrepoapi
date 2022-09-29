@@ -176,36 +176,10 @@ WHERE img_show == 'show'
 GROUP BY img_branch
 """
 
-    get_repository_package_counts = """
-WITH pkgset_roots AS
-(
-    SELECT
-        pkgset_nodename AS name,
-        argMax(pkgset_ruuid, pkgset_date) AS ruuid,
-        max(pkgset_date) AS date
-    FROM PackageSetName
-    WHERE pkgset_depth = 0
-        AND (pkgset_kv.v[2]) = 'repo'
-        {branch}
-    GROUP BY pkgset_nodename
-)
-SELECT
-    any(PR.name) AS branch,
-    any(PR.date) AS branch_date,
-    groupUniqArray((splitByChar('/', pkgset_kv.v[5])[1], pkgset_nodename, pkgset_kv.v[3]))
-FROM PackageSetName
-LEFT JOIN
-(
-    SELECT
-        name,
-        ruuid,
-        date
-    FROM pkgset_roots
-) AS PR ON PR.ruuid = pkgset_ruuid
-WHERE pkgset_depth > 0
-    AND pkgset_ruuid IN (SELECT ruuid FROM pkgset_roots)
-    AND (pkgset_kv.v[2] = 'comp' OR pkgset_kv.v[2] = 'srpm')
-GROUP BY pkgset_ruuid
+    get_repository_statistics = """
+SELECT branch, branch_date, stats
+FROM lv_repository_statistics
+{branch}
 """
 
 
