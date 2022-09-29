@@ -24,6 +24,13 @@ branch = parser.register_item(
     help="name of packageset",
     location="args",
 )
+branch_opt = parser.register_item(
+    "branch",
+    type=branch_name_type,
+    required=False,
+    help="name of packageset",
+    location="args",
+)
 packageset_1 = parser.register_item(
     "pkgset1",
     type=branch_name_type,
@@ -59,3 +66,4 @@ arch_list_opt = parser.register_item(
 # build parsers
 pkgset_compare_args = parser.build_parser(packageset_1, packageset_2)
 pkgset_packages_args = parser.build_parser(branch, package_type_opt, arch_list_opt)
+repository_statistics_args = parser.build_parser(branch_opt)
