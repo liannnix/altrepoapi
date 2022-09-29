@@ -29,15 +29,21 @@ from altrepo_api.api.base import (
 from .endpoints.pkgset_compare import PackagesetCompare
 from .endpoints.pkgset_packages import PackagesetPackages
 from .endpoints.pkgset_status import RepositoryStatus, ActivePackagesets
+from .endpoints.repository_status import RepositoryStatistics
 
 from .namespace import get_namespace
-from .parsers import pkgset_compare_args, pkgset_packages_args
+from .parsers import (
+    pkgset_compare_args,
+    pkgset_packages_args,
+    repository_statistics_args,
+)
 from .serializers import (
     pkgset_compare_model,
     pkgset_packages_model,
     pkgset_status_post_model,
     pkgset_status_get_model,
     active_pkgsets_model,
+    repository_statistics_model,
 )
 
 ns = get_namespace()
@@ -128,4 +134,21 @@ class routeActivePackagesets(Resource):
         url_logging(logger, g.url)
         args = {}
         w = ActivePackagesets(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/repository_statistics",
+    doc={
+        "description": "Get repository statistics",
+        "responses": GET_RESPONSES_404,
+    },
+)
+class routeRepositoryStatistics(Resource):
+    @ns.expect(repository_statistics_args)
+    @ns.marshal_with(repository_statistics_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = repository_statistics_args.parse_args(strict=True)
+        w = RepositoryStatistics(g.connection, **args)
         return run_worker(worker=w, args=args)

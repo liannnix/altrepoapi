@@ -145,13 +145,44 @@ pkgset_status_get_model = ns.model(
     },
 )
 
-
 active_pkgsets_model = ns.model(
     "PackageSetActivePackageSetsModel",
     {
         "length": fields.Integer(description="number of active package sets found"),
         "packagesets": fields.List(
             fields.String, description="active package sets list"
+        ),
+    },
+)
+
+repository_statistics_package_counts_model = ns.model(
+    "RepositoryStatisticsPackageCountsModel",
+    {
+        "arch": fields.String(description="packages arch"),
+        "component": fields.String(description="component name"),
+        "count": fields.Integer(description="packages count"),
+    },
+)
+repository_statistics_branches_model = ns.model(
+    "RepositoryStatisticsBranchesModel",
+    {
+        "branch": fields.String(description="package set name"),
+        "date_update": fields.DateTime(description="branch upload date"),
+        "packages_count": fields.Nested(
+            repository_statistics_package_counts_model,
+            description="list of packages count by package archs",
+            as_list=True,
+        ),
+    },
+)
+repository_statistics_model = ns.model(
+    "RepositoryStatisticsModel",
+    {
+        "length": fields.Integer(description="number of packages found"),
+        "branches": fields.Nested(
+            repository_statistics_branches_model,
+            description="list of branches with packages count",
+            as_list=True,
         ),
     },
 )
