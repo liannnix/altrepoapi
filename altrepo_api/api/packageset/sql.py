@@ -204,7 +204,7 @@ LEFT JOIN
 ) AS PR ON PR.ruuid = pkgset_ruuid
 WHERE pkgset_depth > 0
     AND pkgset_ruuid IN (SELECT ruuid FROM pkgset_roots)
-    AND pkgset_kv.v[2] = 'comp'
+    AND (pkgset_kv.v[2] = 'comp' OR pkgset_kv.v[2] = 'srpm')
 GROUP BY pkgset_ruuid
 """
 
