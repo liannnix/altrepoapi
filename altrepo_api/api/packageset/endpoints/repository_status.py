@@ -58,7 +58,7 @@ class RepositoryStatistics(APIWorker):
                     stats = [PkgCount(*x)._asdict() for x in b.stats]
                     for s in stats:
                         # convert total file size to human readable
-                        s["size"] = bytes2human(s["size"])
+                        s["size_hr"] = bytes2human(s["size"])
                         # replace arch for source packages component
                         if s["component"] == "srpm":
                             s["arch"] = "srpm"

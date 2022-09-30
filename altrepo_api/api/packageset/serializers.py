@@ -161,7 +161,8 @@ repository_statistics_package_counts_model = ns.model(
         "arch": fields.String(description="packages arch"),
         "component": fields.String(description="component name"),
         "count": fields.Integer(description="packages count"),
-        "size": fields.String(description="total packages files size"),
+        "size": fields.Integer(description="total packages files size in bytes"),
+        "size_hr": fields.String(description="total packages files size human readable"),
     },
 )
 repository_statistics_branches_model = ns.model(
