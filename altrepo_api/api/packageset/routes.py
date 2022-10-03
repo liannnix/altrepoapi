@@ -25,7 +25,7 @@ from altrepo_api.api.base import (
     GET_RESPONSES_400_404,
     POST_RESPONSE_400_404,
 )
-
+from .endpoints.packages_by_uuid import PackagesByUuid
 from .endpoints.pkgset_compare import PackagesetCompare
 from .endpoints.pkgset_packages import PackagesetPackages
 from .endpoints.pkgset_status import RepositoryStatus, ActivePackagesets
@@ -36,6 +36,7 @@ from .parsers import (
     pkgset_compare_args,
     pkgset_packages_args,
     repository_statistics_args,
+    packages_by_uuid_args,
 )
 from .serializers import (
     pkgset_compare_model,
@@ -44,6 +45,7 @@ from .serializers import (
     pkgset_status_get_model,
     active_pkgsets_model,
     repository_statistics_model,
+    packages_by_uuid_model,
 )
 
 ns = get_namespace()
@@ -151,4 +153,21 @@ class routeRepositoryStatistics(Resource):
         url_logging(logger, g.url)
         args = repository_statistics_args.parse_args(strict=True)
         w = RepositoryStatistics(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/packages_by_uuid",
+    doc={
+        "description": "Get packages by packageset component UUID",
+        "responses": GET_RESPONSES_404,
+    },
+)
+class routePackagesByUuid(Resource):
+    @ns.expect(packages_by_uuid_args)
+    @ns.marshal_with(packages_by_uuid_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = packages_by_uuid_args.parse_args(strict=True)
+        w = PackagesByUuid(g.connection, **args)
         return run_worker(worker=w, args=args)

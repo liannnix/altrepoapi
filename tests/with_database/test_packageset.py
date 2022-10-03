@@ -8,6 +8,9 @@ BRANCHES_IN_DB = ("sisyphus", "p9", "p10")
 ARCHS_IN_DB = "noarch,x86_64,i586"
 ARCHS_NOT_IN_DB = "x86_64,fakearch2"
 PACKAGES_IN_DB = ("curl", "mc", "python3")
+COMPONENT_UUID_IN_DB = "fcca9e30-10ba-4e2a-8169-b29536f64cb0"
+ROOT_UUID_IN_DB = "c18251da-614b-42db-8358-ff34880255eb"
+UUID_NOT_VALID = "00000-0000-0000-0000-000000000000"
 
 
 def test_active_packagesets(client):
@@ -171,3 +174,29 @@ def test_repository_statistics(client, kwargs):
         assert data != {}
         assert data["length"] != 0
         assert data["branches"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"uuid": COMPONENT_UUID_IN_DB, "status_code": 200},
+        {"uuid": ROOT_UUID_IN_DB, "status_code": 404},
+        {"uuid": None, "status_code": 400},
+        {"uuid": UUID_NOT_VALID, "status_code": 400},
+    ],
+)
+def test_packages_by_uuid(client, kwargs):
+    url = url_for("api.packageset_route_packages_by_uuid")
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("status_code",):
+            continue
+        if v is not None:
+            params[k] = v
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["length"] != 0
+        assert data["packages"] != []
