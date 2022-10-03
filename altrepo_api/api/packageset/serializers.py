@@ -188,3 +188,38 @@ repository_statistics_model = ns.model(
         ),
     },
 )
+
+packages_by_uuid_el_model = ns.model(
+    "PackagesByUuidElementModel",
+    {
+        "hash": fields.String(description="package hash UInt64 as string"),
+        "name": fields.String(attribute="pkg_name", description="package name"),
+        "version": fields.String(
+            attribute="pkg_version", description="package version"
+        ),
+        "release": fields.String(
+            attribute="pkg_release", description="package release"
+        ),
+        "arch": fields.String(attribute="pkg_arch", description="package architecture"),
+        "sourcerpm": fields.String(description="source package file"),
+        "summary": fields.String(
+            attribute="pkg_summary", description="package summary"
+        ),
+        "buildtime": fields.Integer(
+            attribute="pkg_buildtime", description="last binary package buildtime"
+        ),
+        "changelog_text": fields.String(description="package last changelog message"),
+    },
+)
+packages_by_uuid_model = ns.model(
+    "PackagesByUuidModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "packages": fields.Nested(
+            packages_by_uuid_el_model,
+            description="packages list by packageset component UUID",
+            as_list=True,
+        ),
+    },
+)
