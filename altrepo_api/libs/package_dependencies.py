@@ -27,7 +27,8 @@ from altrepo_api.utils import get_logger
 
 from .exceptions import SqlRequestError
 
-USE_SHADOW_TABLES = True
+USE_SHADOW_TABLES_DEPS_PROVIDE = False
+USE_SHADOW_TABLES_DEPS_REQUIRE = True
 
 LIBRPM_SO = "librpm.so"
 RPMSENSE_MASK = 0x0F
@@ -145,7 +146,8 @@ WHERE dp_type IN ('require', 'provide')
 DROP TEMPORARY TABLE last_depends
 """
 
-    get_packages_by_requires = """
+    get_packages_by_requires = (
+        """
 WITH reqDeps AS (
     SELECT
         pkg_hash,
@@ -154,6 +156,7 @@ WITH reqDeps AS (
         dp_flag
     FROM last_depends
     WHERE dp_name NOT LIKE 'rpmlib%'
+        AND pkgset_name = '{branch}'
         AND dp_type = 'require'
         AND pkg_hash IN (SELECT hsh FROM {tmp_table})
 )
@@ -175,7 +178,9 @@ WHERE dp_name IN (SELECT DISTINCT dp_name FROM reqDeps)
     AND pkg_arch IN {archs}
     AND pkgset_name = '{branch}'
 GROUP BY hash
-""" if USE_SHADOW_TABLES else """
+"""
+        if USE_SHADOW_TABLES_DEPS_REQUIRE
+        else """
     WITH reqDeps AS (
         SELECT
             pkg_hash,
@@ -215,8 +220,113 @@ GROUP BY hash
         AND pkg_hash IN (SELECT pkg_hash FROM binPkgHshsByBranchAndArch)
     GROUP BY hash
 """
+    )
 
-    get_packages_by_provides = """
+    get_packages_by_provides = (
+        """
+WITH provDeps AS (
+    SELECT
+        pkg_hash,
+        dp_name,
+        dp_version,
+        dp_flag
+    FROM last_depends
+    WHERE dp_type = 'provide'
+        AND pkg_hash IN (SELECT hsh FROM {tmp_table})
+        AND pkgset_name = '{branch}'
+)
+SELECT DISTINCT
+    pkg_hash AS hash,
+    groupUniqArray(tuple(dp_name, dp_version, dp_flag)) AS deps,
+    'provide' AS type
+FROM provDeps
+GROUP BY hash
+UNION ALL
+SELECT DISTINCT
+    pkg_hash AS hash,
+    groupUniqArray(tuple(dp_name, dp_version, dp_flag)) AS deps,
+    'require' AS type
+FROM last_depends
+WHERE dp_name IN (SELECT DISTINCT dp_name FROM provDeps)
+    AND dp_type = 'require'
+    AND pkgset_name = '{branch}'
+    AND pkg_sourcepackage IN {pkg_type}
+    AND (
+        (pkg_sourcepackage = 0 AND pkg_arch IN {archs})
+        OR
+        (pkg_sourcepackage = 1)
+    )
+GROUP BY hash
+"""
+        if USE_SHADOW_TABLES_DEPS_PROVIDE
+        else """
+WITH provDeps AS (
+    SELECT
+        pkg_hash,
+        dp_name,
+        dp_version,
+        dp_flag
+    FROM Depends
+    WHERE dp_type = 'provide'
+        AND pkg_hash IN (SELECT hsh FROM {tmp_table})
+),
+PkgHshsByBranchAndArch AS (
+    SELECT pkg_hash
+    FROM Packages
+    WHERE pkg_hash IN (
+        SELECT pkg_hash
+        FROM static_last_packages
+        WHERE pkgset_name = '{branch}'
+            AND pkg_sourcepackage IN {pkg_type}
+    )
+        AND (
+            (pkg_sourcepackage = 0 AND pkg_arch IN {archs})
+            OR
+            (pkg_sourcepackage = 1)
+        )
+)
+SELECT DISTINCT
+    pkg_hash AS hash,
+    groupUniqArray(tuple(dp_name, dp_version, dp_flag)) AS deps,
+    'provide' AS type
+FROM provDeps
+GROUP BY hash
+UNION ALL
+SELECT DISTINCT
+    pkg_hash AS hash,
+    groupUniqArray(tuple(dp_name, dp_version, dp_flag)) AS deps,
+    'require' AS type
+FROM Depends
+WHERE dp_name IN (SELECT DISTINCT dp_name FROM provDeps)
+    AND dp_type = 'require'
+    AND pkg_hash IN (SELECT pkg_hash FROM PkgHshsByBranchAndArch)
+GROUP BY hash
+"""
+    )
+
+    get_pkg_bin_and_src_names_by_hashes = """
+WITH
+BinPkgs AS (
+    SELECT
+        pkg_hash,
+        pkg_name,
+        pkg_srcrpm_hash
+    FROM Packages
+    WHERE pkg_hash IN {hashes}
+)
+SELECT
+    BinPkgs.pkg_hash,
+    BinPkgs.pkg_name,
+    SrcPkgs.pkg_name
+FROM BinPkgs
+LEFT JOIN (
+    SELECT
+        pkg_hash,
+        pkg_name
+    FROM Packages
+    WHERE pkg_sourcepackage = 1
+        AND pkg_hash IN (SELECT pkg_srcrpm_hash FROM BinPkgs)
+) AS SrcPkgs ON BinPkgs.pkg_srcrpm_hash = SrcPkgs.pkg_hash
 """
 
     get_meta_by_hshs = """
@@ -264,8 +374,11 @@ class PackageDependencies:
         self.source_packages_hashes = source_packages_hashes
         self.archs = archs
         self.branch = branch
-        self.dependencies_dict: dict[int, set[int]] = {}
-        self.deps_tree_dict: dict[int, set[int]] = {}
+        self.dependencies: dict[int, set[int]] = {}
+        self.dependencies_tree: dict[int, set[int]] = {}
+        self.ambiguous_dependencies: dict[
+            int, dict[str, dict[int, tuple[bool, str]]]
+        ] = {}
         self.error = ""
         self._debug = debug_sql
         self._tmp_table = "tmp_pkg_hshs"
@@ -286,36 +399,126 @@ class PackageDependencies:
 
         logger.error(self.error)
 
+    def _get_pkg_names(self, hashes: set[int]) -> dict[int, tuple[str, str]]:
+        """Retrieves package binary and source names by hashes."""
+        if not hashes:
+            return {}
+
+        self.conn.request_line = self.sql.get_pkg_bin_and_src_names_by_hashes.format(
+            hashes=tuple(hashes)
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response)
+            raise SqlRequestError(self.error)
+
+        return {el[0]: el[1:] for el in response}
+
+    def _handle_duplicated_provides(
+        self, duplicated_provides: dict[int, dict[str, set[int]]]
+    ) -> set[int]:
+        """Handles ambiguous provides following the `apt` behaviour as much as possible."""
+        res = set()
+
+        if not duplicated_provides:
+            return res
+
+        PkgNames = namedtuple("PkgNames", ["bin", "src"])
+
+        def reorder_pkg_names(
+            pkgs_names: dict[int, tuple[str, str]]
+        ) -> tuple[dict[int, PkgNames], dict[str, int]]:
+            res = {}
+            # build lookup for hashes by binary package name
+            pkgs_names_rev = {v[0]: k for k, v in pkgs_names.items()}
+            # build ordered package names dictionary that behaves
+            # as apt and apt-repo-tools does using that Python dictionaries are insertion order aware.
+            # Order packages by source and binary package names in alpabetic order [apt-repo-tools]
+            # then reverse it [apt]
+            for pkg in (
+                PkgNames(*p)
+                for p in sorted(
+                    (x for x in pkgs_names.values()),
+                    key=lambda k: (k[1], k[0]),
+                    reverse=True,
+                )
+            ):
+                res[pkgs_names_rev[pkg.bin]] = pkg
+
+            return res, pkgs_names_rev
+
+        # get duplicated provides packages names
+        deps_pkgs_names, deps_pkgs_names_rev = reorder_pkg_names(
+            self._get_pkg_names(
+                {
+                    h
+                    for deps in duplicated_provides.values()
+                    for _, hshs in deps.items()
+                    for h in hshs
+                }
+            )
+        )
+
+        # build duplicated dependencies dictionary for further use in result build
+        for k, v in duplicated_provides.items():
+            if k not in self.ambiguous_dependencies:
+                self.ambiguous_dependencies[k] = {}
+            # find duplicated provides to be excluded
+            for dep_name, hashes in v.items():
+                # store ambiguous dependencies names and hashes preserving order
+                self.ambiguous_dependencies[k][dep_name] = {
+                    x: (False, deps_pkgs_names[x].bin)
+                    for x in deps_pkgs_names
+                    if x in hashes
+                }
+                # mark provide if dependency name matches with package name
+                dep_hash = deps_pkgs_names_rev.get(dep_name, 0)
+                if not dep_hash or dep_hash not in hashes:
+                    # pick the first package name from a list as `apt` does
+                    dep_hash = deps_pkgs_names_rev[
+                        next(iter(deps_pkgs_names.values())).bin
+                    ]
+                # update excluded hashes list
+                t = self.ambiguous_dependencies[k][dep_name][dep_hash]
+                self.ambiguous_dependencies[k][dep_name][dep_hash] = (True, t[1])
+                res.update(hashes - {dep_hash})
+
+        return res
+
     def _get_package_dep_set(self, packages_hashes: Iterable[int], first: bool = False):
         # get binary packages hashes that provides dependencies required by
         # source packages defined by hashes form pkgs
         fpd = FindPackagesDependencies(
             self.conn,
             packages_hashes,
-            "require",
             self.branch,
             self.archs,
             self._debug,
         )
-        fpd.get_package_dependencies_set()
+        fpd.get_package_dependencies_set_requires()
+
+        # XXX: handle duplicated provides here
+        excluded = self._handle_duplicated_provides(fpd.duplicated_provides)
 
         tmp_list = set()
 
-        for key, val in fpd.dependencies_dict.items():
+        for key, val_ in fpd.dependencies.items():
+            # exclude filtered out duplicated dependencies
+            val = val_ - excluded
             # update dependencies_tree_dict
-            if key not in self.deps_tree_dict:
-                self.deps_tree_dict[key] = val
+            if key not in self.dependencies_tree:
+                self.dependencies_tree[key] = val
             else:
-                self.deps_tree_dict[key].update(val)
+                self.dependencies_tree[key].update(val)
             # process dependencies
             if first:
-                self.dependencies_dict[key] = val
+                self.dependencies[key] = val
                 tmp_list.update(val)
             else:
-                for pkg, hshs in self.dependencies_dict.items():
+                for pkg, hshs in self.dependencies.items():
                     if key in hshs:
                         uniq_hshs = val - hshs
-                        self.dependencies_dict[pkg].update(uniq_hshs)
+                        self.dependencies[pkg].update(uniq_hshs)
                         tmp_list.update(uniq_hshs)
 
         if not tmp_list:
@@ -327,7 +530,7 @@ class PackageDependencies:
     def build_result(self):
         tmp_table = _make_table_name("all_hshs")
 
-        if USE_SHADOW_TABLES:
+        if USE_SHADOW_TABLES_DEPS_REQUIRE:
             # create shadow last_depends table
             self.conn.request_line = self.sql.create_shadow_last_depends
             status, response = self.conn.send_request()
@@ -347,7 +550,7 @@ class PackageDependencies:
         # gather package dependencies set recursively
         self._get_package_dep_set(self.source_packages_hashes, first=True)
 
-        if USE_SHADOW_TABLES:
+        if USE_SHADOW_TABLES_DEPS_REQUIRE:
             # drop shadow last_depends table
             self.conn.request_line = self.sql.drop_shadow_last_depends
             status, response = self.conn.send_request()
@@ -361,8 +564,8 @@ class PackageDependencies:
             self._store_sql_error(response)
             raise SqlRequestError(self.error)
 
-        hsh_list = self.dependencies_dict.keys() | set(
-            [hsh for val in self.dependencies_dict.values() for hsh in val]
+        hsh_list = self.dependencies.keys() | set(
+            [hsh for val in self.dependencies.values() for hsh in val]
         )
 
         self.conn.request_line = (
@@ -395,7 +598,26 @@ class PackageDependencies:
         )
         result_list = []
 
-        for pkg, hshs in self.dependencies_dict.items():
+        # build duplicated provides results
+        duplicated_provides = []
+        for hsh, d in self.ambiguous_dependencies.items():
+            dict_info_key = [k for k in dict_info.keys() if hsh in k][0]
+            el = {"package": dict_info[dict_info_key][0], "ambiguous_provides": []}
+            for dep_name, provides in d.items():
+                pass
+                el["ambiguous_provides"].append(
+                    {
+                        "requires": dep_name,
+                        "provides": [
+                            {"package": name, "used": flag}
+                            for flag, name in provides.values()
+                        ],
+                        "provides_count": len(provides.values()),
+                    }
+                )
+            duplicated_provides.append(el)
+
+        for pkg, hshs in self.dependencies.items():
             counter = 0
             control_list = set()
             pkg_req_list = []
@@ -411,7 +633,7 @@ class PackageDependencies:
                     pkg_req_list_record = PkgInfo(*dict_info_val)._asdict()
                     pkg_req_list_record["requires"] = []
 
-                    for hsh_ in self.deps_tree_dict.get(dict_info_key[0], []):
+                    for hsh_ in self.dependencies_tree.get(dict_info_key[0], []):
                         pkg_ = dict_info.get((hsh_,))
                         if pkg_:
                             pkg_req_list_record["requires"].append(pkg_[0])
@@ -431,9 +653,6 @@ class PackageDependencies:
         return result_list
 
 
-PROVIDE_TYPE_LUT = {"provide_src": (1,), "provide_bin": (0,), "provide_all": (0, 1)}
-
-
 class FindPackagesDependencies:
     """
     Retrieves packages dependencies from database.
@@ -445,9 +664,6 @@ class FindPackagesDependencies:
         self,
         connection: ConnectionProto,
         in_packages_hashes: Iterable[int],
-        dependency_type: Literal[
-            "require", "provide_src", "provide_bin", "provide_all"
-        ],
         branch: str,
         archs: Iterable[str],
         debug_sql: bool = False,
@@ -455,14 +671,13 @@ class FindPackagesDependencies:
         self.conn = connection
         self.sql = PackageDependenciesSQL()
         self.in_packages_hashes = in_packages_hashes
-        self.dependency_type = dependency_type
         self.archs = tuple(archs)
         self.branch = branch
-        self.dependencies_dict: dict[int, set[int]] = {}
+        self.dependencies: dict[int, set[int]] = {}
+        self.duplicated_provides: dict[int, dict[str, set[int]]] = {}
         self.error = ""
         self._debug = debug_sql
         self._tmp_table = _make_table_name("tmp_pkg_hshs")
-        self._provide_type = PROVIDE_TYPE_LUT.get(dependency_type, (0, 1))
 
     def _store_sql_error(self, message):
         self.error = {"message": message}
@@ -480,21 +695,11 @@ class FindPackagesDependencies:
 
         logger.error(self.error)
 
-    def _build_dependency_set(self) -> None:
-        if self.dependency_type == "require":
-            self.conn.request_line = self.sql.get_packages_by_requires.format(
-                tmp_table=self._tmp_table, branch=self.branch, archs=self.archs
-            )
-        elif self.dependency_type in ("provide_src", "provide_bin", "provide_all"):
-            self.conn.request_line = self.sql.get_packages_by_provides.format(
-                tmp_table=self._tmp_table,
-                branch=self.branch,
-                archs=self.archs,
-                prov_type=self._provide_type,
-            )
-        else:
-            raise SqlRequestError(f"unknown dependency type: {self.dependency_type}")
-
+    def _build_dependency_set_requires(self) -> None:
+        # if self.dependency_type == "require":
+        self.conn.request_line = self.sql.get_packages_by_requires.format(
+            tmp_table=self._tmp_table, branch=self.branch, archs=self.archs
+        )
         status, response = self.conn.send_request()
         if not status:
             self._store_sql_error(response)
@@ -505,36 +710,97 @@ class FindPackagesDependencies:
         in_packages_req: dict[int, list[Dependency]] = {}
         found_packages_req: dict[int, list[Dependency]] = {}
 
-        if self.dependency_type == "require":
-            # collect input packages `requires` and found packages `provides`
-            for el in response:
-                dep = PkgDep(*el)
-                if dep.type == "require":
-                    in_packages_req[dep.hash] = [
-                        make_dependency_tuple(*x) for x in dep.deps
-                    ]
-                else:
-                    found_packages_req[dep.hash] = [
-                        make_dependency_tuple(*x) for x in dep.deps
-                    ]
-            # build result dependency dictionary
-            for in_hsh, in_deps in in_packages_req.items():
-                if in_hsh not in self.dependencies_dict:
-                    self.dependencies_dict[in_hsh] = set()
+        raw_provides_mapping: dict[
+            tuple[int, Dependency], dict[int, set[Dependency]]
+        ] = {}
 
-                for in_d in in_deps:
-                    for f_hsh, f_deps in found_packages_req.items():
-                        if f_hsh in self.dependencies_dict[in_hsh]:
-                            continue
+        def collect_raw_provides(
+            in_pkg_hash: int,
+            in_dependency: Dependency,
+            found_pkg_hash: int,
+            found_dependency: Dependency,
+        ):
+            nonlocal raw_provides_mapping
 
-                        for f_d in f_deps:
-                            if checkDependencyOverlap(f_d, in_d):
-                                self.dependencies_dict[in_hsh].add(f_hsh)
-                                break
-        else:
-            raise NotImplementedError
+            key = (in_pkg_hash, in_dependency)
 
-    def get_package_dependencies_set(self) -> dict[int, set[int]]:
+            if key not in raw_provides_mapping:
+                raw_provides_mapping[key] = {}
+
+            if found_pkg_hash not in raw_provides_mapping[key]:
+                raw_provides_mapping[key][found_pkg_hash] = set()
+
+            raw_provides_mapping[key][found_pkg_hash].add(found_dependency)
+
+        # collect input packages `requires` and found packages `provides`
+        for el in response:
+            dep = PkgDep(*el)
+            if dep.type == "require":
+                in_packages_req[dep.hash] = [
+                    make_dependency_tuple(*x) for x in dep.deps
+                ]
+            else:
+                found_packages_req[dep.hash] = [
+                    make_dependency_tuple(*x) for x in dep.deps
+                ]
+
+        # build result dependency dictionary
+        # TODO: nested cycle short paths commented out to be
+        # able to collect duplicating provides dependencies
+        for in_hsh, in_deps in in_packages_req.items():
+            if in_hsh not in self.dependencies:
+                self.dependencies[in_hsh] = set()
+
+            for in_d in in_deps:
+                for f_hsh, f_deps in found_packages_req.items():
+                    # if f_hsh in self.dependencies_dict[in_hsh]:
+                    #     continue
+
+                    for f_d in f_deps:
+                        if checkDependencyOverlap(f_d, in_d):
+                            self.dependencies[in_hsh].add(f_hsh)
+                            # break
+                            collect_raw_provides(in_hsh, in_d, f_hsh, f_d)
+
+        # collect ambiguous provides for further handling
+        for in_dep, f_deps in (
+            (i, d) for i, d in raw_provides_mapping.items() if len(d) > 1
+        ):
+            in_hsh = in_dep[0]
+            in_dep_name = in_dep[1].name.decode("utf-8")
+
+            if in_hsh not in self.duplicated_provides:
+                self.duplicated_provides[in_hsh] = {in_dep_name: set(f_deps.keys())}
+            else:
+                self.duplicated_provides[in_hsh].update(
+                    {in_dep_name: set(f_deps.keys())}
+                )
+
+        del raw_provides_mapping
+
+    def _build_dependency_set_provides(
+        self, dependency_type: Literal["src", "bin", "all"]
+    ) -> None:
+        DEP_PKG_TYPE_LUT = {"src": (1,), "bin": (0,), "all": (0, 1)}
+
+        if dependency_type not in DEP_PKG_TYPE_LUT:
+            raise ValueError(f"Unknown dependency type: {dependency_type}")
+
+        self.conn.request_line = self.sql.get_packages_by_provides.format(
+            tmp_table=self._tmp_table,
+            branch=self.branch,
+            archs=self.archs,
+            pkg_type=DEP_PKG_TYPE_LUT[dependency_type],
+        )
+        status, response = self.conn.send_request()
+        if not status:
+            self._store_sql_error(response)
+            raise SqlRequestError(self.error)
+
+        # TODO: handle request result here!!!
+        raise NotImplementedError
+
+    def get_package_dependencies_set_requires(self) -> dict[int, set[int]]:
         # create temporary table
         self.conn.request_line = self.sql.create_tmp_table.format(
             tmp_table=self._tmp_table
@@ -554,7 +820,7 @@ class FindPackagesDependencies:
             self._store_sql_error(response)
             raise SqlRequestError(self.error)
 
-        self._build_dependency_set()
+        self._build_dependency_set_requires()
 
         # drop temporary table
         self.conn.request_line = self.sql.drop_tmp_table.format(
@@ -565,4 +831,4 @@ class FindPackagesDependencies:
             self._store_sql_error(response)
             raise SqlRequestError(self.error)
 
-        return self.dependencies_dict
+        return self.dependencies
