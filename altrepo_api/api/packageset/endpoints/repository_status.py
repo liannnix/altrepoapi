@@ -48,7 +48,9 @@ class RepositoryStatistics(APIWorker):
             )
 
         BranchStats = namedtuple("BranchStats", ["branch", "date", "stats"])
-        PkgCount = namedtuple("PkgCount", ["arch", "component", "count", "size", "uuid"])
+        PkgCount = namedtuple(
+            "PkgCount", ["arch", "component", "count", "size", "uuid"]
+        )
 
         res = []
         branches = [BranchStats(*el) for el in response]

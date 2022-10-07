@@ -14,12 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from altrepo_api.api.parser import (
-    parser,
-    branch_name_type,
-    arch_name_type,
-    uuid_type
-)
+from altrepo_api.api.parser import parser, branch_name_type, arch_name_type, uuid_type
 
 # register parser items
 branch = parser.register_item(
