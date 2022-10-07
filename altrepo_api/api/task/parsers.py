@@ -40,6 +40,14 @@ include_task_packages_opt = parser.register_item(
     help="include task packages in repository state",
     location="args",
 )
+arch_opt = parser.register_item(
+    "arch",
+    type=arch_name_type,
+    required=False,
+    default="x86_64",
+    help="packages architecture",
+    location="args",
+)
 arch_list_opt = parser.register_item(
     "archs",
     type=arch_name_type,
@@ -166,7 +174,7 @@ task_build_dep_args = parser.build_parser(
 )
 task_misconflict_args = parser.build_parser(arch_list_opt)
 task_find_pkgset_args = parser.build_parser(branch_list_opt)
-task_buid_dep_set_args = parser.build_parser(arch_list_opt)
+task_buid_dep_set_args = parser.build_parser(arch_opt)
 task_history_args = parser.build_parser(
     branch, start_task_opt, end_task_opt, start_date_opt, end_date_opt
 )
