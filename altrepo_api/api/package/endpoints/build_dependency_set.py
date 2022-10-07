@@ -15,25 +15,31 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from altrepo_api.utils import get_logger, join_tuples
-
 from altrepo_api.api.base import APIWorker
-from ..sql import sql
+from altrepo_api.api.base import ConnectionProto
 from altrepo_api.libs.package_dependencies import PackageDependencies
 from altrepo_api.libs.exceptions import SqlRequestError
+from ..sql import sql
 
 
 class BuildDependencySet(APIWorker):
-    """Retrieves source package build dependencies recursively.
-    """
+    """Retrieves source package build dependencies recursively."""
 
-    def __init__(self, connection, packages, branch, archs, **kwargs):
+    def __init__(
+        self,
+        connection: ConnectionProto,
+        packages: list[str],
+        branch: str,
+        archs: list[str],
+        **kwargs,
+    ):
         self.conn = connection
         self.args = kwargs
         self.sql = sql
         self.packages = tuple(packages)
         self.branch = branch
         self.archs = archs
-        self.result = []
+        self.result = (list(), list())
         # add 'noarch' to archs list
         if "noarch" not in self.archs:
             self.archs += ["noarch"]
@@ -79,7 +85,7 @@ class BuildDependencySet(APIWorker):
 class PackageBuildDependencySet(APIWorker):
     """Retrieves source packages build dependencies."""
 
-    def __init__(self, connection, **kwargs) -> None:
+    def __init__(self, connection: ConnectionProto, **kwargs) -> None:
         self.conn = connection
         self.args = kwargs
         self.logger = get_logger(__name__)
@@ -90,22 +96,25 @@ class PackageBuildDependencySet(APIWorker):
 
     def get(self):
         # arguments processing
-        if self.args["archs"] is None:
-            self.args["archs"] = ["x86_64"]
+        if self.args["arch"] is None:
+            archs = ["x86_64"]
+        else:
+            archs = [self.args["arch"]]
         # init BuildDependency class with args
         self.bds = BuildDependencySet(
-            self.conn, self.args["packages"], self.args["branch"], self.args["archs"]
+            self.conn, self.args["packages"], self.args["branch"], archs
         )
         # build result
         self.bds.build_dependency_set()
 
         # format result
         if self.bds.status:
-            # result processing
+            dep_packages, ambiguous_depends = self.bds.result
             res = {
                 "request_args": self.args,
-                "length": len(self.bds.result),
-                "packages": self.bds.result,
+                "length": len(dep_packages),
+                "packages": dep_packages,
+                "ambiguous_dependencies": ambiguous_depends,
             }
             return res, 200
         else:

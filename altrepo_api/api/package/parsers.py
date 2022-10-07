@@ -82,7 +82,8 @@ arch_opt = parser.register_item(
     "arch",
     type=arch_name_type,
     required=False,
-    help="package architecture",
+    default="x86_64",
+    help="packages architecture",
     location="args",
 )
 arch_list_opt = parser.register_item(
@@ -295,7 +296,7 @@ pkg_find_pkgset_args = parser.build_parser(package_list, branch_list_opt)
 pkg_by_file_name_args = parser.build_parser(file, branch, arch_opt)
 pkg_by_file_md5_args = parser.build_parser(branch, md5, arch_opt)
 unpackaged_dirs_args = parser.build_parser(branch, packager, arch_list_opt)
-build_dep_set_args = parser.build_parser(branch, package_list, arch_list_opt)
+build_dep_set_args = parser.build_parser(branch, package_list, arch_opt)
 pkg_repocop_args = parser.build_parser(
     branch,
     package_name,

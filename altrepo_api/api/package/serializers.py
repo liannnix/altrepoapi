@@ -320,6 +320,38 @@ build_dep_set_pkgs_model = ns.model(
         ),
     },
 )
+build_dep_set_amb_deps_pkg_model = ns.model(
+    "BuildDependencySetAmbiguousProvidesPackageModel",
+    {
+        "name": fields.String(description="package name"),
+        "used": fields.Boolean(description="package used as provide dependency"),
+    },
+)
+build_dep_set_amb_deps_dep_model = ns.model(
+    "BuildDependencySetAmbiguousProvidesElementModel",
+    {
+        "requires": fields.String(description="package require dependency name"),
+        "provides_count": fields.Integer(
+            description="ambiguous provides packaages count"
+        ),
+        "provides": fields.Nested(
+            build_dep_set_amb_deps_pkg_model,
+            description="list of packages that provides required dependency",
+            as_list=True,
+        ),
+    },
+)
+build_dep_set_amb_deps_model = ns.model(
+    "BuildDependencySetAmbiguousProvidesModel",
+    {
+        "package": fields.String(description="package name"),
+        "ambiguous_provides": fields.Nested(
+            build_dep_set_amb_deps_dep_model,
+            description="list of found and resolved ambiguous provides",
+            as_list=True,
+        ),
+    },
+)
 build_dep_set_model = ns.model(
     "BuildDependencySetModel",
     {
@@ -328,6 +360,11 @@ build_dep_set_model = ns.model(
         "packages": fields.Nested(
             build_dep_set_pkgs_model,
             description="build requirements packages information",
+            as_list=True,
+        ),
+        "ambiguous_dependencies": fields.Nested(
+            build_dep_set_amb_deps_model,
+            description="list of found and resolved ambiguous dependencies",
             as_list=True,
         ),
     },
