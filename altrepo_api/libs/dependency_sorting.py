@@ -38,7 +38,7 @@ class Graph:
         visited[v] = True
 
         for i in self.graph[v]:
-            if visited[i] is False:
+            if not visited[i]:
                 self._topological_sort_util(i, visited, stack)
 
         stack.insert(0, v)
@@ -48,7 +48,7 @@ class Graph:
         stack = []
 
         for i in range(self.V):
-            if visited[i] is False:
+            if not visited[i]:
                 self._topological_sort_util(i, visited, stack)
 
         return stack

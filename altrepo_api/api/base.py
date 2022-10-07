@@ -14,12 +14,23 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Protocol, Union
 from flask_restx import abort
 
 from altrepo_api.settings import namespace as settings
 from altrepo_api.utils import response_error_parser, get_logger, logger_level
-from altrepo_api.database.connection import Connection
+
+# from altrepo_api.database.connection import Connection
+
+
+class ConnectionProto(Protocol):
+    request_line: Union[str, tuple[str, Any]]
+
+    def send_request(self) -> tuple[bool, Any]:
+        ...
+
+    def drop_connection(self) -> None:
+        ...
 
 
 class APIWorker:
@@ -33,7 +44,7 @@ class APIWorker:
         self.status: bool = False
         self.error: tuple[Any, int]
         self.sql_status: bool = False
-        self.conn: Connection
+        self.conn: ConnectionProto
         self.validation_results: list = []
 
     def _log_error(self, severity: int) -> None:
