@@ -30,7 +30,7 @@ from .exceptions import SqlRequestError
 USE_SHADOW_TABLES_DEPS_PROVIDE = False
 USE_SHADOW_TABLES_DEPS_REQUIRE = True
 
-LIBRPM_SO = "librpm.so"
+LIBRPM_SO = "librpm.so.7"
 RPMSENSE_MASK = 0x0F
 RPMSENSE_EQUAL = 0x08
 
