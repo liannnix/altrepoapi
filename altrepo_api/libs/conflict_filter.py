@@ -18,8 +18,8 @@ import rpm
 from collections import defaultdict
 from dataclasses import dataclass
 
-from altrepo_api.utils import get_logger, logger_level as ll
-from altrepo_api.utils import tuplelist_to_dict, remove_duplicate
+from altrepo_api.api.base import ConnectionProto
+from altrepo_api.utils import get_logger, tuplelist_to_dict, remove_duplicate
 
 from .exceptions import SqlRequestError
 
@@ -65,48 +65,35 @@ class ConflictFilter:
     :param debug_: SQL debug flag
     """
 
-    def __init__(self, connection, pbranch, parch, debug_):
+    def __init__(
+        self,
+        connection: ConnectionProto,
+        pbranch: str,
+        parch: str,
+        debug_sql: bool = False,
+    ):
         self.conn = connection
         self.sql = ConflictFilterSQL()
         self.pbranch = pbranch
         self.parch = parch
         self.status = False
-        self.DEBUG = debug_
+        self._debug = debug_sql
 
-    def _log_error(self, severity):
-        if severity == ll.CRITICAL:
-            logger.critical(self.error)
-        elif severity == ll.ERROR:
-            logger.error(self.error)
-        elif severity == ll.WARNING:
-            logger.warning(self.error)
-        elif severity == ll.INFO:
-            logger.info(self.error)
-        else:
-            logger.debug(self.error)
-
-    def _store_sql_error(self, message, severity):
-        def build_sql_error(message):
-            response = {"message": message}
-            if self.DEBUG:
-                response["module"] = self.__class__.__name__
-                requestline = self.conn.request_line
-                if isinstance(requestline, tuple):
-                    response["sql_request"] = [
-                        line for line in requestline[0].split("\n") if len(line) > 0
-                    ]
-                else:
-                    response["sql_request"] = [line for line in requestline.split("\n")]
-            return response
-
-        self.error = build_sql_error(message)
-        self.status = False
-        self._log_error(severity)
-
-    def _store_error(self, message, severity):
+    def _store_sql_error(self, message):
         self.error = {"message": message}
-        self.status = False
-        self._log_error(severity)
+
+        if self._debug:
+            self.error["module"] = self.__class__.__name__
+            requestline = self.conn.request_line
+
+            if isinstance(requestline, tuple):
+                self.error["sql_request"] = [
+                    line for line in requestline[0].split("\n") if len(line) > 0
+                ]
+            else:
+                self.error["sql_request"] = [line for line in requestline.split("\n")]
+
+        logger.error(self.error)
 
     def _get_dict_conflict_provide(self, hshs):
 
@@ -117,7 +104,7 @@ class ConflictFilter:
         )
         status, response = self.conn.send_request()
         if not status:
-            self._store_sql_error(response, ll.ERROR)
+            self._store_sql_error(response)
             raise SqlRequestError(self.error)
 
         hsh_dpt_dict = defaultdict(lambda: defaultdict(list))
@@ -128,7 +115,7 @@ class ConflictFilter:
         self.conn.request_line = (self.sql.get_packages_info, {"hshs": tuple(hshs)})
         status, response = self.conn.send_request()
         if not status:
-            self._store_sql_error(response, ll.ERROR)
+            self._store_sql_error(response)
             raise SqlRequestError(self.error)
 
         return hsh_dpt_dict, tuplelist_to_dict(response, 4)
@@ -174,7 +161,7 @@ class ConflictFilter:
 
         return conflicts
 
-    def detect_conflict(self, confl_list):
+    def detect_conflict(self, confl_list: list[tuple[int, ...]]):
         """
         Main public class method.
 
@@ -262,24 +249,24 @@ class ConflictFilter:
                  `1` if the first version is larger
                  `-1` if the first version is less
         """
-        v1 = rpm.hdr()
-        v2 = rpm.hdr()
+        v1 = rpm.hdr()  # type: ignore
+        v2 = rpm.hdr()  # type: ignore
 
-        v1[rpm.RPMTAG_EPOCH] = vv1[0]
-        v2[rpm.RPMTAG_EPOCH] = vv2[0]
+        v1[rpm.RPMTAG_EPOCH] = vv1[0]  # type: ignore
+        v2[rpm.RPMTAG_EPOCH] = vv2[0]  # type: ignore
 
-        v1[rpm.RPMTAG_VERSION] = vv1[1]
-        v2[rpm.RPMTAG_VERSION] = vv2[1]
+        v1[rpm.RPMTAG_VERSION] = vv1[1]  # type: ignore
+        v2[rpm.RPMTAG_VERSION] = vv2[1]  # type: ignore
         if vv1[2]:
-            v1[rpm.RPMTAG_RELEASE] = vv1[2]
+            v1[rpm.RPMTAG_RELEASE] = vv1[2]  # type: ignore
         if vv2[2]:
-            v2[rpm.RPMTAG_RELEASE] = vv2[2]
+            v2[rpm.RPMTAG_RELEASE] = vv2[2]  # type: ignore
 
         # check disttag, if true, add it
         if vv1[3] != "" and vv2[3]:
-            v1[rpm.RPMTAG_DISTTAG] = vv1[3]
-            v2[rpm.RPMTAG_DISTTAG] = vv2[3]
+            v1[rpm.RPMTAG_DISTTAG] = vv1[3]  # type: ignore
+            v2[rpm.RPMTAG_DISTTAG] = vv2[3]  # type: ignore
 
-        eq = rpm.versionCompare(v1, v2)
+        eq = rpm.versionCompare(v1, v2)  # type: ignore
 
         return eq

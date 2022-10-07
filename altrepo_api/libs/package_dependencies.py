@@ -20,7 +20,7 @@ import random
 
 from dataclasses import dataclass
 from collections import namedtuple
-from typing import Iterable, Literal, NamedTuple
+from typing import Any, Iterable, Literal, NamedTuple
 
 from altrepo_api.api.base import ConnectionProto
 from altrepo_api.utils import get_logger
@@ -527,7 +527,7 @@ class PackageDependencies:
         # recursive call untill all dependencies are resolved
         return self._get_package_dep_set(packages_hashes=tuple(tmp_list))
 
-    def build_result(self):
+    def build_result(self) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         tmp_table = _make_table_name("all_hshs")
 
         if USE_SHADOW_TABLES_DEPS_REQUIRE:
@@ -609,7 +609,7 @@ class PackageDependencies:
                     {
                         "requires": dep_name,
                         "provides": [
-                            {"package": name, "used": flag}
+                            {"name": name, "used": flag}
                             for flag, name in provides.values()
                         ],
                         "provides_count": len(provides.values()),
@@ -650,7 +650,7 @@ class PackageDependencies:
                 }
             )
 
-        return result_list
+        return result_list, duplicated_provides
 
 
 class FindPackagesDependencies:
