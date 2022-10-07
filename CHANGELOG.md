@@ -6,6 +6,23 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.8.4] - 2022-10-07
+
+Regular API code updates and fixes.
+
+### Added
+- packageset/repository_statistics route
+- packageset/packages_by_uuid route
+- found ambiguous dependencies in {package|task}/build_dependency_set routes
+### Changed
+- {package|task}/build_dependency_set routes argument name: 'archs' -> 'arch'
+- {package|task}/build_dependency_set routes argument type: list[str] -> str 
+### Fixed
+- code style errors
+- closes bug #43478
+- ambiguous provide dependencies resolved in a way as `apt` does as close as possible
+- build dependency resolving using dependency name, version and flags through librpm functions
+
 ## [1.8.3] - 2022-09-27
 
 Regular API code updates and fixes.
