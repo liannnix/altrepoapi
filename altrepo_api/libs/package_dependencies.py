@@ -14,73 +14,35 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import ctypes
 import string
 import random
 
 from dataclasses import dataclass
 from collections import namedtuple
-from typing import Any, Iterable, Literal, NamedTuple
+from typing import Any, Iterable, Literal
 
 from altrepo_api.api.base import ConnectionProto
 from altrepo_api.utils import get_logger
-
+from .dependency_match import (
+    Dependency,
+    check_dependency_overlap,
+    make_dependency_tuple,
+)
 from .exceptions import SqlRequestError
 
 USE_SHADOW_TABLES_DEPS_PROVIDE = False
 USE_SHADOW_TABLES_DEPS_REQUIRE = True
 
-LIBRPM_SO = "librpm.so.7"
-RPMSENSE_MASK = 0x0F
-RPMSENSE_EQUAL = 0x08
-
 logger = get_logger(__name__)
 
-# import librpm library
-librpm = ctypes.CDLL(LIBRPM_SO)
 
-rpmRangesOverlap = librpm.rpmRangesOverlap
-rpmRangesOverlap.argtypes = [
-    ctypes.c_char_p,
-    ctypes.c_char_p,
-    ctypes.c_uint32,
-    ctypes.c_char_p,
-    ctypes.c_char_p,
-    ctypes.c_uint32,
-    ctypes.c_int,
-]
-rpmRangesOverlap.restype = ctypes.c_int
-
-LIBRPM_NOPROMOTE = ctypes.c_int.in_dll(librpm, "_rpmds_nopromote")
-
-
-def _make_table_name(prefix: str, length: int = 5) -> str:
+def _make_tmp_table_name(prefix: str, length: int = 5) -> str:
     return (
-        prefix
+        "tmp_"
+        + prefix
         + "_"
         + "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
     )
-
-
-class Dependency(NamedTuple):
-    name: bytes
-    evr: bytes
-    flags: int
-
-
-def make_dependency_tuple(name: str, evr: str, flags: int) -> Dependency:
-    return Dependency(
-        name=name.encode("utf-8"),
-        evr=evr.encode("utf-8"),
-        flags=(RPMSENSE_MASK & flags),
-    )
-
-
-def checkDependencyOverlap(provide_dep: Dependency, require_dep: Dependency) -> bool:
-    """Check dependencies overlapping using librpm `rpmRangesOverlap` function."""
-    # set flags for `provides` dependency to RPMSENSE_EQUAL as apt-rpm does
-    _provide_dep = Dependency(*provide_dep)._replace(flags=RPMSENSE_EQUAL)
-    return bool(rpmRangesOverlap(*_provide_dep, *require_dep, LIBRPM_NOPROMOTE))
 
 
 @dataclass(frozen=True)
@@ -528,7 +490,7 @@ class PackageDependencies:
         return self._get_package_dep_set(packages_hashes=tuple(tmp_list))
 
     def build_result(self) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-        tmp_table = _make_table_name("all_hshs")
+        tmp_table = _make_tmp_table_name("all_hshs")
 
         if USE_SHADOW_TABLES_DEPS_REQUIRE:
             # create shadow last_depends table
@@ -677,7 +639,7 @@ class FindPackagesDependencies:
         self.duplicated_provides: dict[int, dict[str, set[int]]] = {}
         self.error = ""
         self._debug = debug_sql
-        self._tmp_table = _make_table_name("tmp_pkg_hshs")
+        self._tmp_table = _make_tmp_table_name("pkg_hshs")
 
     def _store_sql_error(self, message):
         self.error = {"message": message}
@@ -757,7 +719,7 @@ class FindPackagesDependencies:
                     #     continue
 
                     for f_d in f_deps:
-                        if checkDependencyOverlap(f_d, in_d):
+                        if check_dependency_overlap(f_d, in_d):
                             self.dependencies[in_hsh].add(f_hsh)
                             # break
                             collect_raw_provides(in_hsh, in_d, f_hsh, f_d)

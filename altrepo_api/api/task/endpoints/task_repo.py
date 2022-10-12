@@ -15,10 +15,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from collections import defaultdict
-from typing import Tuple, List
 
 from altrepo_api.utils import join_tuples, mmhash
-
 from altrepo_api.api.base import APIWorker
 from ..sql import sql
 
@@ -32,11 +30,11 @@ class TaskRepoState(APIWorker):
         self.sql = sql
         self.task_id: int = id
         self.task_repo: str = ""
-        self.task_diff_list: List[int] = list()
-        self.task_add_pkgs: Tuple[int, ...] = tuple()
-        self.task_del_pkgs: Tuple[int, ...] = tuple()
-        self.task_repo_pkgs: Tuple[int, ...] = tuple()
-        self.task_base_repo_pkgs: Tuple[int, ...] = tuple()
+        self.task_diff_list: list[int] = list()
+        self.task_add_pkgs: tuple[int, ...] = tuple()
+        self.task_del_pkgs: tuple[int, ...] = tuple()
+        self.task_repo_pkgs: tuple[int, ...] = tuple()
+        self.task_base_repo_pkgs: tuple[int, ...] = tuple()
         self.have_plan: bool = False
         super().__init__()
 
