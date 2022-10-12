@@ -6,6 +6,16 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.8.5] - 2022-10-12
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- exclude files from conflict packages if they are equal as `apt` and `rpm` does
+### Fixed
+- misconflict packages dependency version compare with librpm
+
 ## [1.8.4] - 2022-10-07
 
 Regular API code updates and fixes.
