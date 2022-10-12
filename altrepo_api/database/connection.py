@@ -33,10 +33,10 @@ class DBConnection:
         clickhouse_name: str,
         dbuser: str,
         dbpass: str,
-        db_query: Union[str, tuple[str, Any]] = "",
+        query: Union[str, tuple[str, Any]] = "",
     ):
-
-        self.db_query = db_query
+        self.query = query
+        self.query_kwargs = {}
 
         self.clickhouse_client = Client(
             host=clickhouse_host, database=clickhouse_name, user=dbuser, password=dbpass
@@ -78,24 +78,24 @@ class DBConnection:
     def _debug_sql_query_printout(self) -> None:
         if not settings.SQL_DEBUG:
             return
-        if isinstance(self.db_query, tuple):
+        if isinstance(self.query, tuple):
             # SQL query has params
-            if not isinstance(self.db_query[1], Iterable):
+            if not isinstance(self.query[1], Iterable):
                 if chd_version <= "0.2.2":
                     query = self.clickhouse_client.substitute_params(
-                        self.db_query[0],
-                        self.db_query[1],
+                        self.query[0],
+                        self.query[1],
                     )  # type: ignore
                 else:
                     query = self.clickhouse_client.substitute_params(
-                        self.db_query[0],
-                        self.db_query[1],
+                        self.query[0],
+                        self.query[1],
                         self.clickhouse_client.connection.context,  # works only for clickhouse-driver >= 0.2.3
                     )
             else:
-                query = self.db_query[0]
+                query = self.query[0]
         else:
-            query = self.db_query
+            query = self.query
 
         logger.debug(f"SQL request:\n{query}")
 
@@ -104,12 +104,14 @@ class DBConnection:
 
         try:
             self._debug_sql_query_printout()
-            if isinstance(self.db_query, tuple):
+            if isinstance(self.query, tuple):
                 response = self.clickhouse_client.execute(
-                    self.db_query[0], self.db_query[1]
+                    self.query[0], self.query[1], **self.query_kwargs
                 )
             else:
-                response = self.clickhouse_client.execute(self.db_query)
+                response = self.clickhouse_client.execute(
+                    self.query, **self.query_kwargs
+                )
             response_status = True
             logger.debug(f"SQL request elapsed {self.clickhouse_client.last_query.elapsed:.3f} seconds")  # type: ignore
         except Exception as error:
@@ -138,7 +140,7 @@ class Connection:
             settings.DATABASE_PASS,
         )
 
-    def send_request(self) -> tuple[bool, Any]:
+    def send_request(self, **query_kwargs) -> tuple[bool, Any]:
         status = self._db_connection.connection_status
         if not status:
             for try_ in range(settings.TRY_CONNECTION_NUMBER):
@@ -151,7 +153,8 @@ class Connection:
                 sleep(settings.TRY_TIMEOUT)
 
         if status:
-            self._db_connection.db_query = self.request_line  # type: ignore
+            self._db_connection.query_kwargs = query_kwargs
+            self._db_connection.query = self.request_line  # type: ignore
             return self._db_connection.send_request()
         else:
             return False, json_str_error("Database connection error.")

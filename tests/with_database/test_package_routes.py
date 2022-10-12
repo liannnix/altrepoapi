@@ -127,15 +127,7 @@ def test_misconflict_packages(client, kwargs):
             assert data["conflicts"] != []
         else:
             assert data["length"] == 0
-            assert data["conflicts"] == {
-                "input_package": None,
-                "conflict_package": None,
-                "version": None,
-                "release": None,
-                "epoch": None,
-                "archs": None,
-                "files_with_conflict": None,
-            }
+            assert data["conflicts"] == []
         assert data["request_args"]["packages"] != 0
 
 

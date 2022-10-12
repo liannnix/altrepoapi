@@ -29,20 +29,27 @@ from altrepo_api.libs.exceptions import SqlRequestError
 class MisconflictPackages(APIWorker):
     """Retrieves packages file conflicts."""
 
-    def __init__(self, connection, packages, branch, archs, **kwargs) -> None:
+    def __init__(
+        self,
+        connection,
+        packages: tuple[str],
+        branch: str,
+        archs: Optional[tuple[str]],
+        **kwargs,
+    ) -> None:
         self.conn = connection
         self.args = kwargs
         self.sql = sql
         self.packages = packages
         self.branch = branch
-        self.archs = archs
-        self.result = {}
+        self.archs = list(archs) if archs else []
+        self.result = []
         super().__init__()
 
     def find_conflicts(
         self,
-        pkg_hashes: Optional[tuple[int]] = None,
-        task_repo_hashes: Optional[tuple[int]] = None,
+        pkg_hashes: Optional[tuple[int, ...]] = None,
+        task_repo_hashes: Optional[tuple[int, ...]] = None,
     ):
         # do all kind of black magic here
         self.packages = tuple(self.packages)
@@ -193,8 +200,14 @@ class MisconflictPackages(APIWorker):
             # no conflict found
             self.status = True
             return
+
         # replace 'file_hashname' by 'fn_name' from FileNames
-        hshs_files = response
+        ConflicFiles = namedtuple(
+            "ConflicFiles",
+            ["in_pkg_hash", "c_pkg_hash", "fn_hashes", "c_pkg_name", "in_pkg_name"],
+        )
+
+        conflict_pkgs_files = [ConflicFiles(*el[:-1]) for el in response]
 
         # drop input package hashes temporary table
         _ = self.send_sql_request(
@@ -203,16 +216,30 @@ class MisconflictPackages(APIWorker):
         if not self.sql_status:
             return
 
-        # 1. collect all files_hashnames
-        f_hashnames = set()
-        for el in hshs_files:
-            [f_hashnames.add(x) for x in el[2]]  # type: ignore
-        # 2. select real file names from DB
+        # check whether files has the same md5, mode, mtime and class
+        # and exclude such conflicts like the `apt` and `rpm` does
+        _tmp_table = "tmp_file_conflicts"
         response = self.send_sql_request(
-            (
-                self.sql.misconflict_get_fnames_by_fnhashs,
-                {"hshs": tuple(f_hashnames)},
-            )
+            self.sql.misconflict_check_file_conflicts.format(tmp_table=_tmp_table),
+            external_tables=[
+                {
+                    "name": _tmp_table,
+                    "structure": [
+                        ("in_pkg_hash", "UInt64"),
+                        ("c_pkg_hash", "UInt64"),
+                        ("fn_hash", "UInt64"),
+                    ],
+                    "data": [
+                        {
+                            "in_pkg_hash": c.in_pkg_hash,
+                            "c_pkg_hash": c.c_pkg_hash,
+                            "fn_hash": f_hsh,
+                        }
+                        for c in conflict_pkgs_files
+                        for f_hsh in c.fn_hashes
+                    ],
+                }
+            ],
         )
         if not self.sql_status:
             return self.result
@@ -224,20 +251,104 @@ class MisconflictPackages(APIWorker):
             )
             return
 
-        f_hashnames = {}
-        for r in response:
-            f_hashnames[r[0]] = r[1]
+        EqualFile = namedtuple("EqualFile", ["in_pkg_hahs", "c_pkg_hash", "fn_hash"])
+
+        equal_conflict_files = {EqualFile(*el[:-1]) for el in response if el[-1] == 1}
+
+        # filter out files conflicts
+        for c in conflict_pkgs_files[:]:
+            if all(
+                [
+                    (c.in_pkg_hash, c.c_pkg_hash, h) in equal_conflict_files
+                    for h in c.fn_hashes
+                ]
+            ):
+                # all files are equal -> remove conflict element
+                conflict_pkgs_files.remove(c)
+            elif any(
+                [
+                    (c.in_pkg_hash, c.c_pkg_hash, h) in equal_conflict_files
+                    for h in c.fn_hashes
+                ]
+            ):
+                # some of file conflicts are not equal -> filtering files list
+                conflict_pkgs_files.remove(c)
+                conflict_pkgs_files.append(
+                    ConflicFiles(
+                        c.in_pkg_hash,
+                        c.c_pkg_hash,
+                        [
+                            h
+                            for h in c.fn_hashes
+                            if (c.in_pkg_hash, c.c_pkg_hash, h)
+                            not in equal_conflict_files
+                        ],
+                        c.in_pkg_name,
+                        c.c_pkg_name,
+                    )
+                )
+
+        # if all file conflicts are resolved return then
+        if not conflict_pkgs_files:
+            self.status = True
+            return
+
+        # 1. collect all files_hashnames
+        f_hashnames = {h for c in conflict_pkgs_files for h in c.fn_hashes}
+
+        # 2. select real file names from DB
+        # use external table to do not exceed `max query size` limit
+        _tmp_table = "tmp_file_name_hashes"
+        response = self.send_sql_request(
+            self.sql.misconflict_get_fnames_by_fnhashs.format(tmp_table=_tmp_table),
+            external_tables=[
+                {
+                    "name": _tmp_table,
+                    "structure": [("fn_hash", "UInt64")],
+                    "data": [{"fn_hash": h} for h in f_hashnames],
+                }
+            ],
+        )
+        if not self.sql_status:
+            return self.result
+        if not response:
+            _ = self.store_error(
+                {"message": "Failed to get file names from database by hash"},
+                self.ll.INFO,
+                500,
+            )
+            return
+
+        file_names = {el[0]: el[1] for el in response}
+
         # 3. replace hashes by names in result
-        new_hshs_files = []
-        for el in hshs_files:
-            new_hshs_files.append((*el[:2], [f_hashnames[x] for x in el[2]], *el[3:]))  # type: ignore
-        hshs_files = new_hshs_files
+        ConflicFilesNames = namedtuple(
+            "ConflicFilesNames",
+            ["c_pkg_hash", "in_pkg_hash", "file_names", "c_pkg_name", "in_pkg_name"],
+        )
+
+        conflict_pkgs_files = [
+            ConflicFilesNames(
+                c.c_pkg_hash,
+                c.in_pkg_hash,
+                [file_names[h] for h in c.fn_hashes],
+                c.c_pkg_name,
+                c.in_pkg_name,
+            )
+            for c in conflict_pkgs_files
+        ]
+
+        # create dict with package names by hashes
+        hsh_name_dict = defaultdict(dict)
+        for c in conflict_pkgs_files:
+            hsh_name_dict[c.c_pkg_hash] = c.c_pkg_name
+            hsh_name_dict[c.in_pkg_hash] = c.in_pkg_name
 
         # list of conflicting package pairs
-        in_confl_hshs = [(hsh[0], hsh[1]) for hsh in hshs_files]
+        in_confl_hshs = [(c.c_pkg_hash, c.in_pkg_hash) for c in conflict_pkgs_files]
 
         # filter conflicts by provides/conflicts
-        c_filter = ConflictFilter(self.conn, self.branch, self.archs, self.DEBUG)
+        c_filter = ConflictFilter(self.conn, self.DEBUG)
 
         # check for the presence of the specified conflict each pair
         # if the conflict between the packages in the pair is specified,
@@ -255,32 +366,23 @@ class MisconflictPackages(APIWorker):
             )
             return
 
-        # create dict with package names by hashes
-        hsh_name_dict = defaultdict(dict)
-        for hsh_1, hsh_2, _, name_2, name_1, _ in hshs_files:
-            hsh_name_dict[hsh_1], hsh_name_dict[hsh_2] = name_1, name_2
-
         # convert the hashes into names, put in the first place in the pair
-        # the name of the input package, if it is not
-        filter_ls_names = []
+        # the name of the input package, if it is not there
+        filter_ls_names = set()
         for hsh in filter_ls:
             inp_pkg = hsh[0] if hsh[0] in input_pkg_hshs else hsh[1]
             out_pkg = hsh[0] if hsh[0] != inp_pkg else hsh[1]
-            result_pair = (hsh_name_dict[inp_pkg], hsh_name_dict[out_pkg])
-            if result_pair not in filter_ls:
-                filter_ls_names.append(result_pair)
+            filter_ls_names.add((hsh_name_dict[inp_pkg], hsh_name_dict[out_pkg]))
 
-        # form the list of tuples (input package | conflict package | conflict files)
-        result_list, output_pkgs = [], set()
-        for pkg in hshs_files:
-            [output_pkgs.add(i) for i in pkg[:2]]
-            pkg = (hsh_name_dict[pkg[0]], hsh_name_dict[pkg[1]], pkg[2])
-            if pkg not in result_list:
-                result_list.append(pkg)
+        # build the list of tuples (input package | conflict package | conflict files)
+        intermediate_results, output_pkgs_hashes = set(), set()
+        for c in conflict_pkgs_files:
+            output_pkgs_hashes.update((c.c_pkg_hash, c.in_pkg_hash))
+            intermediate_results.add((c.in_pkg_name, c.c_pkg_name, tuple(c.file_names)))
 
         # get architectures of found packages
         response = self.send_sql_request(
-            self.sql.misconflict_get_pkg_archs.format(hshs=tuple(output_pkgs))
+            self.sql.misconflict_get_pkg_archs.format(hshs=tuple(output_pkgs_hashes))
         )
         if not self.sql_status:
             return
@@ -290,7 +392,7 @@ class MisconflictPackages(APIWorker):
         # look for duplicate pairs of packages in the list with different files
         # and join them
         result_dict_cleanup = defaultdict(list)
-        for pkg in result_list:
+        for pkg in intermediate_results:
             result_dict_cleanup[(pkg[0], pkg[1])] += pkg[2]
 
         confl_pkgs = remove_duplicate([pkg[1] for pkg in result_dict_cleanup.keys()])
@@ -305,9 +407,7 @@ class MisconflictPackages(APIWorker):
             return
 
         # form dict name - package info
-        name_info_dict = {}
-        for pkg in response:  # type: ignore
-            name_info_dict[pkg[0]] = pkg[1:]
+        name_info_dict = {el[0]: el[1:] for el in response}
 
         # form list of tuples (input pkg | conflict pkg | pkg info | conflict files)
         # and filter it

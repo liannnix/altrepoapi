@@ -26,7 +26,7 @@ from altrepo_api.utils import response_error_parser, get_logger, logger_level
 class ConnectionProto(Protocol):
     request_line: Union[str, tuple[str, Any]]
 
-    def send_request(self) -> tuple[bool, Any]:
+    def send_request(self, **query_kwargs) -> tuple[bool, Any]:
         ...
 
     def drop_connection(self) -> None:
@@ -85,12 +85,14 @@ class APIWorker:
         self._log_error(severity)
         self.status = False
 
-    def send_sql_request(self, request_line: Any, http_code: int = 500) -> Any:
+    def send_sql_request(
+        self, request_line: Any, http_code: int = 500, **kwargs
+    ) -> Any:
         """Send SQL request and returns response. If request fails,
         saves SQL error to self.error object. Changes self.sql_status field."""
 
         self.conn.request_line = request_line
-        self.sql_status, response = self.conn.send_request()
+        self.sql_status, response = self.conn.send_request(**kwargs)
         if not self.sql_status:
             self._store_sql_error(response, logger_level.ERROR, http_code)
         return response

@@ -42,9 +42,8 @@ class TaskMisconflictPackages(APIWorker):
         return True
 
     def get(self):
-        # arguments processing
-        self.args["packages"] = []
-        self.args["branch"] = None
+        packages = []
+        branch = ""
 
         # get task source packages and branch
         # get task repo
@@ -56,7 +55,7 @@ class TaskMisconflictPackages(APIWorker):
                 {"message": f"No data found in database for task '{self.task_id}'"}
             )
 
-        self.args["branch"] = response[0][0]  # type: ignore
+        branch = response[0][0]  # type: ignore
 
         # get task source packages
         response = self.send_sql_request(
@@ -69,7 +68,7 @@ class TaskMisconflictPackages(APIWorker):
                 {"message": f"No packages found in database for task '{self.task_id}'"}
             )
 
-        self.args["packages"] = tuple({pkg[0] for pkg in response})
+        packages = tuple({pkg[0] for pkg in response})
         pkg_hashes = tuple({pkg[1] for pkg in response})
 
         # get task repo state
@@ -81,8 +80,8 @@ class TaskMisconflictPackages(APIWorker):
         # init MisconflictPackages class with args
         mp = MisconflictPackages(
             self.conn,
-            self.args["packages"],
-            self.args["branch"].lower(),  # type: ignore
+            packages,
+            branch.lower(),  # type: ignore
             self.args["archs"],
         )
 
@@ -90,6 +89,9 @@ class TaskMisconflictPackages(APIWorker):
         mp.find_conflicts(pkg_hashes=pkg_hashes, task_repo_hashes=tr.task_repo_pkgs)  # type: ignore
 
         # format result
+        self.args["branch"] = branch
+        self.args["packages"] = sorted(packages)
+
         if mp.status:
             # result processing
             res = {
