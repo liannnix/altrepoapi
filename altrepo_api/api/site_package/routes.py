@@ -266,7 +266,7 @@ class routeBinaryPackageLog(Resource):
     doc={
         "params": {"pkghash": "package hash"},
         "description": (
-            "Get package name< version, release and type by hash. "
+            "Get package name, version, release and type by hash. "
             "Check package name matching if provided."
         ),
         "responses": GET_RESPONSES_400_404,

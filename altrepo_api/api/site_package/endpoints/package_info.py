@@ -647,7 +647,7 @@ class PackagesBinaryListInfo(APIWorker):
 
 
 class PackageNVRByHash(APIWorker):
-    """Retrieves package changelog from DB."""
+    """Retrieves package NVR and type from DB."""
 
     def __init__(self, connection, pkghash, **kwargs):
         self.pkghash = pkghash
