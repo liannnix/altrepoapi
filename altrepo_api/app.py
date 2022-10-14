@@ -76,6 +76,8 @@ def configure_app(flask_app):
 
 
 def initialize_app(flask_app):
+    if not read_config.settings.AUTH_LDAP_SERVER_URI:
+        raise RuntimeError("LDAP server URL should be specified")
     if not read_config.settings.ADMIN_PASSWORD:
         raise RuntimeError("API administration password should be specified")
     configure_app(flask_app)

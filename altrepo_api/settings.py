@@ -49,6 +49,10 @@ class BasePathNamespace:
     LOG_TO_CONSOLE = True
     # misc settings
     DEPENDENCY_MAX_DEPTH = 5
+    # authentication using LDAP server
+    AUTH_LDAP_SERVER_URI = ""
+    AUTH_LDAP_USER_SEARCH = ""
+    AUTH_LDAP_REQUIRE_GROUP = ""
     # API admin credentials
     ADMIN_USER = "admin"
     # echo -n "SuperSecretPa\$\$w0rd" | sha512sum   # !! '$' symbol should be escaped in echo with backslash !!

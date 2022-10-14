@@ -21,17 +21,25 @@ from .exceptions import ApiUnauthorized, ApiForbidden
 from .auth import check_auth
 
 
-def auth_required(f):
-    """Execute function if request contains valid access token."""
+def auth_required(_func=None, ldap_group=None):
+    def _auth_required(f):
+        """Execute function if request contains valid access token."""
 
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token_payload = _check_access_auth(admin_only=False)  # noqa
-        # for name, val in token_payload.items():
-        #     setattr(decorated, name, val)
-        return f(*args, **kwargs)
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            token_payload = _check_access_auth(admin_only=False, ldap_group=ldap_group)  # noqa
+            # for name, val in token_payload.items():
+            #     setattr(decorated, name, val)
+            return f(*args, **kwargs)
 
-    return decorated
+        return decorated
+
+    if _func is None:
+        # call with parameters
+        return _auth_required
+    else:
+        # call without parameters
+        return _auth_required(_func)
 
 
 def admin_auth_required(f):
@@ -49,11 +57,12 @@ def admin_auth_required(f):
     return decorated
 
 
-def _check_access_auth(admin_only=False):
+def _check_access_auth(admin_only=False, ldap_group=None):
     token = request.headers.get("Authorization")
     if not token:
         raise ApiUnauthorized(description="Unauthorized", admin_only=admin_only)
-    result = check_auth(token)
+    result = check_auth(token, ldap_group)
+
     if not result.verified:
         raise ApiUnauthorized(
             description=result.error,

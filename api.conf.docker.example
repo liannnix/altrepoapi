@@ -21,3 +21,8 @@ SQL_DEBUG = false
 LOG_TO_FILE = true
 LOG_TO_SYSLOG = false    # usually not avallable inside container
 LOG_TO_CONSOLE = false
+
+[AUTHENTICATION]
+AUTH_LDAP_SERVER_URI =
+AUTH_LDAP_USER_SEARCH = uid=%%(user)s,cn=users,cn=accounts,dc=ipa,dc=basealt,dc=ru
+AUTH_LDAP_REQUIRE_GROUP = cn=%%(group)s,cn=groups,cn=accounts,dc=ipa,dc=basealt,dc=ru

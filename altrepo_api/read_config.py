@@ -48,6 +48,11 @@ PARAMS = {
         "log_to_syslog": ("LOG_TO_SYSLOG", "bool"),
         "log_to_console": ("LOG_TO_CONSOLE", "bool"),
     },
+    "authentication": {
+        "auth_ldap_server_uri": ("AUTH_LDAP_SERVER_URI", "str"),
+        "auth_ldap_user_search": ("AUTH_LDAP_USER_SEARCH", "str"),
+        "auth_ldap_require_group": ("AUTH_LDAP_REQUIRE_GROUP", "str"),
+    }
 }
 
 
