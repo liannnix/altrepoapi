@@ -22,6 +22,7 @@ RUN \
         python3-module-clickhouse-driver \
         python3-module-gunicorn \
         python3-module-packaging \
+        python3-module-ldap \
         tzdata \
     # clean-up Apt caches
     && rm -f /var/cache/apt/archives/*.rpm \
