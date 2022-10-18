@@ -6,6 +6,15 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.8.6] - 2022-10-18
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- site/package_info: fix misleading hashes for 'noarch' binary packages 
+
 ## [1.8.5] - 2022-10-12
 
 Regular API code updates and fixes.
