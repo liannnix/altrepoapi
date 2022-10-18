@@ -140,7 +140,7 @@ class PackageInfo(APIWorker):
             ],
         )
 
-        pkg_info = PkgMeta(*response[0])._asdict()  # type: ignore
+        pkg_info = PkgMeta(*response[0])._asdict()
 
         # get package task
         pkg_task = 0
@@ -176,7 +176,7 @@ class PackageInfo(APIWorker):
                 return self.error
 
             if response:
-                for task in [SubtaskMeta(*el)._asdict() for el in response]:  # type: ignore
+                for task in [SubtaskMeta(*el)._asdict() for el in response]:
                     if task["repo"] == self.branch:
                         pkg_task = task["id"]
                         pkg_task_date = datetime_to_iso(task["changed"])
@@ -213,7 +213,7 @@ class PackageInfo(APIWorker):
         if not self.sql_status:
             return self.error
 
-        for el in response[0][0]:  # type: ignore
+        for el in response[0][0]:
             if "altlinux" in el:
                 nickname = get_nickname_from_packager(el)
                 if nickname not in pkg_maintainers:
@@ -229,7 +229,7 @@ class PackageInfo(APIWorker):
             return self.error
 
         if response:
-            pkg_acl = response[0][0]  # type: ignore
+            pkg_acl = response[0][0]
 
         # get package versions
         pkg_versions = []
@@ -246,8 +246,8 @@ class PackageInfo(APIWorker):
             return self.error
 
         # sort package versions by branch
-        pkg_branches = sort_branches([el[0] for el in response])  # type: ignore
-        pkg_versions = tuplelist_to_dict(response, 3)  # type: ignore
+        pkg_branches = sort_branches([el[0] for el in response])
+        pkg_versions = tuplelist_to_dict(response, 3)
 
         # XXX: workaround for multiple versions of returned for certain branch
         PkgVersions = namedtuple(
@@ -268,7 +268,7 @@ class PackageInfo(APIWorker):
                 return self.error
 
             PkgDependencies = namedtuple("PkgDependencies", ["name", "version", "flag"])
-            pkg_dependencies = [PkgDependencies(*el)._asdict() for el in response]  # type: ignore
+            pkg_dependencies = [PkgDependencies(*el)._asdict() for el in response]
 
             # change numeric flag on text
             for el in pkg_dependencies:
@@ -290,10 +290,64 @@ class PackageInfo(APIWorker):
         if response:
             if source:
                 pkg_info["buildtime"] = response[0][2]  # type: ignore
-                for elem in response:  # type: ignore
-                    package_archs[elem[0]] = {el[0]: str(el[1]) for el in elem[1]}  # type: ignore
+                # find appropriate hash for 'noarch' packages using build task
+                # and architecture precedence
+                _bin_pkgs_arch_hshs_from_task = {}
+
+                if pkg_task != 0 and any(
+                    [["noarch" == p[0] for el in response for p in el[1]]]
+                ):
+                    # get task iterations binary packages hashes by arch
+                    _response = self.send_sql_request(
+                        self.sql.get_task_bin_hshs_by_src_hsh.format(
+                            pkghash=self.pkghash, task_id=pkg_task
+                        )
+                    )
+                    if not self.sql_status:
+                        return self.error
+                    if not _response:
+                        return self.store_error(
+                            {
+                                "message": f"No task data found for ({pkg_task})",
+                                "args": self.args,
+                            }
+                        )
+                    # dict(arch, set(hash))
+                    _bin_pkgs_arch_hshs_from_task = {
+                        el[2]: set(el[3]) for el in _response
+                    }
+
+                for elem in response:
+                    # dict(arch: hash)
+                    _pkgs_arch_hsh_dict = {el[0]: str(el[1]) for el in elem[1]}
+                    # list[(arch, hash), ...]
+                    _pkgs_arch_hsh_list = [(el[0], el[1]) for el in elem[1]]
+                    # handle multiple noarch packages here if any
+                    if (
+                        _bin_pkgs_arch_hshs_from_task
+                        and "noarch" in _pkgs_arch_hsh_dict
+                        and len(_pkgs_arch_hsh_list) > 1
+                    ):
+                        # build archs list with 'x86_64' and 'i586' precedence
+                        _archs = ["x86_64", "i586"]
+                        _archs += [
+                            k for k in _bin_pkgs_arch_hshs_from_task if k not in _archs
+                        ]
+                        # find proper 'noarch' binary from build task
+                        for _arch in _archs:
+                            # skip if current arch not built in task
+                            if _arch not in _bin_pkgs_arch_hshs_from_task:
+                                continue
+                            # find proper 'noarch' binary package hash
+                            for pkg in _pkgs_arch_hsh_list:
+                                if pkg[1] in _bin_pkgs_arch_hshs_from_task[_arch]:
+                                    package_archs[elem[0]] = {"noarch": str(pkg[1])}
+                                    break
+                            break
+                    else:
+                        package_archs[elem[0]] = _pkgs_arch_hsh_dict
             else:
-                for elem in response:  # type: ignore
+                for elem in response:
                     package_archs[elem[0]] = {"src": str(elem[1])}
 
         # get package changelog
@@ -316,7 +370,7 @@ class PackageInfo(APIWorker):
         Changelog = namedtuple("Changelog", ["date", "name", "nick", "evr", "message"])
 
         changelog_list = [
-            Changelog(datetime_to_iso(el[1]), *el[2:])._asdict() for el in response  # type: ignore
+            Changelog(datetime_to_iso(el[1]), *el[2:])._asdict() for el in response
         ]
 
         # get package beehive rebuild status
@@ -339,7 +393,7 @@ class PackageInfo(APIWorker):
                 ["arch", "status", "build_time", "updated", "ftbfs_since"],
             )
 
-            bh_status = [BeehiveStatus(*el)._asdict() for el in response]  # type: ignore
+            bh_status = [BeehiveStatus(*el)._asdict() for el in response]
 
             for bh in bh_status:
                 epoch_ = pkg_info["epoch"]
@@ -475,7 +529,7 @@ class DeletedPackageInfo(APIWorker):
         )
 
         if response:
-            delete_task_info = TaskMeta(*response[0])._asdict()  # type: ignore
+            delete_task_info = TaskMeta(*response[0])._asdict()
 
             # task in wich source package was deleted found
             # get task message
@@ -491,7 +545,7 @@ class DeletedPackageInfo(APIWorker):
                 return self.error
 
             if response:
-                delete_task_info["task_message"] = response[0][0]  # type: ignore
+                delete_task_info["task_message"] = response[0][0]
 
             # get last package version info from branch
             if source:
@@ -513,9 +567,9 @@ class DeletedPackageInfo(APIWorker):
                 return self.error
 
             if response:
-                pkg_hash = str(response[0][0])  # type: ignore
-                pkg_version = str(response[0][1])  # type: ignore
-                pkg_release = str(response[0][2])  # type: ignore
+                pkg_hash = str(response[0][0])
+                pkg_version = str(response[0][1])
+                pkg_release = str(response[0][2])
             else:
                 #  find if package were ever built before delete
                 if source:
@@ -548,9 +602,9 @@ class DeletedPackageInfo(APIWorker):
                         }
                     )
 
-                pkg_hash = str(response[0][1])  # type: ignore
-                pkg_version = str(response[0][2])  # type: ignore
-                pkg_release = str(response[0][3])  # type: ignore
+                pkg_hash = str(response[0][1])
+                pkg_version = str(response[0][2])
+                pkg_release = str(response[0][3])
 
             delete_task_info["task_changed"] = datetime_to_iso(
                 delete_task_info["task_changed"]
@@ -615,7 +669,7 @@ class PackagesBinaryListInfo(APIWorker):
             ["hash", "name", "version", "release", "arch"],
         )
 
-        retval = [PkgMeta(*el)._asdict() for el in response]  # type: ignore
+        retval = [PkgMeta(*el)._asdict() for el in response]
 
         # get package versions
         pkg_versions = []
@@ -627,8 +681,8 @@ class PackagesBinaryListInfo(APIWorker):
             return self.error
 
         # sort package versions by branch
-        pkg_branches = sort_branches([el[0] for el in response])  # type: ignore
-        pkg_versions = tuplelist_to_dict(response, 3)  # type: ignore
+        pkg_branches = sort_branches([el[0] for el in response])
+        pkg_versions = tuplelist_to_dict(response, 3)
 
         # XXX: workaround for multiple versions of returned for certain branch
         PkgVersions = namedtuple("PkgVersions", ["branch", "version", "release"])
@@ -674,7 +728,7 @@ class PackageNVRByHash(APIWorker):
             "PkgInfo", ["hash", "name", "version", "release", "is_source"]
         )
 
-        pkg_info = PkgInfo(*response[0])  # type: ignore
+        pkg_info = PkgInfo(*response[0])
 
         # check if name from args matches with name from DB
         if self.args["name"] is not None and self.args["name"] != pkg_info.name:
