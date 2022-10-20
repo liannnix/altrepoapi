@@ -90,9 +90,16 @@ class AllPackagesets(APIWorker):
                 counts[cnt.branch] = []
             counts[cnt.branch].append({"arch": cnt.arch, "count": cnt.count})
 
-        # sort package counts by branch
+        # sort package counts by branch and source packages count
         res = [
-            {"branch": br, "packages_count": counts[br]}
+            {
+                "branch": br,
+                "packages_count": sorted(
+                    (val for val in counts[br]),
+                    key=lambda val: val["count"],
+                    reverse=True,
+                ),
+            }
             for br in sort_branches(counts.keys())
         ]
 
@@ -164,9 +171,16 @@ class AllPackagesets(APIWorker):
             {"branch": br, **statuses[br]} for br in sort_branches(statuses.keys())
         ]
 
-        # sort package counts by branch
+        # sort package counts by branch and source packages count
         res = [
-            {"branch": br, "packages_count": counts[br]}
+            {
+                "branch": br,
+                "packages_count": sorted(
+                    (val for val in counts[br]),
+                    key=lambda val: val["count"],
+                    reverse=True,
+                )
+            }
             for br in sort_branches(counts.keys())
         ]
 
