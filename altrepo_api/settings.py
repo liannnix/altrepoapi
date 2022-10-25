@@ -17,6 +17,14 @@
 import os
 import logging
 from dataclasses import dataclass
+from enum import Enum, auto
+
+
+class AccessGroups(Enum):
+    API_ADMIN = auto()
+    API_USER = auto()
+    CVE_ADMIN = auto()
+    CVE_USER = auto()
 
 
 @dataclass
@@ -49,17 +57,20 @@ class BasePathNamespace:
     LOG_TO_CONSOLE = True
     # misc settings
     DEPENDENCY_MAX_DEPTH = 5
+    # API admin credentials
+    ADMIN_USER = "admin"
+    ADMIN_PASSWORD = ""  # XXX: echo -n "SuperSecretPa\$\$w0rd" | sha512sum   # !! '$' symbol should be escaped in echo with backslash !!
     # authentication using LDAP server
-    AUTH_LDAP_SERVER_URI = ""
-    AUTH_LDAP_USER_SEARCH = ""
-    AUTH_LDAP_REQUIRE_GROUP = ""
+    LDAP_SERVER_URI = ""
+    LDAP_USER_SEARCH = ""
+    LDAP_REQUIRE_GROUP = ""
+    # LDAP access groups
+    AG = AccessGroups
+    ACCESS_GROUPS = {g: None for g in AccessGroups}
+    # authentication token settings
     EXPIRES_ACCESS_TOKEN = 60  # access token storage time in seconds
     EXPIRES_REFRESH_TOKEN = 300  # refresh token storage time in seconds
     MAX_REFRESH_SESSIONS_COUNT = 1
-    # API admin credentials
-    ADMIN_USER = "admin"
-    # echo -n "SuperSecretPa\$\$w0rd" | sha512sum   # !! '$' symbol should be escaped in echo with backslash !!
-    ADMIN_PASSWORD = ""
     # redis
     REDIS_URL = ""
 
