@@ -17,17 +17,21 @@ import hashlib
 import ldap
 import base64
 
-from collections import namedtuple
+from typing import Any, NamedTuple, Union
 
 from altrepo_api.settings import namespace
 from altrepo_api.utils import get_logger
 
 logger = get_logger(__name__)
 
-AuthCheckResult = namedtuple("AuthCheckResult", ["verified", "error", "value"])
+
+class AuthCheckResult(NamedTuple):
+    verified: bool
+    error: str
+    value: dict[str, Any]
 
 
-def check_auth(token, ldap_group: str):
+def check_auth(token: str, ldap_group: Union[str, None]) -> AuthCheckResult:
     try:
         token = token.split()[1].strip()
         user, password = base64.b64decode(token).decode("utf-8").split(":")
@@ -40,11 +44,12 @@ def check_auth(token, ldap_group: str):
     if ldap_group is not None:
         return check_auth_ldap(user, password, ldap_group)
     else:
-        return check_auth_base(user, password)
+        return check_auth_basic(user, password)
 
 
-def check_auth_base(user, password):
+def check_auth_basic(user: str, password: str) -> AuthCheckResult:
     passwd_hash = hashlib.sha512(password.encode("utf-8")).hexdigest()
+
     if user == namespace.ADMIN_USER and passwd_hash == namespace.ADMIN_PASSWORD:
         logger.info(f"User '{user}' successfully authorized")
         return AuthCheckResult(True, "OK", {"user": user})
@@ -53,35 +58,34 @@ def check_auth_base(user, password):
         return AuthCheckResult(False, "authorization failed", {})
 
 
-def check_auth_ldap(user, password, ldap_group):
+def check_auth_ldap(user: str, password: str, ldap_group: str) -> AuthCheckResult:
     try:
         # build a client
-        ldap_client = ldap.initialize(namespace.AUTH_LDAP_SERVER_URI, bytes_mode=False)
-    except ldap.SERVER_DOWN:
-        return AuthCheckResult(False, "Can't connection ldap server", {})
+        ldap_client = ldap.initialize(namespace.LDAP_SERVER_URI, bytes_mode=False)
+    except ldap.SERVER_DOWN:  # type: ignore
+        return AuthCheckResult(False, "LDAP server connection failed", {})
 
     try:
         # binds to the LDAP server with the user's DN and password
-        ldap_client.simple_bind_s(
-            namespace.AUTH_LDAP_USER_SEARCH % {"user": user}, password
-        )
-    except ldap.INVALID_CREDENTIALS:
-        return AuthCheckResult(
-            False, "Authorization failed: invalid login or password", {}
-        )
+        ldap_client.simple_bind_s(namespace.LDAP_USER_SEARCH % {"user": user}, password)
+    except ldap.INVALID_CREDENTIALS:  # type: ignore
+        logger.warning(f"User '{user}' LDAP authentication failed")
+        return AuthCheckResult(False, "LDAP authentication failed", {})
     else:
         # Returns True if the group requirement (AUTH_LDAP_REQUIRE_GROUP) is met
         try:
             is_member = ldap_client.compare_s(
-                namespace.AUTH_LDAP_REQUIRE_GROUP % {"group": ldap_group},
+                namespace.LDAP_REQUIRE_GROUP % {"group": ldap_group},
                 "member",
-                namespace.AUTH_LDAP_USER_SEARCH % {"user": user},
+                namespace.LDAP_USER_SEARCH % {"user": user},
             )
-        except ldap.PROTOCOL_ERROR:
-            return AuthCheckResult(False, f"Group {ldap_group} does not exist", {})
+        except ldap.PROTOCOL_ERROR:  # type: ignore
+            logger.warning(f"User '{user}' LDAP authorization failed")
+            return AuthCheckResult(False, "LDAP authorization failed", {})
+
         if is_member:
-            return AuthCheckResult(True, "OK", {"user": user})
+            logger.info(f"User '{user}' successfully authorized with LDAP")
+            return AuthCheckResult(True, "OK", {"user": user, "group": ldap_group})
         else:
-            return AuthCheckResult(
-                False, "user does not satisfy AUTH_LDAP_REQUIRE_GROUP", {}
-            )
+            logger.warning(f"User '{user}' LDAP authorization failed")
+            return AuthCheckResult(False, "LDAP authorization failed", {})
