@@ -1,0 +1,79 @@
+dn: o=test
+objectClass: organization
+o: test
+
+dn: ou=people,o=test
+objectClass: organizationalUnit
+ou: people
+
+dn: ou=groups,o=test
+objectClass: organizationalUnit
+ou: groups
+
+dn: uid=admin,ou=people,o=test
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: posixAccount
+cn: admin
+uid: admin
+userPassword: 12qwaszx
+uidNumber: 1000
+gidNumber: 100
+givenName: Admin
+sn: Admin
+homeDirectory: /home/admin
+
+dn: uid=admin2,ou=people,o=test
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: posixAccount
+cn: admin2
+uid: admin2
+userPassword: 12qwaszx
+uidNumber: 1001
+gidNumber: 100
+givenName: Admin2
+sn: Admin2
+homeDirectory: /home/admin2
+
+dn: uid=user,ou=people,o=test
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: posixAccount
+cn: user
+uid: user
+userPassword: password
+uidNumber: 1500
+gidNumber: 500
+givenName: Robert
+sn: User
+homeDirectory: /home/user
+
+# posixGroup objects
+dn: cn=test_admin,ou=groups,o=test
+objectClass: posixGroup
+cn: test_admin
+gidNumber: 100
+memberUid: admin
+memberUid: admin2
+
+dn: cn=test_user,ou=groups,o=test
+objectClass: posixGroup
+cn: test_admin
+gidNumber: 500 
+memberUid: user
+
+# groupOfNames objects
+dn: cn=users,ou=groups,o=test
+cn: users
+objectClass: groupOfNames
+member: uid=user,ou=people,o=test
+
+dn: cn=admins,ou=groups,o=test
+cn: users
+objectClass: groupOfNames
+member: uid=admin,ou=people,o=test
+member: uid=admin2,ou=people,o=test
