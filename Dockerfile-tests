@@ -28,6 +28,8 @@ RUN \
         tzdata \
         python3-module-pytest \
         python3-module-pytest-flask \
+        openldap-servers \
+        openldap-clients \
     # clean-up Apt caches
     && rm -f /var/cache/apt/archives/*.rpm \
         /var/cache/apt/*.bin \
