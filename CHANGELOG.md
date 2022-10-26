@@ -6,6 +6,16 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.8.7] - 2022-10-26
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- tests: add test duration statistics for test Docker image
+### Fixed
+- site/pkgsets_summary_status: fix sorting
+
 ## [1.8.6] - 2022-10-18
 
 Regular API code updates and fixes.
