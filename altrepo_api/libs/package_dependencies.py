@@ -23,11 +23,7 @@ from typing import Any, Iterable, Literal
 
 from altrepo_api.api.base import ConnectionProto
 from altrepo_api.utils import get_logger
-from .dependency_match import (
-    Dependency,
-    check_dependency_overlap,
-    make_dependency_tuple,
-)
+from .librpm_functions import Dependency, check_dependency_overlap
 from .exceptions import SqlRequestError
 
 USE_SHADOW_TABLES_DEPS_PROVIDE = False
@@ -699,11 +695,11 @@ class FindPackagesDependencies:
             dep = PkgDep(*el)
             if dep.type == "require":
                 in_packages_req[dep.hash] = [
-                    make_dependency_tuple(*x) for x in dep.deps
+                    Dependency(*x) for x in dep.deps
                 ]
             else:
                 found_packages_req[dep.hash] = [
-                    make_dependency_tuple(*x) for x in dep.deps
+                    Dependency(*x) for x in dep.deps
                 ]
 
         # build result dependency dictionary
@@ -719,7 +715,7 @@ class FindPackagesDependencies:
                     #     continue
 
                     for f_d in f_deps:
-                        if check_dependency_overlap(f_d, in_d):
+                        if check_dependency_overlap(*f_d, *in_d):
                             self.dependencies[in_hsh].add(f_hsh)
                             # break
                             collect_raw_provides(in_hsh, in_d, f_hsh, f_d)
@@ -729,7 +725,7 @@ class FindPackagesDependencies:
             (i, d) for i, d in raw_provides_mapping.items() if len(d) > 1
         ):
             in_hsh = in_dep[0]
-            in_dep_name = in_dep[1].name.decode("utf-8")
+            in_dep_name = in_dep[1].name
 
             if in_hsh not in self.duplicated_provides:
                 self.duplicated_provides[in_hsh] = {in_dep_name: set(f_deps.keys())}
