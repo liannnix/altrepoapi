@@ -1,10 +1,5 @@
 import unittest
 
-from altrepo_api.settings import namespace as settings
-
-settings.LOG_TO_FILE = False  # type: ignore
-settings.LOG_TO_SYSLOG = False
-
 from altrepo_api.libs.conflict_filter import ConflictFilter
 
 
@@ -30,20 +25,6 @@ class TestConflictFilter(unittest.TestCase):
 
         assert [(17830059475705751619, 8505303502925891219)] == self.cf._get_conflicts(
             dA, dB, hshA, hshB
-        )
-
-    def test_compare_version(self):
-        assert 0 == self.cf._compare_version(
-            (0, "6.04.pre3", "alt2", None), (0, "6.04.pre3", "alt2", None)
-        )
-        assert -1 == self.cf._compare_version(
-            (0, "5.04.pre3", "alt2", None), (0, "6.04.pre3", "alt2", None)
-        )
-        assert 1 == self.cf._compare_version(
-            (0, "6.04.pre3", "alt2", None), (0, "6.04.pre3", "alt1", None)
-        )
-        assert 1 == self.cf._compare_version(
-            (1, "6.04.pre3", "alt2", None), (0, "6.04.pre3", "alt2", None)
         )
 
 

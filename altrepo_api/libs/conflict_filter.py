@@ -14,14 +14,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import rpm
 from collections import defaultdict, namedtuple
 from dataclasses import dataclass
 
 from altrepo_api.api.base import ConnectionProto
 from altrepo_api.utils import get_logger, remove_duplicate
 
-from .dependency_match import check_dependency_overlap, make_dependency_tuple
+from .librpm_functions import check_dependency_overlap
 from .exceptions import SqlRequestError
 
 logger = get_logger(__name__)
@@ -140,9 +139,7 @@ class ConflictFilter:
             C = DependencyTuple(*confl)
             for provd in dB["provide"]:
                 P = DependencyTuple(*provd)
-                if C.name == P.name and check_dependency_overlap(
-                    make_dependency_tuple(*P), make_dependency_tuple(*C)
-                ):
+                if C.name == P.name and check_dependency_overlap(*P, *C):
                     conflicts.append((hshA, hshB))
 
         return conflicts
@@ -180,39 +177,3 @@ class ConflictFilter:
             conflicts += remove_duplicate(conflA + conflB)
 
         return conflicts
-
-    @staticmethod
-    def _compare_version(vv1, vv2):
-        """
-        Compare versions of packages.
-
-        The method compares versions (epoch, version, release, disttag) using
-        the rpm module.
-
-        :param vv1: version of first package
-        :param vv2: version of second package
-        :return: `0` if versions are identical
-                 `1` if the first version is larger
-                 `-1` if the first version is less
-        """
-        v1 = rpm.hdr()  # type: ignore
-        v2 = rpm.hdr()  # type: ignore
-
-        v1[rpm.RPMTAG_EPOCH] = vv1[0]  # type: ignore
-        v2[rpm.RPMTAG_EPOCH] = vv2[0]  # type: ignore
-
-        v1[rpm.RPMTAG_VERSION] = vv1[1]  # type: ignore
-        v2[rpm.RPMTAG_VERSION] = vv2[1]  # type: ignore
-        if vv1[2]:
-            v1[rpm.RPMTAG_RELEASE] = vv1[2]  # type: ignore
-        if vv2[2]:
-            v2[rpm.RPMTAG_RELEASE] = vv2[2]  # type: ignore
-
-        # check disttag, if true, add it
-        if vv1[3] != "" and vv2[3]:
-            v1[rpm.RPMTAG_DISTTAG] = vv1[3]  # type: ignore
-            v2[rpm.RPMTAG_DISTTAG] = vv2[3]  # type: ignore
-
-        eq = rpm.versionCompare(v1, v2)  # type: ignore
-
-        return eq
