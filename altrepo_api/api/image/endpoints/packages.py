@@ -19,7 +19,7 @@ from collections import namedtuple
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
 from ..sql import sql
-from altrepo_api.libs.conflict_filter import ConflictFilter
+from altrepo_api.libs.librpm_functions import compare_versions as vercmp
 
 
 class CheckPackages(APIWorker):
@@ -281,9 +281,15 @@ class CheckPackages(APIWorker):
         # compare versions
         def compare_versions(p1: Package, p2: Package) -> int:
             # 0 : equal, 1 : v1 > v2, -1 : v1 < v2
-            return ConflictFilter._compare_version(
-                vv1=(p1.epoch, p1.version, p1.release, p1.disttag),
-                vv2=(p2.epoch, p2.version, p2.release, p2.disttag),
+            return vercmp(
+                epoch1=p1.epoch,
+                version1=p1.version,
+                release1=p1.release,
+                disttag1=p1.disttag,
+                epoch2=p2.epoch,
+                version2=p2.version,
+                release2=p2.release,
+                disttag2=p2.disttag,
             )
 
         # get not found packages without disttag
