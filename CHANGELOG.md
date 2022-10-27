@@ -6,6 +6,16 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.8.8] - 2022-10-27
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- removed dependency on librpm python bindings package `rpm` (`python3-module-rpm`)
+- using custom librpm.so.7 functions wrappers from `api/libs/liprm_fucntions` module
+### Fixed
+
 ## [1.8.7] - 2022-10-26
 
 Regular API code updates and fixes.
