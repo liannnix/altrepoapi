@@ -4,4 +4,3 @@ flask-restx
 gunicorn
 clickhouse-driver
 packaging
-- rpm

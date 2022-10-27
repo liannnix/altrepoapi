@@ -14,7 +14,7 @@ URL: https://git.altlinux.org/gears/a/altrepo-api.git
 
 BuildArch: noarch
 
-Requires: python3-module-rpm
+Requires: librpm7
 Requires: python3-module-gunicorn
 
 BuildRequires(pre): rpm-build-python3

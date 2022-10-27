@@ -18,7 +18,6 @@ RUN \
     && yes | apt-get install \
         python3-module-flask \
         python3-module-flask-restx \
-        python3-module-rpm \
         python3-module-mmh3 \
         python3-module-clickhouse-driver \
         python3-module-gunicorn \
