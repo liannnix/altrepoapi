@@ -116,3 +116,4 @@ last_pkgs_branch_args = parser.build_parser(branch, pkgs_limit, packager)
 pkgset_pkghash_by_nvr = parser.build_parser(
     name, branch, package_version, package_release
 )
+find_src_pkg_args = parser.build_parser(branch, name)
