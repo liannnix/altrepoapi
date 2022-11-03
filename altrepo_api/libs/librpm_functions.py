@@ -81,7 +81,9 @@ def _make_dependency_tuple(name: str, version: str, flags: int) -> struct_Depend
     )
 
 
-def _check_dependency_overlap(provide_dep: struct_Dependency, require_dep: struct_Dependency) -> bool:
+def _check_dependency_overlap(
+    provide_dep: struct_Dependency, require_dep: struct_Dependency
+) -> bool:
     # set flags for `provides` dependency to RPMSENSE_EQUAL as apt-rpm does
     _provide_dep = struct_Dependency(*provide_dep)._replace(flags=RPMSENSE_EQUAL)
     return bool(rpmRangesOverlap(*_provide_dep, *require_dep, LIBRPM_NOPROMOTE))
@@ -97,8 +99,12 @@ def check_dependency_overlap(
 ) -> bool:
     """Check dependencies overlapping using librpm `rpmRangesOverlap` function."""
     return _check_dependency_overlap(
-        _make_dependency_tuple(provide_dep_name, provide_dep_version, provide_dep_flags),
-        _make_dependency_tuple(require_dep_name, require_dep_version, require_dep_flags),
+        _make_dependency_tuple(
+            provide_dep_name, provide_dep_version, provide_dep_flags
+        ),
+        _make_dependency_tuple(
+            require_dep_name, require_dep_version, require_dep_flags
+        ),
     )
 
 

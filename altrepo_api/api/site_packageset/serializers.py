@@ -187,5 +187,5 @@ find_src_pkg_in_branch_model = ns.model(
     {
         "request_args": fields.Raw(description="request arguments"),
         "source_package": fields.String(description="source package name"),
-    }
+    },
 )

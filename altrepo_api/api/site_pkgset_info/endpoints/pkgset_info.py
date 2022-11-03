@@ -179,7 +179,7 @@ class AllPackagesets(APIWorker):
                     (val for val in counts[br]),
                     key=lambda val: val["count"],
                     reverse=True,
-                )
+                ),
             }
             for br in sort_branches(counts.keys())
         ]
