@@ -58,26 +58,19 @@ class LookupTables:
     no_downloads_branches = ["sisyphus_e2k", "p9_e2k", "p10_e2k"]
     repology_export_branches = ["sisyphus", "p9", "p10"]
     known_archs = [
-        "x86_64",
         "noarch",
+        "i586",
+        "x86_64",
         "x86_64-i586",
         "armh",
-        "arm",
-        "i586",
-        "pentium4",
-        "athlon",
-        "pentium3",
-        "i686",
-        "armv5tel",
-        "k6",
         "aarch64",
         "ppc64le",
-        "e2kv6",
-        "e2kv5",
-        "e2kv4",
-        "e2k",
-        "mipsel",
         "riscv64",
+        "mipsel",
+        "e2k",
+        "e2kv4",
+        "e2kv5",
+        "e2kv6",
     ]
     default_archs = ["x86_64", "i586", "aarch64", "armh", "ppc64le", "noarch"]
     package_params = [
