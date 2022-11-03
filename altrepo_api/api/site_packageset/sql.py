@@ -357,5 +357,29 @@ WHERE pkgset_uuid IN (
 )
 """
 
+    check_package_name = """
+SELECT DISTINCT
+    pkg_name,
+    pkg_sourcepackage
+FROM BranchPackageHistory
+WHERE pkg_name='{name}'
+    AND pkgset_name = '{branch}'
+"""
+
+    get_src_pkg_by_bin = """
+SELECT DISTINCT
+    pkg_name
+FROM BranchPackageHistory
+WHERE pkg_hash IN (
+    SELECT pkg_srcrpm_hash
+    FROM Packages
+    WHERE pkg_name = '{name}'
+        AND pkg_sourcepackage = 0
+    ORDER BY pkg_srcrpm_hash ASC
+) AND pkg_sourcepackage = 1
+  AND pkgset_name = '{branch}'
+ORDER BY task_changed DESC LIMIT 1
+"""
+
 
 sql = SQL()
