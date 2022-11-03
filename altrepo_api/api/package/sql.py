@@ -821,6 +821,7 @@ WHERE pkg_hash IN
     FROM last_packages
     WHERE pkgset_name = %(branch)s
         AND pkg_arch IN %(arch)s
+        AND pkg_sourcepackage = 0
 )
     AND {param}
 """
