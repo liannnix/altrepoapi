@@ -14,8 +14,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import types
 from time import sleep
+from typing import Any, Iterable, Union
 from clickhouse_driver import Client, errors, __version__ as chd_version
 
 from altrepo_api.settings import namespace as settings
@@ -29,14 +29,14 @@ class DBConnection:
 
     def __init__(
         self,
-        clickhouse_host=None,
-        clickhouse_name=None,
-        dbuser=None,
-        dbpass=None,
-        db_query=None,
+        clickhouse_host: str,
+        clickhouse_name: str,
+        dbuser: str,
+        dbpass: str,
+        query: Union[str, tuple[str, Any]] = "",
     ):
-
-        self.db_query = db_query
+        self.query = query
+        self.query_kwargs = {}
 
         self.clickhouse_client = Client(
             host=clickhouse_host, database=clickhouse_name, user=dbuser, password=dbpass
@@ -48,7 +48,7 @@ class DBConnection:
 
         self.connection_status = False
 
-    def make_connection(self):
+    def make_connection(self) -> bool:
         try:
             self.clickhouse_client.connection.connect()
         except Exception as error:
@@ -59,7 +59,7 @@ class DBConnection:
 
         return True
 
-    def _connection_test(self):
+    def _connection_test(self) -> Union[str, None]:
         logger.debug(
             f"Connecting to databse {settings.DATABASE_NAME}@{settings.DATABASE_HOST}"
         )
@@ -75,41 +75,43 @@ class DBConnection:
         self.clickhouse_client.disconnect()
         return None
 
-    def _debug_sql_query_printout(self):
+    def _debug_sql_query_printout(self) -> None:
         if not settings.SQL_DEBUG:
             return
-        if isinstance(self.db_query, tuple):
+        if isinstance(self.query, tuple):
             # SQL query has params
-            if not isinstance(self.db_query[1], (list, tuple, types.GeneratorType)):
+            if not isinstance(self.query[1], Iterable):
                 if chd_version <= "0.2.2":
                     query = self.clickhouse_client.substitute_params(
-                        self.db_query[0],
-                        self.db_query[1],
+                        self.query[0],
+                        self.query[1],
                     )  # type: ignore
                 else:
                     query = self.clickhouse_client.substitute_params(
-                        self.db_query[0],
-                        self.db_query[1],
+                        self.query[0],
+                        self.query[1],
                         self.clickhouse_client.connection.context,  # works only for clickhouse-driver >= 0.2.3
                     )
             else:
-                query = self.db_query[0]
+                query = self.query[0]
         else:
-            query = self.db_query
+            query = self.query
 
         logger.debug(f"SQL request:\n{query}")
 
-    def send_request(self):
+    def send_request(self) -> tuple[bool, Any]:
         response_status = False
 
         try:
             self._debug_sql_query_printout()
-            if isinstance(self.db_query, tuple):
+            if isinstance(self.query, tuple):
                 response = self.clickhouse_client.execute(
-                    self.db_query[0], self.db_query[1]
+                    self.query[0], self.query[1], **self.query_kwargs
                 )
             else:
-                response = self.clickhouse_client.execute(self.db_query)
+                response = self.clickhouse_client.execute(
+                    self.query, **self.query_kwargs
+                )
             response_status = True
             logger.debug(f"SQL request elapsed {self.clickhouse_client.last_query.elapsed:.3f} seconds")  # type: ignore
         except Exception as error:
@@ -121,7 +123,7 @@ class DBConnection:
 
         return response_status, response
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         self.clickhouse_client.disconnect()
         self.connection_status = False
 
@@ -129,34 +131,35 @@ class DBConnection:
 class Connection:
     """Database connection class supports retries if connection to dabase have been lost."""
 
-    def __init__(self, request_line=None):
-        self.request_line = request_line
-        self.db_connection = DBConnection(
+    def __init__(self):
+        self.request_line: Union[str, tuple[str, Any]] = ""
+        self._db_connection = DBConnection(
             settings.DATABASE_HOST,
             settings.DATABASE_NAME,
             settings.DATABASE_USER,
             settings.DATABASE_PASS,
         )
 
-    def send_request(self):
-        status = self.db_connection.connection_status
+    def send_request(self, **query_kwargs) -> tuple[bool, Any]:
+        status = self._db_connection.connection_status
         if not status:
             for try_ in range(settings.TRY_CONNECTION_NUMBER):
                 logger.debug("Attempt to connect to the database #{}".format(try_ + 1))
 
-                status = self.db_connection.make_connection()
+                status = self._db_connection.make_connection()
                 if status:
                     break
 
                 sleep(settings.TRY_TIMEOUT)
 
         if status:
-            self.db_connection.db_query = self.request_line  # type: ignore
-            return self.db_connection.send_request()
+            self._db_connection.query_kwargs = query_kwargs
+            self._db_connection.query = self.request_line  # type: ignore
+            return self._db_connection.send_request()
         else:
-            return False, "Database connection error."
+            return False, json_str_error("Database connection error.")
 
-    def drop_connection(self):
-        if self.db_connection:
-            self.db_connection.disconnect()
+    def drop_connection(self) -> None:
+        if self._db_connection:
+            self._db_connection.disconnect()
             logger.debug("Connection closed.")

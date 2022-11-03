@@ -15,12 +15,34 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from collections import namedtuple
+from typing import Any
 
 from altrepo_api.utils import tuplelist_to_dict, sort_branches
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
 from ..sql import sql
+
+
+def relevance_sort(pkgs_dict: dict[str, Any], pkg_name: str) -> list[tuple]:
+    """Dumb sorting for package names by relevance."""
+
+    def relevance_weight(instr, substr):
+        return len(instr) + 100 * instr.find(substr)
+
+    l_in = []
+    l_out = []
+
+    for k in pkgs_dict.keys():
+        if k.lower().find(pkg_name.lower()) == -1:
+            l_out.append(k)
+        else:
+            l_in.append(k)
+
+    l_in.sort(key=lambda x: relevance_weight(x.lower(), pkg_name.lower()))
+    l_out.sort()
+
+    return [(name, *pkgs_dict[name]) for name in (l_in + l_out)]
 
 
 class PackagesetFindPackages(APIWorker):
@@ -36,28 +58,11 @@ class PackagesetFindPackages(APIWorker):
         self.logger.debug(f"args : {self.args}")
         return True
 
-    @staticmethod
-    def _relevance_sort(pkgs_dict, pkg_name):
-        """Dumb sorting for package names by relevance."""
-
-        def relevance_weight(instr, substr):
-            return len(instr) + 100 * instr.find(substr)
-
-        l_in = []
-        l_out = []
-        for k in pkgs_dict.keys():
-            if k.lower().find(pkg_name.lower()) == -1:
-                l_out.append(k)
-            else:
-                l_in.append(k)
-        l_in.sort(key=lambda x: relevance_weight(x.lower(), pkg_name.lower()))
-        l_out.sort()
-        return [(name, *pkgs_dict[name]) for name in (l_in + l_out)]
-
     def get(self):
         self.name = self.args["name"]
         self.arch = ""
         self.branch = ""
+
         if self.args["branch"] is not None:
             self.branch = f"AND pkgset_name = '{self.args['branch']}'"
         if self.args["arch"] is not None:
@@ -65,37 +70,75 @@ class PackagesetFindPackages(APIWorker):
         else:
             self.arch = f"AND pkg_arch IN {(*lut.default_archs,)}"
 
-        self.conn.request_line = self.sql.get_find_packages_by_name.format(
-            branch=self.branch, name=self.name, arch=self.arch
+        response = self.send_sql_request(
+            self.sql.get_find_packages_by_name.format(
+                branch=self.branch, name=self.name, arch=self.arch
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
-        if not response:
-            self._store_error(
+
+        res = []
+        PkgMeta = namedtuple(
+            "PkgMeta",
+            ["branch", "version", "release", "pkghash", "deleted"],
+            defaults=[False],  # 'deleted' default
+        )
+
+        if response:
+            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 5), self.name)
+
+            for pkg in pkgs_sorted:
+                res.append(
+                    {
+                        "name": pkg[0],
+                        "buildtime": pkg[2],
+                        "url": pkg[3],
+                        "summary": pkg[4],
+                        "category": pkg[5],
+                        "versions": [PkgMeta(*el)._asdict() for el in pkg[1]],
+                    }
+                )
+
+        # search in deleted packages
+        response = self.send_sql_request(
+            self.sql.get_find_deleted_packages_by_name.format(
+                branch=self.branch, name=self.name
+            )
+        )
+        if not self.sql_status:
+            return self.error
+
+        if response:
+            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 5), self.name)
+
+            src_pkgs_found = {p["name"] for p in res}
+
+            for pkg in pkgs_sorted:
+                if pkg[0] not in src_pkgs_found:
+                    # add packages found as deleted if not overlapping with already found
+                    res.append(
+                        {
+                            "name": pkg[0],
+                            "buildtime": pkg[2],
+                            "url": pkg[3],
+                            "summary": pkg[4],
+                            "category": pkg[5],
+                            "versions": [PkgMeta(*el, True)._asdict() for el in pkg[1]],  # type: ignore
+                        }
+                    )
+                else:
+                    # update already found packages with deleted one
+                    for r in res:
+                        if r["name"] == pkg[0]:
+                            r["versions"] += [PkgMeta(*el, True)._asdict() for el in pkg[1]]  # type: ignore
+                            break
+
+        if not res:
+            return self.store_error(
                 {
                     "message": f"Packages like '{self.name}' not found in database",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
-            )
-            return self.error
-
-        pkgs_sorted = self._relevance_sort(tuplelist_to_dict(response, 5), self.name)  # type: ignore
-
-        res = []
-        PkgMeta = namedtuple("PkgMeta", ["branch", "version", "release", "pkghash"])
-        for pkg in pkgs_sorted:
-            res.append(
-                {
-                    "name": pkg[0],
-                    "buildtime": pkg[2],
-                    "url": pkg[3],
-                    "summary": pkg[4],
-                    "category": pkg[5],
-                    "versions": [PkgMeta(*el)._asdict() for el in pkg[1]],
                 }
             )
 
@@ -116,61 +159,77 @@ class FastPackagesSearchLookup(APIWorker):
         self.logger.debug(f"args : {self.args}")
         return True
 
-    @staticmethod
-    def _relevance_sort(pkgs_dict, pkg_name):
-        """Dumb sorting for package names by relevance."""
-
-        def relevance_weight(instr, substr):
-            return len(instr) + 100 * instr.find(substr)
-
-        l_in = []
-        l_out = []
-        for k in pkgs_dict.keys():
-            if k.lower().find(pkg_name.lower()) == -1:
-                l_out.append(k)
-            else:
-                l_in.append(k)
-        l_in.sort(key=lambda x: relevance_weight(x.lower(), pkg_name.lower()))
-        l_out.sort()
-        return [(name, *pkgs_dict[name]) for name in (l_in + l_out)]
-
     def get(self):
         self.name = self.args["name"]
         self.branch = ""
         if self.args["branch"] is not None:
             self.branch = f"AND pkgset_name = '{self.args['branch']}'"
 
-        self.conn.request_line = self.sql.get_fast_search_packages_by_name.format(
-            branch=self.branch, name=self.name
+        response = self.send_sql_request(
+            self.sql.get_fast_search_packages_by_name.format(
+                branch=self.branch, name=self.name
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
-        if not response:
-            self._store_error(
+
+        res = []
+
+        if response:
+            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 3), self.name)  # type: ignore
+
+            for pkg in pkgs_sorted:
+                if pkg[1] == 1:
+                    sourcepackage = "source"
+                else:
+                    sourcepackage = "binary"
+                res.append(
+                    {
+                        "name": pkg[0],
+                        "sourcepackage": sourcepackage,
+                        "branches": sort_branches(pkg[2]),
+                    }
+                )
+
+        # search for deleted packages
+        response = self.send_sql_request(
+            self.sql.get_fast_search_deleted_packages_by_name.format(
+                branch=self.branch, name=self.name
+            )
+        )
+        if not self.sql_status:
+            return self.error
+
+        if response:
+            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 5), self.name)
+            src_pkgs_found = {p["name"] for p in res if p["sourcepackage"] == "source"}
+
+            for pkg in pkgs_sorted:
+                if pkg[0] not in src_pkgs_found:
+                    if pkg[1] == 1:
+                        sourcepackage = "source"
+                    else:
+                        sourcepackage = "binary"
+                    res.append(
+                        {
+                            "name": pkg[0],
+                            "sourcepackage": sourcepackage,
+                            "branches": sort_branches(pkg[2]),
+                        }
+                    )
+                else:
+                    for r in res:
+                        if r["name"] == pkg[0]:
+                            r["branches"] = list(
+                                set(r["branches"] + sort_branches(pkg[2]))
+                            )
+                        break
+
+        if not res:
+            return self.store_error(
                 {
                     "message": f"Packages like '{self.name}' not found in database",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
-            )
-            return self.error
-
-        pkgs_sorted = self._relevance_sort(tuplelist_to_dict(response, 3), self.name)  # type: ignore
-
-        res = []
-        for pkg in pkgs_sorted:
-            if pkg[1] == 1:
-                sourcepackage = "source"
-            else:
-                sourcepackage = "binary"
-            res.append(
-                {
-                    "name": pkg[0],
-                    "sourcepackage": sourcepackage,
-                    "branches": sort_branches(pkg[2]),
                 }
             )
 
@@ -197,28 +256,25 @@ class PackagesetPkghashByNVR(APIWorker):
         self.version = self.args["version"]
         self.release = self.args["release"]
 
-        self.conn.request_line = self.sql.get_pkghash_by_BVR.format(
-            branch=self.branch,
-            name=self.name,
-            version=self.version,
-            release=self.release,
+        response = self.send_sql_request(
+            self.sql.get_pkghash_by_BVR.format(
+                branch=self.branch,
+                name=self.name,
+                version=self.version,
+                release=self.release,
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response or response[0][0] == 0:  # type: ignore
-            self._store_error(
+            return self.store_error(
                 {
                     "message": (
                         f"Package '{self.name}-{self.version}-{self.release}' "
                         f"not found in database for branch {self.branch}"
                     ),
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         return {"request_args": self.args, "pkghash": str(response[0][0])}, 200  # type: ignore

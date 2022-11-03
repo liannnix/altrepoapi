@@ -564,3 +564,31 @@ active_images_model = ns.model(
         ),
     },
 )
+
+find_images_by_pkg_el_model = ns.model(
+    "FindImagesByPackageElementModel",
+    {
+        "pkghash": fields.String(description="package hash UInt64 as string"),
+        "name": fields.String(description="package name"),
+        "branch": fields.String(description="package set name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "arch": fields.String(description="package architecture"),
+        "edition": fields.String(description="Image edition"),
+        "tag": fields.String(description="Image package set tag"),
+        "file": fields.String(description="Image file name"),
+        "date": fields.DateTime(description="Image package set date"),
+    },
+)
+find_images_by_pkg_model = ns.model(
+    "FindImagesByPackageModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of images found"),
+        "images": fields.Nested(
+            find_images_by_pkg_el_model,
+            description="list of found images",
+            as_list=True,
+        ),
+    },
+)

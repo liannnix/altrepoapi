@@ -104,6 +104,23 @@ class PackageInfo(APIWorker):
 
         pkg_type_to_sql = {"source": 1, "binary": 0}
         source = pkg_type_to_sql[self.pkg_type]
+
+        # get package info
+        pkg_src_or_bin = f"AND pkg_sourcepackage = {source}"
+
+        response = self.send_sql_request(
+            self.sql.get_pkg_info.format(pkghash=self.pkghash, source=pkg_src_or_bin)
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error(
+                {
+                    "message": f"No packages found in last packages with hash {self.pkghash}",
+                    "args": self.args,
+                }
+            )
+
         PkgMeta = namedtuple(
             "PkgMeta",
             [
@@ -122,26 +139,9 @@ class PackageInfo(APIWorker):
                 "category",
             ],
         )
-        # get package info
-        pkg_src_or_bin = f"AND pkg_sourcepackage = {source}"
-        self.conn.request_line = self.sql.get_pkg_info.format(
-            pkghash=self.pkghash, source=pkg_src_or_bin
-        )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
-            return self.error
-        if not response:
-            self._store_error(
-                {
-                    "message": f"No packages found in last packages with hash {self.pkghash}",
-                    "args": self.args,
-                },
-                self.ll.INFO,
-                404,
-            )
-            return self.error
-        pkg_info = PkgMeta(*response[0])._asdict()  # type: ignore
+
+        pkg_info = PkgMeta(*response[0])._asdict()
+
         # get package task
         pkg_task = 0
         pkg_tasks = []
@@ -169,15 +169,14 @@ class PackageInfo(APIWorker):
             pkg_tasks = []
             pkg_task_date = None
         else:
-            self.conn.request_line = self.sql.get_task_gears_by_hash.format(
-                pkghash=self.pkghash
+            response = self.send_sql_request(
+                self.sql.get_task_gears_by_hash.format(pkghash=self.pkghash)
             )
-            status, response = self.conn.send_request()
-            if not status:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return self.error
+
             if response:
-                for task in [SubtaskMeta(*el)._asdict() for el in response]:  # type: ignore
+                for task in [SubtaskMeta(*el)._asdict() for el in response]:
                     if task["repo"] == self.branch:
                         pkg_task = task["id"]
                         pkg_task_date = datetime_to_iso(task["changed"])
@@ -204,52 +203,57 @@ class PackageInfo(APIWorker):
                                 {"type": "build", "id": pkg_task, "date": pkg_task_date}
                             )
                             break
+
         # get package maintainers from changelog
         pkg_maintainers = []
-        self.conn.request_line = self.sql.get_pkg_maintainers.format(
-            pkghash=self.pkghash
+
+        response = self.send_sql_request(
+            self.sql.get_pkg_maintainers.format(pkghash=self.pkghash)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
-        for el in response[0][0]:  # type: ignore
+
+        for el in response[0][0]:
             if "altlinux" in el:
                 nickname = get_nickname_from_packager(el)
                 if nickname not in pkg_maintainers:
                     pkg_maintainers.append(nickname)
+
         # get package ACLs
         pkg_acl = []
-        self.conn.request_line = self.sql.get_pkg_acl.format(
-            name=pkg_info["name"], branch=self.branch
+
+        response = self.send_sql_request(
+            self.sql.get_pkg_acl.format(name=pkg_info["name"], branch=self.branch)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
+
         if response:
-            pkg_acl = response[0][0]  # type: ignore
+            pkg_acl = response[0][0]
+
         # get package versions
         pkg_versions = []
+
         if source:
-            self.conn.request_line = self.sql.get_pkg_versions.format(
-                name=pkg_info["name"]
-            )
+            request_line = self.sql.get_pkg_versions.format(name=pkg_info["name"])
         else:
-            self.conn.request_line = self.sql.get_pkg_binary_versions.format(
+            request_line = self.sql.get_pkg_binary_versions.format(
                 name=pkg_info["name"], arch=pkg_info["arch"]
             )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+
+        response = self.send_sql_request(request_line)
+        if not self.sql_status:
             return self.error
+
+        # sort package versions by branch
+        pkg_branches = sort_branches([el[0] for el in response])
+        pkg_versions = tuplelist_to_dict(response, 3)
+
+        # XXX: workaround for multiple versions of returned for certain branch
         PkgVersions = namedtuple(
             "PkgVersions", ["branch", "version", "release", "pkghash"]
         )
-        # sort package versions by branch
-        pkg_branches = sort_branches([el[0] for el in response])  # type: ignore
-        pkg_versions = tuplelist_to_dict(response, 3)  # type: ignore
-        # FIXME: workaround for multiple versions of returned for certain branch
+
         pkg_versions = [
             PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
         ]
@@ -257,15 +261,14 @@ class PackageInfo(APIWorker):
         # get package dependencies
         pkg_dependencies = []
         if source == 1:
-            self.conn.request_line = self.sql.get_pkg_dependencies.format(
-                pkghash=self.pkghash
+            response = self.send_sql_request(
+                self.sql.get_pkg_dependencies.format(pkghash=self.pkghash)
             )
-            status, response = self.conn.send_request()
-            if not status:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return self.error
+
             PkgDependencies = namedtuple("PkgDependencies", ["name", "version", "flag"])
-            pkg_dependencies = [PkgDependencies(*el)._asdict() for el in response]  # type: ignore
+            pkg_dependencies = [PkgDependencies(*el)._asdict() for el in response]
 
             # change numeric flag on text
             for el in pkg_dependencies:
@@ -274,49 +277,100 @@ class PackageInfo(APIWorker):
         # get provided binary and source packages
         package_archs = {}
         if source:
-            self.conn.request_line = self.sql.get_binary_pkgs.format(
+            request_line = self.sql.get_binary_pkgs.format(
                 pkghash=self.pkghash, branch=self.branch
             )
         else:
-            self.conn.request_line = self.sql.get_source_pkgs.format(
-                pkghash=self.pkghash
-            )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+            request_line = self.sql.get_source_pkgs.format(pkghash=self.pkghash)
+
+        response = self.send_sql_request(request_line)
+        if not self.sql_status:
             return self.error
 
         if response:
             if source:
                 pkg_info["buildtime"] = response[0][2]  # type: ignore
-                for elem in response:  # type: ignore
-                    package_archs[elem[0]] = {el[0]: str(el[1]) for el in elem[1]}  # type: ignore
+                # find appropriate hash for 'noarch' packages using build task
+                # and architecture precedence
+                _bin_pkgs_arch_hshs_from_task = {}
+
+                if pkg_task != 0 and any(
+                    [["noarch" == p[0] for el in response for p in el[1]]]
+                ):
+                    # get task iterations binary packages hashes by arch
+                    _response = self.send_sql_request(
+                        self.sql.get_task_bin_hshs_by_src_hsh.format(
+                            pkghash=self.pkghash, task_id=pkg_task
+                        )
+                    )
+                    if not self.sql_status:
+                        return self.error
+                    if not _response:
+                        return self.store_error(
+                            {
+                                "message": f"No task data found for ({pkg_task})",
+                                "args": self.args,
+                            }
+                        )
+                    # dict(arch, set(hash))
+                    _bin_pkgs_arch_hshs_from_task = {
+                        el[2]: set(el[3]) for el in _response
+                    }
+
+                for elem in response:
+                    # dict(arch: hash)
+                    _pkgs_arch_hsh_dict = {el[0]: str(el[1]) for el in elem[1]}
+                    # list[(arch, hash), ...]
+                    _pkgs_arch_hsh_list = [(el[0], el[1]) for el in elem[1]]
+                    # handle multiple noarch packages here if any
+                    if (
+                        _bin_pkgs_arch_hshs_from_task
+                        and "noarch" in _pkgs_arch_hsh_dict
+                        and len(_pkgs_arch_hsh_list) > 1
+                    ):
+                        # build archs list with 'x86_64' and 'i586' precedence
+                        _archs = ["x86_64", "i586"]
+                        _archs += [
+                            k for k in _bin_pkgs_arch_hshs_from_task if k not in _archs
+                        ]
+                        # find proper 'noarch' binary from build task
+                        for _arch in _archs:
+                            # skip if current arch not built in task
+                            if _arch not in _bin_pkgs_arch_hshs_from_task:
+                                continue
+                            # find proper 'noarch' binary package hash
+                            for pkg in _pkgs_arch_hsh_list:
+                                if pkg[1] in _bin_pkgs_arch_hshs_from_task[_arch]:
+                                    package_archs[elem[0]] = {"noarch": str(pkg[1])}
+                                    break
+                            break
+                    else:
+                        package_archs[elem[0]] = _pkgs_arch_hsh_dict
             else:
-                for elem in response:  # type: ignore
+                for elem in response:
                     package_archs[elem[0]] = {"src": str(elem[1])}
+
         # get package changelog
-        self.conn.request_line = (
-            self.sql.get_pkg_changelog,
-            {"pkghash": self.pkghash, "limit": self.chlog_length},
+        response = self.send_sql_request(
+            (
+                self.sql.get_pkg_changelog,
+                {"pkghash": self.pkghash, "limit": self.chlog_length},
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": f"No packages found in last packages with hash {self.pkghash}",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         Changelog = namedtuple("Changelog", ["date", "name", "nick", "evr", "message"])
+
         changelog_list = [
-            Changelog(datetime_to_iso(el[1]), *el[2:])._asdict() for el in response  # type: ignore
+            Changelog(datetime_to_iso(el[1]), *el[2:])._asdict() for el in response
         ]
 
         # get package beehive rebuild status
@@ -325,19 +379,22 @@ class PackageInfo(APIWorker):
             bh_status = []
         else:
             # get last beehive errors by package hash
-            self.conn.request_line = (
-                self.sql.get_last_bh_rebuild_status_by_hsh,
-                {"pkghash": self.pkghash, "branch": self.branch},
+            response = self.send_sql_request(
+                (
+                    self.sql.get_last_bh_rebuild_status_by_hsh,
+                    {"pkghash": self.pkghash, "branch": self.branch},
+                )
             )
-            status, response = self.conn.send_request()
-            if not status:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return self.error
+
             BeehiveStatus = namedtuple(
                 "BeehiveStatus",
                 ["arch", "status", "build_time", "updated", "ftbfs_since"],
             )
-            bh_status = [BeehiveStatus(*el)._asdict() for el in response]  # type: ignore
+
+            bh_status = [BeehiveStatus(*el)._asdict() for el in response]
+
             for bh in bh_status:
                 epoch_ = pkg_info["epoch"]
                 if epoch_ == 0:
@@ -376,8 +433,10 @@ class PackageInfo(APIWorker):
 
         # get package license tokens
         license_tokens = []
+
         lp = LicenseParser(connection=self.conn, license_str=pkg_info["license"])
         lp.parse_license()
+
         if lp.status:
             if lp.tokens:
                 license_tokens = [
@@ -451,64 +510,66 @@ class DeletedPackageInfo(APIWorker):
 
         if source:
             # get task info where source package was deleted
-            self.conn.request_line = self.sql.get_deleted_package_task_by_src.format(
+            request_line = self.sql.get_deleted_package_task_by_src.format(
                 name=self.name, branch=self.branch
             )
         else:
             # get task info where source package of input binary was deleted
-            self.conn.request_line = self.sql.get_deleted_package_task_by_bin.format(
+            request_line = self.sql.get_deleted_package_task_by_bin.format(
                 name=self.name, branch=self.branch
             )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+
+        response = self.send_sql_request(request_line)
+        if not self.sql_status:
             return self.error
+
         TaskMeta = namedtuple(
             "TaskMeta",
             ["task_id", "subtask_id", "task_changed", "task_owner", "subtask_userid"],
         )
+
         if response:
-            delete_task_info = TaskMeta(*response[0])._asdict()  # type: ignore
+            delete_task_info = TaskMeta(*response[0])._asdict()
 
             # task in wich source package was deleted found
             # get task message
             delete_task_info["task_message"] = ""
-            self.conn.request_line = self.sql.get_delete_task_message.format(
-                task_id=delete_task_info["task_id"],
-                task_changed=delete_task_info["task_changed"],
+
+            response = self.send_sql_request(
+                self.sql.get_delete_task_message.format(
+                    task_id=delete_task_info["task_id"],
+                    task_changed=delete_task_info["task_changed"],
+                )
             )
-            status, response = self.conn.send_request()
-            if not status:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return self.error
+
             if response:
-                delete_task_info["task_message"] = response[0][0]  # type: ignore
+                delete_task_info["task_message"] = response[0][0]
+
             # get last package version info from branch
             if source:
-                self.conn.request_line = (
-                    self.sql.get_srcpkg_hash_for_branch_on_date.format(
-                        name=self.name,
-                        branch=self.branch,
-                        task_changed=delete_task_info["task_changed"],
-                    )
+                request_line = self.sql.get_srcpkg_hash_for_branch_on_date.format(
+                    name=self.name,
+                    branch=self.branch,
+                    task_changed=delete_task_info["task_changed"],
                 )
             else:
-                self.conn.request_line = (
-                    self.sql.get_binpkg_hash_for_branch_on_date.format(
-                        arch=self.arch,
-                        name=self.name,
-                        branch=self.branch,
-                        task_changed=delete_task_info["task_changed"],
-                    )
+                request_line = self.sql.get_binpkg_hash_for_branch_on_date.format(
+                    arch=self.arch,
+                    name=self.name,
+                    branch=self.branch,
+                    task_changed=delete_task_info["task_changed"],
                 )
-            status, response = self.conn.send_request()
-            if not status:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+
+            response = self.send_sql_request(request_line)
+            if not self.sql_status:
                 return self.error
+
             if response:
-                pkg_hash = str(response[0][0])  # type: ignore
-                pkg_version = str(response[0][1])  # type: ignore
-                pkg_release = str(response[0][2])  # type: ignore
+                pkg_hash = str(response[0][0])
+                pkg_version = str(response[0][1])
+                pkg_release = str(response[0][2])
             else:
                 #  find if package were ever built before delete
                 if source:
@@ -521,30 +582,29 @@ class DeletedPackageInfo(APIWorker):
                     presel_sql = self.sql.preselect_last_build_task_by_bin.format(
                         name=self.name, arch=self.arch
                     )
-                self.conn.request_line = self.sql.get_last_build_task_by_pkg.format(
-                    preselect=presel_sql,
-                    branch=self.branch,
-                    task_changed=delete_task_info["task_changed"],
+
+                response = self.send_sql_request(
+                    self.sql.get_last_build_task_by_pkg.format(
+                        preselect=presel_sql,
+                        branch=self.branch,
+                        task_changed=delete_task_info["task_changed"],
+                    )
                 )
-                status, response = self.conn.send_request()
-                if not status:
-                    self._store_sql_error(response, self.ll.ERROR, 500)
+                if not self.sql_status:
                     return self.error
+
                 # nothing helped to find out package history
                 if not response:
-                    self._store_error(
+                    return self.store_error(
                         {
                             "message": f"No information about deleting package {self.name} from {self.branch} was found",
                             "args": self.args,
-                        },
-                        self.ll.INFO,
-                        404,
+                        }
                     )
-                    return self.error
 
-                pkg_hash = str(response[0][1])  # type: ignore
-                pkg_version = str(response[0][2])  # type: ignore
-                pkg_release = str(response[0][3])  # type: ignore
+                pkg_hash = str(response[0][1])
+                pkg_version = str(response[0][2])
+                pkg_release = str(response[0][3])
 
             delete_task_info["task_changed"] = datetime_to_iso(
                 delete_task_info["task_changed"]
@@ -565,15 +625,13 @@ class DeletedPackageInfo(APIWorker):
             arch_ = ""
             if not source:
                 arch_ = f"with {self.arch} arch "
-            self._store_error(
+
+            return self.store_error(
                 {
-                    "message": f"No information about deleting package {self.name} {arch_}from {self.branch} was found",
+                    "message": f"No information about deleting package {self.name} {arch_} from {self.branch} was found",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
 
 class PackagesBinaryListInfo(APIWorker):
@@ -593,45 +651,41 @@ class PackagesBinaryListInfo(APIWorker):
         self.branch = self.args["branch"]
         self.name = self.args["name"]
 
-        self.conn.request_line = self.sql.get_pkgs_binary_list.format(
-            branch=self.branch, name=self.name
+        response = self.send_sql_request(
+            self.sql.get_pkgs_binary_list.format(branch=self.branch, name=self.name)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No data found",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         PkgMeta = namedtuple(
             "PkgMeta",
             ["hash", "name", "version", "release", "arch"],
         )
 
-        retval = [PkgMeta(*el)._asdict() for el in response]  # type: ignore
+        retval = [PkgMeta(*el)._asdict() for el in response]
 
         # get package versions
         pkg_versions = []
-        self.conn.request_line = self.sql.get_pkg_binary_list_versions.format(
-            name=retval[0]["name"]
+
+        response = self.send_sql_request(
+            self.sql.get_pkg_binary_list_versions.format(name=retval[0]["name"])
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
-        PkgVersions = namedtuple("PkgVersions", ["branch", "version", "release"])
+
         # sort package versions by branch
-        pkg_branches = sort_branches([el[0] for el in response])  # type: ignore
-        pkg_versions = tuplelist_to_dict(response, 3)  # type: ignore
-        # FIXME: workaround for multiple versions of returned for certain branch
+        pkg_branches = sort_branches([el[0] for el in response])
+        pkg_versions = tuplelist_to_dict(response, 3)
+
+        # XXX: workaround for multiple versions of returned for certain branch
+        PkgVersions = namedtuple("PkgVersions", ["branch", "version", "release"])
         pkg_versions = [
             PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
         ]
@@ -642,11 +696,12 @@ class PackagesBinaryListInfo(APIWorker):
             "packages": retval,
             "versions": pkg_versions,
         }
+
         return res, 200
 
 
 class PackageNVRByHash(APIWorker):
-    """Retrieves package changelog from DB."""
+    """Retrieves package NVR and type from DB."""
 
     def __init__(self, connection, pkghash, **kwargs):
         self.pkghash = pkghash
@@ -656,40 +711,33 @@ class PackageNVRByHash(APIWorker):
         super().__init__()
 
     def get(self):
-        self.conn.request_line = self.sql.get_package_nvr_by_hash.format(
-            pkghash=self.pkghash
+        response = self.send_sql_request(
+            self.sql.get_package_nvr_by_hash.format(pkghash=self.pkghash)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": f"No packages found in DB with hash {self.pkghash}",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         PkgInfo = namedtuple(
             "PkgInfo", ["hash", "name", "version", "release", "is_source"]
         )
-        pkg_info = PkgInfo(*response[0])  # type: ignore
+
+        pkg_info = PkgInfo(*response[0])
 
         # check if name from args matches with name from DB
         if self.args["name"] is not None and self.args["name"] != pkg_info.name:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "Package name mismatching",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         res = {
             "request_args": self.args,

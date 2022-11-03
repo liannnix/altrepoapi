@@ -145,13 +145,84 @@ pkgset_status_get_model = ns.model(
     },
 )
 
-
 active_pkgsets_model = ns.model(
     "PackageSetActivePackageSetsModel",
     {
         "length": fields.Integer(description="number of active package sets found"),
         "packagesets": fields.List(
             fields.String, description="active package sets list"
+        ),
+    },
+)
+
+repository_statistics_package_counts_model = ns.model(
+    "RepositoryStatisticsPackageCountsModel",
+    {
+        "arch": fields.String(description="packages arch"),
+        "component": fields.String(description="component name"),
+        "count": fields.Integer(description="packages count"),
+        "size": fields.Integer(description="total packages files size in bytes"),
+        "size_hr": fields.String(
+            description="total packages files size human readable"
+        ),
+        "uuid": fields.String(description="repository component UUID"),
+    },
+)
+repository_statistics_branches_model = ns.model(
+    "RepositoryStatisticsBranchesModel",
+    {
+        "branch": fields.String(description="package set name"),
+        "date_update": fields.DateTime(description="branch upload date"),
+        "packages_count": fields.Nested(
+            repository_statistics_package_counts_model,
+            description="list of packages count by package archs",
+            as_list=True,
+        ),
+    },
+)
+repository_statistics_model = ns.model(
+    "RepositoryStatisticsModel",
+    {
+        "length": fields.Integer(description="number of packages found"),
+        "branches": fields.Nested(
+            repository_statistics_branches_model,
+            description="list of branches with packages count",
+            as_list=True,
+        ),
+    },
+)
+
+packages_by_uuid_el_model = ns.model(
+    "PackagesByUuidElementModel",
+    {
+        "hash": fields.String(description="package hash UInt64 as string"),
+        "name": fields.String(attribute="pkg_name", description="package name"),
+        "version": fields.String(
+            attribute="pkg_version", description="package version"
+        ),
+        "release": fields.String(
+            attribute="pkg_release", description="package release"
+        ),
+        "arch": fields.String(attribute="pkg_arch", description="package architecture"),
+        "sourcerpm": fields.String(description="source package file"),
+        "summary": fields.String(
+            attribute="pkg_summary", description="package summary"
+        ),
+        "buildtime": fields.Integer(
+            attribute="pkg_buildtime", description="last binary package buildtime"
+        ),
+        "changelog_text": fields.String(description="package last changelog message"),
+    },
+)
+packages_by_uuid_model = ns.model(
+    "PackagesByUuidModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "packages": fields.Nested(
+            packages_by_uuid_el_model,
+            description="packages list by packageset component UUID",
+            as_list=True,
         ),
     },
 )

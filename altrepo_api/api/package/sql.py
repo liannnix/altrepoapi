@@ -655,6 +655,10 @@ FROM
             pkg_hash
         FROM Packages
         WHERE pkg_sourcepackage = 0
+            AND pkg_hash IN
+            (
+                SELECT pkg_hash FROM {tmp_table}
+            )
     ) AS pkgCom ON Sel1.pkg_hash = pkgCom.pkg_hash
 ) AS Sel2
 LEFT JOIN
@@ -664,15 +668,55 @@ LEFT JOIN
         pkg_hash
     FROM Packages
     WHERE pkg_sourcepackage = 0
+        AND pkg_hash IN
+        (
+            SELECT pkg_hash FROM {tmp_table}
+        )
 ) AS pkgIn ON pkgIn.pkg_hash = InPkg.pkg_hash
 WHERE foundpkgname != inpkgname
+"""
+
+    misconflict_check_file_conflicts = """
+SELECT
+    InPkgFiles.pkg_hash AS in_pkg_hash,
+    ConflictPkgFiles.pkg_hash AS c_pkg_hash,
+    InPkgFiles.file_hashname AS fn_hash,
+    if((InPkgFiles.file_md5, InPkgFiles.file_mode, InPkgFiles.file_mtime, InPkgFiles.file_class) = (ConflictPkgFiles.file_md5, ConflictPkgFiles.file_mode, ConflictPkgFiles.file_mtime, ConflictPkgFiles.file_class), 1, 0) AS equal
+FROM
+(
+    SELECT
+        pkg_hash,
+        file_hashname,
+        file_md5,
+        file_mode,
+        file_mtime,
+        file_class
+    FROM Files
+    WHERE (pkg_hash, file_hashname) IN (
+        SELECT in_pkg_hash, fn_hash FROM {tmp_table}
+    )
+) AS InPkgFiles
+INNER JOIN
+(
+    SELECT
+        pkg_hash,
+        file_hashname,
+        file_md5,
+        file_mode,
+        file_mtime,
+        file_class
+    FROM Files
+    WHERE (pkg_hash, file_hashname) IN (
+        SELECT c_pkg_hash, fn_hash FROM {tmp_table}
+    )
+) AS ConflictPkgFiles ON InPkgFiles.file_hashname = ConflictPkgFiles.file_hashname
 """
 
     misconflict_get_fnames_by_fnhashs = """
 SELECT fn_hash,
        fn_name
 FROM FileNames
-WHERE fn_hash IN %(hshs)s
+WHERE fn_hash IN (SELECT * FROM {tmp_table})
 """
 
     misconflict_get_pkg_archs = """

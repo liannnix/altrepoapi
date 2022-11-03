@@ -38,23 +38,18 @@ class LastPackagesWithCVEFix(APIWorker):
     def get(self):
         self.branch = self.args["branch"]
 
-        self.conn.request_line = self.sql.get_last_packages_with_cve_fixes.format(
-            branch=self.branch
+        response = self.send_sql_request(
+            self.sql.get_last_packages_with_cve_fixes.format(branch=self.branch)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": f"No packages with recent CVE fixes from {self.branch} found",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         PackageMeta = namedtuple(
             "PackageMeta",

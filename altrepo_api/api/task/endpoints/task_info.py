@@ -36,15 +36,11 @@ class TaskInfo(APIWorker):
         super().__init__()
 
     def check_task_id(self):
-        self.conn.request_line = self.sql.check_task.format(id=self.task_id)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.INFO, 500)
+        response = self.send_sql_request(self.sql.check_task.format(id=self.task_id))
+        if not self.sql_status:
             return False
 
-        if response[0][0] == 0:  # type: ignore
-            return False
-        return True
+        return response[0][0] != 0
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
@@ -76,98 +72,122 @@ class TaskInfo(APIWorker):
         else:
             try_iter = None
 
-        self.conn.request_line = self.sql.task_repo_owner.format(id=self.task_id)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(
+            self.sql.task_repo_owner.format(id=self.task_id)
+        )
+        if not self.sql_status:
             return None
         if not response:
-            self._store_sql_error(
-                {"Error": f"No data found in database for task '{self.task_id}'"},
-                self.ll.INFO,
-                404,
+            _ = self.store_error(
+                {"Error": f"No data found in database for task '{self.task_id}'"}
             )
             return None
 
         self.task["branch"] = response[0][0]  # type: ignore
         self.task["user"] = response[0][1]  # type: ignore
 
-        self.conn.request_line = self.sql.task_all_iterations.format(id=self.task_id)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        # check if task was deleted
+        is_task_deleted = False
+
+        if try_iter is None:
+            response = self.send_sql_request(
+                self.sql.task_state_last.format(id=self.task_id)
+            )
+            if not self.sql_status:
+                return None
+            if not response:
+                _ = self.store_error(
+                    {"Error": f"No data found in database for task '{self.task_id}'"},
+                )
+                return None
+
+            if response[0][0] == "DELETED":  # type: ignore
+                is_task_deleted = True
+                self.task["state"] = response[0][0]  # type: ignore
+                self.task["message"] = response[0][1]  # type: ignore
+                self.task["last_changed"] = datetime_to_iso(response[0][2])  # type: ignore
+
+        response = self.send_sql_request(
+            self.sql.task_all_iterations.format(id=self.task_id)
+        )
+        if not self.sql_status:
             return None
         if not response:
-            self._store_sql_error(
-                {"Error": f"No data found in database for task '{self.task_id}'"},
-                self.ll.INFO,
-                404,
+            _ = self.store_error(
+                {"Error": f"No data found in database for task '{self.task_id}'"}
             )
             return None
 
         self.task["rebuilds"] = {
             (i[0], i[1]): {"subtasks": [], "changed": i[3]} for i in response  # type: ignore
         }
+
         for ti in self.task["rebuilds"].keys():
             for el in response:
                 if (el[0], el[1]) == ti:
                     self.task["rebuilds"][ti]["subtasks"].append(el[2])  # type: ignore
+
             self.task["rebuilds"][ti]["subtasks"] = sorted(
                 list(set(self.task["rebuilds"][ti]["subtasks"]))
             )
 
         if try_iter:
             if try_iter not in self.task["rebuilds"]:
-                self._store_sql_error(
+                _ = self.store_error(
                     {
                         "Error": f"No data found in database for task '{self.task_id}' with rebuild '{try_iter}'"
-                    },
-                    self.ll.INFO,
-                    404,
+                    }
                 )
                 return None
         else:
             try_iter = max(self.task["rebuilds"])
             self.task["try"], self.task["iter"] = try_iter
 
+        # return here for deleted task
+        if is_task_deleted:
+            self.task["rebuilds"] = [
+                (str(x[0]) + "." + str(x[1]))
+                for x in sorted(self.task["rebuilds"].keys())
+            ]
+
+            self.status = True
+            return None
+
         task_changed = self.task["rebuilds"][try_iter]["changed"]
+
         self.task["subtasks"] = {
             x: {} for x in self.task["rebuilds"][try_iter]["subtasks"]
         }
 
-        self.conn.request_line = self.sql.task_state_by_task_changed.format(
-            id=self.task_id, changed=task_changed
+        response = self.send_sql_request(
+            self.sql.task_state_by_task_changed.format(
+                id=self.task_id, changed=task_changed
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return None
         if not response:
-            self._store_sql_error(
+            _ = self.store_error(
                 {
                     "Error": f"No data found in database for task '{self.task_id}' with rebuild '{try_iter}'"
-                },
-                self.ll.INFO,
-                404,
+                }
             )
             return None
 
         self.task["state_raw"] = dict(zip(self.sql.task_state_keys, response[0]))  # type: ignore
 
-        self.conn.request_line = self.sql.task_subtasks_by_task_changed.format(
-            id=self.task_id, changed=task_changed
+        response = self.send_sql_request(
+            self.sql.task_subtasks_by_task_changed.format(
+                id=self.task_id, changed=task_changed
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return None
         if not response:
-            self._store_sql_error(
+            _ = self.store_error(
                 {
                     "Error": f"No data found in database for task '{self.task_id}' with rebuild '{try_iter}'"
-                },
-                self.ll.INFO,
-                404,
+                }
             )
             return None
 
@@ -175,20 +195,18 @@ class TaskInfo(APIWorker):
             dict(zip(self.sql.task_subtasks_keys, r)) for r in response
         ]
 
-        self.conn.request_line = self.sql.task_iterations_by_task_changed.format(
-            id=self.task_id, changed=task_changed
+        response = self.send_sql_request(
+            self.sql.task_iterations_by_task_changed.format(
+                id=self.task_id, changed=task_changed
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return None
         if not response:
-            self._store_sql_error(
+            _ = self.store_error(
                 {
                     "Error": f"No data found in database for task '{self.task_id}' with rebuild '{try_iter}'"
-                },
-                self.ll.INFO,
-                404,
+                }
             )
             return None
 
@@ -203,6 +221,7 @@ class TaskInfo(APIWorker):
         self.task["archs"] = tuple(self.task["archs"])
 
         self.task["tplan_hashes"] = {}
+
         for arch in self.task["archs"]:
             t = (
                 str(self.task_id)
@@ -217,12 +236,13 @@ class TaskInfo(APIWorker):
             "del": {"src": {}, "bin": {}},
         }
 
-        self.conn.request_line = self.sql.task_plan_packages.format(
-            action="add", hshs=tuple([x for x in self.task["tplan_hashes"].values()])
+        response = self.send_sql_request(
+            self.sql.task_plan_packages.format(
+                action="add",
+                hshs=tuple([x for x in self.task["tplan_hashes"].values()]),
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return None
 
         PkgInfo = namedtuple(
@@ -235,12 +255,13 @@ class TaskInfo(APIWorker):
             else:
                 self.task["plan"]["add"]["bin"][el[0]] = PkgInfo(*el[1:6])._asdict()
 
-        self.conn.request_line = self.sql.task_plan_packages.format(
-            action="delete", hshs=tuple([x for x in self.task["tplan_hashes"].values()])
+        response = self.send_sql_request(
+            self.sql.task_plan_packages.format(
+                action="delete",
+                hshs=tuple([x for x in self.task["tplan_hashes"].values()]),
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return None
 
         for el in response:  # type: ignore
@@ -249,7 +270,6 @@ class TaskInfo(APIWorker):
             else:
                 self.task["plan"]["del"]["bin"][el[0]] = PkgInfo(*el[1:6])._asdict()
 
-        # FIXME: Add warning message for tasks with inconsistent plan
         src_pkg_hashes_not_in_plan = [
             hsh
             for hsh in {
@@ -262,20 +282,23 @@ class TaskInfo(APIWorker):
 
         if src_pkg_hashes_not_in_plan:
             self.logger.warning(
-                f"Found source packages missing from plan!\nTask: {self.task_id}, hashes: {src_pkg_hashes_not_in_plan}"
+                f"Found source packages missing from plan!\nTask: {self.task_id},"
+                f" hashes: {src_pkg_hashes_not_in_plan}"
             )
 
-        self.conn.request_line = self.sql.task_approvals.format(id=self.task_id)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(
+            self.sql.task_approvals.format(id=self.task_id)
+        )
+        if not self.sql_status:
             return None
 
         for subtask in self.task["subtasks"]:
             self.task["subtasks"][subtask].update({"approvals": []})
+
         if response:
             task_approvals = []
             tapp_keys = ("id", "date", "type", "name", "message", "revoked")
+
             for i in range(len(response)):  # type: ignore
                 task_approvals.append(
                     dict(
@@ -290,6 +313,7 @@ class TaskInfo(APIWorker):
                 self.task["subtasks"][subtask]["approvals"] = [
                     x for x in task_approvals if x["id"] == subtask
                 ]
+
                 for tapp in self.task["subtasks"][subtask]["approvals"]:
                     tapp["date"] = datetime_to_iso(tapp["date"])
 
@@ -308,6 +332,7 @@ class TaskInfo(APIWorker):
 
         for subtask in self.task["subtasks"].keys():
             contents = {"archs": []}
+
             for sub_ in self.task["subtasks_raw"]:
                 if sub_["subtask_id"] == subtask:
                     contents["last_changed"] = datetime_to_iso(sub_["subtask_changed"])  # type: ignore
@@ -324,6 +349,7 @@ class TaskInfo(APIWorker):
                     contents["srpm_name"] = sub_["subtask_srpm_name"]
                     contents["srpm_evr"] = sub_["subtask_srpm_evr"]
                     break
+
             for iter_ in self.task["iterations_raw"]:
                 if iter_["subtask_id"] == subtask and iter_["subtask_arch"] == "x86_64":
                     if (
@@ -337,6 +363,7 @@ class TaskInfo(APIWorker):
                     else:
                         contents["source_package"] = {}  # type: ignore
                     break
+
             for iter_ in self.task["iterations_raw"]:
                 if iter_["subtask_id"] == subtask:
                     iteration = {}
@@ -354,10 +381,12 @@ class TaskInfo(APIWorker):
         self.task["rebuilds"] = self.task["all_rebuilds"]
 
         subtasks = []
+
         for subtask, contents in self.task["subtasks"].items():
             subtask_dict = {"subtask_id": subtask}
             subtask_dict.update(contents)
             subtasks.append(subtask_dict)
+
         self.task["subtasks"] = subtasks
 
         self.task["plan"]["add"]["src"] = [  # type: ignore

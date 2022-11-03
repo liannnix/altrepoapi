@@ -6,6 +6,91 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.8.8] - 2022-10-27
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- removed dependency on librpm python bindings package `rpm` (`python3-module-rpm`)
+- using custom librpm.so.7 functions wrappers from `api/libs/liprm_fucntions` module
+### Fixed
+
+## [1.8.7] - 2022-10-26
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- tests: add test duration statistics for test Docker image
+### Fixed
+- site/pkgsets_summary_status: fix sorting
+
+## [1.8.6] - 2022-10-18
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- site/package_info: fix misleading hashes for 'noarch' binary packages 
+
+## [1.8.5] - 2022-10-12
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- exclude files from conflict packages if they are equal as `apt` and `rpm` does
+### Fixed
+- misconflict packages dependency version compare with librpm
+
+## [1.8.4] - 2022-10-07
+
+Regular API code updates and fixes.
+
+### Added
+- packageset/repository_statistics route
+- packageset/packages_by_uuid route
+- found ambiguous dependencies in {package|task}/build_dependency_set routes
+### Changed
+- {package|task}/build_dependency_set routes argument name: 'archs' -> 'arch'
+- {package|task}/build_dependency_set routes argument type: list[str] -> str 
+### Fixed
+- code style errors
+- closes bug #43478
+- ambiguous provide dependencies resolved in a way as `apt` does as close as possible
+- build dependency resolving using dependency name, version and flags through librpm functions
+
+## [1.8.3] - 2022-09-27
+
+Regular API code updates and fixes.
+
+### Added
+- python3-module-packaging dependency in docker files
+### Changed
+### Fixed
+- Flask 2.2.x library compatibility
+- updated requirements.txt
+
+## [1.8.2] - 2022-08-23
+
+Regular API code updates and fixes.
+
+### Added
+- search for deleted packages (closes #43539)
+### Changed
+- **Breaking change**: `site/find_packages` route data model
+### Fixed
+
+## [1.8.1] - 2022-08-09
+
+Refactored APIWorker base class to reduce SQL requests related boilerplate code.
+
+### Added
+### Changed
+### Fixed
+
 ## [1.8.0] - 2022-07-13
 
 Merge new features in master branch for production use.

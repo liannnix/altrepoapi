@@ -35,6 +35,7 @@ class WatchByMaintainer(APIWorker):
 
     def get(self):
         maintainer_nickname = self.args["maintainer_nickname"]
+        request_line = ""
 
         MaintainerWatch = namedtuple(
             "MaintainerWatch",
@@ -42,37 +43,34 @@ class WatchByMaintainer(APIWorker):
         )
 
         if self.args["by_acl"] == "by_nick_leader_and_group":
-            self.conn.request_line = self.sql.get_watch_by_last_acl_with_group.format(
+            request_line = self.sql.get_watch_by_last_acl_with_group.format(
                 maintainer_nickname=maintainer_nickname
             )
         if self.args["by_acl"] == "by_nick_leader":
-            self.conn.request_line = self.sql.get_watch_by_last_acl.format(
+            request_line = self.sql.get_watch_by_last_acl.format(
                 maintainer_nickname=maintainer_nickname
             )
         if self.args["by_acl"] == "by_nick":
-            self.conn.request_line = self.sql.get_watch_by_nick_acl.format(
+            request_line = self.sql.get_watch_by_nick_acl.format(
                 maintainer_nickname=maintainer_nickname
             )
         if self.args["by_acl"] == "by_nick_or_group":
-            self.conn.request_line = self.sql.get_watch_by_nick_or_group_acl.format(
+            request_line = self.sql.get_watch_by_nick_or_group_acl.format(
                 maintainer_nickname=maintainer_nickname
             )
         if self.args["by_acl"] == "none":
-            self.conn.request_line = self.sql.get_watch_by_packager.format(
+            request_line = self.sql.get_watch_by_packager.format(
                 maintainer_nickname=maintainer_nickname
             )
 
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(request_line)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
-                {"message": "No data not found in database", "args": self.args},
-                self.ll.INFO,
-                404,
+            return self.store_error(
+                {"message": "No data not found in database", "args": self.args}
             )
-            return self.error
+
         res = [MaintainerWatch(*el)._asdict() for el in response]
 
         res = {"request_args": self.args, "length": len(res), "packages": res}

@@ -93,32 +93,24 @@ class RepositoryStatus(APIWorker):
             el["rs_end_date"] = dt.datetime.fromisoformat(el["rs_end_date"])
             el["rs_mirrors_json"] = json.dumps(el["rs_mirrors_json"], default=str)
 
-        self.conn.request_line = (self.sql.insert_pkgset_status, json_)
-        status, response = self.conn.send_request()
-
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        _ = self.send_sql_request((self.sql.insert_pkgset_status, json_))
+        if not self.sql_status:
             return self.error
+
         return "data loaded successfully", 201
 
     def get(self):
         """
         Get information about a repository
         """
-        self.conn.request_line = self.sql.get_pkgset_status
 
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(self.sql.get_pkgset_status)
+        if not self.sql_status:
             return self.error
-
         if not response:
-            self._store_error(
-                {"message": "No data not found in database", "args": self.args},
-                self.ll.INFO,
-                404,
+            return self.store_error(
+                {"message": "No data not found in database", "args": self.args}
             )
-            return self.error
 
         RepositoryStatusInfo = namedtuple(
             "RepositoryStatusInfo",
@@ -138,11 +130,8 @@ class RepositoryStatus(APIWorker):
         res = [RepositoryStatusInfo(*el)._asdict() for el in response]
 
         # check if branch has active images
-        self.conn.request_line = self.sql.get_branch_has_active_images
-
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(self.sql.get_branch_has_active_images)
+        if not self.sql_status:
             return self.error
 
         branch_images = set()
@@ -167,11 +156,8 @@ class ActivePackagesets(APIWorker):
         super().__init__()
 
     def get(self):
-        self.conn.request_line = self.sql.get_active_pkgsets
-        status, response = self.conn.send_request()
-
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(self.sql.get_active_pkgsets)
+        if not self.sql_status:
             return self.error
 
         if not response:

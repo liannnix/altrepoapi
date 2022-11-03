@@ -30,16 +30,11 @@ class TaskBuildDependencySet(APIWorker):
         super().__init__()
 
     def check_task_id(self):
-        self.conn.request_line = self.sql.check_task.format(id=self.task_id)
-
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(self.sql.check_task.format(id=self.task_id))
+        if not self.sql_status:
             return False
 
-        if response[0][0] == 0:  # type: ignore
-            return False
-        return True
+        return response[0][0] != 0
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
@@ -47,54 +42,57 @@ class TaskBuildDependencySet(APIWorker):
 
     def get(self):
         # arguments processing
-        if self.args["archs"] is None:
-            self.args["archs"] = ["x86_64"]
+        if self.args["arch"] is None:
+            archs = ["x86_64"]
+        else:
+            archs = [self.args["arch"]]
         self.args["packages"] = []
         self.args["branch"] = None
+
         # get task source packages and branch
         # get task repo
-        self.conn.request_line = self.sql.task_repo.format(id=self.task_id)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(self.sql.task_repo.format(id=self.task_id))
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
-                {"message": f"No data found in database for task '{self.task_id}'"},
-                self.ll.INFO,
-                404,
+            return self.store_error(
+                {"message": f"No data found in database for task '{self.task_id}'"}
             )
-            return self.error
 
         self.args["branch"] = response[0][0]  # type: ignore
+
         # get task source packages
-        self.conn.request_line = self.sql.task_src_packages.format(id=self.task_id)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(
+            self.sql.task_src_packages.format(id=self.task_id)
+        )
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
-                {"message": f"No packages found in database for task '{self.task_id}'"},
-                self.ll.INFO,
-                404,
+            return self.store_error(
+                {"message": f"No packages found in database for task '{self.task_id}'"}
             )
-            return self.error
+
         self.args["packages"] = [pkg[0] for pkg in response]
+
+        # FIXME: BuildDependencySet class uses last branch state instead of
+        # actual branch state which could return misleading results here
         # init BuildDependency class with args
         self.bds = BuildDependencySet(
-            self.conn, self.args["packages"], self.args["branch"], self.args["archs"]
+            self.conn, self.args["packages"], self.args["branch"], archs
         )
+
         # build result
         self.bds.build_dependency_set()
+
         # format result
         if self.bds.status:
-            # result processing
+            dep_packages, ambiguous_depends = self.bds.result
             res = {
                 "id": self.task_id,
                 "request_args": self.args,
-                "length": len(self.bds.result),
-                "packages": self.bds.result,
+                "length": len(dep_packages),
+                "packages": dep_packages,
+                "ambiguous_dependencies": ambiguous_depends,
             }
             return res, 200
         else:

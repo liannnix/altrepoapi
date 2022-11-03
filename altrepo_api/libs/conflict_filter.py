@@ -14,16 +14,21 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import rpm
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from dataclasses import dataclass
 
-from altrepo_api.utils import get_logger, logger_level as ll
-from altrepo_api.utils import tuplelist_to_dict, remove_duplicate
+from altrepo_api.api.base import ConnectionProto
+from altrepo_api.utils import get_logger, remove_duplicate
 
+from .librpm_functions import check_dependency_overlap
 from .exceptions import SqlRequestError
 
 logger = get_logger(__name__)
+
+# type aliases
+DepsDictElType = dict[str, list[tuple[str, str, int]]]
+DepsDictType = dict[int, DepsDictElType]
+HashPair = tuple[int, int]
 
 
 @dataclass(frozen=True)
@@ -65,75 +70,55 @@ class ConflictFilter:
     :param debug_: SQL debug flag
     """
 
-    def __init__(self, connection, pbranch, parch, debug_):
+    def __init__(
+        self,
+        connection: ConnectionProto,
+        debug_sql: bool = False,
+    ):
         self.conn = connection
         self.sql = ConflictFilterSQL()
-        self.pbranch = pbranch
-        self.parch = parch
         self.status = False
-        self.DEBUG = debug_
+        self._debug = debug_sql
 
-    def _log_error(self, severity):
-        if severity == ll.CRITICAL:
-            logger.critical(self.error)
-        elif severity == ll.ERROR:
-            logger.error(self.error)
-        elif severity == ll.WARNING:
-            logger.warning(self.error)
-        elif severity == ll.INFO:
-            logger.info(self.error)
-        else:
-            logger.debug(self.error)
-
-    def _store_sql_error(self, message, severity):
-        def build_sql_error(message):
-            response = {"message": message}
-            if self.DEBUG:
-                response["module"] = self.__class__.__name__
-                requestline = self.conn.request_line
-                if isinstance(requestline, tuple):
-                    response["sql_request"] = [
-                        line for line in requestline[0].split("\n") if len(line) > 0
-                    ]
-                else:
-                    response["sql_request"] = [line for line in requestline.split("\n")]
-            return response
-
-        self.error = build_sql_error(message)
-        self.status = False
-        self._log_error(severity)
-
-    def _store_error(self, message, severity):
+    def _store_sql_error(self, message):
         self.error = {"message": message}
-        self.status = False
-        self._log_error(severity)
 
-    def _get_dict_conflict_provide(self, hshs):
+        if self._debug:
+            self.error["module"] = self.__class__.__name__
+            requestline = self.conn.request_line
+
+            if isinstance(requestline, tuple):
+                self.error["sql_request"] = [
+                    line for line in requestline[0].split("\n") if len(line) > 0
+                ]
+            else:
+                self.error["sql_request"] = [line for line in requestline.split("\n")]
+
+        logger.error(self.error)
+
+    def _get_dict_conflict_provide(self, hshs: list[int]) -> DepsDictType:
 
         # get conflicts and provides by hash
         self.conn.request_line = (
             self.sql.get_dependencies,
-            {"hshs": tuple(hshs), "branch": self.pbranch, "arch": self.parch},
+            {"hshs": tuple(hshs)},
         )
         status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, ll.ERROR)
+        if not status:
+            self._store_sql_error(response)
             raise SqlRequestError(self.error)
 
         hsh_dpt_dict = defaultdict(lambda: defaultdict(list))
-        for hsh, *args in response:
-            dptype = "conflict" if args[0] == "obsolete" else args[0]
-            hsh_dpt_dict[hsh][dptype] += [tuple(args[1:])]
+        for hsh, *deps in response:
+            dptype = "conflict" if deps[0] == "obsolete" else deps[0]
+            hsh_dpt_dict[hsh][dptype] += [tuple(deps[1:])]
 
-        self.conn.request_line = (self.sql.get_packages_info, {"hshs": tuple(hshs)})
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, ll.ERROR)
-            raise SqlRequestError(self.error)
+        return hsh_dpt_dict  # type: ignore
 
-        return hsh_dpt_dict, tuplelist_to_dict(response, 4)
-
-    def _get_conflicts(self, dA, dB, hshA, hshB, hsh_evrd):
+    @staticmethod
+    def _get_conflicts(
+        dA: DepsDictElType, dB: DepsDictElType, hshA: int, hshB: int
+    ) -> list[HashPair]:
         """
         Finds conflicts between two packages.
 
@@ -146,35 +131,20 @@ class ConflictFilter:
         :param hshB: hash package B
         :return: `list` of `tuple` (package hash, conflict hash) for package A
         """
-        conflicts = []
+        conflicts: list[HashPair] = []
+
+        DependencyTuple = namedtuple("DependencyTuple", ["name", "version", "flags"])
+
         for confl in dA["conflict"]:
+            C = DependencyTuple(*confl)
             for provd in dB["provide"]:
-                if confl[0] == provd[0]:
-                    # add conflict in list if conflict without version
-                    if confl[1] == "" or confl[2] == 0:
-                        conflicts.append((hshA, hshB))
-                    else:
-                        # version of provide
-                        vv1 = tuple(hsh_evrd[hshB])
-                        # version of conflict
-                        vv2 = self._split_version(confl[1])
-
-                        # make compare versions
-                        eq = self._compare_version(vv1, vv2)
-
-                        flag = confl[2]
-
-                        # check conflict version flag (>, <, =, >=, <=)
-                        if (
-                            (eq == -1 and flag & 1 << 1 != 0)
-                            or (eq == 0 and flag & 1 << 3 != 0)
-                            or (eq == 1 and flag & 1 << 2 != 0)
-                        ):
-                            conflicts.append((hshA, hshB))
+                P = DependencyTuple(*provd)
+                if C.name == P.name and check_dependency_overlap(*P, *C):
+                    conflicts.append((hshA, hshB))
 
         return conflicts
 
-    def detect_conflict(self, confl_list):
+    def detect_conflict(self, confl_list: list[HashPair]) -> list[HashPair]:
         """
         Main public class method.
 
@@ -190,96 +160,20 @@ class ConflictFilter:
         uniq_hshs = list({hsh for confl in confl_list for hsh in confl})
 
         # get conflicts and provides for every unique package
-        # also (epoch, version, release, disttag)
-        hsh_dpt_dict, hsh_evrd = self._get_dict_conflict_provide(uniq_hshs)
+        hsh_dpt_dict = self._get_dict_conflict_provide(uniq_hshs)
 
-        conflicts = []
+        conflicts: list[HashPair] = []
+
         for hshA, hshB in confl_list:
             # A - conflicts; B - provides
             conflA = self._get_conflicts(
-                hsh_dpt_dict[hshA], hsh_dpt_dict[hshB], hshA, hshB, hsh_evrd
+                hsh_dpt_dict[hshA], hsh_dpt_dict[hshB], hshA, hshB
             )
             # A - provides; B - conflicts
             conflB = self._get_conflicts(
-                hsh_dpt_dict[hshB], hsh_dpt_dict[hshA], hshB, hshA, hsh_evrd
+                hsh_dpt_dict[hshB], hsh_dpt_dict[hshA], hshB, hshA
             )
 
             conflicts += remove_duplicate(conflA + conflB)
 
         return conflicts
-
-    @staticmethod
-    def _split_version(vers):
-        """
-        Split version of package.
-
-        Version of packages may be contains also epoch, release, dist tag.
-        It method split the version and returns each item separately.
-
-        :param vers: version of package (dpversion in datatbase)
-        :return: `int`: epoch, `str`: version, `str`: release, `str`: disttag
-        """
-        # split for `-alt` and get epoch, version
-        epoch_vers = vers.split("-alt")[0]
-        vers = vers.replace(epoch_vers, "")
-        epoch_vers = epoch_vers.split(":")
-        # get release, disttag
-        rel_dist = vers.split(":")
-        rel_dist[0] = rel_dist[0].replace("-", "")
-
-        # release check, if not, release is 0
-        if len(epoch_vers) < 2:
-            epoch = 0
-            vers = epoch_vers[0]
-        else:
-            epoch = int(epoch_vers[0])
-            vers = epoch_vers[1]
-
-        # disttag check, if not (disttag = ''), disttag is None
-        dist = None
-        if len(rel_dist) < 2:
-            if rel_dist[0] != "":
-                rel = rel_dist[0]
-            else:
-                rel = None
-        else:
-            rel = rel_dist[0]
-            dist = rel_dist[1]
-
-        return epoch, vers, rel, dist
-
-    @staticmethod
-    def _compare_version(vv1, vv2):
-        """
-        Compare versions of packages.
-
-        The method compares versions (epoch, version, release, disttag) using
-        the rpm module.
-
-        :param vv1: version of first package
-        :param vv2: version of second package
-        :return: `0` if versions are identical
-                 `1` if the first version is larger
-                 `-1` if the first version is less
-        """
-        v1 = rpm.hdr()
-        v2 = rpm.hdr()
-
-        v1[rpm.RPMTAG_EPOCH] = vv1[0]
-        v2[rpm.RPMTAG_EPOCH] = vv2[0]
-
-        v1[rpm.RPMTAG_VERSION] = vv1[1]
-        v2[rpm.RPMTAG_VERSION] = vv2[1]
-        if vv1[2]:
-            v1[rpm.RPMTAG_RELEASE] = vv1[2]
-        if vv2[2]:
-            v2[rpm.RPMTAG_RELEASE] = vv2[2]
-
-        # check disttag, if true, add it
-        if vv1[3] != "" and vv2[3]:
-            v1[rpm.RPMTAG_DISTTAG] = vv1[3]
-            v2[rpm.RPMTAG_DISTTAG] = vv2[3]
-
-        eq = rpm.versionCompare(v1, v2)
-
-        return eq

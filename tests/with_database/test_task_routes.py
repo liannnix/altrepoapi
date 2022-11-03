@@ -205,13 +205,21 @@ def test_task_wds(client, kwargs):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"id": TASKID_CURL_PKG, "status_code": 200},
+        {"id": TASKID_CURL_PKG, "arch": "x86_64", "status_code": 200},
+        {"id": TASKID_CURL_PKG, "arch": "fakearch", "status_code": 400},
         {"id": TASKID_NOT_IN_DB, "status_code": 404},
     ],
 )
 def test_build_dependency_set(client, kwargs):
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("id", "status_code"):
+            continue
+        if v is not None:
+            params[k] = v
+
     url = url_for("api.task_route_task_build_dependency_set", **{"id": kwargs["id"]})
-    response = client.get(url)
+    response = client.get(url, query_string=params)
     data = response.json
     assert response.status_code == kwargs["status_code"]
     if response.status_code == 200:
@@ -248,13 +256,5 @@ def test_task_misconflict(client, kwargs):
             assert data["conflicts"] != []
         else:
             assert data["length"] == 0
-            assert data["conflicts"] == {
-                "input_package": None,
-                "conflict_package": None,
-                "version": None,
-                "release": None,
-                "epoch": None,
-                "archs": None,
-                "files_with_conflict": None,
-            }
+            assert data["conflicts"] == []
         assert data["request_args"]["packages"] != 0

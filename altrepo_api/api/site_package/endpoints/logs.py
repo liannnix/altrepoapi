@@ -32,18 +32,15 @@ class BinaryPackageLog(APIWorker):
         super().__init__()
 
     def get(self):
-        self.conn.request_line = self.sql.get_bin_pkg_log.format(pkghash=self.pkghash)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(
+            self.sql.get_bin_pkg_log.format(pkghash=self.pkghash)
+        )
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
-                {"message": f"No data not found in database for {self.pkghash}"},
-                self.ll.INFO,
-                404,
+            return self.store_error(
+                {"message": f"No data not found in database for {self.pkghash}"}
             )
-            return self.error
 
         BuildLog = namedtuple(
             "BuildLog",

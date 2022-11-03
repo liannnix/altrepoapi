@@ -33,21 +33,18 @@ class PackageFiles(APIWorker):
         super().__init__()
 
     def get(self):
-        self.conn.request_line = self.sql.get_pkg_files.format(pkghash=self.pkghash)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        response = self.send_sql_request(
+            self.sql.get_pkg_files.format(pkghash=self.pkghash)
+        )
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": f"No information found in DB for package hash {self.pkghash}",
                     "args": self.pkghash,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         PkgFiles = namedtuple(
             "PkgFiles",

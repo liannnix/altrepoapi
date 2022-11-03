@@ -25,6 +25,7 @@ from altrepo_api.api.base import (
     GET_RESPONSES_400_404,
     POST_RESPONSE_400_404,
 )
+from .endpoints.find_image_by_package import FindImagesByPackageName
 from .endpoints.image_status import ImageStatus, ImageTagStatus, ActiveImages
 
 from .namespace import get_namespace
@@ -45,6 +46,7 @@ from .parsers import (
     image_categories_args,
     image_packages_args,
     active_images_args,
+    find_images_args,
 )
 from .serializers import (
     all_iso_model,
@@ -61,6 +63,7 @@ from .serializers import (
     image_categories_model,
     last_packages_image_model,
     active_images_model,
+    find_images_by_pkg_model,
 )
 
 ns = get_namespace()
@@ -165,7 +168,7 @@ class routeImageStatus(Resource):
     def get(self):
         url_logging(logger, g.url)
         args = {}
-        w = ImageStatus(g.connection, payload=ns.payload, **args)
+        w = ImageStatus(g.connection, payload=None, **args)
         return run_worker(worker=w, args=args, run_method=w.get)
 
 
@@ -198,7 +201,7 @@ class routeImageTagStatus(Resource):
     def get(self):
         url_logging(logger, g.url)
         args = image_tag_args.parse_args(strict=True)
-        w = ImageTagStatus(g.connection, payload=ns.payload, **args)
+        w = ImageTagStatus(g.connection, payload=None, **args)
         return run_worker(
             worker=w, args=args, check_method=w.check_params_get, run_method=w.get
         )
@@ -306,4 +309,23 @@ class routeActiveImages(Resource):
         url_logging(logger, g.url)
         args = active_images_args.parse_args(strict=True)
         w = ActiveImages(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/find_images_by_package_name",
+    doc={
+        "description": (
+            "Get images by package name for a given repository and edition"
+        ),
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeFindImagesByPackage(Resource):
+    @ns.expect(find_images_args)
+    @ns.marshal_with(find_images_by_pkg_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = find_images_args.parse_args(strict=True)
+        w = FindImagesByPackageName(g.connection, **args)
         return run_worker(worker=w, args=args)

@@ -68,11 +68,11 @@ class Repocop(APIWorker):
         json_ = self.args["json_data"]["packages"]
         for el in json_:
             el["rc_test_date"] = dt.datetime.fromisoformat(el["rc_test_date"])
-        self.conn.request_line = (self.sql.insert_into_repocop, json_)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+
+        _ = self.send_sql_request((self.sql.insert_into_repocop, json_))
+        if not self.sql_status:
             return self.error
+
         return "data loaded successfully", 201
 
     def get(self):
@@ -108,29 +108,24 @@ class Repocop(APIWorker):
         if self.args["bin_package_arch"] is not None:
             arch_cond = f"AND pkg_arch = '{self.args['bin_package_arch']}'"
 
-        self.conn.request_line = self.sql.get_out_repocop.format(
-            pkgs=name_cond,
-            srcpkg_version=version_cond,
-            srcpkg_release=release_cond,
-            branch=branch,
-            arch=arch_cond,
+        response = self.send_sql_request(
+            self.sql.get_out_repocop.format(
+                pkgs=name_cond,
+                srcpkg_version=version_cond,
+                srcpkg_release=release_cond,
+                branch=branch,
+                arch=arch_cond,
+            )
         )
-
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
-
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No results found in database for given parameters",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         RepocopInfo = namedtuple(
             "RepocopJsonModel",

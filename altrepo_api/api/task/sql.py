@@ -215,6 +215,15 @@ WHERE task_id = {id}
         "task_eventlog_hash",
     ]
 
+    task_state_last = """
+SELECT
+    argMax(task_state, task_changed),
+    argMax(task_message, task_changed),
+    max(task_changed)
+FROM TaskStates
+WHERE task_id = {id}
+"""
+
     task_plan_packages = """
 SELECT
     pkg_hash,

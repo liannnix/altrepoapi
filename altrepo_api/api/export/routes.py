@@ -14,10 +14,15 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from flask import g, abort, send_file
+from flask import g, abort
 from flask_restx import Resource
 
-from altrepo_api.utils import get_logger, url_logging, response_error_parser
+from altrepo_api.utils import (
+    get_logger,
+    url_logging,
+    response_error_parser,
+    send_file_compat,
+)
 from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
 
 from .namespace import get_namespace
@@ -123,9 +128,9 @@ class routeTranslationExport(Resource):
         file = result["file"]
         file_name = result["file_name"]
         file.seek(0)
-        return send_file(
-            file,
+        return send_file_compat(
+            file=file,
             as_attachment=True,
-            attachment_filename=file_name,
             mimetype="application/zip",
+            attachment_filename=file_name,
         )

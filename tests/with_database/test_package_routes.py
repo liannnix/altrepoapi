@@ -20,8 +20,9 @@ FILE_MD5_IN_DB = "8dfc83632bdc36dba5da858fb5bddd7b"  # /bin/bash4
     "kwargs",
     [
         {"branch": BRANCH_IN_DB, "packages": "curl", "status_code": 200},
-        {"branch": BRANCH_IN_DB, "packages": "bash,mc", "status_code": 200},
+        {"branch": BRANCH_IN_DB, "packages": "bash,mc", "arch": "i586", "status_code": 200},
         {"branch": BRANCH_IN_DB, "packages": "", "status_code": 400},
+        {"branch": BRANCH_IN_DB, "packages": "curl", "arch": "fakearch", "status_code": 400},
         {"branch": BRANCH_NOT_IN_DB, "packages": "curl", "status_code": 400},
         {"branch": BRANCH_IN_DB, "packages": PKG_NOT_IN_DB, "status_code": 404},
     ],
@@ -126,16 +127,8 @@ def test_misconflict_packages(client, kwargs):
             assert data["conflicts"] != []
         else:
             assert data["length"] == 0
-            assert data["conflicts"] == {
-                "input_package": None,
-                "conflict_package": None,
-                "version": None,
-                "release": None,
-                "epoch": None,
-                "archs": None,
-                "files_with_conflict": None,
-            }
-        data["request_args"]["packages"] != 0
+            assert data["conflicts"] == []
+        assert data["request_args"]["packages"] != 0
 
 
 @pytest.mark.parametrize(

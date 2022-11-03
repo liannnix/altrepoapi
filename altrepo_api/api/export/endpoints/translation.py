@@ -121,23 +121,18 @@ class TranslationExport(APIWorker):
     def get(self):
         branches = tuple(self.args["branches"])
 
-        self.conn.request_line = self.sql.get_packages_descriptions.format(
-            branches=branches
+        response = self.send_sql_request(
+            self.sql.get_packages_descriptions.format(branches=branches)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No data found in DB",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         packages = sorted([PkgInfo(*el) for el in response], key=lambda pkg: pkg.src_pkg_name)  # type: ignore
         pkgs_by_1st = {}

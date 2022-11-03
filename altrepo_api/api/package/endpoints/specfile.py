@@ -40,23 +40,18 @@ class SpecfileByPackageName(APIWorker):
         pkg_name = self.args["name"]
         branch = self.args["branch"]
 
-        self.conn.request_line = self.sql.get_specfile_by_name.format(
-            name=pkg_name, branch=branch
+        response = self.send_sql_request(
+            self.sql.get_specfile_by_name.format(name=pkg_name, branch=branch)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": f"No specfile found for {pkg_name} in {branch}",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         SpecFile = namedtuple(
             "SpecFile",
@@ -101,23 +96,18 @@ class SpecfileByPackageHash(APIWorker):
         super().__init__()
 
     def get(self):
-        self.conn.request_line = self.sql.get_specfile_by_hash.format(
-            pkghash=self.pkghash
+        response = self.send_sql_request(
+            self.sql.get_specfile_by_hash.format(pkghash=self.pkghash)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": f"No specfile found for package with hash {self.pkghash}",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
 
         SpecFile = namedtuple(
             "SpecFile",

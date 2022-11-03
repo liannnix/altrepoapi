@@ -121,6 +121,17 @@ AND subtask_deleted != 1
 ORDER BY task_changed DESC
 """
 
+    get_task_bin_hshs_by_src_hsh = """
+SELECT DISTINCT
+    task_id,
+    subtask_id,
+    subtask_arch,
+    titer_pkgs_hash
+FROM TaskIterations
+WHERE titer_srcrpm_hash = {pkghash}
+    AND task_id = {task_id}
+"""
+
     get_pkg_maintainers = """
 SELECT pkg_changelog.name
 FROM Packages

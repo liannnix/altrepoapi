@@ -29,20 +29,27 @@ from altrepo_api.libs.exceptions import SqlRequestError
 class MisconflictPackages(APIWorker):
     """Retrieves packages file conflicts."""
 
-    def __init__(self, connection, packages, branch, archs, **kwargs) -> None:
+    def __init__(
+        self,
+        connection,
+        packages: tuple[str],
+        branch: str,
+        archs: Optional[tuple[str]],
+        **kwargs,
+    ) -> None:
         self.conn = connection
         self.args = kwargs
         self.sql = sql
         self.packages = packages
         self.branch = branch
-        self.archs = archs
-        self.result = {}
+        self.archs = list(archs) if archs else []
+        self.result = []
         super().__init__()
 
     def find_conflicts(
         self,
-        pkg_hashes: Optional[tuple[int]] = None,
-        task_repo_hashes: Optional[tuple[int]] = None,
+        pkg_hashes: Optional[tuple[int, ...]] = None,
+        task_repo_hashes: Optional[tuple[int, ...]] = None,
     ):
         # do all kind of black magic here
         self.packages = tuple(self.packages)
@@ -55,24 +62,22 @@ class MisconflictPackages(APIWorker):
 
         if not pkg_hashes:
             # get hash for package names
-            self.conn.request_line = (
-                self.sql.misconflict_get_hshs_by_pkgs,
-                {"pkgs": self.packages, "branch": self.branch, "arch": self.archs},
+            response = self.send_sql_request(
+                (
+                    self.sql.misconflict_get_hshs_by_pkgs,
+                    {"pkgs": self.packages, "branch": self.branch, "arch": self.archs},
+                )
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return
             if not response:
-                self._store_error(
+                _ = self.store_error(
                     {
                         "message": (
                             f"Packages {list(self.packages)} not in package set '{self.branch}'"
                             f" for archs {list(self.archs)}"
                         )
-                    },
-                    self.ll.INFO,
-                    404,
+                    }
                 )
                 return
 
@@ -83,16 +88,14 @@ class MisconflictPackages(APIWorker):
             input_pkgs_names = {pkg[1] for pkg in response}
             if len(input_pkgs_names) != len(self.packages):
                 # return utils.json_str_error("Error of input data.")
-                self._store_error(
+                _ = self.store_error(
                     {
                         "message": (
                             f"Packages ({set(self.packages) - input_pkgs_names}) not in"
                             f" package set '{self.branch}'"
                             f" for archs {list(self.archs)}"
                         )
-                    },
-                    self.ll.INFO,
-                    404,
+                    }
                 )
                 return
         else:
@@ -100,145 +103,252 @@ class MisconflictPackages(APIWorker):
 
         # store input_pkg_hashes to temporary table
         tmp_pkg_hshs = "tmp_input_pkg_hshs"
-        self.conn.request_line = self.sql.create_tmp_table.format(
-            tmp_table=tmp_pkg_hshs, columns="(pkg_hash UInt64)"
+
+        _ = self.send_sql_request(
+            self.sql.create_tmp_table.format(
+                tmp_table=tmp_pkg_hshs, columns="(pkg_hash UInt64)"
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
 
-        self.conn.request_line = (
-            self.sql.insert_into_tmp_table.format(tmp_table=tmp_pkg_hshs),
-            ((hsh,) for hsh in input_pkg_hshs),
+        _ = self.send_sql_request(
+            (
+                self.sql.insert_into_tmp_table.format(tmp_table=tmp_pkg_hshs),
+                ((hsh,) for hsh in input_pkg_hshs),
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
 
         # create temporary table with repository state hashes
         tmp_repo_state = "tmp_repo_state_hshs"
-        self.conn.request_line = self.sql.create_tmp_table.format(
-            tmp_table=tmp_repo_state, columns="(pkg_hash UInt64)"
+
+        _ = self.send_sql_request(
+            self.sql.create_tmp_table.format(
+                tmp_table=tmp_repo_state, columns="(pkg_hash UInt64)"
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
+
         if task_repo_hashes is not None:
             # use repository hashes from task
-            self.conn.request_line = (
-                self.sql.insert_into_tmp_table.format(tmp_table=tmp_repo_state),
-                ((hsh,) for hsh in task_repo_hashes),
+            _ = self.send_sql_request(
+                (
+                    self.sql.insert_into_tmp_table.format(tmp_table=tmp_repo_state),
+                    ((hsh,) for hsh in task_repo_hashes),
+                )
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return
         else:
             # fill it from last_packages
-            self.conn.request_line = self.sql.insert_last_packages_hashes.format(
-                tmp_table=tmp_repo_state, branch=self.branch
+            _ = self.send_sql_request(
+                self.sql.insert_last_packages_hashes.format(
+                    tmp_table=tmp_repo_state, branch=self.branch
+                )
             )
-            status, response = self.conn.send_request()
-            if status is False:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return
         # delete unused binary packages arch hashes and '*-debuginfo' package hashes
         tmp_repo_state_filtered = "tmp_repo_state_hshs_filtered"
-        self.conn.request_line = self.sql.create_tmp_table.format(
-            tmp_table=tmp_repo_state_filtered, columns="(pkg_hash UInt64)"
+
+        _ = self.send_sql_request(
+            self.sql.create_tmp_table.format(
+                tmp_table=tmp_repo_state_filtered, columns="(pkg_hash UInt64)"
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
         # insert source packages hashes
-        self.conn.request_line = self.sql.insert_pkgs_hshs_filtered_src.format(
-            tmp_table=tmp_repo_state_filtered, tmp_table2=tmp_repo_state
+        _ = self.send_sql_request(
+            self.sql.insert_pkgs_hshs_filtered_src.format(
+                tmp_table=tmp_repo_state_filtered, tmp_table2=tmp_repo_state
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
         # insert binary packages hashes
-        self.conn.request_line = self.sql.insert_pkgs_hshs_filtered_bin.format(
-            tmp_table=tmp_repo_state_filtered,
-            tmp_table2=tmp_repo_state,
-            arch=tuple(self.archs),
+        _ = self.send_sql_request(
+            self.sql.insert_pkgs_hshs_filtered_bin.format(
+                tmp_table=tmp_repo_state_filtered,
+                tmp_table2=tmp_repo_state,
+                arch=tuple(self.archs),
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
         # drop initial repo state hashes temporary table
-        self.conn.request_line = self.sql.drop_tmp_table.format(
-            tmp_table=tmp_repo_state
+        _ = self.send_sql_request(
+            self.sql.drop_tmp_table.format(tmp_table=tmp_repo_state)
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
+
         tmp_repo_state = tmp_repo_state_filtered
 
         # get list of (input package | conflict package | conflict files)
-        self.conn.request_line = self.sql.misconflict_get_pkgs_with_conflict.format(
-            tmp_table=tmp_repo_state, tmp_table2=tmp_pkg_hshs
+        response = self.send_sql_request(
+            self.sql.misconflict_get_pkgs_with_conflict.format(
+                tmp_table=tmp_repo_state, tmp_table2=tmp_pkg_hshs
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
         if not response:
             # no conflict found
             self.status = True
             return
+
         # replace 'file_hashname' by 'fn_name' from FileNames
-        hshs_files = response
+        ConflicFiles = namedtuple(
+            "ConflicFiles",
+            ["in_pkg_hash", "c_pkg_hash", "fn_hashes", "c_pkg_name", "in_pkg_name"],
+        )
+
+        conflict_pkgs_files = [ConflicFiles(*el[:-1]) for el in response]
 
         # drop input package hashes temporary table
-        self.conn.request_line = self.sql.drop_tmp_table.format(tmp_table=tmp_pkg_hshs)
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        _ = self.send_sql_request(
+            self.sql.drop_tmp_table.format(tmp_table=tmp_pkg_hshs)
+        )
+        if not self.sql_status:
             return
 
-        # 1. collect all files_hashnames
-        f_hashnames = set()
-        for el in hshs_files:
-            [f_hashnames.add(x) for x in el[2]]  # type: ignore
-        # 2. select real file names from DB
-        self.conn.request_line = (
-            self.sql.misconflict_get_fnames_by_fnhashs,
-            {"hshs": tuple(f_hashnames)},
+        # check whether files has the same md5, mode, mtime and class
+        # and exclude such conflicts like the `apt` and `rpm` does
+        _tmp_table = "tmp_file_conflicts"
+        response = self.send_sql_request(
+            self.sql.misconflict_check_file_conflicts.format(tmp_table=_tmp_table),
+            external_tables=[
+                {
+                    "name": _tmp_table,
+                    "structure": [
+                        ("in_pkg_hash", "UInt64"),
+                        ("c_pkg_hash", "UInt64"),
+                        ("fn_hash", "UInt64"),
+                    ],
+                    "data": [
+                        {
+                            "in_pkg_hash": c.in_pkg_hash,
+                            "c_pkg_hash": c.c_pkg_hash,
+                            "fn_hash": f_hsh,
+                        }
+                        for c in conflict_pkgs_files
+                        for f_hsh in c.fn_hashes
+                    ],
+                }
+            ],
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.result
         if not response:
-            self._store_error(
+            _ = self.store_error(
                 {"message": "Failed to get file names from database by hash"},
                 self.ll.INFO,
                 500,
             )
             return
 
-        f_hashnames = {}
-        for r in response:
-            f_hashnames[r[0]] = r[1]
+        EqualFile = namedtuple("EqualFile", ["in_pkg_hahs", "c_pkg_hash", "fn_hash"])
+
+        equal_conflict_files = {EqualFile(*el[:-1]) for el in response if el[-1] == 1}
+
+        # filter out files conflicts
+        for c in conflict_pkgs_files[:]:
+            if all(
+                [
+                    (c.in_pkg_hash, c.c_pkg_hash, h) in equal_conflict_files
+                    for h in c.fn_hashes
+                ]
+            ):
+                # all files are equal -> remove conflict element
+                conflict_pkgs_files.remove(c)
+            elif any(
+                [
+                    (c.in_pkg_hash, c.c_pkg_hash, h) in equal_conflict_files
+                    for h in c.fn_hashes
+                ]
+            ):
+                # some of file conflicts are not equal -> filtering files list
+                conflict_pkgs_files.remove(c)
+                conflict_pkgs_files.append(
+                    ConflicFiles(
+                        c.in_pkg_hash,
+                        c.c_pkg_hash,
+                        [
+                            h
+                            for h in c.fn_hashes
+                            if (c.in_pkg_hash, c.c_pkg_hash, h)
+                            not in equal_conflict_files
+                        ],
+                        c.in_pkg_name,
+                        c.c_pkg_name,
+                    )
+                )
+
+        # if all file conflicts are resolved return then
+        if not conflict_pkgs_files:
+            self.status = True
+            return
+
+        # 1. collect all files_hashnames
+        f_hashnames = {h for c in conflict_pkgs_files for h in c.fn_hashes}
+
+        # 2. select real file names from DB
+        # use external table to do not exceed `max query size` limit
+        _tmp_table = "tmp_file_name_hashes"
+        response = self.send_sql_request(
+            self.sql.misconflict_get_fnames_by_fnhashs.format(tmp_table=_tmp_table),
+            external_tables=[
+                {
+                    "name": _tmp_table,
+                    "structure": [("fn_hash", "UInt64")],
+                    "data": [{"fn_hash": h} for h in f_hashnames],
+                }
+            ],
+        )
+        if not self.sql_status:
+            return self.result
+        if not response:
+            _ = self.store_error(
+                {"message": "Failed to get file names from database by hash"},
+                self.ll.INFO,
+                500,
+            )
+            return
+
+        file_names = {el[0]: el[1] for el in response}
+
         # 3. replace hashes by names in result
-        new_hshs_files = []
-        for el in hshs_files:
-            new_hshs_files.append((*el[:2], [f_hashnames[x] for x in el[2]], *el[3:]))  # type: ignore
-        hshs_files = new_hshs_files
+        ConflicFilesNames = namedtuple(
+            "ConflicFilesNames",
+            ["c_pkg_hash", "in_pkg_hash", "file_names", "c_pkg_name", "in_pkg_name"],
+        )
+
+        conflict_pkgs_files = [
+            ConflicFilesNames(
+                c.c_pkg_hash,
+                c.in_pkg_hash,
+                [file_names[h] for h in c.fn_hashes],
+                c.c_pkg_name,
+                c.in_pkg_name,
+            )
+            for c in conflict_pkgs_files
+        ]
+
+        # create dict with package names by hashes
+        hsh_name_dict = defaultdict(dict)
+        for c in conflict_pkgs_files:
+            hsh_name_dict[c.c_pkg_hash] = c.c_pkg_name
+            hsh_name_dict[c.in_pkg_hash] = c.in_pkg_name
 
         # list of conflicting package pairs
-        in_confl_hshs = [(hsh[0], hsh[1]) for hsh in hshs_files]
+        in_confl_hshs = [(c.c_pkg_hash, c.in_pkg_hash) for c in conflict_pkgs_files]
 
         # filter conflicts by provides/conflicts
-        c_filter = ConflictFilter(self.conn, self.branch, self.archs, self.DEBUG)
+        c_filter = ConflictFilter(self.conn, self.DEBUG)
 
         # check for the presence of the specified conflict each pair
         # if the conflict between the packages in the pair is specified,
@@ -246,7 +356,7 @@ class MisconflictPackages(APIWorker):
         try:
             filter_ls = c_filter.detect_conflict(in_confl_hshs)
         except SqlRequestError as e:
-            self._store_error(
+            _ = self.store_error(
                 {
                     "message": "Error occured in ConflictFilter",
                     "error": e.error_details,
@@ -256,36 +366,25 @@ class MisconflictPackages(APIWorker):
             )
             return
 
-        # create dict with package names by hashes
-        hsh_name_dict = defaultdict(dict)
-        for hsh_1, hsh_2, _, name_2, name_1, _ in hshs_files:
-            hsh_name_dict[hsh_1], hsh_name_dict[hsh_2] = name_1, name_2
-
         # convert the hashes into names, put in the first place in the pair
-        # the name of the input package, if it is not
-        filter_ls_names = []
+        # the name of the input package, if it is not there
+        filter_ls_names = set()
         for hsh in filter_ls:
             inp_pkg = hsh[0] if hsh[0] in input_pkg_hshs else hsh[1]
             out_pkg = hsh[0] if hsh[0] != inp_pkg else hsh[1]
-            result_pair = (hsh_name_dict[inp_pkg], hsh_name_dict[out_pkg])
-            if result_pair not in filter_ls:
-                filter_ls_names.append(result_pair)
+            filter_ls_names.add((hsh_name_dict[inp_pkg], hsh_name_dict[out_pkg]))
 
-        # form the list of tuples (input package | conflict package | conflict files)
-        result_list, output_pkgs = [], set()
-        for pkg in hshs_files:
-            [output_pkgs.add(i) for i in pkg[:2]]
-            pkg = (hsh_name_dict[pkg[0]], hsh_name_dict[pkg[1]], pkg[2])
-            if pkg not in result_list:
-                result_list.append(pkg)
+        # build the list of tuples (input package | conflict package | conflict files)
+        intermediate_results, output_pkgs_hashes = set(), set()
+        for c in conflict_pkgs_files:
+            output_pkgs_hashes.update((c.c_pkg_hash, c.in_pkg_hash))
+            intermediate_results.add((c.in_pkg_name, c.c_pkg_name, tuple(c.file_names)))
 
         # get architectures of found packages
-        self.conn.request_line = self.sql.misconflict_get_pkg_archs.format(
-            hshs=tuple(output_pkgs)
+        response = self.send_sql_request(
+            self.sql.misconflict_get_pkg_archs.format(hshs=tuple(output_pkgs_hashes))
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
 
         pkg_archs_dict = tuplelist_to_dict(response, 1)  # type: ignore
@@ -293,24 +392,22 @@ class MisconflictPackages(APIWorker):
         # look for duplicate pairs of packages in the list with different files
         # and join them
         result_dict_cleanup = defaultdict(list)
-        for pkg in result_list:
+        for pkg in intermediate_results:
             result_dict_cleanup[(pkg[0], pkg[1])] += pkg[2]
 
         confl_pkgs = remove_duplicate([pkg[1] for pkg in result_dict_cleanup.keys()])
 
         # get main information of packages by package hashes
-        self.conn.request_line = self.sql.misconflict_get_meta_by_hshs.format(
-            tmp_table=tmp_repo_state, pkgs=tuple(confl_pkgs)
+        response = self.send_sql_request(
+            self.sql.misconflict_get_meta_by_hshs.format(
+                tmp_table=tmp_repo_state, pkgs=tuple(confl_pkgs)
+            )
         )
-        status, response = self.conn.send_request()
-        if status is False:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return
 
         # form dict name - package info
-        name_info_dict = {}
-        for pkg in response:  # type: ignore
-            name_info_dict[pkg[0]] = pkg[1:]
+        name_info_dict = {el[0]: el[1:] for el in response}
 
         # form list of tuples (input pkg | conflict pkg | pkg info | conflict files)
         # and filter it

@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from flask import g, request
+from flask import g
 from flask_restx import Resource
 
 from altrepo_api.utils import get_logger, url_logging
@@ -207,7 +207,7 @@ class routeUnpackagedDirs(Resource):
     doc={
         "description": (
             "Get list of packages required for build by given "
-            "packages list recursively"
+            "source packages list recursively"
         ),
         "responses": GET_RESPONSES_400_404,
     },
@@ -219,7 +219,7 @@ class routePackageBuildDependencySet(Resource):
         url_logging(logger, g.url)
         args = build_dep_set_args.parse_args(strict=True)
         w = PackageBuildDependencySet(g.connection, **args)
-        return run_worker(worker=w, args=args)  # type: ignore
+        return run_worker(worker=w, args=args)
 
 
 @ns.route("/repocop")
@@ -234,7 +234,7 @@ class routePackageRepocop(Resource):
     def post(self):
         url_logging(logger, g.url)
         args = {}
-        w = Repocop(g.connection, json_data=request.json)
+        w = Repocop(g.connection, json_data=ns.payload)
         return run_worker(
             worker=w,
             run_method=w.post,

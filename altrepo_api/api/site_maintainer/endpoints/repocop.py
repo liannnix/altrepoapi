@@ -36,6 +36,7 @@ class RepocopByMaintainer(APIWorker):
     def get(self):
         maintainer_nickname = self.args["maintainer_nickname"]
         branch = self.args["branch"]
+        request_line = ""
         order_g = ""
 
         MaintainerRepocop = namedtuple(
@@ -55,37 +56,35 @@ class RepocopByMaintainer(APIWorker):
         )
 
         if self.args["by_acl"] == "by_nick_leader_and_group":
-            self.conn.request_line = self.sql.get_repocop_by_last_acl_with_group.format(
+            request_line = self.sql.get_repocop_by_last_acl_with_group.format(
                 maintainer_nickname=maintainer_nickname, branch=branch, order_g=order_g
             )
         if self.args["by_acl"] == "by_nick_leader":
             order_g = "AND order_g=0"
-            self.conn.request_line = self.sql.get_repocop_by_last_acl_with_group.format(
+            request_line = self.sql.get_repocop_by_last_acl_with_group.format(
                 maintainer_nickname=maintainer_nickname, branch=branch, order_g=order_g
             )
         if self.args["by_acl"] == "by_nick":
-            self.conn.request_line = self.sql.get_repocop_by_nick_acl.format(
+            request_line = self.sql.get_repocop_by_nick_acl.format(
                 maintainer_nickname=maintainer_nickname, branch=branch
             )
         if self.args["by_acl"] == "by_nick_or_group":
-            self.conn.request_line = self.sql.get_repocop_by_nick_or_group_acl.format(
+            request_line = self.sql.get_repocop_by_nick_or_group_acl.format(
                 maintainer_nickname=maintainer_nickname, branch=branch
             )
         if self.args["by_acl"] == "none":
-            self.conn.request_line = self.sql.get_maintainer_repocop.format(
+            request_line = self.sql.get_maintainer_repocop.format(
                 maintainer_nickname=maintainer_nickname, branch=branch
             )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+
+        response = self.send_sql_request(request_line)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {"message": "No data not found in database", "args": self.args},
-                self.ll.INFO,
-                404,
             )
-            return self.error
+
         res = [MaintainerRepocop(*el)._asdict() for el in response]
 
         res = {"request_args": self.args, "length": len(res), "packages": res}

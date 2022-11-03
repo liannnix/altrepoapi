@@ -16,8 +16,8 @@ GNU AGPLv3
 * python3-module-flask
 * python3-module-clickhouse-driver
 * python3-module-mmh3
-* python3-module-rpm
 * python3-module-gunicorn
+* python3-module-packaging
 
 # Starting application
 

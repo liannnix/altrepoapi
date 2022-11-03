@@ -24,6 +24,7 @@ from altrepo_api.api.auth.decorators import auth_required
 
 from altrepo_api.api.bug import ns as bug_ns
 from altrepo_api.api.task import ns as task_ns
+from altrepo_api.api.task_progress import ns as task_progress_ns
 from altrepo_api.api.package import ns as package_ns
 from altrepo_api.api.packageset import ns as packageset_ns
 from altrepo_api.api.dependencies import ns as dependencies_ns
@@ -58,6 +59,7 @@ api = Api(
 )
 
 api.add_namespace(task_ns)
+api.add_namespace(task_progress_ns)
 api.add_namespace(package_ns)
 api.add_namespace(packageset_ns)
 api.add_namespace(acl_ns)

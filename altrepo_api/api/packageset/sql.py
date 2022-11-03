@@ -176,5 +176,53 @@ WHERE img_show == 'show'
 GROUP BY img_branch
 """
 
+    get_repository_statistics = """
+SELECT branch, branch_date, stats
+FROM lv_repository_statistics
+{branch}
+"""
+
+    get_packages_by_uuid = """
+WITH
+pkg_hashes AS (
+    SELECT pkg_hash
+    FROM Packages
+    WHERE pkg_hash IN (
+        select pkg_hash
+        FROM PackageSet
+        WHERE pkgset_uuid = '{uuid}'
+    )
+),
+pkg_changelogs AS (
+    SELECT
+        chlog_hash,
+        chlog_text
+    FROM Changelog
+    WHERE chlog_hash IN (
+        SELECT pkg_changelog.hash[1] AS hash
+        FROM Packages
+        WHERE pkg_hash IN (SELECT * FROM pkg_hashes)
+    )
+)
+SELECT DISTINCT
+    pkg_hash,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_arch,
+    if(pkg_sourcepackage = 1, 'source', 'binary') as sourcerpm,
+    pkg_summary,
+    pkg_buildtime,
+    pkg_changelog.date[1] AS date,
+    pkg_changelog.name[1] as name,
+    pkg_changelog.evr[1] AS evr,
+    CHLG.chlog_text
+FROM Packages
+LEFT JOIN (
+    SELECT * FROM pkg_changelogs
+) AS CHLG ON CHLG.chlog_hash = pkg_changelog.hash[1]
+WHERE pkg_hash IN (SELECT pkg_hash FROM pkg_hashes)
+"""
+
 
 sql = SQL()

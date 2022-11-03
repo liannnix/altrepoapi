@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from flask import g, request
+from flask import g
 from flask_restx import Resource
 
 from altrepo_api.utils import get_logger, url_logging
@@ -25,19 +25,27 @@ from altrepo_api.api.base import (
     GET_RESPONSES_400_404,
     POST_RESPONSE_400_404,
 )
-
+from .endpoints.packages_by_uuid import PackagesByUuid
 from .endpoints.pkgset_compare import PackagesetCompare
 from .endpoints.pkgset_packages import PackagesetPackages
 from .endpoints.pkgset_status import RepositoryStatus, ActivePackagesets
+from .endpoints.repository_status import RepositoryStatistics
 
 from .namespace import get_namespace
-from .parsers import pkgset_compare_args, pkgset_packages_args
+from .parsers import (
+    pkgset_compare_args,
+    pkgset_packages_args,
+    repository_statistics_args,
+    packages_by_uuid_args,
+)
 from .serializers import (
     pkgset_compare_model,
     pkgset_packages_model,
     pkgset_status_post_model,
     pkgset_status_get_model,
     active_pkgsets_model,
+    repository_statistics_model,
+    packages_by_uuid_model,
 )
 
 ns = get_namespace()
@@ -93,7 +101,7 @@ class routeRepositoryStatus(Resource):
     def post(self):
         url_logging(logger, g.url)
         args = {}
-        w = RepositoryStatus(g.connection, json_data=request.json)
+        w = RepositoryStatus(g.connection, json_data=ns.payload)
         return run_worker(
             worker=w,
             run_method=w.post,
@@ -110,7 +118,7 @@ class routeRepositoryStatus(Resource):
     def get(self):
         url_logging(logger, g.url)
         args = {}
-        w = RepositoryStatus(g.connection, json_data=request.json)
+        w = RepositoryStatus(g.connection)
         return run_worker(worker=w, args=args)
 
 
@@ -128,4 +136,38 @@ class routeActivePackagesets(Resource):
         url_logging(logger, g.url)
         args = {}
         w = ActivePackagesets(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/repository_statistics",
+    doc={
+        "description": "Get repository statistics",
+        "responses": GET_RESPONSES_404,
+    },
+)
+class routeRepositoryStatistics(Resource):
+    @ns.expect(repository_statistics_args)
+    @ns.marshal_with(repository_statistics_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = repository_statistics_args.parse_args(strict=True)
+        w = RepositoryStatistics(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/packages_by_uuid",
+    doc={
+        "description": "Get packages by packageset component UUID",
+        "responses": GET_RESPONSES_404,
+    },
+)
+class routePackagesByUuid(Resource):
+    @ns.expect(packages_by_uuid_args)
+    @ns.marshal_with(packages_by_uuid_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = packages_by_uuid_args.parse_args(strict=True)
+        w = PackagesByUuid(g.connection, **args)
         return run_worker(worker=w, args=args)

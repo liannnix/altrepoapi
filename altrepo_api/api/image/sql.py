@@ -478,7 +478,7 @@ WHERE img_tag IN (
 GROUP BY img_tag
 """
 
-    get_last_image_cmp_pkg_diff = """
+    tmp_last_image_cmp_pkg_diff = """
 CREATE TEMPORARY TABLE {tmp_table} AS
 SELECT pkg_hash FROM
 (
@@ -493,7 +493,7 @@ SELECT pkg_hash FROM
 )
 """
 
-    get_img_pkg_info = """
+    tmp_img_pkg_info = """
 CREATE TEMPORARY TABLE {tmp_table} AS
 SELECT * FROM
 (
@@ -762,6 +762,29 @@ WHERE img_edition IN (select img_edition FROM editions_status WHERE edition_show
     {image_clause}
 GROUP BY img_edition
 ORDER BY tags ASC, img_edition ASC
+"""
+
+    get_find_imgs_by_pkg_name = """
+SELECT DISTINCT
+    pkg_hash,
+    pkg_name,
+    img_branch,
+    pkg_version,
+    pkg_release,
+    pkg_arch,
+    img_edition,
+    img_tag,
+    img_file,
+    pkgset_date
+FROM lv_all_image_packages
+WHERE pkg_hash IN (
+    SELECT DISTINCT pkg_hash
+    FROM Packages
+    {pkg_type}
+)
+{branch}
+{edition}
+{img_show}
 """
 
 

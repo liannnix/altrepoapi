@@ -14,12 +14,23 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Protocol, Union
 from flask_restx import abort
 
 from altrepo_api.settings import namespace as settings
 from altrepo_api.utils import response_error_parser, get_logger, logger_level
-from altrepo_api.database.connection import Connection
+
+# from altrepo_api.database.connection import Connection
+
+
+class ConnectionProto(Protocol):
+    request_line: Union[str, tuple[str, Any]]
+
+    def send_request(self, **query_kwargs) -> tuple[bool, Any]:
+        ...
+
+    def drop_connection(self) -> None:
+        ...
 
 
 class APIWorker:
@@ -32,7 +43,8 @@ class APIWorker:
         self.ll = logger_level
         self.status: bool = False
         self.error: tuple[Any, int]
-        self.conn: Connection
+        self.sql_status: bool = False
+        self.conn: ConnectionProto
         self.validation_results: list = []
 
     def _log_error(self, severity: int) -> None:
@@ -47,8 +59,11 @@ class APIWorker:
         else:
             self.logger.debug(self.error)
 
-    def _build_sql_error_response(self, response: dict, code: int) -> tuple[Any, int]:
+    def _build_sql_error_response(
+        self, response: dict[str, Any], code: int
+    ) -> tuple[Any, int]:
         """Add SQL request details from class to response dictionary if debug is enabled."""
+
         if self.DEBUG:
             response["module"] = self.__class__.__name__
             requestline = self.conn.request_line
@@ -69,6 +84,29 @@ class APIWorker:
         self.error = message, http_code
         self._log_error(severity)
         self.status = False
+
+    def send_sql_request(
+        self, request_line: Any, http_code: int = 500, **kwargs
+    ) -> Any:
+        """Send SQL request and returns response. If request fails,
+        saves SQL error to self.error object. Changes self.sql_status field."""
+
+        self.conn.request_line = request_line
+        self.sql_status, response = self.conn.send_request(**kwargs)
+        if not self.sql_status:
+            self._store_sql_error(response, logger_level.ERROR, http_code)
+        return response
+
+    def store_error(
+        self,
+        message: dict[str, Any],
+        severity: int = logger_level.INFO,
+        http_code: int = 404,
+    ) -> tuple[Any, int]:
+        """Build and returns APIWorker error object."""
+
+        self._store_error(message, severity, http_code)
+        return self.error
 
     def check_params(self) -> bool:
         return True
@@ -115,7 +153,7 @@ def run_worker(
     Default 'run_method' is worker.get().
     Default 'check_method' is worker.check_params()."""
 
-    # run APIWorker valdator method
+    # run APIWorker validator method
     if check_method is None:
         check_method = worker.check_params
     abort_on_validation_error(worker=worker, method=check_method, args=args)

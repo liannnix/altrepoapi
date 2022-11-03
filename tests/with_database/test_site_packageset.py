@@ -337,6 +337,12 @@ def test_packagesets_by_hash(client, kwargs):
     [
         {"name": SRC_PACKAGE_IN_DB, "branch": None, "arch": None, "status_code": 200},
         {
+            "name": "getssl",
+            "branch": "p10",
+            "arch": None,
+            "status_code": 200,
+        },  # source package deleted from branch
+        {
             "name": BIN_PACKAGE_IN_DB,
             "branch": BRANCH_IN_DB,
             "arch": None,
@@ -388,6 +394,16 @@ def test_find_packages(client, kwargs):
     [
         {"name": SRC_PACKAGE_IN_DB, "branch": None, "status_code": 200},
         {"name": BIN_PACKAGE_IN_DB, "branch": BRANCH_IN_DB, "status_code": 200},
+        {
+            "name": "getssl",
+            "branch": "p10",
+            "status_code": 200,
+        },  # source package deleted from branch
+        {
+            "name": "getssl",
+            "branch": "sisyphus",
+            "status_code": 200,
+        },  # source package deleted from branch
         {"name": PACKAGE_NOT_IN_DB, "branch": None, "status_code": 404},
         {"name": SRC_PACKAGE_IN_DB, "branch": BRANCH_NOT_IN_DB, "status_code": 400},
         {"name": "", "branch": None, "status_code": 400},

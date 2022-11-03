@@ -82,6 +82,7 @@ class PackageDownloadLinks(APIWorker):
     def get(self):
         self.branch = self.args["branch"]
         bin_pkgs = {}
+
         # return no download links from sisyphus_e2k branch
         if self.branch in lut.no_downloads_branches:
             return {
@@ -90,6 +91,7 @@ class PackageDownloadLinks(APIWorker):
                 "downloads": [],
                 "versions": [],
             }, 200
+
         #  get package task info
         TaskInfo = namedtuple(
             "TaskInfo",
@@ -102,57 +104,61 @@ class PackageDownloadLinks(APIWorker):
             ],
         )
         PkgInfo = namedtuple("PkgInfo", ["file", "arch", "size"])
-        self.conn.request_line = self.sql.get_build_task_by_hash.format(
-            pkghash=self.pkghash, branch=self.branch
+
+        response = self.send_sql_request(
+            self.sql.get_build_task_by_hash.format(
+                pkghash=self.pkghash, branch=self.branch
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
+
         subtasks = []
+
         if response:
             #  use hashes from task
             use_task = True
             subtasks = [TaskInfo(*el)._asdict() for el in response]
+
             # get package hashes and archs from Tasks
             for t in subtasks:
                 bin_pkgs[t["subtask_arch"]] = list(
                     {h for h in t["titer_pkgs_hash"] if h != 0}
                 )
+
             # get package file names
             hshs = [self.pkghash] + [h for hs in bin_pkgs.values() for h in hs]
-            self.conn.request_line = self.sql.get_pkgs_filename_by_hshs.format(
-                hshs=tuple(set(hshs))
+
+            response = self.send_sql_request(
+                self.sql.get_pkgs_filename_by_hshs.format(hshs=tuple(set(hshs)))
             )
-            status, response = self.conn.send_request()
-            if not status:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return self.error
             if not response:
-                self._store_error(
+                return self.store_error(
                     {
                         "message": "No package fienames info found in DB",
                         "args": self.args,
-                    },
-                    self.ll.INFO,
-                    404,
+                    }
                 )
-                return self.error
+
             # store filenames and archs as dict
             filenames = {el[0]: PkgInfo(*el[1:]) for el in response}
+
             # try to find 'arepo' packages from task
             if "i586" in bin_pkgs:
                 # get all 'x86_64-i586' packages from task plan
-                self.conn.request_line = self.sql.get_arepo_pkgs_by_task.format(
-                    taskid=subtasks[0]["task_id"]
+                response = self.send_sql_request(
+                    self.sql.get_arepo_pkgs_by_task.format(
+                        taskid=subtasks[0]["task_id"]
+                    )
                 )
-                status, response = self.conn.send_request()
-                if not status:
-                    self._store_sql_error(response, self.ll.ERROR, 500)
+                if not self.sql_status:
                     return self.error
                 if response:
                     # store filenames and archs as dict
                     arepo_filenames = {el[0]: PkgInfo(*el[1:]) for el in response}
+
                     # filter packages using package file name from 'i586' arch
                     i586_pkg_files = {
                         p.file for p in filenames.values() if p.arch == "i586"
@@ -162,29 +168,29 @@ class PackageDownloadLinks(APIWorker):
                         if fname not in i586_pkg_files:
                             del arepo_filenames[hash]
                     filenames.update(arepo_filenames)
+
                     # update bin_pkgs with arepo packages
                     bin_pkgs["x86_64-i586"] = list({h for h in arepo_filenames})
         else:
             # no task found -> use ftp.altlinux.org
             use_task = False
+
             # get package hashes and archs from last_packages
-            self.conn.request_line = self.sql.get_src_and_binary_pkgs.format(
-                pkghash=self.pkghash, branch=self.branch
+            response = self.send_sql_request(
+                self.sql.get_src_and_binary_pkgs.format(
+                    pkghash=self.pkghash, branch=self.branch
+                )
             )
-            status, response = self.conn.send_request()
-            if not status:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return self.error
             if not response:
-                self._store_error(
+                return self.store_error(
                     {
                         "message": "No package filenames info found in DB",
                         "args": self.args,
-                    },
-                    self.ll.INFO,
-                    404,
+                    }
                 )
-                return self.error
+
             # store filenames and archs as dict
             filenames = {el[0]: PkgInfo(*el[1:]) for el in response}
             for h, f in filenames.items():
@@ -196,21 +202,20 @@ class PackageDownloadLinks(APIWorker):
 
         # get package files MD5 checksum
         hshs = tuple(filenames.keys())
-        self.conn.request_line = self.sql.get_pkgs_md5_by_hshs.format(hshs=hshs)
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+
+        response = self.send_sql_request(
+            self.sql.get_pkgs_md5_by_hshs.format(hshs=hshs)
+        )
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No package MD5 info found in DB",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
+
         md5_sums = {el[0]: el[1] for el in response}
 
         # pop source package filename
@@ -218,6 +223,7 @@ class PackageDownloadLinks(APIWorker):
         src_filesize = filenames[self.pkghash].size
         src_arch = filenames[self.pkghash].arch
         filenames.pop(self.pkghash, None)
+
         # get source package arch by binary packages
         archs = ["x86_64", "i586"]
         archs += [arch for arch in bin_pkgs.keys() if arch not in archs]
@@ -225,32 +231,38 @@ class PackageDownloadLinks(APIWorker):
             if arch in bin_pkgs and len(bin_pkgs[arch]) > 0:
                 src_arch = arch
                 break
+
         # keep only 'noarch' packages from src_arch iteration
         filenames_noarch = {k: v for k, v in filenames.items() if v.arch == "noarch"}
         filenames = {k: v for k, v in filenames.items() if v.arch != "noarch"}
+
         # append 'noarch' packages only from src_arch iteration
         for p in bin_pkgs[src_arch]:
             if p in filenames_noarch:
                 filenames[p] = filenames_noarch[p]
+
         # remove 'noarch' packages form not src_arch iterations
         for h in filenames_noarch:
             for arch in [x for x in archs if x in bin_pkgs and x != src_arch]:
                 bin_pkgs[arch] = [x for x in bin_pkgs[arch] if x != h]
+
         # get package versions
         pkg_versions = []
-        self.conn.request_line = self.sql.get_pkg_versions_by_hash.format(
-            pkghash=self.pkghash
+
+        response = self.send_sql_request(
+            self.sql.get_pkg_versions_by_hash.format(pkghash=self.pkghash)
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
+
         PkgVersions = namedtuple(
             "PkgVersions", ["branch", "version", "release", "pkghash"]
         )
+
         # sort package versions by branch
         pkg_branches = sort_branches([el[0] for el in response])  # type: ignore
         pkg_versions = tuplelist_to_dict(response, 3)  # type: ignore
+
         # workaround for multiple versions of returned for certain branch
         pkg_versions = [
             PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
@@ -437,97 +449,96 @@ class BinaryPackageDownloadLinks(APIWorker):
             ],
         )
         PkgInfo = namedtuple("PkgInfo", ["file", "arch", "size"])
-        self.conn.request_line = self.sql.get_build_task_by_bin_hash.format(
-            pkghash=self.pkghash, branch=self.branch
+
+        response = self.send_sql_request(
+            self.sql.get_build_task_by_bin_hash.format(
+                pkghash=self.pkghash, branch=self.branch
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
+
         subtask = {}
+
         if response:
             #  use hashes from task
             use_task = True
             subtask = TaskInfo(*response[0])._asdict()  # type: ignore
+
             # get package file name
-            self.conn.request_line = self.sql.get_pkgs_filename_by_hshs.format(
-                hshs=(self.pkghash,)
+            response = self.send_sql_request(
+                self.sql.get_pkgs_filename_by_hshs.format(hshs=(self.pkghash,))
             )
-            status, response = self.conn.send_request()
-            if not status:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return self.error
             if not response:
-                self._store_error(
+                return self.store_error(
                     {
                         "message": "No package fienames info found in DB",
                         "args": self.args,
-                    },
-                    self.ll.INFO,
-                    404,
+                    }
                 )
-                return self.error
+
             # store package file info
             filename = PkgInfo(*response[0][1:])  # type: ignore
         else:
             # no task found -> use ftp.altlinux.org
             use_task = False
+
             # get package hashes and archs from last_packages
-            self.conn.request_line = self.sql.get_bin_pkg_from_last.format(
-                pkghash=self.pkghash, branch=self.branch, arch=self.arch
+            response = self.send_sql_request(
+                self.sql.get_bin_pkg_from_last.format(
+                    pkghash=self.pkghash, branch=self.branch, arch=self.arch
+                )
             )
-            status, response = self.conn.send_request()
-            if not status:
-                self._store_sql_error(response, self.ll.ERROR, 500)
+            if not self.sql_status:
                 return self.error
             if not response:
-                self._store_error(
+                return self.store_error(
                     {
                         "message": "No package info found in DB",
                         "args": self.args,
-                    },
-                    self.ll.INFO,
-                    404,
+                    }
                 )
-                return self.error
+
             # store package file info
             filename = PkgInfo(*response[0][1:])  # type: ignore
 
         # get package files MD5 checksum
-        self.conn.request_line = self.sql.get_pkgs_md5_by_hshs.format(
-            hshs=(self.pkghash,)
+        response = self.send_sql_request(
+            self.sql.get_pkgs_md5_by_hshs.format(hshs=(self.pkghash,))
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
         if not response:
-            self._store_error(
+            return self.store_error(
                 {
                     "message": "No package MD5 info found in DB",
                     "args": self.args,
-                },
-                self.ll.INFO,
-                404,
+                }
             )
-            return self.error
+
         md5_sum = response[0][1]  # type: ignore
 
         # get package versions
         pkg_versions = []
-        self.conn.request_line = self.sql.get_bin_pkg_versions_by_hash.format(
-            pkghash=self.pkghash, arch=self.arch
+
+        response = self.send_sql_request(
+            self.sql.get_bin_pkg_versions_by_hash.format(
+                pkghash=self.pkghash, arch=self.arch
+            )
         )
-        status, response = self.conn.send_request()
-        if not status:
-            self._store_sql_error(response, self.ll.ERROR, 500)
+        if not self.sql_status:
             return self.error
+
         PkgVersions = namedtuple(
             "PkgVersions", ["branch", "version", "release", "pkghash", "arch"]
         )
+
         # sort package versions by branch
         pkg_branches = sort_branches([el[0] for el in response])  # type: ignore
         pkg_versions = tuplelist_to_dict(response, 4)  # type: ignore
+
         # workaround for multiple versions of returned for certain branch
         pkg_versions = [
             PkgVersions(*(b, *pkg_versions[b][-4:]))._asdict() for b in pkg_branches
