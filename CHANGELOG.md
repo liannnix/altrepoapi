@@ -6,6 +6,17 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.8.9] - 2022-11-03
+
+Regular API code updates and fixes.
+
+### Added
+- site_packageset/find_source_package route
+### Changed
+- tests: implement skipped tests in test_utils
+### Fixed
+- tests: test_conflict_filter
+
 ## [1.8.8] - 2022-10-27
 
 Regular API code updates and fixes.
