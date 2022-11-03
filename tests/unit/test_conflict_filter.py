@@ -1,5 +1,10 @@
 import unittest
 
+from altrepo_api.settings import namespace as settings
+
+settings.LOG_TO_FILE = False  # type: ignore
+settings.LOG_TO_SYSLOG = False
+
 from altrepo_api.libs.conflict_filter import ConflictFilter
 
 
