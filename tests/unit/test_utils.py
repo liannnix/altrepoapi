@@ -3,6 +3,7 @@ import pytest
 import datetime
 
 from altrepo_api import utils
+from altrepo_api.api.misc import lut
 
 
 @pytest.mark.parametrize(
@@ -97,16 +98,43 @@ def test_datetime_to_iso():
     )
 
 
-@pytest.mark.skip("not covered by tests")
-def test_get_nickname_from_packager():
-    pass
+@pytest.mark.parametrize(
+    "test_input,expected",
+    [
+        ("Test Test <test@test.com>", "test"),
+        ("Test Test <test at test.com>", "test"),
+        ("test", "test"),
+    ],
+)
+def test_get_nickname_from_packager(test_input, expected):
+    assert utils.get_nickname_from_packager(test_input) == expected
 
 
-@pytest.mark.skip("not covered by tests")
-def test_dp_flags_decode():
-    pass
+@pytest.mark.parametrize(
+    "test_input,expected",
+    [
+        (0, ["RPMSENSE_ANY"]),
+        (2, ["RPMSENSE_LESS"]),
+        (12, ["RPMSENSE_GREATER", "RPMSENSE_EQUAL"]),
+    ],
+)
+def test_dp_flags_decode(test_input, expected):
+    assert utils.dp_flags_decode(test_input, lut.rpmsense_flags) == expected
 
 
-@pytest.mark.skip("not covered by tests")
-def test_full_file_permissions():
-    pass
+# @pytest.mark.skip("not covered by tests")
+@pytest.mark.parametrize(
+    "test_input,expected",
+    [
+        (("directory", 0o777), "drwxrwxrwx"),
+        (("file", 0o654), "-rw-r-xr--"),
+        (("symlink", 0o1640), "lrw-r----T"),
+        (("socket", 0o1645), "srw-r--r-t"),
+        (("block", 0o2755), "brwxr-sr-x"),
+        (("char", 0o2765), "crwxrwSr-x"),
+        (("fifo", 0o4755), "prwsr-xr-x"),
+        (("file", 0o4654), "-rwSr-xr--"),
+    ],
+)
+def test_full_file_permissions(test_input, expected):
+    assert utils.full_file_permissions(*test_input) == expected
