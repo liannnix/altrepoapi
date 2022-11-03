@@ -57,7 +57,7 @@ class TaskRepoState(APIWorker):
         if not response:
             _ = self.store_error(
                 {"Error": f"Non-existent data for task {self.task_id}"},
-                self.ll.ERROR,
+                self.LL.ERROR,
                 500,
             )
             return None
@@ -71,7 +71,7 @@ class TaskRepoState(APIWorker):
         if not response:
             _ = self.store_error(
                 {"Error": f"Non-existent data for task {self.task_id}"},
-                self.ll.ERROR,
+                self.LL.ERROR,
                 500,
             )
             return None
@@ -93,7 +93,7 @@ class TaskRepoState(APIWorker):
         if not response:
             _ = self.store_error(
                 {"Error": f"Non-existent data for task {self.task_id}"},
-                self.ll.ERROR,
+                self.LL.ERROR,
                 500,
             )
             return None
@@ -188,7 +188,7 @@ class TaskRepoState(APIWorker):
                     {
                         "Error": f"Failed to get last repo packages for task {self.task_id}"
                     },
-                    self.ll.ERROR,
+                    self.LL.ERROR,
                     500,
                 )
                 return None
@@ -219,7 +219,7 @@ class TaskRepoState(APIWorker):
                     {
                         "Error": f"Failed to get last repo packages for task {self.task_id}"
                     },
-                    self.ll.ERROR,
+                    self.LL.ERROR,
                     500,
                 )
                 return None
@@ -262,7 +262,7 @@ class TaskRepoState(APIWorker):
                     {
                         "Error": f"Failed to get task plan hashes for tasks {tasks_diff_list}"
                     },
-                    self.ll.ERROR,
+                    self.LL.ERROR,
                     500,
                 )
                 return None
@@ -329,7 +329,7 @@ class TaskRepo(APIWorker):
         if not response:
             _ = self.store_error(
                 {"Error": f"Failed to get last repo contents for task {self.task_id}"},
-                self.ll.ERROR,
+                self.LL.ERROR,
                 500,
             )
             return None
@@ -382,7 +382,7 @@ class TaskRepo(APIWorker):
         if not response:
             return self.store_error(
                 {"Error": "Failed to get packages data from database"},
-                self.ll.ERROR,
+                self.LL.ERROR,
                 500,
             )
         else:
