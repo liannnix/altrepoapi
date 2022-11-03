@@ -6,6 +6,18 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.8.10] - 2022-11-03
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- lut.known_archs contains only actual binary packages architectures
+### Fixed
+- code style errors
+- routes descriptions
+- api/packageset: fixed repository_packages route code package architecture handling
+
 ## [1.8.9] - 2022-11-03
 
 Regular API code updates and fixes.
