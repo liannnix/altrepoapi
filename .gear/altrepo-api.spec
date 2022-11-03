@@ -4,13 +4,14 @@
 %define oname altrepo_api
 
 Name: altrepo-api
-Version: 1.8.0
+Version: 1.8.8
 Release: alt1
 
 Summary: ALTRepo API is a REST API for the repository database of ALT distribution
 License: AGPL-3.0
 Group: System/Servers
 URL: https://git.altlinux.org/gears/a/altrepo-api.git
+VCS: https://git.altlinux.org/people/dshein/packages/altrepo-api.git
 
 BuildArch: noarch
 
@@ -18,6 +19,8 @@ Requires: librpm7
 Requires: python3-module-gunicorn
 
 BuildRequires(pre): rpm-build-python3
+BuildRequires: python3-module-setuptools
+BuildRequires: python3-module-wheel
 
 Source0: %name-%version.tar
 Patch1: %name-%version-%release.patch
@@ -32,10 +35,10 @@ regards to the repository by GET requests.
 %autopatch -p1
 
 %build
-%python3_build
+%pyproject_build
 
 %install
-%python3_install
+%pyproject_install
 mkdir -p %buildroot%_sysconfdir/%name
 mkdir -p %buildroot%_datadir/%name
 mkdir -p examples
@@ -61,9 +64,13 @@ mkdir -p %buildroot%_logdir/altrepo-api
 %_bindir/altrepo-api
 %_sysconfdir/%name/api.conf.example
 %python3_sitelibdir/%oname/
-%python3_sitelibdir/%oname-%version-*.egg-info
+%python3_sitelibdir/%oname-%version.dist-info
 
 %changelog
+* Thu Nov 03 2022 Danil Shein <dshein@altlinux.org> 1.8.8-alt1
+ - 1.8.0 -> 1.8.8
+   + migrate to pyproject
+
 * Wed Jul 13 2022 Danil Shein <dshein@altlinux.org> 1.8.0-alt1
  - 1.7.0 -> 1.8.0
 

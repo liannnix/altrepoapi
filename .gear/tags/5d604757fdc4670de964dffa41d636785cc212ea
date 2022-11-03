@@ -1,0 +1,6 @@
+object 1569bfda68b78be79ddaf16b5729f1cc5a45314b
+type commit
+tag v1.8.8
+tagger Danil Shein <dshein@altlinux.org> 1666882666 +0300
+
+use librpm.so
