@@ -60,7 +60,10 @@ class TaskMeta:
     subtasks: list[SubtaskMeta] = field(default_factory=list)
 
     def __post_init__(self):
-        self.iterations = sorted([IterationMeta(*el) for el in self.iterations], reverse=True)
+        # convert list of tuples passed in during instantiation
+        self.iterations = sorted(
+            [IterationMeta(*el) for el in self.iterations], reverse=True  # type: ignore
+        )
 
 
 class LastTasks(APIWorker):
