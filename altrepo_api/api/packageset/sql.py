@@ -43,7 +43,7 @@ LEFT JOIN
 ) AS Acl USING pkg_name
 WHERE pkgset_name = '{branch}'
     AND pkg_sourcepackage IN {src}
-    AND pkg_arch IN {archs}
+    {archs}
     AND pkg_name NOT LIKE '%%-debuginfo'
 GROUP BY
     pkg_hash,
