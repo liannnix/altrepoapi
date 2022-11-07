@@ -357,13 +357,20 @@ WHERE pkgset_uuid IN (
 )
 """
 
-    check_package_name = """
+    get_source_pkg_name = """
 SELECT DISTINCT
-    pkg_name,
-    pkg_sourcepackage
-FROM BranchPackageHistory
-WHERE pkg_name='{name}'
-    AND pkgset_name = '{branch}'
+    pkg_name
+FROM Packages
+WHERE pkg_hash IN (
+    SELECT pkg_srcrpm_hash
+    FROM Packages
+    WHERE pkg_hash IN (
+        SELECT pkg_hash
+        FROM static_last_packages
+        WHERE pkg_name = '{name}'
+            AND pkgset_name = '{branch}'
+        )
+)
 """
 
     get_src_pkg_by_bin = """
