@@ -35,26 +35,17 @@ class FindSourcePackageInBranch(APIWorker):
         branch = self.args["branch"]
         name = self.args["name"]
 
+        # get source package name from static_last_packages
         response = self.send_sql_request(
-            self.sql.check_package_name.format(name=name, branch=branch)
+            self.sql.get_source_pkg_name.format(name=name, branch=branch)
         )
         if not self.sql_status:
             return self.error
 
-        if not response:
-            return self.store_error(
-                {
-                    "message": f"No information found for {name} in DB",
-                    "args": self.args,
-                }
-            )
-        pkgs = {el[1]: el[0] for el in response}
-
-        if 1 in pkgs:
-            # use source package prior to binary if found by name
-            src_pkg_name = pkgs[1]
+        if response:
+            src_pkg_name = response[0][0]
         else:
-            # got only binary package -> find source package name
+            # nothing found -> find source package name in the BranchPackageHistory
             response = self.send_sql_request(
                 self.sql.get_src_pkg_by_bin.format(name=name, branch=branch)
             )
