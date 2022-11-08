@@ -20,10 +20,10 @@ from altrepo_api.api.base import APIWorker
 from ..sql import sql
 
 
-@dataclass(frozen=True, order=True)
-class IterationMeta:
-    task_try: int
-    task_iter: int
+@dataclass
+class SubtaskArchsMeta:
+    arch: str
+    stage_status: str
 
 
 @dataclass
@@ -42,10 +42,7 @@ class SubtaskMeta:
     subtask_pkg_from: str
     subtask_changed: datetime.datetime
     type: str
-    stage: str
-    stage_status: str
-    status: str
-    archs: list[str] = field(default_factory=list)
+    archs: list[SubtaskArchsMeta] = field(default_factory=list)
 
 
 @dataclass
@@ -54,16 +51,12 @@ class TaskMeta:
     task_repo: str
     task_state: str
     task_owner: str
+    task_try: int
+    task_iter: int
     task_changed: str
     task_message: str
-    iterations: list[IterationMeta] = field(default_factory=list)
+    task_stage: str
     subtasks: list[SubtaskMeta] = field(default_factory=list)
-
-    def __post_init__(self):
-        # convert list of tuples passed in during instantiation
-        self.iterations = sorted(
-            [IterationMeta(*el) for el in self.iterations], reverse=True  # type: ignore
-        )
 
 
 class LastTasks(APIWorker):
@@ -125,10 +118,23 @@ class LastTasks(APIWorker):
         tasks = [TaskMeta(*el) for el in response]  # type: ignore
 
         # get subtask info by task_id
+        _tmp_table = "tmp_task_ids"
         response = self.send_sql_request(
-            self.sql.get_subtasks.format(
-                tasks=[el.task_id for el in tasks],
-            )
+            self.sql.get_subtasks.format(tmp_table=_tmp_table),
+            external_tables=[
+                {
+                    "name": _tmp_table,
+                    "structure": [
+                        ("task_id", "UInt32"),
+                    ],
+                    "data": [
+                        {
+                            "task_id": el.task_id,
+                        }
+                        for el in tasks
+                    ],
+                }
+            ],
         )
         if not self.sql_status:
             return self.error
@@ -139,29 +145,43 @@ class LastTasks(APIWorker):
                     "args": self.args,
                 }
             )
-
         subtasks = [SubtaskMeta(*el) for el in response]
 
         # get subtask archs by task_id and subtask_id
+        _tmp_table = "tmp_tasks_subtasks"
+        tasks_subtasks = []
+        for task in tasks:
+            for sub in subtasks:
+                if task.task_state in ("BUILDING", "FAILED", "FAILING"):
+                    if task.task_id == sub.task_id:
+                        tasks_subtasks.append(
+                            {
+                                "task_id": sub.task_id,
+                                "subtask_id": sub.subtask_id
+                            }
+                        )
+
         response = self.send_sql_request(
-            self.sql.get_subtasks_archs.format(
-                subtasks=[(el.task_id, el.subtask_id) for el in subtasks],
-            )
+            self.sql.get_subtasks_status.format(tmp_table=_tmp_table),
+            external_tables=[
+                {
+                    "name": _tmp_table,
+                    "structure": [
+                        ("task_id", "UInt32"),
+                        ("subtask_id", "UInt32"),
+                    ],
+                    "data": tasks_subtasks,
+                }
+            ],
         )
         if not self.sql_status:
             return self.error
-        if not response:
-            return self.store_error(
-                {
-                    "message": "No data found in database",
-                    "args": self.args,
-                }
-            )
-
-        for subtask in subtasks:
-            for el in response:
-                if el[0] == subtask.task_id and el[1] == subtask.subtask_id:
-                    subtask.archs = el[2]
+        if response:
+            for subtask in subtasks:
+                for el in response:
+                    if el[0] == subtask.task_id and el[1] == subtask.subtask_id:
+                        subtask.archs = [SubtaskArchsMeta(*arch) for arch in el[2]]
+                        subtask.type = el[3]
 
         for task in tasks:
             task.subtasks = [el for el in subtasks if el.task_id == task.task_id]
