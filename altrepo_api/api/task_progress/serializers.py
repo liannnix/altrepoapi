@@ -87,3 +87,11 @@ last_tasks_model = ns.model(
         ),
     },
 )
+
+all_pkgsets_model = ns.model(
+    "AllPackageSetsModel",
+    {
+        "length": fields.Integer(description="number of packagesets found"),
+        "branches": fields.List(fields.String, description="list of packagesets"),
+    }
+)

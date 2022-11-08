@@ -116,5 +116,9 @@ GROUP BY
     stype
 """
 
+    get_all_pkgset_names = """
+SELECT groupUniqArray(task_repo) FROM TaskProgress    
+"""
+
 
 sql = SQL()
