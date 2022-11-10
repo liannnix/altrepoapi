@@ -27,3 +27,13 @@ def test_last_tasks(client, kwargs):
             assert data["length"] == params["tasks_limit"]
         assert data["length"] != 0
         assert data["tasks"] != []
+
+
+def test_all_packagesets(client):
+    url = url_for("api.task/progress_route_all_package_sets")
+    response = client.get(url)
+    data = response.json
+    assert response.status_code == 200
+    assert data["length"] != 0
+    assert data["branches"] != []
+    assert "sisyphus" in data["branches"]
