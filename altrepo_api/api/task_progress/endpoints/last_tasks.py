@@ -21,6 +21,15 @@ from ..sql import sql
 
 
 @dataclass
+class TaskApprovalMeta:
+    task_id: int
+    date: datetime.datetime
+    type: str
+    nickname: str
+    message: str
+
+
+@dataclass
 class SubtaskArchsMeta:
     arch: str
     stage_status: str
@@ -56,7 +65,9 @@ class TaskMeta:
     task_changed: str
     task_message: str
     task_stage: str
+    dependencies: list[int] = field(default_factory=list)
     subtasks: list[SubtaskMeta] = field(default_factory=list)
+    approval: list[TaskApprovalMeta] = field(default_factory=list)
 
 
 class LastTasks(APIWorker):
@@ -117,6 +128,60 @@ class LastTasks(APIWorker):
 
         tasks = [TaskMeta(*el) for el in response]  # type: ignore
 
+        # get task approval info by task_id
+        _tmp_table = "tmp_task_ids"
+        response = self.send_sql_request(
+            self.sql.get_task_approval.format(tmp_table=_tmp_table),
+            external_tables=[
+                {
+                    "name": _tmp_table,
+                    "structure": [
+                        ("task_id", "UInt32"),
+                    ],
+                    "data": [
+                        {
+                            "task_id": el.task_id,
+                        }
+                        for el in tasks
+                    ],
+                }
+            ],
+        )
+        if not self.sql_status:
+            return self.error
+        if response:
+            approval = [TaskApprovalMeta(*el[:-1]) for el in response]
+            for task in tasks:
+                task.approval = [el for el in approval if el.task_id == task.task_id]
+
+        # get task depends if task_state == "POSTPONED"
+        _tmp_table = "tmp_task_ids_postponed"
+        response = self.send_sql_request(
+            self.sql.get_task_dependencies.format(tmp_table=_tmp_table),
+            external_tables=[
+                {
+                    "name": _tmp_table,
+                    "structure": [
+                        ("task_id", "UInt32"),
+                    ],
+                    "data": [
+                        {
+                            "task_id": el.task_id,
+                        }
+                        for el in tasks
+                        if el.task_state == "POSTPONED"
+                    ],
+                }
+            ],
+        )
+        if not self.sql_status:
+            return self.error
+        if response:
+            for task in tasks:
+                for el in response:
+                    if el[0] == task.task_id:
+                        task.dependencies = el[1]
+
         # get subtask info by task_id
         _tmp_table = "tmp_task_ids"
         response = self.send_sql_request(
@@ -148,19 +213,18 @@ class LastTasks(APIWorker):
         subtasks = [SubtaskMeta(*el) for el in response]
 
         # get subtask archs by task_id and subtask_id
-        _tmp_table = "tmp_tasks_subtasks"
         tasks_subtasks = []
         for task in tasks:
             for sub in subtasks:
-                if task.task_state in ("BUILDING", "FAILED", "FAILING"):
-                    if task.task_id == sub.task_id:
-                        tasks_subtasks.append(
-                            {
-                                "task_id": sub.task_id,
-                                "subtask_id": sub.subtask_id
-                            }
-                        )
+                if (
+                    task.task_state in ("BUILDING", "FAILED", "FAILING")
+                    and task.task_id == sub.task_id
+                ):
+                    tasks_subtasks.append(
+                        {"task_id": sub.task_id, "subtask_id": sub.subtask_id}
+                    )
 
+        _tmp_table = "tmp_tasks_subtasks"
         response = self.send_sql_request(
             self.sql.get_subtasks_status.format(tmp_table=_tmp_table),
             external_tables=[

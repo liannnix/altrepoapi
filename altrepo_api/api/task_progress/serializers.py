@@ -25,7 +25,7 @@ subtask_archs_model = ns.model(
     {
         "stage_status": fields.String(description="stage status"),
         "arch": fields.String(description="subtask architecture"),
-    }
+    },
 )
 subtasks_el_model = ns.model(
     "SubTasksElementModel",
@@ -46,16 +46,18 @@ subtasks_el_model = ns.model(
         "subtask_changed": fields.DateTime(description="subtask changed"),
         "type": fields.String(description="subtask type"),
         "archs": fields.Nested(
-            subtask_archs_model,
-            description="list of subtask architectures"
+            subtask_archs_model, description="list of subtask architectures"
         ),
     },
 )
-task_iterations_el_model = ns.model(
-    "TaskIterationsElementModel",
+task_approval_el_model = ns.model(
+    "TaskApprovalElementModel",
     {
-        "task_try": fields.Integer(description="task try number"),
-        "task_iter": fields.Integer(description="task iteration number"),
+        "task_id": fields.Integer(description="task id"),
+        "date": fields.DateTime(description="approval date"),
+        "type": fields.String(description="approval type"),
+        "nickname": fields.String(description="maintainer nickname"),
+        "message": fields.String(description="approval message"),
     },
 )
 last_tasks_el_model = ns.model(
@@ -70,8 +72,14 @@ last_tasks_el_model = ns.model(
         "task_changed": fields.DateTime(description="task changed"),
         "task_message": fields.String(description="task message"),
         "task_stage": fields.String(description="task stage"),
+        "dependencies": fields.List(fields.Integer, description="task dependencies"),
         "subtasks": fields.Nested(
             subtasks_el_model, description="list of subtasks by task", as_list=True
+        ),
+        "approval": fields.Nested(
+            task_approval_el_model,
+            description="list of approvals for task",
+            as_list=True,
         ),
     },
 )
@@ -93,5 +101,5 @@ all_pkgsets_model = ns.model(
     {
         "length": fields.Integer(description="number of packagesets found"),
         "branches": fields.List(fields.String, description="list of packagesets"),
-    }
+    },
 )

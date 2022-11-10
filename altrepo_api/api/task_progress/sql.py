@@ -44,8 +44,8 @@ SELECT * FROM (
         {branch}
     GROUP BY task_id, task_stage
     ORDER BY changed DESC
-    {limit}
 ) WHERE (state != 'DELETED')
+{limit}
 """
 
     get_subtasks = """
@@ -118,6 +118,48 @@ GROUP BY
 
     get_all_pkgset_names = """
 SELECT groupUniqArray(task_repo) FROM TaskProgress    
+"""
+
+    get_task_approval = """
+SELECT DISTINCT
+    task_id,
+    date,
+    type,
+    nickname,
+    message,
+    revoked
+FROM
+(
+    SELECT task_id,
+           subtask_id,
+           argMax(tapp_date, ts) AS date,
+           argMax(tapp_type, ts) as type,
+           argMax(tapp_name, ts) AS nickname,
+           argMax(tapp_message, ts) AS message,
+           argMax(tapp_revoked, ts) AS revoked
+    FROM TaskApprovals
+    WHERE task_id NOT IN (
+        SELECT task_id FROM (
+            SELECT task_id, argMax(task_state, task_changed) AS state
+            FROM TaskStates
+            GROUP BY task_id
+        )
+        WHERE state = 'DELETED'
+    )
+    GROUP BY task_id, subtask_id, tapp_name
+)
+WHERE task_id in (SELECT task_id FROM {tmp_table})
+    AND revoked = 0    
+"""
+
+    get_task_dependencies = """
+SELECT
+    task_id,
+    argMax(task_depends, ts)
+FROM TaskProgress
+WHERE task_state = 'POSTPONED'
+    AND task_id IN (SELECT task_id FROM {tmp_table})
+GROUP BY task_id
 """
 
 
