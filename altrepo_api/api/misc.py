@@ -46,6 +46,7 @@ class LookupTables:
         "sisyphus_e2k",
         "t6",
         "t7",
+        "icarus",
     ]
     taskless_branches = [
         "p9_mipsel",
