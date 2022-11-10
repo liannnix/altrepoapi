@@ -17,12 +17,13 @@ from flask import g
 from flask_restx import Resource
 
 from altrepo_api.utils import get_logger, url_logging
-from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
+from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404, GET_RESPONSES_404
+from .endpoints.packageset import AllPackageSets
 from .endpoints.last_tasks import LastTasks
 
 from .namespace import get_namespace
 from .parsers import last_tasks_args
-from .serializers import last_tasks_model
+from .serializers import last_tasks_model, all_pkgsets_model
 
 ns = get_namespace()
 
@@ -43,4 +44,21 @@ class routeLastTasks(Resource):
         url_logging(logger, g.url)
         args = last_tasks_args.parse_args(strict=True)
         w = LastTasks(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/all_packagesets",
+    doc={
+        "description": "Get package sets list for last tasks",
+        "responses": GET_RESPONSES_404,
+    },
+)
+class routeAllPackageSets(Resource):
+    # @ns.expect()
+    @ns.marshal_with(all_pkgsets_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = {}
+        w = AllPackageSets(g.connection, **args)
         return run_worker(worker=w, args=args)
