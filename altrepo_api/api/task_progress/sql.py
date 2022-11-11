@@ -146,6 +146,15 @@ FROM
         )
         WHERE state = 'DELETED'
     )
+    AND (task_id, subtask_id) NOT IN (
+        SELECT task_id, subtask_id FROM (
+            SELECT task_id,
+                   subtask_id,
+                   argMax(subtask_deleted, ts) AS sub_del
+            FROM Tasks
+            GROUP BY task_id, subtask_id
+        ) WHERE sub_del = 1
+    )
     GROUP BY task_id, subtask_id, tapp_name
 )
 WHERE task_id in (SELECT task_id FROM {tmp_table})
