@@ -155,7 +155,7 @@ FROM
             GROUP BY task_id, subtask_id
         ) WHERE sub_del = 1
     )
-    GROUP BY task_id, subtask_id, tapp_name
+    GROUP BY task_id, subtask_id
 )
 WHERE task_id in (SELECT task_id FROM {tmp_table})
     AND revoked = 0    
