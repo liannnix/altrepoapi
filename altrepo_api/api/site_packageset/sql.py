@@ -157,6 +157,90 @@ GROUP BY pkg_name
 ORDER BY pkg_name
 """
 
+    get_find_packages_by_name_and_arch = """
+WITH
+lp_preselect AS
+(
+    SELECT
+        pkg_hash,
+        pkgset_name
+    FROM static_last_packages
+    WHERE pkg_name ILIKE '%{name}%'
+        AND pkg_sourcepackage = 1
+        {branch}
+),
+srcs_by_arch AS
+(
+    SELECT
+        pkg_hash,
+        pkgset_name
+    FROM lp_preselect
+    WHERE pkg_hash IN (
+        SELECT pkg_srcrpm_hash
+        FROM Packages
+        WHERE pkg_sourcepackage = 0
+            AND pkg_srcrpm_hash IN (
+                SELECT pkg_hash FROm lp_preselect
+            )
+            {arch}
+    )
+),
+lp_preselect2 AS
+(
+    SELECT
+        pkg_hash,
+        pkgset_name
+    FROM static_last_packages
+    WHERE pkg_name NOT ILIKE '%{name}%'
+        AND pkg_sourcepackage = 1
+        {branch}
+)
+SELECT
+    pkg_name,
+    groupUniqArray((LP.pkgset_name, pkg_version, pkg_release, toString(pkg_hash))),
+    max(pkg_buildtime),
+    argMax(pkg_url, pkg_buildtime),
+    argMax(pkg_summary, pkg_buildtime),
+    any(pkg_group_)
+FROM Packages
+INNER JOIN srcs_by_arch AS LP USING (pkg_hash)
+WHERE pkg_hash IN
+(
+    SELECT pkg_hash FROM srcs_by_arch
+)
+GROUP BY pkg_name
+ORDER BY pkg_name
+UNION ALL
+SELECT
+    pkg_name,
+    groupUniqArray((LP2.pkgset_name, pkg_version, pkg_release, toString(pkg_hash))),
+    max(pkg_buildtime),
+    argMax(pkg_url, pkg_buildtime),
+    argMax(pkg_summary, pkg_buildtime),
+    any(pkg_group_)
+FROM Packages
+INNER JOIN lp_preselect2 AS LP2 USING (pkg_hash)
+WHERE pkg_name NOT ILIKE '%{name}%'
+    AND pkg_sourcepackage = 1
+    AND pkg_sourcerpm IN
+    (
+        SELECT pkg_sourcerpm
+        FROM Packages
+        WHERE pkg_sourcepackage = 0
+            AND pkg_name ILIKE '%{name}%'
+            {arch}
+            AND pkg_hash IN (
+                SELECT pkg_hash
+                FROM static_last_packages
+                WHERE pkg_sourcepackage = 0
+                    {branch}
+            )
+    )
+    {branch}
+GROUP BY pkg_name
+ORDER BY pkg_name
+"""
+
     get_find_deleted_packages_by_name = """
 WITH
 deleted_src_pkgs AS (
