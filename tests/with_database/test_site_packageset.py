@@ -354,6 +354,18 @@ def test_packagesets_by_hash(client, kwargs):
             "arch": ARCH_IN_DB,
             "status_code": 200,
         },
+        {
+            "name": BIN_PACKAGE_IN_DB,
+            "branch": "p8",
+            "arch": ARCH_IN_DB,
+            "status_code": 200,
+        },
+        {
+            "name": BIN_PACKAGE_IN_DB,
+            "branch": "p8",
+            "arch": "aarch64",
+            "status_code": 404,
+        },
         {"name": PACKAGE_NOT_IN_DB, "branch": None, "arch": None, "status_code": 404},
         {"name": "", "branch": None, "arch": None, "status_code": 400},
         {
