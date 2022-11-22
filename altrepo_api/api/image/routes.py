@@ -23,7 +23,7 @@ from altrepo_api.api.base import (
     run_worker,
     GET_RESPONSES_404,
     GET_RESPONSES_400_404,
-    POST_RESPONSE_400_404,
+    POST_RESPONSES_400_404,
 )
 from .endpoints.find_image_by_package import FindImagesByPackageName
 from .endpoints.image_status import ImageStatus, ImageTagStatus, ActiveImages
@@ -143,7 +143,7 @@ class routeCheckPackagesSP(Resource):
 class routeImageStatus(Resource):
     @ns.doc(
         description="Load image status into database",
-        responses=POST_RESPONSE_400_404,
+        responses=POST_RESPONSES_400_404,
     )
     @ns.expect(img_json_model)
     @ns.doc(security="BasicAuth")
@@ -176,7 +176,7 @@ class routeImageStatus(Resource):
 class routeImageTagStatus(Resource):
     @ns.doc(
         description="Load iso image status into database",
-        responses=POST_RESPONSE_400_404,
+        responses=POST_RESPONSES_400_404,
     )
     @ns.expect(img_tag_json_model)
     @ns.doc(security="BasicAuth")

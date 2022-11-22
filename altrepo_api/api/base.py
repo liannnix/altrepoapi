@@ -115,7 +115,9 @@ class APIWorker:
         return "OK", 200
 
 
-def _abort_on_validation_error(worker: APIWorker, method: Callable[[], bool], args: Any):
+def _abort_on_validation_error(
+    worker: APIWorker, method: Callable[[], bool], args: Any
+):
     """Call Flask abort() on APIWorker validation method call returned Flase."""
 
     if not method():
@@ -174,7 +176,7 @@ GET_RESPONSES_400_404 = {
     404: "Requested data not found in database",
 }
 
-POST_RESPONSE_400_404 = {
+POST_RESPONSES_400_404 = {
     201: "Data loaded",
     400: "Request parameters validation error",
     404: "Requested data not found in database",

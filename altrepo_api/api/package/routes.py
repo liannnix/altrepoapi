@@ -23,7 +23,7 @@ from altrepo_api.api.base import (
     run_worker,
     GET_RESPONSES_404,
     GET_RESPONSES_400_404,
-    POST_RESPONSE_400_404,
+    POST_RESPONSES_400_404,
 )
 
 from .namespace import get_namespace
@@ -226,7 +226,7 @@ class routePackageBuildDependencySet(Resource):
 class routePackageRepocop(Resource):
     @ns.doc(
         description="Load repocop data into database",
-        responses=POST_RESPONSE_400_404,
+        responses=POST_RESPONSES_400_404,
     )
     @ns.expect(repocop_json_list_model)
     @ns.doc(security="BasicAuth")

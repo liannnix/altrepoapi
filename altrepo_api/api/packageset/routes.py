@@ -23,7 +23,7 @@ from altrepo_api.api.base import (
     run_worker,
     GET_RESPONSES_404,
     GET_RESPONSES_400_404,
-    POST_RESPONSE_400_404,
+    POST_RESPONSES_400_404,
 )
 from .endpoints.packages_by_uuid import PackagesByUuid
 from .endpoints.pkgset_compare import PackagesetCompare
@@ -94,7 +94,7 @@ class routePackagesetCompare(Resource):
 class routeRepositoryStatus(Resource):
     @ns.doc(
         description="Load package set status into database",
-        responses=POST_RESPONSE_400_404,
+        responses=POST_RESPONSES_400_404,
     )
     @ns.expect(pkgset_status_post_model)
     @ns.doc(security="BasicAuth")
