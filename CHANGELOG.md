@@ -6,6 +6,18 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.8.11] - 2022-11-22
+
+Regular API code updates and fixes.
+
+### Added
+- 'icarus' as known branch
+- task/progress endpoints
+### Changed
+### Fixed
+- site/find_packages architecture argument handling
+- export/repology binary packages sorting
+
 ## [1.8.10] - 2022-11-03
 
 Regular API code updates and fixes.
