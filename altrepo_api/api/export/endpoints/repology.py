@@ -105,7 +105,10 @@ class RepologyExport(APIWorker):
 
         # build result packages dictionary
         for src in src_packages:
-            src["binaries"] = [BinPkgInfo(*el)._asdict() for el in src["binaries"]]
+            src["binaries"] = sorted(
+                [BinPkgInfo(*el)._asdict() for el in src["binaries"]],
+                key=lambda x: x["name"],
+            )
             src["homepage"] = f'{lut.packages_base}/{self.branch}/srpms/{src["name"]}/'
             _specfile = src["recipe"]
             src[
