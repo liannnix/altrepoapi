@@ -1,10 +1,11 @@
 %define _unpackaged_files_terminate_build 1
-%def_disable check
+
+%def_enable check
 
 %define oname altrepo_api
 
 Name: altrepo-api
-Version: 1.8.8
+Version: 1.8.11
 Release: alt1
 
 Summary: ALTRepo API is a REST API for the repository database of ALT distribution
@@ -21,6 +22,16 @@ Requires: python3-module-gunicorn
 BuildRequires(pre): rpm-build-python3
 BuildRequires: python3-module-setuptools
 BuildRequires: python3-module-wheel
+
+%if_enabled check
+BuildRequires: python3-module-tox
+BuildRequires: python3-module-pytest
+BuildRequires: python3-module-mmh3
+BuildRequires: python3-module-gunicorn
+BuildRequires: python3-module-flask-restx
+BuildRequires: python3-module-clickhouse-driver
+BuildRequires: python3-module-tzdata
+%endif
 
 Source0: %name-%version.tar
 Patch1: %name-%version-%release.patch
@@ -48,6 +59,10 @@ mv services/uwsgi/wsgi.py %buildroot%_datadir/%name/wsgi.py
 cp -r services/* examples/
 mkdir -p %buildroot%_logdir/altrepo-api
 
+%check
+%tox_create_default_config
+%tox_check_pyproject -- -vra tests/unit
+
 %pre
 %_sbindir/groupadd -r -f _altrepo_api 2> /dev/null ||:
 %_sbindir/useradd -r -g _altrepo_api -s /dev/null -c "ALTRepo API User" _altrepo_api 2> /dev/null ||:
@@ -67,6 +82,10 @@ mkdir -p %buildroot%_logdir/altrepo-api
 %python3_sitelibdir/%oname-%version.dist-info
 
 %changelog
+* Tue Nov 22 2022 Danil Shein <dshein@altlinux.org> 1.8.11-alt1
+ - 1.8.8 -> 1.8.11
+   + enable unit tests
+
 * Thu Nov 03 2022 Danil Shein <dshein@altlinux.org> 1.8.8-alt1
  - 1.8.0 -> 1.8.8
    + migrate to pyproject
