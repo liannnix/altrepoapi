@@ -18,12 +18,13 @@ from flask_restx import Resource
 
 from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404, GET_RESPONSES_404
+from .endpoints.find_tasks import FastTasksSearchLookup
 from .endpoints.packageset import AllPackageSets
 from .endpoints.last_tasks import LastTasks
 
 from .namespace import get_namespace
-from .parsers import last_tasks_args
-from .serializers import last_tasks_model, all_pkgsets_model
+from .parsers import last_tasks_args, fast_find_tasks_args
+from .serializers import last_tasks_model, all_pkgsets_model, fast_tasks_search_model
 
 ns = get_namespace()
 
@@ -61,4 +62,21 @@ class routeAllPackageSets(Resource):
         url_logging(logger, g.url)
         args = {}
         w = AllPackageSets(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/fast_tasks_search_lookup",
+    doc={
+        "description": "Fast task search by ID, task owner or component.",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeFastTasksSearchLookup(Resource):
+    @ns.expect(fast_find_tasks_args)
+    @ns.marshal_with(fast_tasks_search_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = fast_find_tasks_args.parse_args(strict=True)
+        w = FastTasksSearchLookup(g.connection, **args)
         return run_worker(worker=w, args=args)
