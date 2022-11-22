@@ -31,7 +31,7 @@ SELECT * FROM (
         argMax(task_iter, ts) AS iter,
         argMax(task_changed, ts) AS changed,
         argMax(task_message, ts) AS message,
-        TT.stage as task_stage
+        TT.stage AS task_stage
     FROM TaskProgress
     LEFT JOIN (
         SELECT task_id, argMax(stage, ts) as stage
@@ -65,7 +65,7 @@ SELECT
     argMax(subtask_changed, ts),
     argMax(type, ts)
 FROM TaskSubtaskProgress
-WHERE (task_id in (SELECT task_id FROM {tmp_table}))
+WHERE (task_id IN (SELECT task_id FROM {tmp_table}))
     AND (type != 'progress')
 GROUP BY
     task_id,
@@ -117,7 +117,7 @@ GROUP BY
 """
 
     get_all_pkgset_names = """
-SELECT groupUniqArray(task_repo) FROM TaskProgress    
+SELECT groupUniqArray(task_repo) FROM TaskProgress
 """
 
     get_task_approval = """
@@ -157,8 +157,8 @@ FROM
     )
     GROUP BY task_id, subtask_id
 )
-WHERE task_id in (SELECT task_id FROM {tmp_table})
-    AND revoked = 0    
+WHERE task_id IN (SELECT task_id FROM {tmp_table})
+    AND revoked = 0
 """
 
     get_task_dependencies = """
@@ -244,7 +244,7 @@ FROM (
         SELECT
             task_id,
             any(TT.owner),
-            TT.task_repo as task_repo,
+            TT.task_repo AS task_repo,
             argMax(task_state, task_changed) AS state,
             max(task_changed) AS changed
         FROM TaskStates
@@ -372,11 +372,11 @@ WITH stp_components AS (
       AND (type != 'progress')
     GROUP BY task_id,
              subtask_id
-    ORDER BY changed desc 
+    ORDER BY changed DESC
 )
 SELECT DISTINCT *
 FROM (
-    SELECT 
+    SELECT
         task_id,
         srpm,
         srpm_name,
@@ -398,14 +398,14 @@ FROM (
     WHERE task_id IN (SELECT task_id FROM {tmp_table})
         AND subtask_deleted = 0
     GROUP BY task_id, task_changed
-    ORDER BY task_changed desc 
-)     
+    ORDER BY task_changed DESC
+)
 """
 
     check_owner = """
 SELECT task_owner
 FROM Tasks
-WHERE task_owner ILIKE '%{owner}%'    
+WHERE task_owner ILIKE '%{owner}%'
 """
 
 
