@@ -246,7 +246,7 @@ class MisconflictPackages(APIWorker):
         if not response:
             _ = self.store_error(
                 {"message": "Failed to get file names from database by hash"},
-                self.ll.INFO,
+                self.LL.ERROR,
                 500,
             )
             return
@@ -314,7 +314,7 @@ class MisconflictPackages(APIWorker):
         if not response:
             _ = self.store_error(
                 {"message": "Failed to get file names from database by hash"},
-                self.ll.INFO,
+                self.LL.ERROR,
                 500,
             )
             return
@@ -361,7 +361,7 @@ class MisconflictPackages(APIWorker):
                     "message": "Error occured in ConflictFilter",
                     "error": e.error_details,
                 },
-                self.ll.ERROR,
+                self.LL.ERROR,
                 500,
             )
             return

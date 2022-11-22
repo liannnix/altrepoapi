@@ -37,24 +37,24 @@ class APIWorker:
     """Base API endpoint worker class."""
 
     DEBUG = settings.SQL_DEBUG
+    LL = logger_level()
 
     def __init__(self) -> None:
         self.logger = get_logger(__name__)
-        self.ll = logger_level
         self.status: bool = False
         self.error: tuple[Any, int]
         self.sql_status: bool = False
         self.conn: ConnectionProto
-        self.validation_results: list = []
+        self.validation_results: list[str] = []
 
     def _log_error(self, severity: int) -> None:
-        if severity == self.ll.CRITICAL:
+        if severity == self.LL.CRITICAL:
             self.logger.critical(self.error)
-        elif severity == self.ll.ERROR:
+        elif severity == self.LL.ERROR:
             self.logger.error(self.error)
-        elif severity == self.ll.WARNING:
+        elif severity == self.LL.WARNING:
             self.logger.warning(self.error)
-        elif severity == self.ll.INFO:
+        elif severity == self.LL.INFO:
             self.logger.info(self.error)
         else:
             self.logger.debug(self.error)
@@ -94,13 +94,13 @@ class APIWorker:
         self.conn.request_line = request_line
         self.sql_status, response = self.conn.send_request(**kwargs)
         if not self.sql_status:
-            self._store_sql_error(response, logger_level.ERROR, http_code)
+            self._store_sql_error(response, self.LL.ERROR, http_code)
         return response
 
     def store_error(
         self,
         message: dict[str, Any],
-        severity: int = logger_level.INFO,
+        severity: int = LL.INFO,
         http_code: int = 404,
     ) -> tuple[Any, int]:
         """Build and returns APIWorker error object."""
@@ -115,7 +115,7 @@ class APIWorker:
         return "OK", 200
 
 
-def abort_on_validation_error(worker: APIWorker, method: Callable, args: Any):
+def _abort_on_validation_error(worker: APIWorker, method: Callable[[], bool], args: Any):
     """Call Flask abort() on APIWorker validation method call returned Flase."""
 
     if not method():
@@ -127,7 +127,7 @@ def abort_on_validation_error(worker: APIWorker, method: Callable, args: Any):
         )
 
 
-def abort_on_result_error(method: Callable[[], tuple[Any, int]], ok_code: int):
+def _abort_on_result_error(method: Callable[[], tuple[Any, int]], ok_code: int):
     """Call Flask abort() on APIWorker run method call returned not 'ok_code'."""
 
     result, code = method()
@@ -143,7 +143,7 @@ def run_worker(
     check_method: Optional[Callable[[], bool]] = None,
     args: Any = None,
     ok_code: int = 200,
-):
+) -> tuple[Any, int]:
     """Calls APIWorker class's 'check_method' and 'run_method' and returns the result.
 
     Calls flask_restx abort() if check_method() returned False
@@ -156,11 +156,11 @@ def run_worker(
     # run APIWorker validator method
     if check_method is None:
         check_method = worker.check_params
-    abort_on_validation_error(worker=worker, method=check_method, args=args)
+    _abort_on_validation_error(worker=worker, method=check_method, args=args)
     # run APIWorker run method
     if run_method is None:
         run_method = worker.get
-    return abort_on_result_error(method=run_method, ok_code=ok_code)
+    return _abort_on_result_error(method=run_method, ok_code=ok_code)
 
 
 GET_RESPONSES_404 = {

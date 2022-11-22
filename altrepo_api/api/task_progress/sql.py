@@ -21,25 +21,30 @@ from dataclasses import dataclass
 class SQL:
 
     get_last_tasks = """
-SELECT
-    task_id,
-    argMax(task_repo, ts) AS branch,
-    argMax(task_state, ts) AS state,
-    argMax(task_owner, ts) AS owner,
-    argMax(task_changed, ts) AS changed,
-    argMax(task_message, ts) AS message,
-    TT.prev_iter as prev_iter
-FROM TaskProgress
-LEFT JOIN (
-    SELECT task_id, groupUniqArray((task_try, task_iter)) AS prev_iter
+SELECT * FROM (
+    SELECT
+        task_id,
+        argMax(task_repo, ts) AS branch,
+        argMax(task_state, ts) AS state,
+        argMax(task_owner, ts) AS owner,
+        argMax(task_try, ts) AS try,
+        argMax(task_iter, ts) AS iter,
+        argMax(task_changed, ts) AS changed,
+        argMax(task_message, ts) AS message,
+        TT.stage as task_stage
     FROM TaskProgress
-    WHERE task_try != 0
-    GROUP BY task_id
-) AS TT ON TT.task_id = TaskProgress.task_id
-WHERE type = 'state'
-    {branch}
-GROUP BY task_id, prev_iter
-ORDER BY changed DESC
+    LEFT JOIN (
+        SELECT task_id, argMax(stage, ts) as stage
+        FROM TaskProgress
+        WHERE stage_status = 'started'
+            AND task_state = 'BUILDING'
+        GROUP BY task_id
+        ) AS TT ON TT.task_id = TaskProgress.task_id
+    WHERE type = 'state'
+        {branch}
+    GROUP BY task_id, task_stage
+    ORDER BY changed DESC
+) WHERE (state != 'DELETED')
 {limit}
 """
 
@@ -58,28 +63,112 @@ SELECT
     argMax(subtask_package, ts),
     argMax(subtask_pkg_from, ts),
     argMax(subtask_changed, ts),
-    argMax(type, ts),
-    argMax(stage, ts),
-    argMax(stage_status, ts),
-    argMax(status, ts)
+    argMax(type, ts)
 FROM TaskSubtaskProgress
-WHERE (task_id in {tasks}) AND (type != 'progress')
+WHERE (task_id in (SELECT task_id FROM {tmp_table}))
+    AND (type != 'progress')
 GROUP BY
     task_id,
     subtask_id
 ORDER BY subtask_id ASC
 """
 
-    get_subtasks_archs = """
+    get_subtasks_status = """
 SELECT
     task_id,
     subtask_id,
-    groupUniqArray(arch)
-FROM TaskSubtaskProgress
-WHERE ((task_id, subtask_id) IN {subtasks}) AND (type = 'progress') AND (stage_status IN ('processed', 'failed'))
+    groupUniqArray((arch, status)),
+    stype
+FROM
+(
+    SELECT
+        task_id,
+        subtask_id,
+        arch,
+        argMax(stage_status, ts) as status,
+        argMax(type, ts) AS stype,
+        max(ts) as subts
+    FROM TaskSubtaskProgress
+    WHERE (task_id, subtask_id) IN (
+        SELECT task_id, subtask_id
+        FROM {tmp_table}
+    )
+    GROUP BY
+        task_id,
+        subtask_id,
+        arch
+) AS TS
+INNER JOIN (
+    SELECT
+        task_id AS tid,
+        max(ts) as building_ts
+    FROM TaskProgress
+    WHERE task_state = 'BUILDING'
+        AND type = 'state'
+    GROUP BY task_id
+) AS LBTS ON LBTS.tid = TS.task_id
+WHERE stype = 'progress'
+    AND arch != 'all'
+    AND subts >= LBTS.building_ts
 GROUP BY
     task_id,
-    subtask_id
+    subtask_id,
+    stype
+"""
+
+    get_all_pkgset_names = """
+SELECT groupUniqArray(task_repo) FROM TaskProgress    
+"""
+
+    get_task_approval = """
+SELECT DISTINCT
+    task_id,
+    date,
+    type,
+    nickname,
+    message,
+    revoked
+FROM
+(
+    SELECT task_id,
+           subtask_id,
+           argMax(tapp_date, ts) AS date,
+           argMax(tapp_type, ts) as type,
+           argMax(tapp_name, ts) AS nickname,
+           argMax(tapp_message, ts) AS message,
+           argMax(tapp_revoked, ts) AS revoked
+    FROM TaskApprovals
+    WHERE task_id NOT IN (
+        SELECT task_id FROM (
+            SELECT task_id, argMax(task_state, task_changed) AS state
+            FROM TaskStates
+            GROUP BY task_id
+        )
+        WHERE state = 'DELETED'
+    )
+    AND (task_id, subtask_id) NOT IN (
+        SELECT task_id, subtask_id FROM (
+            SELECT task_id,
+                   subtask_id,
+                   argMax(subtask_deleted, ts) AS sub_del
+            FROM Tasks
+            GROUP BY task_id, subtask_id
+        ) WHERE sub_del = 1
+    )
+    GROUP BY task_id, subtask_id, tapp_name
+)
+WHERE task_id in (SELECT task_id FROM {tmp_table})
+    AND revoked = 0    
+"""
+
+    get_task_dependencies = """
+SELECT
+    task_id,
+    argMax(task_depends, ts)
+FROM TaskProgress
+WHERE task_state = 'POSTPONED'
+    AND task_id IN (SELECT task_id FROM {tmp_table})
+GROUP BY task_id
 """
 
 

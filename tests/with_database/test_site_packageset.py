@@ -354,6 +354,18 @@ def test_packagesets_by_hash(client, kwargs):
             "arch": ARCH_IN_DB,
             "status_code": 200,
         },
+        {
+            "name": BIN_PACKAGE_IN_DB,
+            "branch": "p8",
+            "arch": ARCH_IN_DB,
+            "status_code": 200,
+        },
+        {
+            "name": BIN_PACKAGE_IN_DB,
+            "branch": "p8",
+            "arch": "aarch64",
+            "status_code": 404,
+        },
         {"name": PACKAGE_NOT_IN_DB, "branch": None, "arch": None, "status_code": 404},
         {"name": "", "branch": None, "arch": None, "status_code": 400},
         {
@@ -426,3 +438,30 @@ def test_fast_packages_search_lookup(client, kwargs):
         assert data["packages"] != []
         for pkg in data["packages"]:
             assert pkg["branches"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"name": SRC_PACKAGE_IN_DB, "branch": BRANCH_IN_DB, "status_code": 200},
+        {"name": BIN_PACKAGE_IN_DB, "branch": BRANCH_IN_DB, "status_code": 200},
+        {
+            "name": "getssl",
+            "branch": BRANCH_IN_DB,
+            "status_code": 200,
+        },  # source package deleted from branch
+        {"name": PACKAGE_NOT_IN_DB, "branch": BRANCH_IN_DB, "status_code": 404},
+        {"name": SRC_PACKAGE_IN_DB, "branch": BRANCH_NOT_IN_DB, "status_code": 400},
+        {"name": PACKAGE_NOT_IN_DB, "branch": None, "status_code": 400},
+        {"name": "", "branch": None, "status_code": 400},
+    ],
+)
+def test_find_source_package(client, kwargs):
+    params = {k: v for k, v in kwargs.items() if k != "status_code"}
+    url = url_for("api.site_route_find_source_package")
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["source_package"] != ""

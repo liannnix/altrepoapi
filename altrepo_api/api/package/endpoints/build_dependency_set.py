@@ -74,7 +74,7 @@ class BuildDependencySet(APIWorker):
                     "message": "Error occured in ConflictFilter",
                     "error": e.error_details,
                 },
-                self.ll.ERROR,
+                self.LL.ERROR,
                 500,
             )
             return

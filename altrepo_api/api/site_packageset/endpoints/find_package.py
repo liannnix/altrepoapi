@@ -65,16 +65,19 @@ class PackagesetFindPackages(APIWorker):
 
         if self.args["branch"] is not None:
             self.branch = f"AND pkgset_name = '{self.args['branch']}'"
-        if self.args["arch"] is not None:
-            self.arch = f"AND pkg_arch IN {(self.args['arch'],)}"
-        else:
-            self.arch = f"AND pkg_arch IN {(*lut.default_archs,)}"
 
-        response = self.send_sql_request(
-            self.sql.get_find_packages_by_name.format(
+        if self.args["arch"] is None:
+            self.arch = f"AND pkg_arch IN {(*lut.default_archs,)}"
+            _sql = self.sql.get_find_packages_by_name.format(
                 branch=self.branch, name=self.name, arch=self.arch
             )
-        )
+        else:
+            self.arch = f"AND pkg_arch IN {(self.args['arch'],)}"
+            _sql = self.sql.get_find_packages_by_name_and_arch.format(
+                branch=self.branch, name=self.name, arch=self.arch
+            )
+
+        response = self.send_sql_request(_sql)
         if not self.sql_status:
             return self.error
 

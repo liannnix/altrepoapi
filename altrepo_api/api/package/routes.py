@@ -146,7 +146,7 @@ class routeFindPackageset(Resource):
     "/package_by_file_name",
     doc={
         "description": (
-            "Get information about packages from  last package sets "
+            "Get information about binary packages from  last package sets "
             "by given file name and package set name."
             "\nFile name wildcars '*' is allowed."
         ),
@@ -167,7 +167,7 @@ class routePackageByFileName(Resource):
     "/package_by_file_md5",
     doc={
         "description": (
-            "Get information about packages from  last package sets "
+            "Get information about binary packages from  last package sets "
             "by given file MD5 checksum and package set name"
         ),
         "responses": GET_RESPONSES_400_404,

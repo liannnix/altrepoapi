@@ -17,7 +17,6 @@
 from collections import namedtuple
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.misc import lut
 from ..sql import sql
 
 
@@ -38,19 +37,23 @@ class PackagesetPackages(APIWorker):
         self.pkg_type = self.args["package_type"]
         self.branch = self.args["branch"]
         self.archs = self.args["archs"]
-        if self.archs:
+
+        # ignore 'archs' argument if package type is "source" or "all"
+        if self.pkg_type in ("source", "all"):
+            archs = ""
+        elif self.archs:
             if "noarch" not in self.archs:
                 self.archs.append("noarch")
+            archs = f"AND pkg_arch IN {tuple(self.archs)}"
         else:
-            self.archs = lut.known_archs
-        self.archs = tuple(self.archs)
+            archs = ""
 
         depends_type_to_sql = {"source": (1,), "binary": (0,), "all": (1, 0)}
         sourcef = depends_type_to_sql[self.pkg_type]
 
         response = self.send_sql_request(
             self.sql.get_repo_packages.format(
-                branch=self.branch, archs=self.archs, src=sourcef
+                branch=self.branch, src=sourcef, archs=archs
             )
         )
         if not self.sql_status:

@@ -6,6 +6,41 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.8.11] - 2022-11-22
+
+Regular API code updates and fixes.
+
+### Added
+- 'icarus' as known branch
+- task/progress endpoints
+### Changed
+### Fixed
+- site/find_packages architecture argument handling
+- export/repology binary packages sorting
+
+## [1.8.10] - 2022-11-03
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- lut.known_archs contains only actual binary packages architectures
+### Fixed
+- code style errors
+- routes descriptions
+- api/packageset: fixed repository_packages route code package architecture handling
+
+## [1.8.9] - 2022-11-03
+
+Regular API code updates and fixes.
+
+### Added
+- site_packageset/find_source_package route
+### Changed
+- tests: implement skipped tests in test_utils
+### Fixed
+- tests: test_conflict_filter
+
 ## [1.8.8] - 2022-10-27
 
 Regular API code updates and fixes.

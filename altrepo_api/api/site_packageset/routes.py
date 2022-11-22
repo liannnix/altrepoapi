@@ -21,6 +21,7 @@ from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
 
 from .namespace import get_namespace
+from .endpoints.find_src_package import FindSourcePackageInBranch
 from .endpoints.find_package import (
     PackagesetFindPackages,
     FastPackagesSearchLookup,
@@ -43,6 +44,7 @@ from .parsers import (
     pkgset_pkghash_by_nvr,
     pkgset_pkg_binary_hash_args,
     pkgs_search_by_name_args,
+    find_src_pkg_args,
 )
 from .serializers import (
     pkgset_packages_model,
@@ -52,6 +54,7 @@ from .serializers import (
     last_packages_branch_model,
     fast_pkgs_search_model,
     pkgset_pkghash_by_nvr_model,
+    find_src_pkg_in_branch_model,
 )
 
 ns = get_namespace()
@@ -202,4 +205,21 @@ class routePackagesetPkghashByNVR(Resource):
         url_logging(logger, g.url)
         args = pkgset_pkghash_by_nvr.parse_args(strict=True)
         w = PackagesetPkghashByNVR(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/find_source_package",
+    doc={
+        "description": ("Find source package in branch"),
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeFindSourcePackage(Resource):
+    @ns.expect(find_src_pkg_args)
+    @ns.marshal_with(find_src_pkg_in_branch_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = find_src_pkg_args.parse_args(strict=True)
+        w = FindSourcePackageInBranch(g.connection, **args)
         return run_worker(worker=w, args=args)

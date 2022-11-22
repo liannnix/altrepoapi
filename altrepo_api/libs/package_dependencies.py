@@ -694,13 +694,9 @@ class FindPackagesDependencies:
         for el in response:
             dep = PkgDep(*el)
             if dep.type == "require":
-                in_packages_req[dep.hash] = [
-                    Dependency(*x) for x in dep.deps
-                ]
+                in_packages_req[dep.hash] = [Dependency(*x) for x in dep.deps]
             else:
-                found_packages_req[dep.hash] = [
-                    Dependency(*x) for x in dep.deps
-                ]
+                found_packages_req[dep.hash] = [Dependency(*x) for x in dep.deps]
 
         # build result dependency dictionary
         # TODO: nested cycle short paths commented out to be

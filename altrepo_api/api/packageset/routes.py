@@ -57,7 +57,8 @@ logger = get_logger(__name__)
     "/repository_packages",
     doc={
         "description": (
-            "Get list of packageset packages in accordance " "to given parameters"
+            "Get list of packageset packages. "
+            "Architecture argument is actual only if type is 'binary'."
         ),
         "responses": GET_RESPONSES_400_404,
     },

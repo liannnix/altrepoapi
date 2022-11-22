@@ -197,7 +197,7 @@ class TaskDiff(APIWorker):
                 {
                     "Error": f"Failed to get packages from last_packages for task {self.task_id} diff"
                 },
-                self.ll.ERROR,
+                self.LL.ERROR,
                 500,
             )
 
@@ -376,14 +376,14 @@ class TaskHistory(APIWorker):
                 {
                     "Error": f"end date ({end_date}) should be greater than start date ({start_date})"
                 },
-                self.ll.ERROR,
+                self.LL.ERROR,
                 400,
             )
 
         # check if branch has tasks
         if not self._check_branch_has_tasks(branch):
             return self.store_error(
-                {"Error": f"Branch '{branch}' has no task history"}, self.ll.ERROR, 400
+                {"Error": f"Branch '{branch}' has no task history"}, self.LL.ERROR, 400
             )
 
         #  check if start and end tasks is in DB
@@ -394,7 +394,7 @@ class TaskHistory(APIWorker):
                         {
                             "Error": f"Task #{task} not found in DB for branch '{branch}'"
                         },
-                        self.ll.ERROR,
+                        self.LL.ERROR,
                         400,
                     )
 
@@ -409,7 +409,7 @@ class TaskHistory(APIWorker):
             if not response:
                 return self.store_error(
                     {"Error": f"Failed to get data for task {start_task}"},
-                    self.ll.ERROR,
+                    self.LL.ERROR,
                     500,
                 )
 
@@ -425,7 +425,7 @@ class TaskHistory(APIWorker):
             if not response:
                 return self.store_error(
                     {"Error": f"Failed to get data for task {end_task}"},
-                    self.ll.ERROR,
+                    self.LL.ERROR,
                     500,
                 )
 
@@ -436,7 +436,7 @@ class TaskHistory(APIWorker):
         if start_date >= end_date:  # type: ignore
             return self.store_error(
                 {"Error": "Task history end date should be greater than start date"},
-                self.ll.ERROR,
+                self.LL.ERROR,
                 400,
             )
 
@@ -451,7 +451,7 @@ class TaskHistory(APIWorker):
         if not response:
             return self.store_error(
                 {"Error": "Failed to get task history"},
-                self.ll.ERROR,
+                self.LL.ERROR,
                 500,
             )
 
