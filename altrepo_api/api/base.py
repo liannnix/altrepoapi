@@ -45,7 +45,7 @@ class APIWorker:
         self.error: tuple[Any, int]
         self.sql_status: bool = False
         self.conn: ConnectionProto
-        self.validation_results: list = []
+        self.validation_results: list[str] = []
 
     def _log_error(self, severity: int) -> None:
         if severity == self.LL.CRITICAL:
@@ -115,7 +115,7 @@ class APIWorker:
         return "OK", 200
 
 
-def _abort_on_validation_error(worker: APIWorker, method: Callable, args: Any):
+def _abort_on_validation_error(worker: APIWorker, method: Callable[[], bool], args: Any):
     """Call Flask abort() on APIWorker validation method call returned Flase."""
 
     if not method():
