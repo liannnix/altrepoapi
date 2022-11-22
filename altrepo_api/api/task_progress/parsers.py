@@ -17,6 +17,7 @@
 from altrepo_api.api.parser import (
     parser,
     branch_name_type,
+    task_search_type,
 )
 
 
@@ -35,7 +36,15 @@ task_limit_opt = parser.register_item(
     help="number of last tasks to get",
     location="args",
 )
+input_val = parser.register_item(
+    "input",
+    type=task_search_type,
+    required=True,
+    help="task number, owner name or task component",
+    location="args",
+)
 
 
 # build parsers
 last_tasks_args = parser.build_parser(branch_opt, task_limit_opt)
+fast_find_tasks_args = parser.build_parser(input_val, branch_opt, task_limit_opt)

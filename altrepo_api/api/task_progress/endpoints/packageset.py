@@ -37,7 +37,11 @@ class AllPackageSets(APIWorker):
                 {"message": "No data not found in database"},
             )
 
-        branches = [branch for branch in sort_branches(response[0][0]) if branch in lut.known_branches]
+        branches = [
+            branch
+            for branch in sort_branches(response[0][0])
+            if branch in lut.known_branches
+        ]
 
         res = {"length": len(branches), "branches": branches}
 

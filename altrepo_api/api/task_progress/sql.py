@@ -155,7 +155,7 @@ FROM
             GROUP BY task_id, subtask_id
         ) WHERE sub_del = 1
     )
-    GROUP BY task_id, subtask_id, tapp_name
+    GROUP BY task_id, subtask_id
 )
 WHERE task_id in (SELECT task_id FROM {tmp_table})
     AND revoked = 0    
@@ -169,6 +169,243 @@ FROM TaskProgress
 WHERE task_state = 'POSTPONED'
     AND task_id IN (SELECT task_id FROM {tmp_table})
 GROUP BY task_id
+"""
+
+    get_tasks_by_id = """
+SELECT task_id,
+       argMax(owner, changed),
+       argMax(task_repo, changed),
+       argMax(state, changed),
+       max(changed) AS task_changed
+FROM (
+    SELECT *
+    FROM (
+        SELECT task_id,
+               argMax(task_owner, ts) AS owner,
+               task_repo,
+               argMax(task_state, ts) AS state,
+               max(ts) AS changed
+        FROM TaskProgress
+        WHERE toString(task_id) ILIKE '%{task_id}%'
+        {branch}
+        GROUP BY task_id, task_repo
+        )
+    WHERE state != 'DELETED'
+    UNION ALL
+    SELECT *
+    FROM (
+        SELECT task_id,
+               any(task_owner) AS owner,
+               task_repo,
+               any(TT.state),
+               max(task_changed) AS changed
+        FROM Tasks
+        LEFT JOIN (
+            SELECT task_id, argMax(task_state, ts) AS state
+            FROM TaskStates
+            WHERE toString(task_id) ILIKE '%{task_id}%'
+            GROUP BY task_id
+        ) AS TT ON TT.task_id = Tasks.task_id
+        WHERE TT.state != 'DELETED'
+            AND toString(task_id) ILIKE '%{task_id}%'
+            {branch}
+        GROUP BY task_id, task_repo
+        )
+)
+GROUP BY task_id
+ORDER BY task_changed DESC
+{limit}
+"""
+
+    get_tasks_by_owner = """
+SELECT task_id,
+       argMax(owner, changed),
+       argMax(task_repo, changed),
+       argMax(state, changed),
+       max(changed) AS task_changed
+FROM (
+    SELECT *
+    FROM (
+        SELECT
+            task_id,
+            argMax(task_owner, ts) AS owner,
+            argMax(task_repo, ts) AS task_repo,
+            argMax(task_state, ts) AS state,
+            max(ts) AS changed
+        FROM TaskProgress
+        WHERE task_owner ILIKE '%{owner}%'
+        GROUP BY task_id
+        )
+    WHERE state != 'DELETED'
+    {branch}
+    UNION ALL
+    SELECT *
+    FROM (
+        SELECT
+            task_id,
+            any(TT.owner),
+            TT.task_repo as task_repo,
+            argMax(task_state, task_changed) AS state,
+            max(task_changed) AS changed
+        FROM TaskStates
+        LEFT JOIN (
+            SELECT
+                task_id,
+                task_repo,
+                any(task_owner) AS owner
+            FROM Tasks
+            WHERE task_owner ILIKE '%{owner}%'
+                {branch}
+            GROUP BY task_id, task_repo
+        ) AS TT ON TT.task_id = TaskStates.task_id
+        WHERE TT.owner ILIKE '%{owner}%'
+            {branch}
+        GROUP BY task_id, task_repo
+        ) WHERE state != 'DELETED'
+)
+GROUP BY task_id
+ORDER BY task_changed DESC
+{limit}
+"""
+
+    get_tasks_by_comp = """
+WITH stp_components AS (
+    SELECT task_id,
+           argMax(subtask_srpm, ts) AS srpm,
+           argMax(subtask_srpm_name, ts) AS srpm_name,
+           argMax(subtask_dir, ts) AS dir,
+           argMax(subtask_package, ts) AS package,
+           argMax(type, ts) AS sub_type
+    FROM TaskSubtaskProgress
+    WHERE (type != 'progress')
+    {branch}
+    GROUP BY task_id,
+             subtask_id
+),
+t_components AS (
+    SELECT
+        task_id,
+        argMax(subtask_srpm, task_changed) AS srpm,
+        argMax(subtask_srpm_name, task_changed) AS srpm_name,
+        argMax(subtask_dir, task_changed) AS dir,
+        argMax(subtask_package, task_changed) AS package,
+        max(task_changed) AS changed
+    FROM Tasks
+    WHERE subtask_deleted = 0
+    {branch}
+    GROUP BY task_id
+)
+SELECT
+    task_id,
+    argMax(owner, changed),
+    argMax(task_repo, changed),
+    argMax(state, changed),
+    max(changed) AS task_changed
+FROM (
+    SELECT *
+    FROM (
+        SELECT
+            task_id,
+            argMax(task_owner, ts) AS owner,
+            task_repo,
+            argMax(task_state, ts) AS state,
+            max(ts) AS changed
+        FROM TaskProgress
+        WHERE task_id IN (
+            SELECT task_id FROM stp_components
+            WHERE (
+                srpm ILIKE '%{comp}%'
+                OR srpm_name ILIKE '%{comp}%'
+                OR dir ILIKE '%{comp}%'
+                OR package ILIKE '%{comp}%'
+            )
+        )
+        {branch}
+        GROUP BY task_id, task_repo
+    )
+    WHERE state != 'DELETED'
+    UNION ALL
+    SELECT
+        task_id,
+        any(task_owner) AS owner,
+        task_repo,
+        any(TT.state),
+        max(task_changed) AS changed
+    FROM Tasks
+    LEFT JOIN (
+        SELECT task_id, argMax(task_state, task_changed) AS state
+        FROM TaskStates
+        GROUP BY task_id
+    ) AS TT ON TT.task_id = Tasks.task_id
+    WHERE TT.state != 'DELETED'
+    AND task_id IN (
+        SELECT task_id
+        FROM t_components
+        WHERE (
+            srpm ILIKE '%{comp}%'
+            OR srpm_name ILIKE '%{comp}%'
+            OR dir ILIKE '%{comp}%'
+            OR package ILIKE '%{comp}%'
+        )
+    )
+    {branch}
+    GROUP BY task_id, task_repo
+)
+GROUP BY task_id
+ORDER BY task_changed DESC
+{limit}
+"""
+
+    get_task_components = """
+WITH stp_components AS (
+    SELECT task_id,
+           argMax(subtask_srpm, ts) AS srpm,
+           argMax(subtask_srpm_name, ts) AS srpm_name,
+           argMax(subtask_srpm_evr, ts) AS srpm_evr,
+           argMax(subtask_dir, ts) AS dir,
+           argMax(subtask_tag_name, ts) AS tag_name,
+           argMax(subtask_package, ts) AS package,
+           argMax(type, ts) AS sub_type,
+           max(ts) AS changed
+    FROM TaskSubtaskProgress
+    WHERE task_id IN (SELECT task_id FROM {tmp_table})
+      AND (type != 'progress')
+    GROUP BY task_id,
+             subtask_id
+    ORDER BY changed desc 
+)
+SELECT DISTINCT *
+FROM (
+    SELECT 
+        task_id,
+        srpm,
+        srpm_name,
+        srpm_evr,
+        dir,
+        tag_name,
+        package
+    FROM stp_components
+    WHERE sub_type != 'delete'
+    UNION ALL
+    SELECT task_id,
+        argMax(subtask_srpm, task_changed) AS srpm,
+        argMax(subtask_srpm_name, task_changed) AS srpm_name,
+        argMax(subtask_srpm_evr, task_changed) AS srpm_evr,
+        argMax(subtask_dir, task_changed) AS dir,
+        argMax(subtask_tag_name, task_changed) AS tag_name,
+        argMax(subtask_package, task_changed) AS package
+    FROM Tasks
+    WHERE task_id IN (SELECT task_id FROM {tmp_table})
+        AND subtask_deleted = 0
+    GROUP BY task_id, task_changed
+    ORDER BY task_changed desc 
+)     
+"""
+
+    check_owner = """
+SELECT task_owner
+FROM Tasks
+WHERE task_owner ILIKE '%{owner}%'    
 """
 
 

@@ -88,6 +88,8 @@ __license_string_match = re.compile(r"^[A-Za-z0-9\(\)\+ .\-/&,]+$")
 __license_id_match = re.compile(r"^[A-Za-z0-9\-\.\+]+$")
 # acl
 __acl_group_match = re.compile(r"^@?[a-z0-9\_]+$")
+# task search
+__task_search_match = re.compile(r"^[\w\.\+\-]{2,}$")
 
 
 # custom validators
@@ -482,3 +484,15 @@ def acl_group_type(value: Any) -> str:
 
 
 acl_group_type.__schema__ = {"type": "string", "pattern": __acl_group_match.pattern}
+
+
+def task_search_type(value: Any) -> str:
+    """Task search validator."""
+
+    value = __get_string(value)
+    if not __task_search_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+task_search_type.__schema__ = {"type": "string", "pattern": __task_search_match.pattern}

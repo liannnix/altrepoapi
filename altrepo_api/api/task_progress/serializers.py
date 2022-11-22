@@ -103,3 +103,43 @@ all_pkgsets_model = ns.model(
         "branches": fields.List(fields.String, description="list of packagesets"),
     },
 )
+
+task_components_el_model = ns.model(
+    "TaskComponentsElementModel",
+    {
+        "subtask_srpm": fields.String(description="subtask srpm"),
+        "subtask_srpm_name": fields.String(description="source package name"),
+        "subtask_srpm_evr": fields.String(
+            description="source package version and release"
+        ),
+        "subtask_dir": fields.String(description="subtask dir"),
+        "subtask_tag_name": fields.String(description="subtask tag name"),
+        "subtask_package": fields.String(description="subtask package"),
+    },
+)
+fast_tasks_search_el_model = ns.model(
+    "FastTasksSearchElementModel",
+    {
+        "task_id": fields.Integer(description="task id"),
+        "task_owner": fields.String(description="task owner"),
+        "task_state": fields.String(description="task state"),
+        "task_repo": fields.String(description="repository name"),
+        "components": fields.Nested(
+            task_components_el_model,
+            description="task components",
+            as_list=True,
+        ),
+    },
+)
+fast_tasks_search_model = ns.model(
+    "FastTasksSearchModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of tasks found"),
+        "tasks": fields.Nested(
+            fast_tasks_search_el_model,
+            description="list of found tasks",
+            as_list=True,
+        ),
+    },
+)
