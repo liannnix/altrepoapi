@@ -13,21 +13,10 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict
 
 from altrepo_api.api.base import APIWorker
 from ..sql import sql
-
-
-@dataclass
-class TaskComponentsMeta:
-    task_id: int
-    subtask_srpm: str
-    subtask_srpm_name: str
-    subtask_srpm_evr: str
-    subtask_dir: str
-    subtask_tag_name: str
-    subtask_package: str
 
 
 @dataclass
@@ -36,7 +25,7 @@ class TaskMeta:
     task_owner: str
     task_repo: str
     task_state: str
-    components: list[TaskComponentsMeta] = field(default_factory=list)
+    components: list[str]
 
 
 class FastTasksSearchLookup(APIWorker):
@@ -80,34 +69,18 @@ class FastTasksSearchLookup(APIWorker):
             branch_clause = ""
 
         if input_val.isdigit():
-            # find tasks by ID
-            response = self.send_sql_request(
-                self.sql.get_tasks_by_id.format(
-                    branch=branch_clause, task_id=input_val, limit=limit_clause
-                )
-            )
+            where_clause = f"subtask_id = 0 AND toString(task_id) LIKE '%{input_val}%'"
         else:
-            # check the owner in the database
-            response = self.send_sql_request(
-                self.sql.check_owner.format(owner=input_val)
+            where_clause = (
+                f"task_owner ILIKE '%{input_val}%' OR "
+                f"splitByChar('/', subtask_package)[-1] ILIKE '%{input_val}%'"
             )
-            if not self.sql_status:
-                return self.error
-            if response:
-                # find tasks by owners
-                response = self.send_sql_request(
-                    self.sql.get_tasks_by_owner.format(
-                        branch=branch_clause, owner=input_val, limit=limit_clause
-                    )
-                )
-            else:
-                # find tasks by components
-                response = self.send_sql_request(
-                    self.sql.get_tasks_by_comp.format(
-                        branch=branch_clause, comp=input_val, limit=limit_clause
-                    )
-                )
 
+        response = self.send_sql_request(
+            self.sql.task_search_fast_lookup.format(
+                branch=branch_clause, where=where_clause, limit=limit_clause
+            )
+        )
         if not self.sql_status:
             return self.error
         if not response:
@@ -115,35 +88,18 @@ class FastTasksSearchLookup(APIWorker):
                 {"message": "No data not found in database"},
             )
 
-        tasks = [TaskMeta(*el[:-1]) for el in response]
+        def process_task_components(components: list[str]) -> list[str]:
+            result = []
+            for c in components:
+                if c == "":
+                    continue
+                c = c.rstrip(".git").split("/")[-1]
+                result.append(c)
+            return result
 
-        # get task components
-        _tmp_table = "tmp_task_ids"
-        response = self.send_sql_request(
-            self.sql.get_task_components.format(tmp_table=_tmp_table),
-            external_tables=[
-                {
-                    "name": _tmp_table,
-                    "structure": [
-                        ("task_id", "UInt32"),
-                    ],
-                    "data": [
-                        {
-                            "task_id": el.task_id,
-                        }
-                        for el in tasks
-                    ],
-                }
-            ],
-        )
-        if not self.sql_status:
-            return self.error
-        if response:
-            components = [TaskComponentsMeta(*el) for el in response]
-            for task in tasks:
-                task.components = [
-                    el for el in components if el.task_id == task.task_id
-                ]
+        tasks = [TaskMeta(*el[:-1]) for el in response]
+        for task in tasks:
+            task.components = process_task_components(task.components)
 
         res = {
             "request_args": self.args,
