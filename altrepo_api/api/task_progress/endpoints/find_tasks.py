@@ -97,9 +97,11 @@ class FastTasksSearchLookup(APIWorker):
                 result.append(c)
             return result
 
-        tasks = [TaskMeta(*el[:-1]) for el in response]
-        for task in tasks:
+        tasks = []
+        for task in [TaskMeta(*el[:-1]) for el in response]:
             task.components = process_task_components(task.components)
+            if task.task_state != 'DELETED':
+                tasks.append(task)
 
         res = {
             "request_args": self.args,
