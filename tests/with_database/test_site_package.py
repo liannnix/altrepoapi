@@ -218,6 +218,13 @@ def test_package_changelog(client, kwargs):
             "arch": ARCH_NOT_IN_DB,
             "status_code": 400,
         },
+        {
+            "branch": BRANCH_IN_DB,
+            "name": "rpm-build-qml",
+            "package_type": "source",
+            "arch": None,
+            "status_code": 200,
+        },
     ],
 )
 def test_deleted_package_info(client, kwargs):
