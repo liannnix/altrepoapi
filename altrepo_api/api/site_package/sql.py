@@ -293,6 +293,33 @@ WHERE subtask_deleted = 0
 GROUP BY task_id
 """
 
+    get_delete_task_from_branch_history = """
+WITH
+delete_task_info  AS (
+    SELECT
+        task AS task_id,
+        changed AS task_changed,
+        hash
+    FROM lv_branch_deleted_packages
+    WHERE pkgset_name = '{branch}'
+        AND pkg_name = '{name}'
+)
+SELECT DISTINCT
+    task_id,
+    0 AS subtask_id,
+    task_changed,
+    task_owner,
+    subtask_userid,
+    DT.hash
+FROM Tasks
+LEFT JOIN (
+    SELECT * FROM delete_task_info
+) AS DT ON DT.task_id = Tasks.task_id
+WHERE (task_id, task_changed) IN (
+    SELECT task_id, task_changed FROM delete_task_info
+)
+"""
+
     get_delete_task_message = """
 SELECT task_message
 FROM TaskStates
