@@ -66,8 +66,7 @@ LEFT JOIN
     )
 ) AS Chg ON Chg.hash = pkg_changelog.hash
 ORDER BY
-    date DESC,
-    evr DESC
+    date DESC
 """
 
     get_pkg_info = """
