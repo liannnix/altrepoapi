@@ -13,19 +13,11 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from dataclasses import dataclass, asdict
+from dataclasses import asdict
 
 from altrepo_api.api.base import APIWorker
 from ..sql import sql
-
-
-@dataclass
-class TaskMeta:
-    task_id: int
-    task_owner: str
-    task_repo: str
-    task_state: str
-    components: list[str]
+from ..dto import FastSearchTaskMeta, TaskMeta, TaskApprovalMeta, SubtaskMeta, SubtaskArchsMeta
 
 
 class FastTasksSearchLookup(APIWorker):
@@ -98,7 +90,7 @@ class FastTasksSearchLookup(APIWorker):
             return result
 
         tasks = []
-        for task in [TaskMeta(*el[:-1]) for el in response]:
+        for task in [FastSearchTaskMeta(*el[:-1]) for el in response]:
             task.components = process_task_components(task.components)
             if task.task_state != 'DELETED':
                 tasks.append(task)

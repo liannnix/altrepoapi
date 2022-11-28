@@ -62,3 +62,12 @@ class TaskMeta:
     dependencies: list[int] = field(default_factory=list)
     subtasks: list[SubtaskMeta] = field(default_factory=list)
     approval: list[TaskApprovalMeta] = field(default_factory=list)
+
+
+@dataclass
+class FastSearchTaskMeta:
+    task_id: int
+    task_owner: str
+    task_repo: str
+    task_state: str
+    components: list[str]
