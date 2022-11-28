@@ -172,38 +172,41 @@ GROUP BY task_id
 """
 
     task_search_fast_lookup = """
-SELECT
-    task_id,
-    any(owner),
-    any(repo),
-    argMax(state, TS),
-    groupArray(package),
-    max(TS) AS ts
-FROM
-(
+SELECT * FROM (
     SELECT
         task_id,
-        subtask_id,
-        any(task_repo) AS repo,
-        any(task_owner) AS owner,
-        any(subtask_package) AS package,
-        argMax(task_state, ts) AS state,
-        argMax(is_deleted, ts) AS deleted,
-        max(ts) AS TS
-    FROM TasksSearch
-    WHERE task_id IN (
-        SELECT DISTINCT task_id
+        any(owner),
+        any(repo),
+        argMax(state, TS) AS state,
+        groupArray(package),
+        max(TS) AS ts
+    FROM
+    (
+        SELECT
+            task_id,
+            subtask_id,
+            any(task_repo) AS repo,
+            any(task_owner) AS owner,
+            any(subtask_package) AS package,
+            argMax(task_state, ts) AS state,
+            argMax(is_deleted, ts) AS deleted,
+            max(ts) AS TS
         FROM TasksSearch
-        WHERE {where}
-        {branch}
+        WHERE task_id IN (
+            SELECT DISTINCT task_id
+            FROM TasksSearch
+            WHERE {where}
+            {branch}
+        )
+        GROUP BY
+            task_id,
+            subtask_id
     )
-    GROUP BY
-        task_id,
-        subtask_id
+    WHERE (subtask_id = 0) OR (deleted = 0)
+    GROUP BY task_id
+    ORDER BY ts DESC
 )
-WHERE (subtask_id = 0) OR (deleted = 0)
-GROUP BY task_id
-ORDER BY ts DESC
+WHERE state != 'DELETED'
 {limit}
 """
 
