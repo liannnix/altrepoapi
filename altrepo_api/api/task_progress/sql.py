@@ -20,7 +20,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class SQL:
 
-    get_last_tasks = """
+    get_last_tasks_from_progress = """
 SELECT * FROM (
     SELECT
         task_id,
@@ -31,7 +31,8 @@ SELECT * FROM (
         argMax(task_iter, ts) AS iter,
         argMax(task_changed, ts) AS changed,
         argMax(task_message, ts) AS message,
-        TT.stage AS task_stage
+        TT.stage AS task_stage,
+        argMax(task_depends, ts) AS depends
     FROM TaskProgress
     LEFT JOIN (
         SELECT task_id, argMax(stage, ts) as stage
@@ -48,7 +49,7 @@ SELECT * FROM (
 {limit}
 """
 
-    get_subtasks = """
+    get_subtasks_from_progress = """
 SELECT
     task_id,
     subtask_id,
@@ -73,7 +74,7 @@ GROUP BY
 ORDER BY subtask_id ASC
 """
 
-    get_subtasks_status = """
+    get_subtasks_status_from_progress = """
 SELECT
     task_id,
     subtask_id,
@@ -123,19 +124,14 @@ SELECT groupUniqArray(task_repo) FROM TaskProgress
     get_task_approval = """
 SELECT DISTINCT
     task_id,
-    date,
-    type,
-    nickname,
-    message,
-    revoked
+    tapp_type,
+    tapp_name
 FROM
 (
     SELECT task_id,
            subtask_id,
-           argMax(tapp_date, ts) AS date,
-           argMax(tapp_type, ts) as type,
-           argMax(tapp_name, ts) AS nickname,
-           argMax(tapp_message, ts) AS message,
+           tapp_type,
+           tapp_name,
            argMax(tapp_revoked, ts) AS revoked
     FROM TaskApprovals
     WHERE task_id NOT IN (
@@ -155,13 +151,13 @@ FROM
             GROUP BY task_id, subtask_id
         ) WHERE sub_del = 1
     )
-    GROUP BY task_id, subtask_id
+    GROUP BY task_id, subtask_id, tapp_type, tapp_name
 )
 WHERE task_id IN (SELECT task_id FROM {tmp_table})
     AND revoked = 0
 """
 
-    get_task_dependencies = """
+    get_task_dependencies_from_progress = """
 SELECT
     task_id,
     argMax(task_depends, ts)

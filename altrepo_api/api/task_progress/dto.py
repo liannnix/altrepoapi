@@ -1,0 +1,64 @@
+# ALTRepo API
+# Copyright (C) 2021-2022  BaseALT Ltd
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import datetime
+from dataclasses import dataclass, field
+
+
+@dataclass
+class TaskApprovalMeta:
+    type: str
+    nickname: str
+
+
+@dataclass
+class SubtaskArchsMeta:
+    arch: str
+    stage_status: str
+
+
+@dataclass
+class SubtaskMeta:
+    task_id: int
+    subtask_id: int
+    subtask_type: str
+    subtask_srpm: str
+    subtask_srpm_name: str
+    subtask_srpm_evr: str
+    subtask_dir: str
+    subtask_tag_id: str
+    subtask_tag_name: str
+    subtask_tag_author: str
+    subtask_package: str
+    subtask_pkg_from: str
+    subtask_changed: datetime.datetime
+    type: str
+    archs: list[SubtaskArchsMeta] = field(default_factory=list)
+
+
+@dataclass
+class TaskMeta:
+    task_id: int
+    task_repo: str
+    task_state: str
+    task_owner: str
+    task_try: int
+    task_iter: int
+    task_changed: str
+    task_message: str
+    task_stage: str
+    dependencies: list[int] = field(default_factory=list)
+    subtasks: list[SubtaskMeta] = field(default_factory=list)
+    approval: list[TaskApprovalMeta] = field(default_factory=list)

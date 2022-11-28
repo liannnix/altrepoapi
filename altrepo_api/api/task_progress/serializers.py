@@ -53,11 +53,8 @@ subtasks_el_model = ns.model(
 task_approval_el_model = ns.model(
     "TaskApprovalElementModel",
     {
-        "task_id": fields.Integer(description="task id"),
-        "date": fields.DateTime(description="approval date"),
         "type": fields.String(description="approval type"),
         "nickname": fields.String(description="maintainer nickname"),
-        "message": fields.String(description="approval message"),
     },
 )
 last_tasks_el_model = ns.model(
