@@ -23,8 +23,8 @@ from .endpoints.packageset import AllPackageSets
 from .endpoints.last_tasks import LastTasks
 
 from .namespace import get_namespace
-from .parsers import last_tasks_args, fast_find_tasks_args
-from .serializers import last_tasks_model, all_pkgsets_model, fast_tasks_search_model
+from .parsers import last_tasks_args, fast_find_tasks_args, find_tasks_args
+from .serializers import tasks_list_model, all_pkgsets_model, fast_tasks_search_model
 
 ns = get_namespace()
 
@@ -40,7 +40,7 @@ logger = get_logger(__name__)
 )
 class routeLastTasks(Resource):
     @ns.expect(last_tasks_args)
-    @ns.marshal_with(last_tasks_model)
+    @ns.marshal_with(tasks_list_model)
     def get(self):
         url_logging(logger, g.url)
         args = last_tasks_args.parse_args(strict=True)
