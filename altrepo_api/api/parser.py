@@ -53,6 +53,7 @@ parser = ParserFactory()
 # lookup tables
 # __pkg_groups = set(lut.pkg_groups)
 __known_archs = set(lut.known_archs)
+__known_states = set(lut.known_states)
 __known_branches = set(lut.known_branches)
 __known_img_archs = set(lut.known_image_archs)
 __known_img_editions = set(lut.known_image_editions)
@@ -496,3 +497,15 @@ def task_search_type(value: Any) -> str:
 
 
 task_search_type.__schema__ = {"type": "string", "pattern": __task_search_match.pattern}
+
+
+def task_state_type(value: Any) -> str:
+    """Task state validator."""
+
+    value = __get_string(value)
+    if value.upper() not in __known_states:
+        raise ValueError("Invalid task_state: {0}".format(value))
+    return value
+
+
+task_state_type.__schema__ = {"type": "string"}

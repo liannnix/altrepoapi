@@ -320,5 +320,22 @@ class LookupTables:
         "RPMSENSE_KEYRING",
     ]
 
+    known_states = [
+        "FAILED",
+        "EPERM",
+        "DONE",
+        "NEW",
+        "DELETED",
+        "TESTED",
+        "AWAITING",
+        "BUILDING",
+        "PENDING",
+        "FAILING",
+        "POSTPONED",
+        "COMMITTING",
+        "SWEPT",
+        "FAILURE",
+    ]
+
 
 lut = LookupTables()

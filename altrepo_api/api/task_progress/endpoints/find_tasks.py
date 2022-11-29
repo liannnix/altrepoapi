@@ -17,7 +17,13 @@ from dataclasses import asdict
 
 from altrepo_api.api.base import APIWorker
 from ..sql import sql
-from ..dto import FastSearchTaskMeta, TaskMeta, TaskApprovalMeta, SubtaskMeta, SubtaskArchsMeta
+from ..dto import (
+    FastSearchTaskMeta,
+    TaskMeta,
+    TaskApprovalMeta,
+    SubtaskMeta,
+    SubtaskArchsMeta,
+)
 
 
 class FastTasksSearchLookup(APIWorker):
@@ -92,12 +98,157 @@ class FastTasksSearchLookup(APIWorker):
         tasks = []
         for task in [FastSearchTaskMeta(*el[:-1]) for el in response]:
             task.components = process_task_components(task.components)
-            if task.task_state != 'DELETED':
+            if task.task_state != "DELETED":
                 tasks.append(task)
 
         res = {
             "request_args": self.args,
             "length": len(tasks),
             "tasks": [asdict(el) for el in tasks],
+        }
+        return res, 200
+
+
+class FindTasks(APIWorker):
+    """
+    Tasks search lookup by id, owner or components.
+    """
+
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        return True
+
+    def get(self):
+        input_val = self.args["input"]
+        branch = self.args["branch"]
+        state = self.args["state"]
+        owner = self.args["owner"]
+
+        if branch:
+            branch_clause = f"AND task_repo = '{branch}'"
+        else:
+            branch_clause = ""
+
+        if state:
+            state = [x.upper() for x in state]
+            state_clause = f"AND state IN {state}"
+        else:
+            state_clause = ""
+
+        if owner:
+            owner_clause = f"AND task_owner ILIKE '%{owner}%'"
+        else:
+            owner_clause = ""
+
+        if input_val.isdigit():
+            where_clause = f"subtask_id = 0 AND toString(task_id) LIKE '%{input_val}%'"
+        else:
+            if owner_clause:
+                where_clause = (
+                    f"splitByChar('/', subtask_package)[-1] ILIKE '%{input_val}%'"
+                )
+            else:
+                where_clause = (
+                    f"task_owner ILIKE '%{input_val}%' OR "
+                    f"splitByChar('/', subtask_package)[-1] ILIKE '%{input_val}%'"
+                )
+
+        response = self.send_sql_request(
+            self.sql.find_all_tasks.format(
+                branch=branch_clause,
+                where=where_clause,
+                state=state_clause,
+                owner=owner_clause,
+            )
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error(
+                {"message": "No data not found in database"},
+            )
+
+        tasks = {el[0]: TaskMeta(*el) for el in response}  # type: ignore
+        task_ids = [{"task_id": el} for el in tasks.keys()]
+        # get task approval info by task_id
+        _tmp_table = "tmp_task_ids"
+        response = self.send_sql_request(
+            self.sql.get_task_approval.format(tmp_table=_tmp_table),
+            external_tables=[
+                {
+                    "name": _tmp_table,
+                    "structure": [
+                        ("task_id", "UInt32"),
+                    ],
+                    "data": task_ids,
+                }
+            ],
+        )
+        if response:
+            for el in response:
+                tasks[el[0]].approval.append(TaskApprovalMeta(*el[1:]))
+
+        # get subtask info by task_id
+        _tmp_table = "tmp_task_ids"
+        response = self.send_sql_request(
+            self.sql.get_task_subtasks.format(tmp_table=_tmp_table),
+            external_tables=[
+                {
+                    "name": _tmp_table,
+                    "structure": [
+                        ("task_id", "UInt32"),
+                    ],
+                    "data": task_ids,
+                }
+            ],
+        )
+        if not self.sql_status:
+            return self.error
+        if response:
+            subtasks = {(el[0], el[1]): SubtaskMeta(*el) for el in response}
+
+            # get subtask archs by task_id and subtask_id
+
+            _tmp_table = "tmp_tasks_subtasks"
+            response = self.send_sql_request(
+                self.sql.get_subtasks_status_from_progress.format(tmp_table=_tmp_table),
+                external_tables=[
+                    {
+                        "name": _tmp_table,
+                        "structure": [
+                            ("task_id", "UInt32"),
+                            ("subtask_id", "UInt32"),
+                        ],
+                        "data": [
+                            {"task_id": el[0], "subtask_id": el[1]}
+                            for el in subtasks.keys()
+                            if tasks[el[0]].task_state
+                            in ("BUILDING", "FAILED", "FAILING")
+                        ],
+                    }
+                ],
+            )
+            if not self.sql_status:
+                return self.error
+            if response:
+                for el in response:
+                    subtasks[(el[0], el[1])].archs = [
+                        SubtaskArchsMeta(*arch) for arch in el[2]
+                    ]
+                    subtasks[(el[0], el[1])].type = el[3]
+
+            for key, subtasks in subtasks.items():
+                tasks[key[0]].subtasks.append(subtasks)
+
+        res = {
+            "request_args": self.args,
+            "length": len(tasks.keys()),
+            "tasks": [asdict(el) for el in tasks.values()],
         }
         return res, 200

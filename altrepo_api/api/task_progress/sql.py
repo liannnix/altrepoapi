@@ -206,5 +206,174 @@ WHERE state != 'DELETED'
 {limit}
 """
 
+    find_all_tasks = """
+WITH task_search AS (
+    SELECT * FROM (
+        SELECT task_id,
+               any(owner) as owner,
+               any(repo) as repo,
+               argMax(state, TS) as state,
+               max(TS) AS ts
+        FROM (
+              SELECT task_id,
+                     subtask_id,
+                     any(task_repo)         AS repo,
+                     any(task_owner)        AS owner,
+                     argMax(task_state, ts) AS state,
+                     argMax(is_deleted, ts) AS deleted,
+                     max(ts)                AS TS
+              FROM TasksSearch
+              WHERE task_id IN (
+                  SELECT DISTINCT task_id
+                  FROM TasksSearch
+                  WHERE {where}
+                  {branch}
+                  {owner}
+              )
+              GROUP BY task_id,
+                       subtask_id
+                 )
+        WHERE (subtask_id = 0)
+           OR (deleted = 0)
+        GROUP BY task_id
+    ) WHERE state != 'DELETED'
+        {state}
+)
+SELECT
+    task_id,
+    repo,
+    state,
+    owner,
+    try,
+    iter,
+    task_changed,
+    message,
+    stage,
+    depends
+FROM task_search
+LEFT JOIN (
+    SELECT
+        task_id,
+        argMax(try, changed) AS try,
+        argMax(iter, changed) AS iter,
+        argMax(message, changed) AS message,
+        max(changed) AS task_changed,
+        argMax(task_stage, changed) AS stage,
+        argMax(depends, changed) AS depends
+    FROM (
+            SELECT * FROM (
+                SELECT
+                    task_id,
+                    argMax(task_state, ts) AS state,
+                    argMax(task_try, ts) AS try,
+                    argMax(task_iter, ts) AS iter,
+                    argMax(task_message, ts) AS message,
+                    argMax(task_changed, ts) AS changed,
+                    argMax(task_depends, ts) AS depends,
+                    TT.stage as task_stage
+                FROM TaskProgress
+                LEFT JOIN (
+                    SELECT task_id, argMax(stage, ts) AS stage
+                    FROM TaskProgress
+                    WHERE stage_status = 'started'
+                        AND task_state = 'BUILDING'
+                    GROUP BY task_id
+                    ) AS TT ON TT.task_id = TaskProgress.task_id
+                WHERE type = 'state'
+                GROUP BY task_id, task_stage
+            ) WHERE (state != 'DELETED')
+            UNION ALL
+            SELECT
+                task_id,
+                argMax(task_state, task_changed) AS state,
+                TI.try AS try,
+                TI.iter AS iter,
+                argMax(task_message, task_changed) AS message,
+                max(task_changed) as changed,
+                argMax(task_depends, task_changed) AS depends,
+                '' as task_stage
+            FROM TaskStates
+            LEFT JOIN (
+                SELECT
+                    task_id,
+                    argMax(task_try, task_changed) AS try,
+                    argMax(task_iter, task_changed) AS iter
+                FROM TaskIterations
+                GROUP BY task_id
+                ) AS TI ON TI.task_id = TaskStates.task_id
+            GROUP BY task_id, try, iter
+    )
+    GROUP BY task_id
+) AS TT ON TT.task_id = task_search.task_id
+ORDER BY ts DESC
+"""
+
+    get_task_subtasks = """
+SELECT
+    task_id,
+    subtask_id,
+    argMax(sub_type, changed),
+    argMax(srpm, changed),
+    argMax(srpm_name, changed),
+    argMax(srpm_evr, changed),
+    argMax(dir, changed),
+    argMax(tag_id, changed),
+    argMax(tag_name, changed),
+    argMax(tag_author, changed),
+    argMax(package, changed),
+    argMax(pkg_from, changed),
+    max(changed),
+    argMax(tp, changed)   
+FROM (
+    SELECT * FROM (
+        SELECT
+            task_id,
+            subtask_id,
+            argMax(subtask_type, ts) AS sub_type,
+            argMax(subtask_srpm, ts) AS srpm,
+            argMax(subtask_srpm_name, ts) AS srpm_name,
+            argMax(subtask_srpm_evr, ts) AS srpm_evr,
+            argMax(subtask_dir, ts) AS dir,
+            argMax(subtask_tag_id, ts) AS tag_id,
+            argMax(subtask_tag_name, ts) AS tag_name,
+            argMax(subtask_tag_author, ts) AS tag_author,
+            argMax(subtask_package, ts) AS package,
+            argMax(subtask_pkg_from, ts) AS pkg_from,
+            argMax(subtask_changed, ts) AS changed,
+            argMax(type, ts) AS tp
+        FROM TaskSubtaskProgress
+        WHERE (task_id in (SELECT task_id FROM {tmp_table}))
+            AND (type != 'progress')
+        GROUP BY
+            task_id,
+            subtask_id
+    ) WHERE sub_type != 'unknown'
+    ORDER BY subtask_id ASC
+    UNION ALL
+    SELECT * FROM (
+        SELECT
+            task_id,
+            subtask_id,
+            argMax(subtask_type, ts) AS sub_type,
+            argMax(subtask_srpm, ts) AS srpm,
+            argMax(subtask_srpm_name, ts) AS srpm_name,
+            argMax(subtask_srpm_evr, ts) AS srpm_evr,
+            argMax(subtask_dir, ts) AS dir,
+            argMax(subtask_tag_id, ts) AS tag_id,
+            argMax(subtask_tag_name, ts) AS tag_name,
+            argMax(subtask_tag_author, ts) AS tag_author,
+            argMax(subtask_package, ts) AS package,
+            argMax(subtask_pkg_from, ts) AS pkg_from,
+            argMax(subtask_changed, ts) AS changed,
+            if(has(groupUniqArray(subtask_deleted), 0), 'create', 'delete') AS tp
+        FROM Tasks
+        WHERE (task_id in (SELECT task_id FROM {tmp_table}))
+        GROUP BY task_id, subtask_id
+    ) WHERE sub_type != 'unknown' 
+)
+GROUP BY task_id, subtask_id
+ORDER BY subtask_id    
+"""
+
 
 sql = SQL()
