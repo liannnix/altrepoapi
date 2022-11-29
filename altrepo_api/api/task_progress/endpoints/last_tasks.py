@@ -17,12 +17,7 @@ from dataclasses import asdict
 
 from altrepo_api.api.base import APIWorker
 from ..sql import sql
-from ..dto import (
-    TaskMeta,
-    TaskApprovalMeta,
-    SubtaskMeta,
-    SubtaskArchsMeta
-)
+from ..dto import TaskMeta, TaskApprovalMeta, SubtaskMeta, SubtaskArchsMeta
 
 
 class LastTasks(APIWorker):
@@ -94,7 +89,7 @@ class LastTasks(APIWorker):
                     "structure": [
                         ("task_id", "UInt32"),
                     ],
-                    "data": task_ids
+                    "data": task_ids,
                 }
             ],
         )
@@ -114,7 +109,7 @@ class LastTasks(APIWorker):
                     "structure": [
                         ("task_id", "UInt32"),
                     ],
-                    "data": task_ids
+                    "data": task_ids,
                 }
             ],
         )
@@ -142,10 +137,7 @@ class LastTasks(APIWorker):
                         ("subtask_id", "UInt32"),
                     ],
                     "data": [
-                        {
-                            "task_id": el[0],
-                            "subtask_id": el[1]
-                        }
+                        {"task_id": el[0], "subtask_id": el[1]}
                         for el in subtasks.keys()
                         if tasks[el[0]].task_state in ("BUILDING", "FAILED", "FAILING")
                     ],
@@ -157,7 +149,9 @@ class LastTasks(APIWorker):
         if response:
             if response:
                 for el in response:
-                    subtasks[(el[0], el[1])].archs = [SubtaskArchsMeta(*arch) for arch in el[2]]
+                    subtasks[(el[0], el[1])].archs = [
+                        SubtaskArchsMeta(*arch) for arch in el[2]
+                    ]
                     subtasks[(el[0], el[1])].type = el[3]
 
         for key, subtasks in subtasks.items():
