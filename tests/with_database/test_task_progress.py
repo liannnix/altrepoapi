@@ -54,6 +54,8 @@ def test_all_packagesets(client):
         {"input": TASK_IN_DB, "status_code": 200},
         {"input": TASK_IN_DB, "branch": "p10", "status_code": 404},
         {"input": TASK_IN_DB, "branch": BRANCH_NOT_IN_DB, "status_code": 400},
+        {"input": TASK_IN_DB, "owner": OWNER_IN_DB, "status_code": 200},
+        {"input": TASK_IN_DB, "owner": OWNER_NOT_IN_DB, "status_code": 404},
         {"input": TASK_NOT_IN_DB, "status_code": 404},
         {"input": OWNER_IN_DB, "branch": BRANCH_IN_DB, "status_code": 200},
         {"input": OWNER_IN_DB, "tasks_limit": 10, "status_code": 200},

@@ -55,6 +55,7 @@ class FastTasksSearchLookup(APIWorker):
         input_val = self.args["input"]
         branch = self.args["branch"]
         tasks_limit = self.args["tasks_limit"]
+        owner = self.args["owner"]
 
         if tasks_limit:
             limit_clause = f"LIMIT {tasks_limit}"
@@ -66,17 +67,30 @@ class FastTasksSearchLookup(APIWorker):
         else:
             branch_clause = ""
 
+        if owner:
+            owner_clause = f"AND task_owner ILIKE '%{owner}%'"
+        else:
+            owner_clause = ""
+
         if input_val.isdigit():
             where_clause = f"subtask_id = 0 AND toString(task_id) LIKE '%{input_val}%'"
         else:
-            where_clause = (
-                f"task_owner ILIKE '%{input_val}%' OR "
-                f"splitByChar('/', subtask_package)[-1] ILIKE '%{input_val}%'"
-            )
+            if owner_clause:
+                where_clause = (
+                    f"splitByChar('/', subtask_package)[-1] ILIKE '%{input_val}%'"
+                )
+            else:
+                where_clause = (
+                    f"task_owner ILIKE '%{input_val}%' OR "
+                    f"splitByChar('/', subtask_package)[-1] ILIKE '%{input_val}%'"
+                )
 
         response = self.send_sql_request(
             self.sql.task_search_fast_lookup.format(
-                branch=branch_clause, where=where_clause, limit=limit_clause
+                branch=branch_clause,
+                where=where_clause,
+                owner=owner_clause,
+                limit=limit_clause
             )
         )
         if not self.sql_status:

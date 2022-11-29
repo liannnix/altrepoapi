@@ -193,6 +193,7 @@ SELECT * FROM (
             FROM TasksSearch
             WHERE {where}
             {branch}
+            {owner}
         )
         GROUP BY
             task_id,
