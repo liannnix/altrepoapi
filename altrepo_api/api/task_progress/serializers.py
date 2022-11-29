@@ -53,15 +53,12 @@ subtasks_el_model = ns.model(
 task_approval_el_model = ns.model(
     "TaskApprovalElementModel",
     {
-        "task_id": fields.Integer(description="task id"),
-        "date": fields.DateTime(description="approval date"),
         "type": fields.String(description="approval type"),
         "nickname": fields.String(description="maintainer nickname"),
-        "message": fields.String(description="approval message"),
     },
 )
-last_tasks_el_model = ns.model(
-    "LastTasksElementModel",
+tasks_list_el_model = ns.model(
+    "TasksListElementModel",
     {
         "task_id": fields.Integer(description="task id"),
         "task_repo": fields.String(description="repository name"),
@@ -83,13 +80,13 @@ last_tasks_el_model = ns.model(
         ),
     },
 )
-last_tasks_model = ns.model(
-    "LastTaskModel",
+tasks_list_model = ns.model(
+    "TasksListModel",
     {
         "request_args": fields.Raw(description="request arguments"),
         "length": fields.Integer(description="number of tasks found"),
         "tasks": fields.Nested(
-            last_tasks_el_model,
+            tasks_list_el_model,
             description="list of latest task changes",
             as_list=True,
         ),
