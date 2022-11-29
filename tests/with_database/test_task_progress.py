@@ -85,6 +85,8 @@ def test_fast_tasks_search_lookup(client, kwargs):
         assert data["length"] != 0
         assert data["tasks"] != []
         for task in data["tasks"]:
+            if params.get("branch", ""):
+                assert task["task_repo"] == params["branch"]
             if params["input"] == OWNER_IN_DB:
                 assert task["task_owner"] == OWNER_IN_DB
             if params["input"].isdigit():
@@ -128,6 +130,8 @@ def test_find_tasks(client, kwargs):
         assert data["length"] != 0
         assert data["tasks"] != []
         for task in data["tasks"]:
+            if params.get("branch", ""):
+                assert task["task_repo"] == params["branch"]
             if params.get("state", ""):
                 assert task["task_state"] == params.get("state")
             if params["input"] == OWNER_IN_DB or params.get("owner"):

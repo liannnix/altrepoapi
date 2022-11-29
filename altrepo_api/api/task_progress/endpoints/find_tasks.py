@@ -73,10 +73,10 @@ class FastTasksSearchLookup(APIWorker):
             owner_clause = ""
 
         if input_val.isdigit():
-            where_clause = f"subtask_id = 0 AND toString(task_id) LIKE '%{input_val}%'"
+            where_clause = f"(subtask_id = 0 AND toString(task_id) LIKE '%{input_val}%')"
         else:
-            where_clause = "" if owner_clause else f"task_owner ILIKE '{input_val}%' OR "
-            where_clause += f"splitByChar('/', subtask_package)[-1] ILIKE '%{input_val}%'"
+            where_clause = "(" if owner_clause else f"(task_owner ILIKE '{input_val}%' OR "
+            where_clause += f"splitByChar('/', subtask_package)[-1] ILIKE '%{input_val}%')"
 
         response = self.send_sql_request(
             self.sql.task_search_fast_lookup.format(
@@ -153,10 +153,10 @@ class FindTasks(APIWorker):
             owner_clause = ""
 
         if input_val.isdigit():
-            where_clause = f"subtask_id = 0 AND toString(task_id) LIKE '%{input_val}%'"
+            where_clause = f"(subtask_id = 0 AND toString(task_id) LIKE '%{input_val}%')"
         else:
-            where_clause = "" if owner_clause else f"task_owner ILIKE '{input_val}%' OR "
-            where_clause += f"splitByChar('/', subtask_package)[-1] ILIKE '%{input_val}%'"
+            where_clause = "(" if owner_clause else f"(task_owner ILIKE '{input_val}%' OR "
+            where_clause += f"splitByChar('/', subtask_package)[-1] ILIKE '%{input_val}%')"
 
         response = self.send_sql_request(
             self.sql.find_all_tasks.format(
