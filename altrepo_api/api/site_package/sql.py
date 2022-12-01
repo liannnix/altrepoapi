@@ -59,7 +59,7 @@ LEFT JOIN
     SELECT DISTINCT
         chlog_hash AS hash,
         chlog_text
-    FROM Changelog_buffer
+    FROM Changelog
     WHERE chlog_hash IN (
         SELECT hash
         FROM pkg_changelog
