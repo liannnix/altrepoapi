@@ -20,6 +20,15 @@ from .namespace import get_namespace
 
 ns = get_namespace()
 
+
+task_iterations_el_model = ns.model(
+    "TaskIterationsElementModel",
+    {
+        "task_try": fields.Integer(description="task try number"),
+        "task_iter": fields.Integer(description="task iteration number"),
+    },
+)
+
 subtask_archs_model = ns.model(
     "SubTaskArchitecturesModel",
     {
@@ -120,6 +129,33 @@ fast_tasks_search_model = ns.model(
             fast_tasks_search_el_model,
             description="list of found tasks",
             as_list=True,
+        ),
+    },
+)
+
+task_info_model = ns.model(
+    "TaskInfoModel",
+    {
+        "task_id": fields.Integer(description="task id"),
+        "task_repo": fields.String(description="repository name"),
+        "task_state": fields.String(description="task state"),
+        "task_owner": fields.String(description="task owner"),
+        "task_try": fields.Integer(description="task try number"),
+        "task_iter": fields.Integer(description="task iteration number"),
+        "task_changed": fields.DateTime(description="task changed"),
+        "task_message": fields.String(description="task message"),
+        "task_stage": fields.String(description="task stage"),
+        "dependencies": fields.List(fields.Integer, description="task dependencies"),
+        "subtasks": fields.Nested(
+            subtasks_el_model, description="list of subtasks by task", as_list=True
+        ),
+        "approval": fields.Nested(
+            task_approval_el_model,
+            description="list of approvals for task",
+            as_list=True,
+        ),
+        "iterations": fields.Nested(
+            task_iterations_el_model, description="task iteration list", as_list=True
         ),
     },
 )

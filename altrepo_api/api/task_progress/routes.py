@@ -21,10 +21,16 @@ from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404, GET_RESPONSE
 from .endpoints.find_tasks import FastTasksSearchLookup, FindTasks
 from .endpoints.packageset import AllPackageSets
 from .endpoints.last_tasks import LastTasks
+from .endpoints.task_info import TaskInfo
 
 from .namespace import get_namespace
 from .parsers import last_tasks_args, fast_find_tasks_args, find_tasks_args
-from .serializers import tasks_list_model, all_pkgsets_model, fast_tasks_search_model
+from .serializers import (
+    tasks_list_model,
+    all_pkgsets_model,
+    fast_tasks_search_model,
+    task_info_model,
+)
 
 ns = get_namespace()
 
@@ -96,4 +102,23 @@ class routeFindTasks(Resource):
         url_logging(logger, g.url)
         args = find_tasks_args.parse_args(strict=True)
         w = FindTasks(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/task_info/<int:id>",
+    doc={
+        "params": {"id": "task ID"},
+        "description": "Get information for task by ID",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeTaskInfo(Resource):
+    @ns.marshal_with(task_info_model)
+    def get(self, id):
+        url_logging(logger, g.url)
+        args = {}
+        w = TaskInfo(g.connection, id, **args)
+        if not w.check_task_id():
+            ns.abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
         return run_worker(worker=w, args=args)
