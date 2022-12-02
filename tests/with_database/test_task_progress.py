@@ -6,6 +6,7 @@ BRANCH_IN_DB = "sisyphus"
 BRANCH_NOT_IN_DB = "fakebranch"
 TASK_IN_DB = "310692"
 TASK_NOT_IN_DB = "9999999"
+DELETED_TASK_IN_DB = "307229"
 OWNER_IN_DB = "rider"
 OWNER_NOT_IN_DB = "fakeowner"
 COMPONENT_IN_DB = "curl"
@@ -138,3 +139,20 @@ def test_find_tasks(client, kwargs):
                 assert task["task_owner"] == OWNER_IN_DB
             if params["input"].isdigit():
                 assert params["input"] in str(task["task_id"])
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"id": TASK_IN_DB, "status_code": 200},
+        {"id": DELETED_TASK_IN_DB, "status_code": 200},
+        {"id": TASK_NOT_IN_DB, "status_code": 404},
+    ],
+)
+def test_task_info(client, kwargs):
+    url = url_for(f"api.task/progress_route_task_info", **{"id": kwargs["id"]})
+    response = client.get(url)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
