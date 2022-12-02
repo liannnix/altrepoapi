@@ -330,7 +330,7 @@ SELECT
     argMax(package, changed),
     argMax(pkg_from, changed),
     max(changed),
-    argMax(tp, changed)   
+    argMax(tp, changed)
 FROM (
     SELECT * FROM (
         SELECT
@@ -376,10 +376,10 @@ FROM (
         FROM Tasks
         WHERE (task_id in (SELECT task_id FROM {tmp_table}))
         GROUP BY task_id, subtask_id
-    ) WHERE sub_type != 'unknown' 
+    ) WHERE sub_type != 'unknown'
 )
 GROUP BY task_id, subtask_id
-ORDER BY subtask_id    
+ORDER BY subtask_id
 """
 
     get_task_table = """
@@ -400,7 +400,7 @@ FROM (
       FROM TaskStates
       WHERE task_id = {id}
       GROUP BY task_id, table
-)    
+)
 """
 
     get_task_info_from_progress = """
@@ -434,7 +434,7 @@ LEFT JOIN (
     ) AS TT ON TT.task_id = TaskProgress.task_id
 WHERE type = 'state'
     AND task_id = {id}
-GROUP BY task_id, task_stage, task_iters    
+GROUP BY task_id, task_stage, task_iters
 """
 
     get_task_info_from_state = """
@@ -519,7 +519,7 @@ GROUP BY
         task_id,
         subtask_id
 ) WHERE sub_type != 'unknown'
-ORDER BY subtask_id ASC    
+ORDER BY subtask_id ASC
 """
 
     get_subtasks_by_id_from_state = """
@@ -542,7 +542,7 @@ SELECT * FROM (
     FROM Tasks
     WHERE (task_id = {id})
     GROUP BY task_id, subtask_id
-) WHERE sub_type != 'unknown' 
+) WHERE sub_type != 'unknown'
 """
 
     get_subtasks_status_by_id_from_progress = """
@@ -583,7 +583,7 @@ WHERE stype = 'progress'
 GROUP BY
     task_id,
     subtask_id,
-    stype    
+    stype
 """
 
     get_subtasks_status_by_id_from_state = """
