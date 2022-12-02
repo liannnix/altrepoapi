@@ -20,6 +20,12 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class SQL:
 
+    check_task = """
+SELECT count(task_id)
+FROM TaskStates
+WHERE task_id = {id}
+"""
+
     get_last_tasks_from_progress = """
 SELECT * FROM (
     SELECT
@@ -374,6 +380,246 @@ FROM (
 )
 GROUP BY task_id, subtask_id
 ORDER BY subtask_id    
+"""
+
+    get_task_table = """
+SELECT argMax(table, change)
+FROM (
+      SELECT task_id,
+             argMax(task_state, ts) AS state,
+             max(ts) AS change,
+             'progress' AS table
+      FROM TaskProgress
+      WHERE task_id = {id}
+      GROUP BY task_id, table
+      UNION ALL
+      SELECT task_id,
+             argMax(task_state, task_changed) AS state,
+             max(task_changed) AS change,
+             'state' AS table
+      FROM TaskStates
+      WHERE task_id = {id}
+      GROUP BY task_id, table
+)    
+"""
+
+    get_task_info_from_progress = """
+SELECT
+    task_id,
+    argMax(task_repo, ts) AS branch,
+    argMax(task_state, ts) AS state,
+    argMax(task_owner, ts) AS owner,
+    argMax(task_try, ts) AS try,
+    argMax(task_iter, ts) AS iter,
+    argMax(task_changed, ts) AS changed,
+    argMax(task_message, ts) AS message,
+    TT.stage AS task_stage,
+    argMax(task_depends, ts) AS depends,
+    TT.iters AS task_iters
+FROM TaskProgress
+LEFT JOIN (
+    SELECT task_id, argMax(stage, ts) AS stage, TI.prev_iter as iters
+    FROM TaskProgress
+    LEFT JOIN (
+        SELECT task_id, groupUniqArray((task_try, task_iter)) AS prev_iter
+        FROM TaskProgress
+        WHERE task_try != 0
+            AND task_id = {id}
+        GROUP BY task_id
+    ) AS TI ON TI.task_id = TaskProgress.task_id
+    WHERE stage_status = 'started'
+        AND task_state = 'BUILDING'
+        AND task_id = {id}
+    GROUP BY task_id, iters
+    ) AS TT ON TT.task_id = TaskProgress.task_id
+WHERE type = 'state'
+    AND task_id = {id}
+GROUP BY task_id, task_stage, task_iters    
+"""
+
+    get_task_info_from_state = """
+SELECT task_id,
+       argMax(task_repo, ts),
+       TS.state,
+       argMax(task_owner, ts),
+       TS.try,
+       TS.iter,
+       TS.changed,
+       TS.message,
+       TS.task_stage,
+       TS.depends,
+       TS.task_iters
+FROM TasksSearch
+LEFT JOIN (
+    SELECT
+        task_id,
+        argMax(task_state, task_changed) AS state,
+        TI.try AS try,
+        TI.iter AS iter,
+        argMax(task_message, task_changed) AS message,
+        max(task_changed) as changed,
+        argMax(task_depends, task_changed) AS depends,
+        '' as task_stage,
+        iters as task_iters
+    FROM TaskStates
+    LEFT JOIN (
+        SELECT
+            task_id,
+            argMax(task_try, task_changed) AS try,
+            argMax(task_iter, task_changed) AS iter,
+            TI.prev_iter AS iters
+        FROM TaskIterations
+        LEFT JOIN (
+            SELECT task_id, groupUniqArray((task_try, task_iter)) AS prev_iter
+            FROM TaskIterations
+            WHERE task_try != 0
+                AND task_id = {id}
+            GROUP BY task_id
+        ) AS TI ON TI.task_id = TaskIterations.task_id
+        WHERE task_id = {id}
+        GROUP BY task_id, iters
+        ) AS TI ON TI.task_id = TaskStates.task_id
+    WHERE task_id = {id}
+    GROUP BY task_id, try, iter, task_iters
+) AS TS ON TS.task_id = TasksSearch.task_id
+WHERE task_id = {id}
+GROUP BY
+    task_id,
+    TS.state,
+    TS.try,
+    TS.iter,
+    TS.message,
+    TS.changed,
+    TS.depends,
+    TS.task_stage,
+    TS.task_iters
+"""
+
+    get_subtasks_by_id_from_progress = """
+ SELECT * FROM (
+    SELECT
+        task_id,
+        subtask_id,
+        argMax(subtask_type, ts) AS sub_type,
+        argMax(subtask_srpm, ts) AS srpm,
+        argMax(subtask_srpm_name, ts) AS srpm_name,
+        argMax(subtask_srpm_evr, ts) AS srpm_evr,
+        argMax(subtask_dir, ts) AS dir,
+        argMax(subtask_tag_id, ts) AS tag_id,
+        argMax(subtask_tag_name, ts) AS tag_name,
+        argMax(subtask_tag_author, ts) AS tag_author,
+        argMax(subtask_package, ts) AS package,
+        argMax(subtask_pkg_from, ts) AS pkg_from,
+        argMax(subtask_changed, ts) AS changed,
+        argMax(type, ts) AS tp
+    FROM TaskSubtaskProgress
+    WHERE (task_id = {id})
+        AND (type != 'progress')
+    GROUP BY
+        task_id,
+        subtask_id
+) WHERE sub_type != 'unknown'
+ORDER BY subtask_id ASC    
+"""
+
+    get_subtasks_by_id_from_state = """
+SELECT * FROM (
+    SELECT
+        task_id,
+        subtask_id,
+        argMax(subtask_type, ts) AS sub_type,
+        argMax(subtask_srpm, ts) AS srpm,
+        argMax(subtask_srpm_name, ts) AS srpm_name,
+        argMax(subtask_srpm_evr, ts) AS srpm_evr,
+        argMax(subtask_dir, ts) AS dir,
+        argMax(subtask_tag_id, ts) AS tag_id,
+        argMax(subtask_tag_name, ts) AS tag_name,
+        argMax(subtask_tag_author, ts) AS tag_author,
+        argMax(subtask_package, ts) AS package,
+        argMax(subtask_pkg_from, ts) AS pkg_from,
+        argMax(subtask_changed, ts) AS changed,
+        if(has(groupUniqArray(subtask_deleted), 0), 'create', 'delete') AS tp
+    FROM Tasks
+    WHERE (task_id = {id})
+    GROUP BY task_id, subtask_id
+) WHERE sub_type != 'unknown' 
+"""
+
+    get_subtasks_status_by_id_from_progress = """
+SELECT
+    task_id,
+    subtask_id,
+    groupUniqArray((arch, status)),
+    stype
+FROM
+(
+    SELECT
+        task_id,
+        subtask_id,
+        arch,
+        argMax(stage_status, ts) as status,
+        argMax(type, ts) AS stype,
+        max(ts) as subts
+    FROM TaskSubtaskProgress
+    WHERE task_id = {id}
+        AND subtask_id IN {sub_ids}
+    GROUP BY
+        task_id,
+        subtask_id,
+        arch
+) AS TS
+INNER JOIN (
+    SELECT
+        task_id AS tid,
+        max(ts) as building_ts
+    FROM TaskProgress
+    WHERE task_state = 'BUILDING'
+        AND type = 'state'
+    GROUP BY task_id
+) AS LBTS ON LBTS.tid = TS.task_id
+WHERE stype = 'progress'
+    AND arch != 'all'
+    AND subts >= LBTS.building_ts
+GROUP BY
+    task_id,
+    subtask_id,
+    stype    
+"""
+
+    get_subtasks_status_by_id_from_state = """
+SELECT
+    task_id,
+    subtask_id,
+    groupUniqArray((subtask_arch, status)),
+    'progress' as stype
+FROM (
+      SELECT
+        task_id,
+        subtask_id,
+        subtask_arch,
+        argMax(titer_status, task_changed) as status
+    FROM TaskIterations
+    WHERE task_id = {id}
+        AND subtask_id IN (
+            SELECT subtask_id
+            FROM (
+                 SELECT subtask_id,
+                        argMax(subtask_deleted, task_changed) AS subdel
+                 FROM Tasks
+                 WHERE task_id = {id}
+                       AND subtask_id IN {sub_ids}
+                 GROUP BY subtask_id
+            ) WHERE subdel = 0
+        )
+    GROUP BY
+        task_id,
+        subtask_id,
+        subtask_arch
+)
+GROUP BY
+    task_id,
+    subtask_id,
+    stype
 """
 
 

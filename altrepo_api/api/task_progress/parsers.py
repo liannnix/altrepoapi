@@ -64,5 +64,7 @@ input_val = parser.register_item(
 
 # build parsers
 last_tasks_args = parser.build_parser(branch_opt, task_limit_opt)
-fast_find_tasks_args = parser.build_parser(input_val, owner_opt, branch_opt, task_limit_opt)
+fast_find_tasks_args = parser.build_parser(
+    input_val, owner_opt, branch_opt, task_limit_opt
+)
 find_tasks_args = parser.build_parser(input_val, owner_opt, branch_opt, state_opt)

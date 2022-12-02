@@ -17,6 +17,12 @@ import datetime
 from dataclasses import dataclass, field
 
 
+@dataclass(frozen=True, order=True)
+class IterationMeta:
+    task_try: int
+    task_iter: int
+
+
 @dataclass
 class TaskApprovalMeta:
     type: str
@@ -60,6 +66,7 @@ class TaskMeta:
     task_message: str
     task_stage: str
     dependencies: list[int] = field(default_factory=list)
+    iterations: list[IterationMeta] = field(default_factory=list)
     subtasks: list[SubtaskMeta] = field(default_factory=list)
     approval: list[TaskApprovalMeta] = field(default_factory=list)
 
