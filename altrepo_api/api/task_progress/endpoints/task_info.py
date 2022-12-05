@@ -109,25 +109,26 @@ class TaskInfo(APIWorker):
                     ]
                     subtasks[el[1]].type = el[3]
 
+                # get task approval info by task_id
+                _tmp_table = "tmp_task_id"
+                response = self.send_sql_request(
+                    self.sql.get_subtask_approval.format(tmp_table=_tmp_table),
+                    external_tables=[
+                        {
+                            "name": _tmp_table,
+                            "structure": [
+                                ("task_id", "UInt32"),
+                            ],
+                            "data": [{"task_id": self.task_id}],
+                        }
+                    ],
+                )
+                if response:
+                    for el in response:
+                        subtasks[el[1]].approval = [TaskApprovalMeta(*apr) for apr in el[2]]
+
             for subtask in subtasks.values():
                 task.subtasks.append(subtask)
-
-        # get task approval info by task_id
-        _tmp_table = "tmp_task_id"
-        response = self.send_sql_request(
-            self.sql.get_task_approval.format(tmp_table=_tmp_table),
-            external_tables=[
-                {
-                    "name": _tmp_table,
-                    "structure": [
-                        ("task_id", "UInt32"),
-                    ],
-                    "data": [{"task_id": self.task_id}],
-                }
-            ],
-        )
-        if response:
-            task.approval = [TaskApprovalMeta(*el[1:]) for el in response]
 
         res = asdict(task)
 

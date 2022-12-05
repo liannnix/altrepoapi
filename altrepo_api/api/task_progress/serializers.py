@@ -64,6 +64,7 @@ task_approval_el_model = ns.model(
     {
         "type": fields.String(description="approval type"),
         "nickname": fields.String(description="maintainer nickname"),
+        "message": fields.String(description="approval message"),
     },
 )
 tasks_list_el_model = ns.model(
@@ -133,6 +134,34 @@ fast_tasks_search_model = ns.model(
     },
 )
 
+subtask_info_el_model = ns.model(
+    "SubTaskInfoElementModel",
+    {
+        "subtask_id": fields.Integer(description="subtasks id"),
+        "subtask_type": fields.String(description="subtask type"),
+        "subtask_srpm": fields.String(description="subtask srpm"),
+        "subtask_srpm_name": fields.String(description="source package name"),
+        "subtask_srpm_evr": fields.String(
+            description="source package version and release"
+        ),
+        "subtask_dir": fields.String(description="subtask dir"),
+        "subtask_tag_id": fields.String(description="subtask tag id"),
+        "subtask_tag_name": fields.String(description="subtask tag name"),
+        "subtask_tag_author": fields.String(description="subtask tag author"),
+        "subtask_package": fields.String(description="subtask package"),
+        "subtask_pkg_from": fields.String(description="subtask package from"),
+        "subtask_changed": fields.DateTime(description="subtask changed"),
+        "type": fields.String(description="subtask type"),
+        "archs": fields.Nested(
+            subtask_archs_model, description="list of subtask architectures"
+        ),
+        "approval": fields.Nested(
+            task_approval_el_model,
+            description="list of approvals for task",
+            as_list=True,
+        ),
+    },
+)
 task_info_model = ns.model(
     "TaskInfoModel",
     {
@@ -147,12 +176,7 @@ task_info_model = ns.model(
         "task_stage": fields.String(description="task stage"),
         "dependencies": fields.List(fields.Integer, description="task dependencies"),
         "subtasks": fields.Nested(
-            subtasks_el_model, description="list of subtasks by task", as_list=True
-        ),
-        "approval": fields.Nested(
-            task_approval_el_model,
-            description="list of approvals for task",
-            as_list=True,
+            subtask_info_el_model, description="list of subtasks by task", as_list=True
         ),
         "iterations": fields.Nested(
             task_iterations_el_model, description="task iteration list", as_list=True
