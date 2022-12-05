@@ -163,6 +163,45 @@ WHERE task_id IN (SELECT task_id FROM {tmp_table})
     AND revoked = 0
 """
 
+    get_subtask_approval = """
+SELECT DISTINCT
+    task_id,
+    subtask_id,
+    groupUniqArray((tapp_type, tapp_name, tapp_message))
+FROM
+(
+    SELECT task_id,
+           subtask_id,
+           tapp_type,
+           tapp_name,
+           tapp_message,
+           argMax(tapp_revoked, ts) AS revoked
+    FROM TaskApprovals
+    WHERE task_id NOT IN (
+        SELECT task_id FROM (
+            SELECT task_id, argMax(task_state, task_changed) AS state
+            FROM TaskStates
+            GROUP BY task_id
+        )
+        WHERE state = 'DELETED'
+    )
+    AND (task_id, subtask_id) NOT IN (
+        SELECT task_id, subtask_id FROM (
+            SELECT task_id,
+                   subtask_id,
+                   argMax(subtask_deleted, ts) AS sub_del
+            FROM Tasks
+            GROUP BY task_id, subtask_id
+        ) WHERE sub_del = 1
+    )
+    GROUP BY task_id, subtask_id, tapp_type, tapp_name, tapp_message
+)
+WHERE task_id IN (SELECT task_id FROM {tmp_table})
+    AND revoked = 0
+group by task_id,
+         subtask_id    
+"""
+
     get_task_dependencies_from_progress = """
 SELECT
     task_id,

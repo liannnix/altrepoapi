@@ -27,6 +27,7 @@ class IterationMeta:
 class TaskApprovalMeta:
     type: str
     nickname: str
+    message: str = ""
 
 
 @dataclass
@@ -52,6 +53,7 @@ class SubtaskMeta:
     subtask_changed: datetime.datetime
     type: str
     archs: list[SubtaskArchsMeta] = field(default_factory=list)
+    approval: list[TaskApprovalMeta] = field(default_factory=list)
 
 
 @dataclass
