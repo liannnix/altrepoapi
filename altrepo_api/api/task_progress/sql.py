@@ -215,36 +215,26 @@ ORDER BY max(ts) DESC
 
     find_all_tasks = """
 WITH task_search AS (
-    SELECT * FROM (
-        SELECT task_id,
-               any(owner) as owner,
-               any(repo) as repo,
-               argMax(state, TS) as state,
-               max(TS) AS ts
-        FROM (
-              SELECT task_id,
-                     subtask_id,
-                     any(task_repo)         AS repo,
-                     any(task_owner)        AS owner,
-                     argMax(task_state, ts) AS state,
-                     argMax(is_deleted, ts) AS deleted,
-                     max(ts)                AS TS
-              FROM TasksSearch
-              WHERE task_id IN (
-                  SELECT DISTINCT task_id
-                  FROM TasksSearch
-                  WHERE {where}
-                  {branch}
-                  {owner}
-              )
-              GROUP BY task_id,
-                       subtask_id
-                 )
-        WHERE (subtask_id = 0)
-           OR (deleted = 0)
-        GROUP BY task_id
-    ) WHERE state != 'DELETED'
-        {state}
+    SELECT
+        task_id,
+        SS[1] AS repo,
+        SS[2] AS owner,
+        SS[4] AS state,
+        ts_ AS ts
+    FROM (
+        SELECT
+            arraySlice(
+                splitByChar('|', argMax(search_string, ts)),
+                1,
+                4
+            ) AS SS,
+            toUInt32(lead) AS task_id,
+            max(ts) AS ts_
+        FROM GlobalSearch
+        {where}
+        GROUP BY lead
+        ORDER BY max(ts) DESC
+    )
 )
 SELECT
     task_id,

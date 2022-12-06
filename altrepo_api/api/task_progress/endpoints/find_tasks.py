@@ -54,8 +54,7 @@ class FindTasksLookup(APIWorker):
 
         if self.validation_results != []:
             return False
-        else:
-            return True
+        return True
 
     def get(self):
         input_val: list[str] = self.args["input"][:] if self.args["input"] else []
@@ -89,7 +88,7 @@ class FindTasksLookup(APIWorker):
                 continue
 
         # handle task branch if specified and not set from 'input_val' already
-        if branch:
+        if branch and not branch_clause:
             branch_clause = f"AND search_string LIKE '{branch}|%' "
 
         # build WHERE clause
@@ -153,48 +152,74 @@ class FindTasks(APIWorker):
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
+        self.validation_results = []
+
+        if self.args["input"] and len(self.args["input"]) > 4:
+            self.validation_results.append(
+                "input values list should contain no more than 4 elements"
+            )
+
+        if self.validation_results != []:
+            return False
         return True
 
     def get(self):
-        input_val = self.args["input"]
+        input_val: list[str] = self.args["input"][:] if self.args["input"] else []
         branch = self.args["branch"]
-        state = self.args["state"]
+        state = tuple(self.args["state"] if self.args["state"] else [])
         owner = self.args["owner"]
 
-        if branch:
-            branch_clause = f"AND task_repo = '{branch}'"
-        else:
-            branch_clause = ""
+        branch_clause = ""
+        owner_clause = ""
+        state_clause = ""
 
-        if state:
-            state_clause = f"AND state IN {tuple(state)}"
-        else:
-            state_clause = ""
+        # filter out deleted tasks  by default
+        where_clause = "WHERE type = 'task' AND search_string NOT LIKE '%|DELETED|%' "
 
-        if owner:
-            owner_clause = f"AND task_owner ILIKE '{owner}%'"
-        else:
-            owner_clause = ""
+        # parse input values and look for owner name (prefixed by '@')
+        # or branch (matches with list of know branches)
+        for v in input_val[:]:
+            # pick task branch if specified (has higher priority than 'branch' argument)
+            if v in lut.known_branches and not branch_clause:
+                branch_clause = f"AND search_string LIKE '{v}|%' "
+                input_val.remove(v)
+                continue
+            # pick task owner nickname if specified (only first found match)
+            if v.startswith("@") and not owner_clause:
+                # XXX: use case insensitive 'ILIKE' here
+                owner_clause = f"AND search_string ILIKE '%|{v.lstrip('@')}|%' "
+                input_val.remove(v)
+                continue
+            # pick task state if specified (only first found match)
+            if v in lut.known_states and not state_clause:
+                state_clause = f"AND search_string LIKE '%|{v}|%' "
+                input_val.remove(v)
+                continue
 
-        if input_val.isdigit():
-            where_clause = (
-                f"(subtask_id = 0 AND toString(task_id) LIKE '%{input_val}%')"
-            )
-        else:
-            where_clause = (
-                "(" if owner_clause else f"(task_owner ILIKE '{input_val}%' OR "
-            )
-            where_clause += (
-                f"splitByChar('/', subtask_package)[-1] ILIKE '%{input_val}%')"
-            )
+        # handle task branch if specified and not set from 'input_val' already
+        if branch and not branch_clause:
+            branch_clause = f"AND search_string LIKE '{branch}|%' "
+
+        # handle task owner if specified and not set from 'input_val' already
+        if owner and not owner_clause:
+            owner_clause = f"AND search_string ILIKE '%|{owner}|%' "
+
+        # handle task state if specified and not set from 'input_val' already
+        if state and not state_clause:
+            state_clause = f"AND splitByChar('|', search_string)[4] IN {state} "
+
+        # build WHERE clause
+        where_clause += branch_clause
+        where_clause += owner_clause
+        where_clause += state_clause
+        for v in input_val:
+            # escape '_' symbol as it matches any symbol in SQL
+            v = v.replace("_", r"\_")
+            # XXX: use case insensitive 'ILIKE' here
+            where_clause += f"AND search_string ILIKE '%{v}%' "
 
         response = self.send_sql_request(
-            self.sql.find_all_tasks.format(
-                branch=branch_clause,
-                where=where_clause,
-                state=state_clause,
-                owner=owner_clause,
-            )
+            self.sql.find_all_tasks.format(where=where_clause)
         )
         if not self.sql_status:
             return self.error
