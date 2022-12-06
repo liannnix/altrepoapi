@@ -16,6 +16,7 @@
 from dataclasses import asdict
 
 from altrepo_api.api.base import APIWorker
+from altrepo_api.api.misc import lut
 from ..sql import sql
 from ..dto import (
     FastSearchTaskMeta,
@@ -26,7 +27,7 @@ from ..dto import (
 )
 
 
-class FastTasksSearchLookup(APIWorker):
+class FindTasksLookup(APIWorker):
     """
     Fast tasks search lookup by id, owner or components.
     """
@@ -46,44 +47,69 @@ class FastTasksSearchLookup(APIWorker):
                 "tasks_limit should be greater or equal to 1"
             )
 
+        if self.args["input"] and len(self.args["input"]) > 4:
+            self.validation_results.append(
+                "input values list should contain no more than 4 elements"
+            )
+
         if self.validation_results != []:
             return False
         else:
             return True
 
     def get(self):
-        input_val = self.args["input"]
+        input_val: list[str] = self.args["input"][:] if self.args["input"] else []
         branch = self.args["branch"]
         tasks_limit = self.args["tasks_limit"]
-        owner = self.args["owner"]
+
+        branch_clause = ""
+        owner_clause = ""
+        state_clause = ""
+        # filter out deleted tasks  by default
+        where_clause = "WHERE type = 'task' AND search_string NOT LIKE '%|DELETED|%' "
+
+        # parse input values and look for owner name (prefixed by '@')
+        # or branch (matches with list of know branches)
+        for v in input_val[:]:
+            # pick task branch if specified (has higher priority than 'branch' argument)
+            if v in lut.known_branches and not branch_clause:
+                branch_clause = f"AND search_string LIKE '{v}|%' "
+                input_val.remove(v)
+                continue
+            # pick task owner nickname if specified (only first found match)
+            if v.startswith("@") and not owner_clause:
+                # XXX: use case insensitive 'ILIKE' here
+                owner_clause = f"AND search_string ILIKE '%|{v.lstrip('@')}|%' "
+                input_val.remove(v)
+                continue
+            # pick task state if specified (only first found match)
+            if v in lut.known_states and not state_clause:
+                state_clause = f"AND search_string LIKE '%|{v}|%' "
+                input_val.remove(v)
+                continue
+
+        # handle task branch if specified and not set from 'input_val' already
+        if branch:
+            branch_clause = f"AND search_string LIKE '{branch}|%' "
+
+        # build WHERE clause
+        where_clause += branch_clause
+        where_clause += owner_clause
+        where_clause += state_clause
+        for v in input_val:
+            # escape '_' symbol as it matches any symbol in SQL
+            v = v.replace("_", r"\_")
+            # XXX: use case insensitive 'ILIKE' here
+            where_clause += f"AND search_string ILIKE '%{v}%' "
 
         if tasks_limit:
             limit_clause = f"LIMIT {tasks_limit}"
         else:
             limit_clause = ""
 
-        if branch:
-            branch_clause = f"AND task_repo = '{branch}'"
-        else:
-            branch_clause = ""
-
-        if owner:
-            owner_clause = f"AND task_owner ILIKE '{owner}%'"
-        else:
-            owner_clause = ""
-
-        if input_val.isdigit():
-            where_clause = f"(subtask_id = 0 AND toString(task_id) LIKE '%{input_val}%')"
-        else:
-            where_clause = "(" if owner_clause else f"(task_owner ILIKE '{input_val}%' OR "
-            where_clause += f"splitByChar('/', subtask_package)[-1] ILIKE '%{input_val}%')"
-
         response = self.send_sql_request(
-            self.sql.task_search_fast_lookup.format(
-                branch=branch_clause,
-                where=where_clause,
-                owner=owner_clause,
-                limit=limit_clause
+            self.sql.task_global_search_fast.format(
+                where=where_clause, limit=limit_clause
             )
         )
         if not self.sql_status:
@@ -93,20 +119,18 @@ class FastTasksSearchLookup(APIWorker):
                 {"message": "No data not found in database"},
             )
 
-        def process_task_components(components: list[str]) -> list[str]:
-            result = []
-            for c in components:
-                if c == "":
-                    continue
-                c = c.rstrip(".git").split("/")[-1]
-                result.append(c)
-            return result
-
         tasks = []
-        for task in [FastSearchTaskMeta(*el[:-1]) for el in response]:
-            task.components = process_task_components(task.components)
-            if task.task_state != "DELETED":
-                tasks.append(task)
+        for el in response:
+            t, task_id = el[0].split("|"), el[1]
+            tasks.append(
+                FastSearchTaskMeta(
+                    task_id=task_id,
+                    task_repo=t[0],
+                    task_owner=t[1],
+                    task_state=t[3],
+                    components=[c for c in t[4].split(",")],
+                )
+            )
 
         res = {
             "request_args": self.args,
@@ -153,10 +177,16 @@ class FindTasks(APIWorker):
             owner_clause = ""
 
         if input_val.isdigit():
-            where_clause = f"(subtask_id = 0 AND toString(task_id) LIKE '%{input_val}%')"
+            where_clause = (
+                f"(subtask_id = 0 AND toString(task_id) LIKE '%{input_val}%')"
+            )
         else:
-            where_clause = "(" if owner_clause else f"(task_owner ILIKE '{input_val}%' OR "
-            where_clause += f"splitByChar('/', subtask_package)[-1] ILIKE '%{input_val}%')"
+            where_clause = (
+                "(" if owner_clause else f"(task_owner ILIKE '{input_val}%' OR "
+            )
+            where_clause += (
+                f"splitByChar('/', subtask_package)[-1] ILIKE '%{input_val}%')"
+            )
 
         response = self.send_sql_request(
             self.sql.find_all_tasks.format(

@@ -199,56 +199,17 @@ FROM
 WHERE task_id IN (SELECT task_id FROM {tmp_table})
     AND revoked = 0
 group by task_id,
-         subtask_id    
+         subtask_id
 """
 
-    get_task_dependencies_from_progress = """
+    task_global_search_fast = """
 SELECT
-    task_id,
-    argMax(task_depends, ts)
-FROM TaskProgress
-WHERE task_state = 'POSTPONED'
-    AND task_id IN (SELECT task_id FROM {tmp_table})
-GROUP BY task_id
-"""
-
-    task_search_fast_lookup = """
-SELECT * FROM (
-    SELECT
-        task_id,
-        any(owner),
-        any(repo),
-        argMax(state, TS) AS state,
-        groupArray(package),
-        max(TS) AS ts
-    FROM
-    (
-        SELECT
-            task_id,
-            subtask_id,
-            any(task_repo) AS repo,
-            any(task_owner) AS owner,
-            any(subtask_package) AS package,
-            argMax(task_state, ts) AS state,
-            argMax(is_deleted, ts) AS deleted,
-            max(ts) AS TS
-        FROM TasksSearch
-        WHERE task_id IN (
-            SELECT DISTINCT task_id
-            FROM TasksSearch
-            WHERE {where}
-            {branch}
-            {owner}
-        )
-        GROUP BY
-            task_id,
-            subtask_id
-    )
-    WHERE (subtask_id = 0) OR (deleted = 0)
-    GROUP BY task_id
-    ORDER BY ts DESC
-)
-WHERE state != 'DELETED'
+    argMax(search_string, ts),
+    lead
+FROM GlobalSearch
+{where}
+GROUP BY lead
+ORDER BY max(ts) DESC
 {limit}
 """
 

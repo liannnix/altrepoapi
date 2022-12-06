@@ -21,14 +21,6 @@ from .namespace import get_namespace
 ns = get_namespace()
 
 
-task_iterations_el_model = ns.model(
-    "TaskIterationsElementModel",
-    {
-        "task_try": fields.Integer(description="task try number"),
-        "task_iter": fields.Integer(description="task iteration number"),
-    },
-)
-
 subtask_archs_model = ns.model(
     "SubTaskArchitecturesModel",
     {
@@ -111,7 +103,7 @@ all_pkgsets_model = ns.model(
     },
 )
 
-fast_tasks_search_el_model = ns.model(
+find_tasks_el_model = ns.model(
     "FastTasksSearchElementModel",
     {
         "task_id": fields.Integer(description="task id"),
@@ -121,19 +113,26 @@ fast_tasks_search_el_model = ns.model(
         "components": fields.List(fields.String, description="task components"),
     },
 )
-fast_tasks_search_model = ns.model(
+find_tasks_model = ns.model(
     "FastTasksSearchModel",
     {
         "request_args": fields.Raw(description="request arguments"),
         "length": fields.Integer(description="number of tasks found"),
         "tasks": fields.Nested(
-            fast_tasks_search_el_model,
+            find_tasks_el_model,
             description="list of found tasks",
             as_list=True,
         ),
     },
 )
 
+task_iterations_el_model = ns.model(
+    "TaskIterationsElementModel",
+    {
+        "task_try": fields.Integer(description="task try number"),
+        "task_iter": fields.Integer(description="task iteration number"),
+    },
+)
 subtask_info_el_model = ns.model(
     "SubTaskInfoElementModel",
     {
