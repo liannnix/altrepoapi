@@ -123,7 +123,7 @@ GROUP BY
     stype
 """
 
-    get_all_pkgset_names = """
+    get_all_tasks_branches = """
 SELECT groupUniqArray(task_repo) FROM TaskProgress
 """
 

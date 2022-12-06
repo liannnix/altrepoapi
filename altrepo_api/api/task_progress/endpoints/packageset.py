@@ -19,8 +19,8 @@ from ..sql import sql
 from ...misc import lut
 
 
-class AllPackageSets(APIWorker):
-    """Retrieves package sets names from task progress."""
+class AllTasksBraches(APIWorker):
+    """Retrieves package set names list from TaskProgress table."""
 
     def __init__(self, connection, **kwargs):
         self.conn = connection
@@ -29,7 +29,7 @@ class AllPackageSets(APIWorker):
         super().__init__()
 
     def get(self):
-        response = self.send_sql_request(self.sql.get_all_pkgset_names)
+        response = self.send_sql_request(self.sql.get_all_tasks_branches)
         if not self.sql_status:
             return self.error
         if not response:

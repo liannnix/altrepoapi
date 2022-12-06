@@ -95,8 +95,8 @@ tasks_list_model = ns.model(
     },
 )
 
-all_pkgsets_model = ns.model(
-    "AllPackageSetsModel",
+all_tasks_branches_model = ns.model(
+    "AllTasksBranchesModel",
     {
         "length": fields.Integer(description="number of packagesets found"),
         "branches": fields.List(fields.String, description="list of packagesets"),
@@ -104,7 +104,7 @@ all_pkgsets_model = ns.model(
 )
 
 find_tasks_el_model = ns.model(
-    "FastTasksSearchElementModel",
+    "FindTasksElementModel",
     {
         "task_id": fields.Integer(description="task id"),
         "task_owner": fields.String(description="task owner"),
@@ -114,7 +114,7 @@ find_tasks_el_model = ns.model(
     },
 )
 find_tasks_model = ns.model(
-    "FastTasksSearchModel",
+    "FindTasksModel",
     {
         "request_args": fields.Raw(description="request arguments"),
         "length": fields.Integer(description="number of tasks found"),

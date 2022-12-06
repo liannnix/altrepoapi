@@ -19,7 +19,7 @@ from flask_restx import Resource
 from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404, GET_RESPONSES_404
 from .endpoints.find_tasks import FindTasks, FindTasksLookup
-from .endpoints.packageset import AllPackageSets
+from .endpoints.packageset import AllTasksBraches
 from .endpoints.last_tasks import LastTasks
 from .endpoints.task_info import TaskInfo
 
@@ -27,7 +27,7 @@ from .namespace import get_namespace
 from .parsers import last_tasks_args, find_tasks_args, find_tasks_lookup_args
 from .serializers import (
     tasks_list_model,
-    all_pkgsets_model,
+    all_tasks_branches_model,
     find_tasks_model,
     task_info_model,
 )
@@ -57,17 +57,22 @@ class routeLastTasks(Resource):
 @ns.route(
     "/all_packagesets",
     doc={
-        "description": "Get package sets list for last tasks",
-        "responses": GET_RESPONSES_404,
+        "deprecated": True,
+        "description": "Alias for 'all_tasks_branches' for compatibility",
     },
 )
-class routeAllPackageSets(Resource):
+@ns.route("/all_tasks_branches")
+@ns.doc(
+    description="Get branches list for last tasks",
+    responses=GET_RESPONSES_404,
+)
+class routeAllTasksBraches(Resource):
     # @ns.expect()
-    @ns.marshal_with(all_pkgsets_model)
+    @ns.marshal_with(all_tasks_branches_model)
     def get(self):
         url_logging(logger, g.url)
         args = {}
-        w = AllPackageSets(g.connection, **args)
+        w = AllTasksBraches(g.connection, **args)
         return run_worker(worker=w, args=args)
 
 
