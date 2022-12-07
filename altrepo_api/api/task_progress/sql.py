@@ -528,6 +528,7 @@ SELECT * FROM (
     WHERE (task_id = {id})
     GROUP BY task_id, subtask_id
 ) WHERE sub_type != 'unknown'
+ORDER BY subtask_id
 """
 
     get_subtasks_status_by_id_from_progress = """
