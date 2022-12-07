@@ -5,7 +5,7 @@ from flask import url_for
 BRANCH_IN_DB = "sisyphus"
 BRANCH_NOT_IN_DB = "fakebranch"
 TASK_IN_DB = "310692"
-TASK_NOT_IN_DB = "9999999"
+TASK_NOT_IN_DB = "123456789"
 DELETED_TASK_IN_DB = "307229"
 OWNER_IN_DB = "rider"
 OWNER_NOT_IN_DB = "fakeowner"
@@ -54,12 +54,12 @@ def test_all_tasks_branches(client):
         {"input": TASK_IN_DB, "branch": BRANCH_IN_DB, "status_code": 200},
         {"input": TASK_IN_DB, "status_code": 200},
         {"input": TASK_IN_DB, "branch": "p10", "status_code": 404},
-        {"input": "310", "owner": "ride", "status_code": 200},
-        {"input": "310", "owner": "ride", "tasks_limit": 10, "status_code": 200},
-        {"input": "cur", "owner": "ride", "status_code": 200},
+        {"input": "310", "branch": BRANCH_IN_DB, "status_code": 200},
         {"input": TASK_IN_DB, "branch": BRANCH_NOT_IN_DB, "status_code": 400},
-        {"input": TASK_IN_DB, "owner": OWNER_IN_DB, "status_code": 200},
-        {"input": TASK_IN_DB, "owner": OWNER_NOT_IN_DB, "status_code": 404},
+        {"input": f"{TASK_IN_DB},p10", "branch": BRANCH_IN_DB, "status_code": 404},
+        {"input": f"{TASK_IN_DB},@rider", "status_code": 200},
+        {"input": f"{TASK_IN_DB},rider", "status_code": 200},
+        {"input": f"{TASK_IN_DB},@rider,p10", "status_code": 404},
         {"input": TASK_NOT_IN_DB, "status_code": 404},
         {"input": OWNER_IN_DB, "branch": BRANCH_IN_DB, "status_code": 200},
         {"input": OWNER_IN_DB, "tasks_limit": 10, "status_code": 200},
@@ -75,7 +75,7 @@ def test_all_tasks_branches(client):
 )
 def test_fast_tasks_search_lookup(client, kwargs):
     params = {k: v for k, v in kwargs.items() if k not in ("status_code",)}
-    url = url_for("api.task/progress_route_fast_tasks_search_lookup")
+    url = url_for("api.task/progress_route_find_tasks_lookup")
     response = client.get(url, query_string=params)
     data = response.json
     assert response.status_code == kwargs["status_code"]
@@ -101,8 +101,10 @@ def test_fast_tasks_search_lookup(client, kwargs):
         {"input": TASK_IN_DB, "status_code": 200},
         {"input": TASK_IN_DB, "state": STATE_IN_DB, "status_code": 200},
         {"input": TASK_IN_DB, "owner": OWNER_IN_DB, "status_code": 200},
-        {"input": "310", "owner": "ride", "status_code": 200},
-        {"input": "cur", "owner": "ride", "status_code": 200},
+        {"input": f"{TASK_IN_DB},p10", "branch": BRANCH_IN_DB, "status_code": 404},
+        {"input": f"{TASK_IN_DB},@rider", "status_code": 200},
+        {"input": f"{TASK_IN_DB},rider", "status_code": 200},
+        {"input": f"{TASK_IN_DB},@rider,p10", "status_code": 404},
         {"input": TASK_IN_DB, "state": STATE_NOT_IN_DB, "status_code": 400},
         {"input": TASK_IN_DB, "owner": OWNER_NOT_IN_DB, "status_code": 404},
         {"input": TASK_IN_DB, "branch": "p10", "status_code": 404},
@@ -137,8 +139,8 @@ def test_find_tasks(client, kwargs):
                 assert task["task_state"] == params.get("state")
             if params["input"] == OWNER_IN_DB or params.get("owner"):
                 assert task["task_owner"] == OWNER_IN_DB
-            if params["input"].isdigit():
-                assert params["input"] in str(task["task_id"])
+            # if params["input"].isdigit():
+            #     assert params["input"] in str(task["task_id"])
 
 
 @pytest.mark.parametrize(
