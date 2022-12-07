@@ -18,6 +18,7 @@ from dataclasses import asdict
 from altrepo_api.api.base import APIWorker
 from ..dto import (
     TaskMeta,
+    TaskState,
     IterationMeta,
     TaskApprovalMeta,
     SubtaskMeta,
@@ -55,8 +56,18 @@ class TaskInfo(APIWorker):
             return self.store_error(
                 {"message": "No data not found in database"},
             )
+        # find out which table to use for task info lookup
+        states = [TaskState(*el) for el in response if el[1] != 0]
 
-        table_name = response[0][0]
+        if len(states) == 1:
+            table_name = states[0].table
+        else:
+            # if both states are equal progress tables always loses
+            state_p = [s for s in states if s.table == "progress"][0]
+            state_a = [s for s in states if s.table == "state"][0]
+            table_name = (
+                state_a.table if state_a.state == state_p.state else state_p.table
+            )
 
         if table_name == "progress":
             task_info = self.send_sql_request(

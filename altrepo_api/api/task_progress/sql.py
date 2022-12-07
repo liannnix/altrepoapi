@@ -373,24 +373,21 @@ ORDER BY subtask_id
 """
 
     get_task_table = """
-SELECT argMax(table, change)
-FROM (
-      SELECT task_id,
-             argMax(task_state, ts) AS state,
-             max(ts) AS change,
-             'progress' AS table
-      FROM TaskProgress
-      WHERE task_id = {id}
-      GROUP BY task_id, table
-      UNION ALL
-      SELECT task_id,
-             argMax(task_state, task_changed) AS state,
-             max(task_changed) AS change,
-             'state' AS table
-      FROM TaskStates
-      WHERE task_id = {id}
-      GROUP BY task_id, table
-)
+SELECT
+    'progress' AS table,
+    any(task_id) AS id,
+    argMax(task_state, ts) AS state,
+    max(ts) AS changed
+FROM TaskProgress
+WHERE task_id = {id}
+UNION ALL
+SELECT
+    'state' AS table,
+    any(task_id) AS id,
+    argMax(task_state, task_changed) AS state,
+    max(task_changed) AS changed
+FROM TaskStates
+WHERE task_id = {id}
 """
 
     get_task_info_from_progress = """
@@ -428,61 +425,59 @@ GROUP BY task_id, task_stage, task_iters
 """
 
     get_task_info_from_state = """
-SELECT task_id,
-       argMax(task_repo, ts),
-       TS.state,
-       argMax(task_owner, ts),
-       TS.try,
-       TS.iter,
-       TS.changed,
-       TS.message,
-       TS.task_stage,
-       TS.depends,
-       TS.task_iters
-FROM TasksSearch
-LEFT JOIN (
+WITH
+t_state AS (
     SELECT
-        task_id,
+        any(task_id) AS t_id,
+        max(task_changed) AS changed,
         argMax(task_state, task_changed) AS state,
-        TI.try AS try,
-        TI.iter AS iter,
-        argMax(task_message, task_changed) AS message,
-        max(task_changed) as changed,
         argMax(task_depends, task_changed) AS depends,
-        '' as task_stage,
-        iters as task_iters
+        argMax(task_message, task_changed) AS message
     FROM TaskStates
+    WHERE task_id = {id}
+)
+SELECT
+    task_id,
+    repo,
+    state,
+    owner,
+    try,
+    iter,
+    changed,
+    message,
+    '' AS stage,
+    depends,
+    task_iters
+FROM (
+    SELECT
+        t_id AS task_id,
+        state,
+        changed,
+        message,
+        depends,
+        TI.repo,
+        TI.owner
+    FROM t_state
     LEFT JOIN (
         SELECT
-            task_id,
-            argMax(task_try, task_changed) AS try,
-            argMax(task_iter, task_changed) AS iter,
-            TI.prev_iter AS iters
-        FROM TaskIterations
-        LEFT JOIN (
-            SELECT task_id, groupUniqArray((task_try, task_iter)) AS prev_iter
-            FROM TaskIterations
-            WHERE task_try != 0
-                AND task_id = {id}
-            GROUP BY task_id
-        ) AS TI ON TI.task_id = TaskIterations.task_id
-        WHERE task_id = {id}
-        GROUP BY task_id, iters
-        ) AS TI ON TI.task_id = TaskStates.task_id
+        task_id,
+        any(task_repo) AS repo,
+        any(task_owner) AS owner
+    FROM Tasks
+    WHERE subtask_deleted = 0
+        AND (task_id, task_changed) = (SELECT t_id, changed FROM t_state)
+    GROUP BY task_id
+    ) AS TI USING task_id
+) AS TS
+LEFT JOIN (
+    SELECT
+        any(task_id) AS t_id,
+        argMax(task_try, task_changed) AS try,
+        argMax(task_iter, task_changed) AS iter,
+        groupUniqArray((task_try, task_iter)) AS task_iters
+    FROM TaskIterations
     WHERE task_id = {id}
-    GROUP BY task_id, try, iter, task_iters
-) AS TS ON TS.task_id = TasksSearch.task_id
-WHERE task_id = {id}
-GROUP BY
-    task_id,
-    TS.state,
-    TS.try,
-    TS.iter,
-    TS.message,
-    TS.changed,
-    TS.depends,
-    TS.task_stage,
-    TS.task_iters
+) AS TT ON TS.task_id = TT.t_id
 """
 
     get_subtasks_by_id_from_progress = """

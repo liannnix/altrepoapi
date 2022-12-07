@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import datetime
 from dataclasses import dataclass, field
+from typing import NamedTuple
 
 
 @dataclass(frozen=True, order=True)
@@ -80,3 +81,10 @@ class FastSearchTaskMeta:
     task_repo: str
     task_state: str
     components: list[str]
+
+
+class TaskState(NamedTuple):
+    table: str
+    id: int
+    state: str
+    changed: datetime.datetime

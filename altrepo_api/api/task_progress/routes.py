@@ -83,7 +83,7 @@ class routeAllTasksBraches(Resource):
         "responses": GET_RESPONSES_400_404,
     },
 )
-class routeFastTasksGlobalSearch(Resource):
+class routeFindTasksLookup(Resource):
     @ns.expect(find_tasks_lookup_args)
     @ns.marshal_with(find_tasks_model)
     def get(self):
