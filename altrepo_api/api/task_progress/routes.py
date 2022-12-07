@@ -66,7 +66,7 @@ class routeLastTasks(Resource):
     description="Get branches list for last tasks",
     responses=GET_RESPONSES_404,
 )
-class routeAllTasksBraches(Resource):
+class routeAllTasksBranches(Resource):
     # @ns.expect()
     @ns.marshal_with(all_tasks_branches_model)
     def get(self):

@@ -38,8 +38,8 @@ def test_last_tasks(client, kwargs):
         assert data["tasks"] != []
 
 
-def test_all_packagesets(client):
-    url = url_for("api.task/progress_route_all_package_sets")
+def test_all_tasks_branches(client):
+    url = url_for("api.task/progress_route_all_tasks_branches")
     response = client.get(url)
     data = response.json
     assert response.status_code == 200
@@ -150,7 +150,7 @@ def test_find_tasks(client, kwargs):
     ],
 )
 def test_task_info(client, kwargs):
-    url = url_for(f"api.task/progress_route_task_info", **{"id": kwargs["id"]})
+    url = url_for("api.task/progress_route_task_info", **{"id": kwargs["id"]})
     response = client.get(url)
     data = response.json
     assert response.status_code == kwargs["status_code"]
