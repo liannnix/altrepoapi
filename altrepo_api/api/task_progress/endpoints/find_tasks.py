@@ -65,7 +65,8 @@ class FindTasksLookup(APIWorker):
         owner_clause = ""
         state_clause = ""
         # filter out deleted tasks  by default
-        where_clause = "WHERE type = 'task' AND search_string NOT LIKE '%|DELETED|%' "
+        where_clause = "WHERE type = 'task'"
+        where_clause2 = "WHERE search NOT LIKE '%|DELETED|%' "
 
         # parse input values and look for owner name (prefixed by '@')
         # or branch (matches with list of know branches)
@@ -83,7 +84,7 @@ class FindTasksLookup(APIWorker):
                 continue
             # pick task state if specified (only first found match)
             if v in lut.known_states and not state_clause:
-                state_clause = f"AND search_string LIKE '%|{v}|%' "
+                state_clause = f"AND search LIKE '%|{v}|%' "
                 input_val.remove(v)
                 continue
 
@@ -94,12 +95,14 @@ class FindTasksLookup(APIWorker):
         # build WHERE clause
         where_clause += branch_clause
         where_clause += owner_clause
-        where_clause += state_clause
+        # where_clause += state_clause
+        where_clause2 += state_clause
+
         for v in input_val:
             # escape '_' symbol as it matches any symbol in SQL
             v = v.replace("_", r"\_")
             # XXX: use case insensitive 'ILIKE' here
-            where_clause += f"AND search_string ILIKE '%{v}%' "
+            where_clause2 += f"AND search ILIKE '%{v}%' "
 
         if tasks_limit:
             limit_clause = f"LIMIT {tasks_limit}"
@@ -108,7 +111,7 @@ class FindTasksLookup(APIWorker):
 
         response = self.send_sql_request(
             self.sql.task_global_search_fast.format(
-                where=where_clause, limit=limit_clause
+                where=where_clause, where2=where_clause2, limit=limit_clause
             )
         )
         if not self.sql_status:

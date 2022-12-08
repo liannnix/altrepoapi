@@ -203,13 +203,16 @@ group by task_id,
 """
 
     task_global_search_fast = """
-SELECT
-    argMax(search_string, ts),
-    lead
-FROM GlobalSearch
-{where}
-GROUP BY lead
-ORDER BY max(ts) DESC
+SELECT * FROM (
+    SELECT
+        argMax(search_string, ts) AS search,
+        lead
+    FROM GlobalSearch
+    {where}
+    GROUP BY lead
+    ORDER BY max(ts) DESC
+)
+{where2}
 {limit}
 """
 
