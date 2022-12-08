@@ -65,9 +65,16 @@ class TaskInfo(APIWorker):
             # if both states are equal progress tables always loses
             state_p = [s for s in states if s.table == "progress"][0]
             state_a = [s for s in states if s.table == "state"][0]
-            table_name = (
-                state_a.table if state_a.state == state_p.state else state_p.table
-            )
+
+            # if task state in progress not equal to state in archive
+            # suppose task in progress table are always newer
+            if state_p.state != state_a.state:
+                table_name = state_p.table
+            # if state is not 'consistent' one prefer task progress table
+            elif state_p.state not in ("DONE", "EPERM", "TESTED", "FAILED"):
+                table_name = state_p.table
+            else:
+                table_name = state_a.table
 
         if table_name == "progress":
             task_info = self.send_sql_request(
