@@ -95,7 +95,6 @@ class FindTasksLookup(APIWorker):
         # build WHERE clause
         where_clause += branch_clause
         where_clause += owner_clause
-        # where_clause += state_clause
         where_clause2 += state_clause
 
         for v in input_val:
@@ -177,7 +176,8 @@ class FindTasks(APIWorker):
         state_clause = ""
 
         # filter out deleted tasks  by default
-        where_clause = "WHERE type = 'task' AND search_string NOT LIKE '%|DELETED|%' "
+        where_clause = "WHERE type = 'task' "
+        where_clause2 = "WHERE search NOT LIKE '%|DELETED|%' "
 
         # parse input values and look for owner name (prefixed by '@')
         # or branch (matches with list of know branches)
@@ -195,7 +195,7 @@ class FindTasks(APIWorker):
                 continue
             # pick task state if specified (only first found match)
             if v in lut.known_states and not state_clause:
-                state_clause = f"AND search_string LIKE '%|{v}|%' "
+                state_clause = f"AND search LIKE '%|{v}|%' "
                 input_val.remove(v)
                 continue
 
@@ -209,20 +209,21 @@ class FindTasks(APIWorker):
 
         # handle task state if specified and not set from 'input_val' already
         if state and not state_clause:
-            state_clause = f"AND splitByChar('|', search_string)[4] IN {state} "
+            state_clause = f"AND splitByChar('|', search)[4] IN {state} "
 
         # build WHERE clause
         where_clause += branch_clause
         where_clause += owner_clause
-        where_clause += state_clause
+        where_clause2 += state_clause
+
         for v in input_val:
             # escape '_' symbol as it matches any symbol in SQL
             v = v.replace("_", r"\_")
             # XXX: use case insensitive 'ILIKE' here
-            where_clause += f"AND search_string ILIKE '%{v}%' "
+            where_clause2 += f"AND search ILIKE '%{v}%' "
 
         response = self.send_sql_request(
-            self.sql.find_all_tasks.format(where=where_clause)
+            self.sql.find_all_tasks.format(where=where_clause, where2=where_clause2)
         )
         if not self.sql_status:
             return self.error

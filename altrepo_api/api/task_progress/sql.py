@@ -223,20 +223,27 @@ WITH task_search AS (
         SS[1] AS repo,
         SS[2] AS owner,
         SS[4] AS state,
-        ts_ AS ts
+        ts
     FROM (
         SELECT
+            task_id,
             arraySlice(
-                splitByChar('|', argMax(search_string, ts)),
+                splitByChar('|', search),
                 1,
                 4
             ) AS SS,
-            toUInt32(lead) AS task_id,
-            max(ts) AS ts_
-        FROM GlobalSearch
-        {where}
-        GROUP BY lead
-        ORDER BY max(ts) DESC
+            ts_ AS ts
+        FROM (
+            SELECT
+                toUInt32(lead) AS task_id,
+                argMax(search_string, ts) AS search,
+                max(ts) AS ts_
+            FROM GlobalSearch
+            {where}
+            GROUP BY lead
+            ORDER BY max(ts) DESC
+        )
+        {where2}
     )
 )
 SELECT
