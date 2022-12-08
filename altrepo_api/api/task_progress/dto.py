@@ -65,7 +65,7 @@ class TaskMeta:
     task_owner: str
     task_try: int
     task_iter: int
-    task_changed: str
+    task_changed: datetime.datetime
     task_message: str
     task_stage: str
     dependencies: list[int] = field(default_factory=list)
@@ -88,3 +88,11 @@ class TaskState(NamedTuple):
     id: int
     state: str
     changed: datetime.datetime
+
+
+class TaskState2(NamedTuple):
+    id: int
+    repo: str
+    owner: str
+    state: str
+    ts: datetime.datetime

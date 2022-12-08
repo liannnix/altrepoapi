@@ -216,106 +216,105 @@ SELECT * FROM (
 {limit}
 """
 
-    find_all_tasks = """
-WITH task_search AS (
-    SELECT
-        task_id,
-        SS[1] AS repo,
-        SS[2] AS owner,
-        SS[4] AS state,
-        ts
-    FROM (
-        SELECT
-            task_id,
-            arraySlice(
-                splitByChar('|', search),
-                1,
-                4
-            ) AS SS,
-            ts_ AS ts
-        FROM (
-            SELECT
-                toUInt32(lead) AS task_id,
-                argMax(search_string, ts) AS search,
-                max(ts) AS ts_
-            FROM GlobalSearch
-            {where}
-            GROUP BY lead
-            ORDER BY max(ts) DESC
-        )
-        {where2}
-    )
-)
+    find_tasks = """
 SELECT
     task_id,
-    repo,
-    state,
-    owner,
-    try,
-    iter,
-    task_changed,
-    message,
-    stage,
-    depends
-FROM task_search
-LEFT JOIN (
+    SS[1] AS repo,
+    SS[2] AS owner,
+    SS[4] AS state,
+    ts
+FROM (
     SELECT
         task_id,
-        argMax(try, changed) AS try,
-        argMax(iter, changed) AS iter,
-        argMax(message, changed) AS message,
-        max(changed) AS task_changed,
-        argMax(task_stage, changed) AS stage,
-        argMax(depends, changed) AS depends
+        arraySlice(
+            splitByChar('|', search),
+            1,
+            4
+        ) AS SS,
+        ts_ AS ts
     FROM (
-            SELECT * FROM (
-                SELECT
-                    task_id,
-                    argMax(task_state, ts) AS state,
-                    argMax(task_try, ts) AS try,
-                    argMax(task_iter, ts) AS iter,
-                    argMax(task_message, ts) AS message,
-                    argMax(task_changed, ts) AS changed,
-                    argMax(task_depends, ts) AS depends,
-                    TT.stage as task_stage
-                FROM TaskProgress
-                LEFT JOIN (
-                    SELECT task_id, argMax(stage, ts) AS stage
-                    FROM TaskProgress
-                    WHERE stage_status = 'started'
-                        AND task_state = 'BUILDING'
-                    GROUP BY task_id
-                    ) AS TT ON TT.task_id = TaskProgress.task_id
-                WHERE type = 'state'
-                GROUP BY task_id, task_stage
-            ) WHERE (state != 'DELETED')
-            UNION ALL
-            SELECT
-                task_id,
-                argMax(task_state, task_changed) AS state,
-                TI.try AS try,
-                TI.iter AS iter,
-                argMax(task_message, task_changed) AS message,
-                max(task_changed) as changed,
-                argMax(task_depends, task_changed) AS depends,
-                '' as task_stage
-            FROM TaskStates
-            LEFT JOIN (
-                SELECT
-                    task_id,
-                    argMax(task_try, task_changed) AS try,
-                    argMax(task_iter, task_changed) AS iter
-                FROM TaskIterations
-                GROUP BY task_id
-                ) AS TI ON TI.task_id = TaskStates.task_id
-            GROUP BY task_id, try, iter
+        SELECT
+            toUInt32(lead) AS task_id,
+            argMax(search_string, ts) AS search,
+            max(ts) AS ts_
+        FROM GlobalSearch
+        {where}
+        GROUP BY lead
+        ORDER BY max(ts) DESC
     )
-    GROUP BY task_id
-) AS TT ON TT.task_id = task_search.task_id
-ORDER BY ts DESC
+    {where2}
+    {limit}
+)
+"""
+
+    get_tasks_meta = """
+SELECT
+    task_id,
+    argMax(try, changed) AS try,
+    argMax(iter, changed) AS iter,
+    argMax(message, changed) AS message,
+    max(changed) AS task_changed,
+    argMax(task_stage, changed) AS stage,
+    argMax(depends, changed) AS depends
+FROM (
+    SELECT
+        task_id,
+        argMax(task_state, ts) AS state,
+        argMax(task_try, ts) AS try,
+        argMax(task_iter, ts) AS iter,
+        argMax(task_message, ts) AS message,
+        argMax(task_changed, ts) AS changed,
+        argMax(task_depends, ts) AS depends,
+        TT.stage as task_stage
+    FROM TaskProgress
+    LEFT JOIN (
+        SELECT task_id, argMax(stage, ts) AS stage
+        FROM TaskProgress
+        WHERE stage_status = 'started'
+            AND task_state = 'BUILDING'
+            AND task_id IN (SELECT * FROM {tmp_table})
+        GROUP BY task_id
+        ) AS TT ON TT.task_id = TaskProgress.task_id
+    WHERE type = 'state'
+        AND task_id IN (SELECT * FROM {tmp_table})
+    GROUP BY task_id, task_stage
+    UNION ALL
+    SELECT
+        task_id,
+        argMax(task_state, task_changed) AS state,
+        TI.try AS try,
+        TI.iter AS iter,
+        argMax(task_message, task_changed) AS message,
+        max(task_changed) as changed,
+        argMax(task_depends, task_changed) AS depends,
+        '' as task_stage
+    FROM TaskStates
+    LEFT JOIN (
+        SELECT
+            task_id,
+            argMax(task_try, task_changed) AS try,
+            argMax(task_iter, task_changed) AS iter
+        FROM TaskIterations
+        WHERE task_id IN (SELECT * FROM {tmp_table})
+        GROUP BY task_id
+        ) AS TI ON TI.task_id = TaskStates.task_id
+    WHERE task_id IN (SELECT * FROM {tmp_table})
+    GROUP BY task_id, try, iter
+)
+GROUP BY task_id ORDER BY task_changed DESC
 """
 
     get_task_subtasks = """
+WITH
+tasks_in_progress AS (
+    SELECT DISTINCT task_id FROM TaskProgress
+    WHERE task_id IN {tmp_table}
+),
+tasks_not_in_progress AS (
+    SELECT DISTINCT task_id FROM Tasks
+    WHERE task_id IN {tmp_table}
+        AND task_id NOT IN tasks_in_progress
+)
 SELECT
     task_id,
     subtask_id,
@@ -349,7 +348,7 @@ FROM (
             argMax(subtask_changed, ts) AS changed,
             argMax(type, ts) AS tp
         FROM TaskSubtaskProgress
-        WHERE (task_id in (SELECT task_id FROM {tmp_table}))
+        WHERE (task_id in tasks_in_progress)
             AND (type != 'progress')
         GROUP BY
             task_id,
@@ -374,7 +373,7 @@ FROM (
             argMax(subtask_changed, ts) AS changed,
             if(has(groupUniqArray(subtask_deleted), 0), 'create', 'delete') AS tp
         FROM Tasks
-        WHERE (task_id in (SELECT task_id FROM {tmp_table}))
+        WHERE task_id IN tasks_not_in_progress
         GROUP BY task_id, subtask_id
     ) WHERE sub_type != 'unknown'
 )

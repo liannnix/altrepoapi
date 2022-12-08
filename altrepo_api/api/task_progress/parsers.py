@@ -39,6 +39,14 @@ task_limit_opt = parser.register_item(
     help="number of last tasks to get",
     location="args",
 )
+task_limit_100_opt = parser.register_item(
+    "tasks_limit",
+    type=int,
+    required=False,
+    default=100,
+    help="number of last tasks to get",
+    location="args",
+)
 state_opt = parser.register_item(
     "state",
     type=task_state_type,
@@ -66,5 +74,7 @@ input_val = parser.register_item(
 
 # build parsers
 last_tasks_args = parser.build_parser(branch_opt, task_limit_opt)
-find_tasks_args = parser.build_parser(input_val, owner_opt, branch_opt, state_opt)
+find_tasks_args = parser.build_parser(
+    input_val, owner_opt, branch_opt, state_opt, task_limit_100_opt
+)
 find_tasks_lookup_args = parser.build_parser(input_val, branch_opt, task_limit_opt)

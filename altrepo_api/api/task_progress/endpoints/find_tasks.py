@@ -21,6 +21,7 @@ from ..sql import sql
 from ..dto import (
     FastSearchTaskMeta,
     TaskMeta,
+    TaskState2,
     TaskApprovalMeta,
     SubtaskMeta,
     SubtaskArchsMeta,
@@ -156,6 +157,11 @@ class FindTasks(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
+        if self.args["tasks_limit"] and self.args["tasks_limit"] < 1:
+            self.validation_results.append(
+                "tasks_limit should be greater or equal to 1"
+            )
+
         if self.args["input"] and len(self.args["input"]) > 4:
             self.validation_results.append(
                 "input values list should contain no more than 4 elements"
@@ -170,6 +176,7 @@ class FindTasks(APIWorker):
         branch = self.args["branch"]
         state = tuple(self.args["state"] if self.args["state"] else [])
         owner = self.args["owner"]
+        tasks_limit = self.args["tasks_limit"]
 
         branch_clause = ""
         owner_clause = ""
@@ -222,8 +229,15 @@ class FindTasks(APIWorker):
             # XXX: use case insensitive 'ILIKE' here
             where_clause2 += f"AND search ILIKE '%{v}%' "
 
+        if tasks_limit:
+            limit_clause = f"LIMIT {tasks_limit}"
+        else:
+            limit_clause = ""
+
         response = self.send_sql_request(
-            self.sql.find_all_tasks.format(where=where_clause, where2=where_clause2)
+            self.sql.find_tasks.format(
+                where=where_clause, where2=where_clause2, limit=limit_clause
+            )
         )
         if not self.sql_status:
             return self.error
@@ -232,8 +246,46 @@ class FindTasks(APIWorker):
                 {"message": "No data not found in database"},
             )
 
-        tasks = {el[0]: TaskMeta(*el) for el in response}  # type: ignore
-        task_ids = [{"task_id": el} for el in tasks.keys()]
+        _tasks = {el[0]: TaskState2(*el) for el in response}
+
+        _tmp_table = "tmp_task_ids"
+        _task_ids = [{"task_id": el} for el in _tasks.keys()]
+
+        response = self.send_sql_request(
+            self.sql.get_tasks_meta.format(tmp_table=_tmp_table),
+            external_tables=[
+                {
+                    "name": _tmp_table,
+                    "structure": [
+                        ("task_id", "UInt32"),
+                    ],
+                    "data": _task_ids,
+                }
+            ],
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error(
+                {"message": "No data not found in database"},
+            )
+
+        tasks: dict[int, TaskMeta] = {}
+        for el in response:
+            _task = _tasks[el[0]]
+            tasks[el[0]] = TaskMeta(
+                task_id=_task.id,
+                task_repo=_task.repo,
+                task_state=_task.state,
+                task_owner=_task.owner,
+                task_changed=_task.ts,
+                task_try=el[1],
+                task_iter=el[2],
+                task_message=el[3],
+                task_stage=el[5],
+                dependencies=el[6],
+            )
+
         # get task approval info by task_id
         _tmp_table = "tmp_task_ids"
         response = self.send_sql_request(
@@ -244,7 +296,7 @@ class FindTasks(APIWorker):
                     "structure": [
                         ("task_id", "UInt32"),
                     ],
-                    "data": task_ids,
+                    "data": _task_ids,
                 }
             ],
         )
@@ -262,7 +314,7 @@ class FindTasks(APIWorker):
                     "structure": [
                         ("task_id", "UInt32"),
                     ],
-                    "data": task_ids,
+                    "data": _task_ids,
                 }
             ],
         )
