@@ -134,9 +134,11 @@ class TaskInfo(APIWorker):
                 )
                 if response:
                     for el in response:
-                        subtasks[el[1]].approval = [
-                            TaskApprovalMeta(*apr) for apr in el[2]
-                        ]
+                        # handle adding approvals for 'corrupted' tasks from progress table
+                        if el[1] in subtasks.keys():
+                            subtasks[el[1]].approval = [
+                                TaskApprovalMeta(*apr) for apr in el[2]
+                            ]
 
             for subtask in subtasks.values():
                 task.subtasks.append(subtask)
