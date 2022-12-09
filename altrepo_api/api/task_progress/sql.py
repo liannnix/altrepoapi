@@ -56,28 +56,31 @@ SELECT * FROM (
 """
 
     get_subtasks_from_progress = """
-SELECT
-    task_id,
-    subtask_id,
-    argMax(subtask_type, ts),
-    argMax(subtask_srpm, ts),
-    argMax(subtask_srpm_name, ts),
-    argMax(subtask_srpm_evr, ts),
-    argMax(subtask_dir, ts),
-    argMax(subtask_tag_id, ts),
-    argMax(subtask_tag_name, ts),
-    argMax(subtask_tag_author, ts),
-    argMax(subtask_package, ts),
-    argMax(subtask_pkg_from, ts),
-    argMax(subtask_changed, ts),
-    argMax(type, ts)
-FROM TaskSubtaskProgress
-WHERE (task_id IN (SELECT task_id FROM {tmp_table}))
-    AND (type != 'progress')
-GROUP BY
-    task_id,
-    subtask_id
-ORDER BY subtask_id ASC
+SELECT * FROM (
+    SELECT
+        task_id,
+        subtask_id,
+        argMax(subtask_type, ts) AS sub_type,
+        argMax(subtask_srpm, ts) AS srpm,
+        argMax(subtask_srpm_name, ts),
+        argMax(subtask_srpm_evr, ts),
+        argMax(subtask_dir, ts) AS dir,
+        argMax(subtask_tag_id, ts),
+        argMax(subtask_tag_name, ts),
+        argMax(subtask_tag_author, ts),
+        argMax(subtask_package, ts) AS package,
+        argMax(subtask_pkg_from, ts),
+        argMax(subtask_changed, ts),
+        argMax(type, ts)
+    FROM TaskSubtaskProgress
+    WHERE (task_id IN (SELECT task_id FROM {tmp_table}))
+        AND (type != 'progress')
+    GROUP BY
+        task_id,
+        subtask_id
+    ORDER BY subtask_id ASC
+) WHERE sub_type != 'unknown'
+    OR arrayFilter(x -> notEmpty(x), [srpm, package, dir]) != []
 """
 
     get_subtasks_status_from_progress = """
