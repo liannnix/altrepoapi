@@ -376,6 +376,7 @@ FROM (
         WHERE task_id IN tasks_not_in_progress
         GROUP BY task_id, subtask_id
     ) WHERE sub_type != 'unknown'
+        OR arrayFilter(x -> notEmpty(x), [srpm, package, dir]) != []
 )
 GROUP BY task_id, subtask_id
 ORDER BY subtask_id
@@ -537,6 +538,7 @@ SELECT * FROM (
     WHERE (task_id = {id})
     GROUP BY task_id, subtask_id
 ) WHERE sub_type != 'unknown'
+    OR arrayFilter(x -> notEmpty(x), [srpm, package, dir]) != []
 ORDER BY subtask_id
 """
 
