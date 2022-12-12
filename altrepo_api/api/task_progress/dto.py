@@ -65,6 +65,7 @@ class TaskMeta:
     task_owner: str
     task_try: int
     task_iter: int
+    task_testonly: int
     task_changed: datetime.datetime
     task_message: str
     task_stage: str
