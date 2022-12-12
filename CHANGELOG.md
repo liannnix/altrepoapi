@@ -6,6 +6,20 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.9.0] - 2022-12-12
+
+Regular API code updates and fixes.
+
+### Added
+- task/progress routes namespace
+### Changed
+- **Breaking change**: requires GlobalSearch, TaskProgress and TaskSubtaskProgress tables (`ALTRepoDB v2.6.0`)
+### Fixed
+- site/deleted_package_info: missing deleted source packages
+- site/package_changelog: changelog order (closes #44443)
+- image/parser: arguments definitions
+- api: variables and constants naming errors
+
 ## [1.8.11] - 2022-11-22
 
 Regular API code updates and fixes.
