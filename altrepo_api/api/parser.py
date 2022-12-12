@@ -53,6 +53,7 @@ parser = ParserFactory()
 # lookup tables
 # __pkg_groups = set(lut.pkg_groups)
 __known_archs = set(lut.known_archs)
+__known_states = set(lut.known_states)
 __known_branches = set(lut.known_branches)
 __known_img_archs = set(lut.known_image_archs)
 __known_img_editions = set(lut.known_image_editions)
@@ -88,6 +89,8 @@ __license_string_match = re.compile(r"^[A-Za-z0-9\(\)\+ .\-/&,]+$")
 __license_id_match = re.compile(r"^[A-Za-z0-9\-\.\+]+$")
 # acl
 __acl_group_match = re.compile(r"^@?[a-z0-9\_]+$")
+# task search
+__task_search_match = re.compile(r"^(@?[\w\.\+\-\_]{2,},?)+$")
 
 
 # custom validators
@@ -482,3 +485,27 @@ def acl_group_type(value: Any) -> str:
 
 
 acl_group_type.__schema__ = {"type": "string", "pattern": __acl_group_match.pattern}
+
+
+def task_search_type(value: Any) -> str:
+    """Task search validator."""
+
+    value = __get_string(value)
+    if not __task_search_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+task_search_type.__schema__ = {"type": "string", "pattern": __task_search_match.pattern}
+
+
+def task_state_type(value: Any) -> str:
+    """Task state validator."""
+
+    value = __get_string(value)
+    if value.upper() not in __known_states:
+        raise ValueError("Invalid task_state: {0}".format(value))
+    return value
+
+
+task_state_type.__schema__ = {"type": "string"}

@@ -34,6 +34,13 @@ from altrepo_api.api.parser import (
 )
 
 # register items
+branch = parser.register_item(
+    "branch",
+    type=branch_name_type,
+    required=True,
+    help="name of packageset",
+    location="args",
+)
 branch_opt = parser.register_item(
     "branch",
     type=branch_name_type,
@@ -104,7 +111,7 @@ img_type_opt = parser.register_item(
     help="Image type",
     location="args",
 )
-img_uuid_opt = parser.register_item(
+img_uuid = parser.register_item(
     "uuid", type=uuid_type, required=True, help="Image UUID", location="args"
 )
 pkgs_limit = parser.register_item(
@@ -186,11 +193,11 @@ active_images_args = parser.build_parser(
 )
 image_tag_args = parser.build_parser(branch_opt, img_edition_opt)
 image_last_packages_args = parser.build_parser(
-    branch_opt, img_uuid_opt, pkgs_limit, img_component_opt
+    branch, img_uuid, pkgs_limit, img_component_opt
 )
 image_uuid_args = parser.build_parser(img_tag_opt)
-image_categories_args = parser.build_parser(img_uuid_opt, img_component_opt)
-image_packages_args = parser.build_parser(img_uuid_opt, group, img_component_opt)
+image_categories_args = parser.build_parser(img_uuid, img_component_opt)
+image_packages_args = parser.build_parser(img_uuid, group, img_component_opt)
 find_images_args = parser.build_parser(
     branch_opt, pkg_name_opt, img_edition_opt, pkg_type_opt, img_show_opt
 )
