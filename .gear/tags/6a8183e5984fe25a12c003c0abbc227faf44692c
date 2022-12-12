@@ -1,6 +1,0 @@
-object 7e908fee4b4c5b35eb3955031ae4bb331c021190
-type commit
-tag v1.8.11
-tagger Danil Shein <dshein@altlinux.org> 1669103113 +0300
-
-add task progress API

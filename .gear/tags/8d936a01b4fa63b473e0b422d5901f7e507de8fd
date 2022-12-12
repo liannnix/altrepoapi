@@ -1,0 +1,6 @@
+object 6ab7b6f1f2af9e06f82c4366eb3642ee61b58182
+type commit
+tag v1.9.0
+tagger Danil Shein <dshein@altlinux.org> 1670843580 +0300
+
+task progress
