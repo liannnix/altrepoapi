@@ -35,6 +35,7 @@ SELECT * FROM (
         argMax(task_owner, ts) AS owner,
         argMax(task_try, ts) AS try,
         argMax(task_iter, ts) AS iter,
+        argMax(task_testonly, ts) AS testonly,
         argMax(task_changed, ts) AS changed,
         argMax(task_message, ts) AS message,
         TT.stage AS task_stage,
@@ -256,6 +257,7 @@ SELECT
     argMax(try, changed) AS try,
     argMax(iter, changed) AS iter,
     argMax(message, changed) AS message,
+    argMax(testonly, changed) AS task_testonly,
     max(changed) AS task_changed,
     argMax(task_stage, changed) AS stage,
     argMax(depends, changed) AS depends
@@ -266,6 +268,7 @@ FROM (
         argMax(task_try, ts) AS try,
         argMax(task_iter, ts) AS iter,
         argMax(task_message, ts) AS message,
+        argMax(task_testonly, ts) AS testonly,
         argMax(task_changed, ts) AS changed,
         argMax(task_depends, ts) AS depends,
         TT.stage as task_stage
@@ -288,6 +291,7 @@ FROM (
         TI.try AS try,
         TI.iter AS iter,
         argMax(task_message, task_changed) AS message,
+        argMax(task_testonly, task_changed) testonly,
         max(task_changed) as changed,
         argMax(task_depends, task_changed) AS depends,
         '' as task_stage
@@ -411,6 +415,7 @@ SELECT
     argMax(task_owner, ts) AS owner,
     argMax(task_try, ts) AS try,
     argMax(task_iter, ts) AS iter,
+    argMax(task_testonly, ts) AS testonly,
     argMax(task_changed, ts) AS changed,
     argMax(task_message, ts) AS message,
     TT.stage AS task_stage,
@@ -443,6 +448,7 @@ t_state AS (
     SELECT
         any(task_id) AS t_id,
         max(task_changed) AS changed,
+        argMax(task_testonly, task_changed) AS testonly,
         argMax(task_state, task_changed) AS state,
         argMax(task_depends, task_changed) AS depends,
         argMax(task_message, task_changed) AS message
@@ -456,6 +462,7 @@ SELECT
     owner,
     try,
     iter,
+    testonly,
     changed,
     message,
     '' AS stage,
@@ -465,6 +472,7 @@ FROM (
     SELECT
         t_id AS task_id,
         state,
+        testonly,
         changed,
         message,
         depends,
