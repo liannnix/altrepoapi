@@ -52,6 +52,13 @@ def default_error_handler(e):
         return {"message": message}, 500
 
 
+@app.after_request
+def add_headers(response):
+    """Add headers to all API responses here."""
+    # response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
+
+
 def configure_app(flask_app):
     flask_app.config["SWAGGER_UI_DOC_EXPANSION"] = "list"
     flask_app.config["SWAGGER_UI_REQUEST_DURATION"] = True
@@ -59,6 +66,7 @@ def configure_app(flask_app):
     flask_app.config["ERROR_404_HELP"] = False
     flask_app.config["RESTX_MASK_SWAGGER"] = False
     flask_app.config["BUNDLE_ERRORS"] = True
+    flask_app.config["RESTX_INCLUDE_ALL_MODELS"] = False
     flask_app.config["RESTX_JSON"] = {"cls": CustomJSONEncoder}
 
 

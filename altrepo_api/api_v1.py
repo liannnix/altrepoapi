@@ -21,6 +21,7 @@ from flask_restx import Resource, fields
 from altrepo_api.version import __version__
 from altrepo_api.settings import namespace as settings
 from altrepo_api.api.auth.decorators import auth_required
+from altrepo_api.decorators import add_headers
 
 from altrepo_api.api.bug import ns as bug_ns
 from altrepo_api.api.task import ns as task_ns
@@ -89,6 +90,7 @@ version_fields = api.model(
 @api.doc(description="get API version")
 class ApiVersion(Resource):
     @api.marshal_with(version_fields)
+    @add_headers(headers={"X-Ping": "pong"})
     def get(self):
         return api, 200
 
