@@ -96,7 +96,10 @@ FROM
         task_id,
         subtask_id,
         arch,
-        argMax(stage_status, ts) as status,
+        argMax(
+            if(status = 'excluded', status, stage_status),
+            ts
+        ) as status,
         argMax(type, ts) AS stype,
         max(ts) as subts
     FROM TaskSubtaskProgress
@@ -565,7 +568,10 @@ FROM
         task_id,
         subtask_id,
         arch,
-        argMax(stage_status, ts) as status,
+        argMax(
+            if(status = 'excluded', status, stage_status),
+            ts
+        ) as status,
         argMax(type, ts) AS stype,
         max(ts) as subts
     FROM TaskSubtaskProgress
