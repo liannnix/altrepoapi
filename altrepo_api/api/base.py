@@ -14,13 +14,16 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Any, Callable, Optional, Protocol, Union
+from typing import Any, Callable, NamedTuple, Optional, Protocol, Union
 from flask_restx import abort
 
 from altrepo_api.settings import namespace as settings
 from altrepo_api.utils import response_error_parser, get_logger, logger_level
 
-# from altrepo_api.database.connection import Connection
+# type alias
+WorkerResultWithHeaders = tuple[Any, int, dict[str, str]]
+WorkerResultWithoutHeaders = tuple[Any, int]
+WorkerResult = Union[WorkerResultWithHeaders, WorkerResultWithoutHeaders]
 
 
 class ConnectionProto(Protocol):
@@ -31,6 +34,12 @@ class ConnectionProto(Protocol):
 
     def drop_connection(self) -> None:
         ...
+
+
+class Response(NamedTuple):
+    result: Any
+    http_code: int
+    headers: dict[str, str] = dict()
 
 
 class APIWorker:
@@ -111,7 +120,7 @@ class APIWorker:
     def check_params(self) -> bool:
         return True
 
-    def get(self) -> tuple[Any, int]:
+    def get(self) -> WorkerResult:
         return "OK", 200
 
 
@@ -129,28 +138,30 @@ def _abort_on_validation_error(
         )
 
 
-def _abort_on_result_error(method: Callable[[], tuple[Any, int]], ok_code: int):
-    """Call Flask abort() on APIWorker run method call returned not 'ok_code'."""
+def _abort_on_result_error(
+    method: Callable[[], WorkerResult], ok_code: int
+) -> Response:
+    """Call Flask abort() if APIWorker run method call returned not 'ok_code'."""
 
-    result, code = method()
-    if code != ok_code:
-        abort(code, **response_error_parser(result))  # type: ignore
-    return result, code
+    response = Response(*method())  # type: ignore
+    if response.http_code != ok_code:
+        abort(response.http_code, **response_error_parser(response.result))  # type: ignore
+    return response
 
 
 def run_worker(
     *,
     worker: APIWorker,
-    run_method: Optional[Callable[[], tuple[Any, int]]] = None,
+    run_method: Optional[Callable[[], WorkerResult]] = None,
     check_method: Optional[Callable[[], bool]] = None,
     args: Any = None,
     ok_code: int = 200,
-) -> tuple[Any, int]:
+) -> Response:
     """Calls APIWorker class's 'check_method' and 'run_method' and returns the result.
 
     Calls flask_restx abort() if check_method() returned False
     or if run_method() returned code not equal to 'ok_code'.
-    Otherwise returns run_method() results.
+    Otherwise returns run_method() results wrapped in `Response` class.
 
     Default 'run_method' is worker.get().
     Default 'check_method' is worker.check_params()."""
