@@ -102,6 +102,8 @@ __bdu_id_list_match = re.compile(r"^(BDU:\d{4}-\d{5},?)+$")
 __errata_id_match = re.compile(r"^ALT-[A-Z]+-2\d{3}-\d{4,}-\d{1,}$")
 __errata_search_match = re.compile(r"^([\w\.\+\-\_:]{2,},?)+$")
 __password_match = re.compile(r"^([\w|\W]+)$")
+# input
+__positive_integer = re.compile(r"^(?<![-.])\b[0-9]+\b(?!\.[0-9])$")
 
 
 # custom validators
@@ -645,3 +647,15 @@ def password_type(value: Any) -> str:
 
 
 password_type.__schema__ = {"type": "string", "pattern": __password_match.pattern, "format": "password"}
+
+
+def positive_integer_type(value: Any) -> str:
+    """Positive integer validator."""
+
+    value = __get_string(value)
+    if not __positive_integer.search(value):
+        raise ValueError("Invalid positive integer: {0}".format(value))
+    return value
+
+
+positive_integer_type.__schema__ = {"type": "string", "pattern": __positive_integer.pattern}
