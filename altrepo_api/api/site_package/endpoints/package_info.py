@@ -140,7 +140,7 @@ class PackageInfo(APIWorker):
             ],
         )
 
-        pkg_info = PkgMeta(*response[0])._asdict()
+        pkg_info = PkgMeta(*response[0])
 
         # get package task
         pkg_task = 0
@@ -182,7 +182,7 @@ class PackageInfo(APIWorker):
                         pkg_task_date = datetime_to_iso(task["changed"])
                         if task["type"] != "copy":
                             gear_link = self._parse_task_gear(
-                                pkg_info["name"], task, lut.gitalt_base
+                                pkg_info.name, task, lut.gitalt_base
                             )
                             pkg_tasks.append(
                                 {"type": "build", "id": pkg_task, "date": pkg_task_date}
@@ -197,7 +197,7 @@ class PackageInfo(APIWorker):
                             pkg_task = task["id"]
                             pkg_task_date = datetime_to_iso(task["changed"])
                             gear_link = self._parse_task_gear(
-                                pkg_info["name"], task, lut.gitalt_base
+                                pkg_info.name, task, lut.gitalt_base
                             )
                             pkg_tasks.append(
                                 {"type": "build", "id": pkg_task, "date": pkg_task_date}
@@ -223,7 +223,7 @@ class PackageInfo(APIWorker):
         pkg_acl = []
 
         response = self.send_sql_request(
-            self.sql.get_pkg_acl.format(name=pkg_info["name"], branch=self.branch)
+            self.sql.get_pkg_acl.format(name=pkg_info.name, branch=self.branch)
         )
         if not self.sql_status:
             return self.error
@@ -235,10 +235,10 @@ class PackageInfo(APIWorker):
         pkg_versions = []
 
         if source:
-            request_line = self.sql.get_pkg_versions.format(name=pkg_info["name"])
+            request_line = self.sql.get_pkg_versions.format(name=pkg_info.name)
         else:
             request_line = self.sql.get_pkg_binary_versions.format(
-                name=pkg_info["name"], arch=pkg_info["arch"]
+                name=pkg_info.name, arch=pkg_info.arch
             )
 
         response = self.send_sql_request(request_line)
@@ -289,7 +289,9 @@ class PackageInfo(APIWorker):
 
         if response:
             if source:
-                pkg_info["buildtime"] = response[0][2]  # type: ignore
+                # FIXME: (bug #41537) some binaries built from old source package
+                # in not 'DONE' tasks leads to misleading build time
+                pkg_info = pkg_info._replace(buildtime=response[0][2])
                 # find appropriate hash for 'noarch' packages using build task
                 # and architecture precedence
                 _bin_pkgs_arch_hshs_from_task = {}
@@ -396,11 +398,11 @@ class PackageInfo(APIWorker):
             bh_status = [BeehiveStatus(*el)._asdict() for el in response]
 
             for bh in bh_status:
-                epoch_ = pkg_info["epoch"]
+                epoch_ = pkg_info.epoch
                 if epoch_ == 0:
-                    epoch_version = pkg_info["version"]
+                    epoch_version = pkg_info.version
                 else:
-                    epoch_version = str(epoch_) + ":" + pkg_info["version"]
+                    epoch_version = str(epoch_) + ":" + pkg_info.version
 
                 url = "/".join(
                     (
@@ -412,7 +414,7 @@ class PackageInfo(APIWorker):
                         bh["updated"].strftime("%Y/%m%d"),
                         "error",
                         "-".join(
-                            (pkg_info["name"], epoch_version, pkg_info["release"])
+                            (pkg_info.name, epoch_version, pkg_info.release)
                         ),
                     )
                 )
@@ -434,7 +436,7 @@ class PackageInfo(APIWorker):
         # get package license tokens
         license_tokens = []
 
-        lp = LicenseParser(connection=self.conn, license_str=pkg_info["license"])
+        lp = LicenseParser(connection=self.conn, license_str=pkg_info.license)
         lp.parse_license()
 
         if lp.status:
@@ -447,7 +449,7 @@ class PackageInfo(APIWorker):
 
         # fix gear_link for binary packages
         if source == 0:
-            pkgname_binary = pkg_info["name"]
+            pkgname_binary = pkg_info.name
             try:
                 pkgname_source = list(package_archs.keys())[0]
                 in_ = f"{pkgname_binary[0]}/{pkgname_binary}.git"
@@ -460,7 +462,7 @@ class PackageInfo(APIWorker):
         res = {
             "pkghash": str(self.pkghash),
             "request_args": self.args,
-            **pkg_info,
+            **pkg_info._asdict(),
             "task": pkg_task,
             "task_date": pkg_task_date if pkg_task_date is not None else "",
             "gear": gear_link,
