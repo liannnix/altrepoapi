@@ -163,7 +163,7 @@ subtask_info_el_model = ns.model(
     },
 )
 task_info_model = ns.model(
-    "TaskInfoModel",
+    "TaskProgressTaskInfoModel",
     {
         "task_id": fields.Integer(description="task id"),
         "task_repo": fields.String(description="repository name"),

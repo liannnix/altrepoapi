@@ -143,12 +143,17 @@ class TaskInfo(APIWorker):
             try_iter = max(self.task["rebuilds"])
             self.task["try"], self.task["iter"] = try_iter
 
-        # return here for deleted task
+        # XXX: return here for deleted task
         if is_task_deleted:
             self.task["rebuilds"] = [
                 (str(x[0]) + "." + str(x[1]))
                 for x in sorted(self.task["rebuilds"].keys())
             ]
+            self.task["subtasks"] = []
+            self.task["plan"] = {
+                "add": {"src": [], "bin": []},
+                "del": {"src": [], "bin": []},
+            }
 
             self.status = True
             return None
