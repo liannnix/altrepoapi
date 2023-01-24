@@ -101,6 +101,7 @@ __bdu_id_match = re.compile(r"^BDU:\d{4}-\d{5}$")
 __bdu_id_list_match = re.compile(r"^(BDU:\d{4}-\d{5},?)+$")
 __errata_id_match = re.compile(r"^ALT-[A-Z]+-2\d{3}-\d{4,}-\d{1,}$")
 __errata_search_match = re.compile(r"^([\w\.\+\-\_:]{2,},?)+$")
+__password_match = re.compile(r"^([\w|\W]+)$")
 
 
 # custom validators
@@ -632,3 +633,15 @@ errata_search_type.__schema__ = {
     "type": "string",
     "pattern": __errata_search_match.pattern
 }
+
+
+def password_type(value: Any) -> str:
+    """Password validator."""
+
+    value = __get_string(value)
+    if not __password_match.search(value):
+        raise ValueError("Invalid password: {0}".format(value))
+    return value
+
+
+password_type.__schema__ = {"type": "string", "pattern": __password_match.pattern, "format": "password"}

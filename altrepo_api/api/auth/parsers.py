@@ -13,22 +13,22 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from altrepo_api.api.parser import parser, packager_nick_type
+from altrepo_api.api.parser import parser, packager_nick_type, password_type
 
 nickname = parser.register_item(
     "nickname",
     type=packager_nick_type,
     required=True,
     help="User nickname",
-    location="args",
+    location="form",
 )
 
 password = parser.register_item(
     "password",
-    type=str,
+    type=password_type,
     required=True,
     help="User password",
-    location="args",
+    location="form",
 )
 
 login_args = parser.build_parser(nickname, password)
