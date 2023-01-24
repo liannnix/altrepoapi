@@ -13,12 +13,15 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import jwt
 
 from functools import wraps
 from flask import request
 
+from .endpoints.blacklisted_token import BlacklistedToken
 from .exceptions import ApiUnauthorized, ApiForbidden
 from .auth import check_auth
+from ...settings import namespace
 
 
 def auth_required(_func=None, ldap_group=None):
@@ -57,6 +60,18 @@ def admin_auth_required(f):
     return decorated
 
 
+def token_required(f):
+    """Execute function if request contains valid access token."""
+
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token_payload = _check_access_token()
+        for name, val in token_payload.items():
+            setattr(decorated, name, val)
+        return f(*args, **kwargs)
+    return decorated
+
+
 def _check_access_auth(admin_only=False, ldap_group=None):
     token = request.headers.get("Authorization")
     if not token:
@@ -71,3 +86,23 @@ def _check_access_auth(admin_only=False, ldap_group=None):
             error_description=result.error,
         )
     return result.value
+
+
+def _check_access_token():
+    token_payload = request.headers.get("Authorization")
+    if not token_payload:
+        raise ApiUnauthorized(
+            description="Authentication Token is missing",
+            admin_only=False
+        )
+    try:
+        result = jwt.decode(token_payload, namespace.ADMIN_PASSWORD, algorithms=["HS256"])
+    except jwt.ExpiredSignatureError:
+        raise ApiUnauthorized("Access token expired.")
+    except jwt.InvalidTokenError:
+        raise ApiUnauthorized("Invalid token.")
+
+    if BlacklistedToken(token=token_payload).check_blacklist():
+        raise ApiUnauthorized("Token blacklisted.")
+    result["token"] = token_payload
+    return result

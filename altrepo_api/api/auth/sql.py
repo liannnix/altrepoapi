@@ -14,7 +14,21 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from .namespace import get_namespace
-from . import routes
+from dataclasses import dataclass
 
-ns = get_namespace()
+
+@dataclass(frozen=True)
+class SQL:
+
+    insert_into_blacklisted_token = """
+INSERT INTO BlacklistedToken (*) VALUES
+"""
+
+    get_token_from_blacklist = """
+SELECT count(token)
+FROM BlacklistedToken
+WHERE token = '{token}'
+"""
+
+
+sql = SQL()
