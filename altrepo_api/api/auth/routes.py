@@ -17,7 +17,7 @@ from flask import g
 from flask_restx import Resource
 
 from altrepo_api.utils import get_logger, url_logging
-from altrepo_api.api.base import run_worker, POST_RESPONSES_400_404, GET_RESPONSES_404
+from altrepo_api.api.base import run_worker, POST_RESPONSES_400_404
 from .decorators import token_required
 from .endpoints.auth_login import AuthLogin
 from .endpoints.auth_logout import AuthLogout
@@ -44,4 +44,21 @@ class routeAuthLogin(Resource):
         url_logging(logger, g.url)
         args = login_args.parse_args(strict=True)
         w = AuthLogin(g.connection, payload=ns.payload, **args)
+        return run_worker(worker=w, args=args, run_method=w.post, ok_code=201,)
+
+
+@ns.route(
+    "/logout",
+    doc={
+        "description": "User logs out.",
+        "responses": POST_RESPONSES_400_404,
+    },
+)
+class routeAuthLogout(Resource):
+    @ns.doc(security="Bearer")
+    @token_required
+    def post(self):
+        url_logging(logger, g.url)
+        args = {"token": self.post.token, "exp": self.post.exp}
+        w = AuthLogout(g.connection, payload=ns.payload, **args)
         return run_worker(worker=w, args=args, run_method=w.post, ok_code=201,)
