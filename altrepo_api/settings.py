@@ -53,10 +53,15 @@ class BasePathNamespace:
     AUTH_LDAP_SERVER_URI = ""
     AUTH_LDAP_USER_SEARCH = ""
     AUTH_LDAP_REQUIRE_GROUP = ""
+    EXPIRES_ACCESS_TOKEN = 60  # access token storage time in seconds
+    EXPIRES_REFRESH_TOKEN = 300  # refresh token storage time in seconds
+    MAX_REFRESH_SESSIONS_COUNT = 1
     # API admin credentials
     ADMIN_USER = "admin"
     # echo -n "SuperSecretPa\$\$w0rd" | sha512sum   # !! '$' symbol should be escaped in echo with backslash !!
     ADMIN_PASSWORD = ""
+    # redis
+    REDIS_URL = ""
 
 
 namespace = BasePathNamespace()

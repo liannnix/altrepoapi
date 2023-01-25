@@ -52,6 +52,12 @@ PARAMS = {
         "auth_ldap_server_uri": ("AUTH_LDAP_SERVER_URI", "str"),
         "auth_ldap_user_search": ("AUTH_LDAP_USER_SEARCH", "str"),
         "auth_ldap_require_group": ("AUTH_LDAP_REQUIRE_GROUP", "str"),
+        "expires_access_token": ("EXPIRES_ACCESS_TOKEN", "int"),
+        "expires_refresh_token": ("EXPIRES_REFRESH_TOKEN", "int"),
+        "max_refresh_sessions_count": ("MAX_REFRESH_SESSIONS_COUNT", "int"),
+    },
+    "redis": {
+        "redis_url": ("REDIS_URL", "str")
     }
 }
 
