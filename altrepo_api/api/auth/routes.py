@@ -21,9 +21,10 @@ from altrepo_api.api.base import run_worker, POST_RESPONSES_400_404
 from .decorators import token_required
 from .endpoints.auth_login import AuthLogin
 from .endpoints.auth_logout import AuthLogout
+from .endpoints.refresh_token import RefreshToken
 
 from .namespace import get_namespace
-from .parsers import login_args
+from .parsers import login_args, refresh_token_args
 
 ns = get_namespace()
 
@@ -61,4 +62,20 @@ class routeAuthLogout(Resource):
         url_logging(logger, g.url)
         args = {"token": self.post.token, "exp": self.post.exp}
         w = AuthLogout(g.connection, payload=ns.payload, **args)
+        return run_worker(worker=w, args=args, run_method=w.post, ok_code=201,)
+
+
+@ns.route(
+    "/refresh-token",
+    doc={
+        "description": "Update token.",
+        "responses": POST_RESPONSES_400_404,
+    },
+)
+class routeRefreshToken(Resource):
+    @ns.expect(refresh_token_args)
+    def post(self):
+        url_logging(logger, g.url)
+        args = refresh_token_args.parse_args(strict=True)
+        w = RefreshToken(g.connection, payload=ns.payload, **args)
         return run_worker(worker=w, args=args, run_method=w.post, ok_code=201,)

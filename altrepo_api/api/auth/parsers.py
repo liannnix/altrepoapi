@@ -30,5 +30,13 @@ password = parser.register_item(
     help="User password",
     location="form",
 )
+token = parser.register_item(
+    "access_token",
+    type=str,
+    required=True,
+    help="Access token",
+    location="form",
+)
 
 login_args = parser.build_parser(nickname, password)
+refresh_token_args = parser.build_parser(token)
