@@ -89,20 +89,20 @@ def _check_access_auth(admin_only=False, ldap_group=None):
 
 
 def _check_access_token():
-    token_payload = request.headers.get("Authorization")
-    if not token_payload:
+    token = request.headers.get("Authorization")
+    if not token:
         raise ApiUnauthorized(
             description="Authentication Token is missing",
             admin_only=False
         )
     try:
-        result = jwt.decode(token_payload, namespace.ADMIN_PASSWORD, algorithms=["HS256"])
+        token_payload = jwt.decode(token, namespace.ADMIN_PASSWORD, algorithms=["HS256"])
     except jwt.ExpiredSignatureError:
         raise ApiUnauthorized("Access token expired.")
     except jwt.InvalidTokenError:
         raise ApiUnauthorized("Invalid token.")
 
-    if BlacklistedToken(token=token_payload).check_blacklist():
+    if BlacklistedToken(token=token, expires=token_payload["exp"]).check_blacklist():
         raise ApiUnauthorized("Token blacklisted.")
-    result["token"] = token_payload
-    return result
+    token_payload["token"] = token
+    return token_payload

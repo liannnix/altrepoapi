@@ -13,37 +13,59 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from flask import g
-from ..sql import sql
+import jwt
+import redis
+from flask import request
+
+from altrepo_api.settings import namespace
+from altrepo_api.utils import get_fingerprint_to_md5
+from ..constants import BLACKLISTED_ACCESS_TOKEN_KEY
 
 
 class BlacklistedToken:
 
-    def __init__(self, token: str, expires: int = None):
+    def __init__(self, token: str, expires: int):
         self.token = token
         self.expires = expires
-        self.conn = g.connection
-        self.sql = sql
+        self.conn_redis = redis.from_url(namespace.REDIS_URL, db=0)
 
     def check_blacklist(self):
-        self.conn.request_line = self.sql.get_token_from_blacklist.format(token=self.token)
-        status, response = self.conn.send_request()
-
-        if not status:
-            return False
-
-        if response[0][0] > 0:
-            return True
+        """
+        Check the access token in the blacklist.
+        if the fingerprint of the current user does not
+        match the fingerprint of the access token, then
+        add the token to the blacklist
+        """
+        token = self.conn_redis.hgetall(
+            BLACKLISTED_ACCESS_TOKEN_KEY.format(token=self.token)
+        )
+        if not token:
+            token_payload = jwt.decode(self.token, namespace.ADMIN_PASSWORD, algorithms=["HS256"])
+            check = self.check_fingerprint(token_payload.get("fingerprint", None))
+            if not check:
+                return True
+            else:
+                return False
         else:
+            return True
+
+    def check_fingerprint(self, fingerprint):
+        """
+        Check the fingerprint of the current user and
+        the fingerprint of the access token.
+        """
+        current_fingerprint = get_fingerprint_to_md5(request)
+        if fingerprint != current_fingerprint:
+            self.write_to_blacklist()
             return False
+        else:
+            return True
 
-    def post(self):
-        json_ = [{
-            "token": self.token,
-            "expires_at": self.expires
-        }]
-        self.conn.request_line = (self.sql.insert_into_blacklisted_token, json_)
-
-        status, response = self.conn.send_request()
-
-        return status
+    def write_to_blacklist(self):
+        """
+        Write access token in the blacklist.
+        """
+        self.conn_redis.hmset(
+            BLACKLISTED_ACCESS_TOKEN_KEY.format(token=self.token),
+            {"expires_at": self.expires}
+        )
