@@ -19,7 +19,7 @@ from flask import request
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.settings import namespace
-from .blacklisted_token import BlacklistedToken
+from .blacklisted_token import BlacklistedAccessToken
 from ..constants import REFRESH_TOKEN_KEY
 from ..exceptions import ApiUnauthorized
 
@@ -53,7 +53,7 @@ class AuthLogout(APIWorker):
         user_sessions = self.conn_redis.hgetall(
             REFRESH_TOKEN_KEY.format(user=token_payload.get("nickname", ""))
         )
-        blacklisted = BlacklistedToken(access_token, self.args["exp"])
+        blacklisted = BlacklistedAccessToken(access_token, self.args["exp"])
         check_access_token = blacklisted.check_blacklist()
 
         if check_access_token:

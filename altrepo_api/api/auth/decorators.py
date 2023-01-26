@@ -18,7 +18,7 @@ import jwt
 from functools import wraps
 from flask import request
 
-from .endpoints.blacklisted_token import BlacklistedToken
+from .endpoints.blacklisted_token import BlacklistedAccessToken
 from .exceptions import ApiUnauthorized, ApiForbidden
 from .auth import check_auth
 from ...settings import namespace
@@ -102,7 +102,7 @@ def _check_access_token():
     except jwt.InvalidTokenError:
         raise ApiUnauthorized("Invalid token.")
 
-    if BlacklistedToken(token=token, expires=token_payload["exp"]).check_blacklist():
+    if BlacklistedAccessToken(token=token, expires=token_payload["exp"]).check_blacklist():
         raise ApiUnauthorized("Token blacklisted.")
     token_payload["token"] = token
     return token_payload

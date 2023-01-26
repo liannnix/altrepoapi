@@ -22,7 +22,7 @@ from altrepo_api.utils import get_fingerprint_to_md5
 from ..constants import BLACKLISTED_ACCESS_TOKEN_KEY
 
 
-class BlacklistedToken:
+class BlacklistedAccessToken:
 
     def __init__(self, token: str, expires: int):
         self.token = token
@@ -36,10 +36,7 @@ class BlacklistedToken:
         match the fingerprint of the access token, then
         add the token to the blacklist
         """
-        token = self.conn_redis.hgetall(
-            BLACKLISTED_ACCESS_TOKEN_KEY.format(token=self.token)
-        )
-        if not token:
+        if not self.get_token_from_blacklist():
             token_payload = jwt.decode(self.token, namespace.ADMIN_PASSWORD, algorithms=["HS256"])
             check = self.check_fingerprint(token_payload.get("fingerprint", None))
             if not check:
@@ -69,3 +66,13 @@ class BlacklistedToken:
             BLACKLISTED_ACCESS_TOKEN_KEY.format(token=self.token),
             {"expires_at": self.expires}
         )
+        self.conn_redis.expire(
+            BLACKLISTED_ACCESS_TOKEN_KEY.format(token=self.token),
+            namespace.EXPIRES_ACCESS_TOKEN
+        )
+
+    def get_token_from_blacklist(self):
+        token = self.conn_redis.hgetall(
+            BLACKLISTED_ACCESS_TOKEN_KEY.format(token=self.token)
+        )
+        return token
