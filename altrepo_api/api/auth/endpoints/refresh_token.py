@@ -42,11 +42,10 @@ class RefreshToken(APIWorker):
             self.access_token,
             namespace.ADMIN_PASSWORD,
             algorithms=["HS256"],
-            options={"verify_signature": False}
+            options={"verify_signature": False},
         )
         self.blacklisted = BlacklistedAccessToken(
-            self.access_token,
-            self.access_token_payload["exp"]
+            self.access_token, self.access_token_payload["exp"]
         )
         super().__init__()
 
@@ -77,29 +76,30 @@ class RefreshToken(APIWorker):
         if self.check_fingerprint(session_data_to_dict.get("fingerprint")):
             raise ApiUnauthorized(description="User not authorized.")
 
-        if session_data_to_dict["create_at"] + session_data_to_dict["expires"] <= datetime.datetime.now().timestamp():
+        if (
+            session_data_to_dict["create_at"] + session_data_to_dict["expires"]
+            <= datetime.datetime.now().timestamp()
+        ):
             self.conn_redis.hdel(
-                REFRESH_TOKEN_KEY.format(user=self.access_token_payload.get("nickname", "")),
-                self.refresh_token
+                REFRESH_TOKEN_KEY.format(
+                    user=self.access_token_payload.get("nickname", "")
+                ),
+                self.refresh_token,
             )
             raise ApiUnauthorized(description="Session expired")
 
         self.blacklisted.write_to_blacklist()
         new_access_token = self.new_access_token(self.access_token_payload)
 
-        res = {
-            "access_token": new_access_token,
-            "refresh_token": self.refresh_token
-        }
+        res = {"access_token": new_access_token, "refresh_token": self.refresh_token}
 
         return res, 201
 
     @staticmethod
     def new_access_token(payload):
-        token_expires = (
-                datetime.datetime.now(tz=datetime.timezone.utc) +
-                datetime.timedelta(seconds=namespace.EXPIRES_ACCESS_TOKEN)
-        )
+        token_expires = datetime.datetime.now(
+            tz=datetime.timezone.utc
+        ) + datetime.timedelta(seconds=namespace.EXPIRES_ACCESS_TOKEN)
         payload["exp"] = token_expires
         encoded_jwt = jwt.encode(payload, namespace.ADMIN_PASSWORD, algorithm="HS256")
         return encoded_jwt

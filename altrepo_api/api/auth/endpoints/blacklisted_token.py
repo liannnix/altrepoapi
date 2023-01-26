@@ -23,7 +23,6 @@ from ..constants import BLACKLISTED_ACCESS_TOKEN_KEY
 
 
 class BlacklistedAccessToken:
-
     def __init__(self, token: str, expires: int):
         self.token = token
         self.expires = expires
@@ -37,7 +36,9 @@ class BlacklistedAccessToken:
         add the token to the blacklist
         """
         if not self.get_token_from_blacklist():
-            token_payload = jwt.decode(self.token, namespace.ADMIN_PASSWORD, algorithms=["HS256"])
+            token_payload = jwt.decode(
+                self.token, namespace.ADMIN_PASSWORD, algorithms=["HS256"]
+            )
             check = self.check_fingerprint(token_payload.get("fingerprint", None))
             if not check:
                 return True
@@ -64,11 +65,11 @@ class BlacklistedAccessToken:
         """
         self.conn_redis.hmset(
             BLACKLISTED_ACCESS_TOKEN_KEY.format(token=self.token),
-            {"expires_at": self.expires}
+            {"expires_at": self.expires},
         )
         self.conn_redis.expire(
             BLACKLISTED_ACCESS_TOKEN_KEY.format(token=self.token),
-            namespace.EXPIRES_ACCESS_TOKEN
+            namespace.EXPIRES_ACCESS_TOKEN,
         )
 
     def get_token_from_blacklist(self):

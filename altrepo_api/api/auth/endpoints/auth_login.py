@@ -61,13 +61,14 @@ class AuthLogin(APIWorker):
             return True
 
     def post(self):
-        cookie_expires = (datetime.datetime.now() +
-                          datetime.timedelta(seconds=namespace.EXPIRES_REFRESH_TOKEN)).ctime()
+        cookie_expires = (
+            datetime.datetime.now()
+            + datetime.timedelta(seconds=namespace.EXPIRES_REFRESH_TOKEN)
+        ).ctime()
 
-        token_expires = (
-                datetime.datetime.now(tz=datetime.timezone.utc) +
-                datetime.timedelta(seconds=namespace.EXPIRES_ACCESS_TOKEN)
-        )
+        token_expires = datetime.datetime.now(
+            tz=datetime.timezone.utc
+        ) + datetime.timedelta(seconds=namespace.EXPIRES_ACCESS_TOKEN)
 
         refresh_token, fingerprint = self.add_refresh_session()
 
@@ -82,10 +83,7 @@ class AuthLogin(APIWorker):
         }
         encoded_jwt = jwt.encode(payload, namespace.ADMIN_PASSWORD, algorithm="HS256")
 
-        res = {
-            "access_token": encoded_jwt,
-            "refresh_token": refresh_token
-        }
+        res = {"access_token": encoded_jwt, "refresh_token": refresh_token}
 
         http_header = {
             "Set-Cookie": f"refresh_token={refresh_token}; Expires=f'{cookie_expires}'; HttpOnly"
@@ -101,7 +99,7 @@ class AuthLogin(APIWorker):
         if self.valid_session_count():
             token = self._add_refresh_session(fingerprint)
         else:
-            self.conn_redis.delete(REFRESH_TOKEN_KEY.format(user=self.args['nickname']))
+            self.conn_redis.delete(REFRESH_TOKEN_KEY.format(user=self.args["nickname"]))
             token = self._add_refresh_session(fingerprint)
         return token, fingerprint
 
@@ -109,15 +107,21 @@ class AuthLogin(APIWorker):
         """
         Check the number of sessions with the same user nickname.
         """
-        user_sessions = self.conn_redis.hgetall(REFRESH_TOKEN_KEY.format(user=self.args['nickname']))
+        user_sessions = self.conn_redis.hgetall(
+            REFRESH_TOKEN_KEY.format(user=self.args["nickname"])
+        )
         return len(user_sessions.keys()) < namespace.MAX_REFRESH_SESSIONS_COUNT
 
     def _add_refresh_session(self, fingerprint: str):
         """
         Add session to the Redis server, if the session exists, raise an exception
         """
-        user_sessions = self.conn_redis.hgetall(REFRESH_TOKEN_KEY.format(user=self.args['nickname']))
-        active_fingerprints = [json.loads(el).get("fingerprint", None) for el in user_sessions.values()]
+        user_sessions = self.conn_redis.hgetall(
+            REFRESH_TOKEN_KEY.format(user=self.args["nickname"])
+        )
+        active_fingerprints = [
+            json.loads(el).get("fingerprint", None) for el in user_sessions.values()
+        ]
 
         if fingerprint not in active_fingerprints:
             return self._new_refresh_token(fingerprint)
@@ -136,9 +140,11 @@ class AuthLogin(APIWorker):
                     "nickname": self.args["nickname"],
                     "fingerprint": fingerprint,
                     "expires": namespace.EXPIRES_REFRESH_TOKEN,
-                    "create_at": int(datetime.datetime.now().timestamp())
+                    "create_at": int(datetime.datetime.now().timestamp()),
                 }
             )
         }
-        self.conn_redis.hmset(REFRESH_TOKEN_KEY.format(user=self.args['nickname']), new_refresh_session)
+        self.conn_redis.hmset(
+            REFRESH_TOKEN_KEY.format(user=self.args["nickname"]), new_refresh_session
+        )
         return token

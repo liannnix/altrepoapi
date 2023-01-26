@@ -49,7 +49,9 @@ class AuthLogout(APIWorker):
 
     def post(self):
         access_token = self.args["token"]
-        token_payload = jwt.decode(access_token, namespace.ADMIN_PASSWORD, algorithms=["HS256"])
+        token_payload = jwt.decode(
+            access_token, namespace.ADMIN_PASSWORD, algorithms=["HS256"]
+        )
         user_sessions = self.conn_redis.hgetall(
             REFRESH_TOKEN_KEY.format(user=token_payload.get("nickname", ""))
         )
@@ -70,7 +72,7 @@ class AuthLogout(APIWorker):
             else:
                 self.conn_redis.hdel(
                     REFRESH_TOKEN_KEY.format(user=token_payload.get("nickname", "")),
-                    self.refresh_token
+                    self.refresh_token,
                 )
         else:
             raise ApiUnauthorized(description="User not authorized")

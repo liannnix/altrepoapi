@@ -30,7 +30,9 @@ def auth_required(_func=None, ldap_group=None):
 
         @wraps(f)
         def decorated(*args, **kwargs):
-            token_payload = _check_access_auth(admin_only=False, ldap_group=ldap_group)  # noqa
+            token_payload = _check_access_auth(
+                admin_only=False, ldap_group=ldap_group
+            )  # noqa
             # for name, val in token_payload.items():
             #     setattr(decorated, name, val)
             return f(*args, **kwargs)
@@ -69,6 +71,7 @@ def token_required(f):
         for name, val in token_payload.items():
             setattr(decorated, name, val)
         return f(*args, **kwargs)
+
     return decorated
 
 
@@ -92,17 +95,20 @@ def _check_access_token():
     token = request.headers.get("Authorization")
     if not token:
         raise ApiUnauthorized(
-            description="Authentication Token is missing",
-            admin_only=False
+            description="Authentication Token is missing", admin_only=False
         )
     try:
-        token_payload = jwt.decode(token, namespace.ADMIN_PASSWORD, algorithms=["HS256"])
+        token_payload = jwt.decode(
+            token, namespace.ADMIN_PASSWORD, algorithms=["HS256"]
+        )
     except jwt.ExpiredSignatureError:
         raise ApiUnauthorized("Access token expired.")
     except jwt.InvalidTokenError:
         raise ApiUnauthorized("Invalid token.")
 
-    if BlacklistedAccessToken(token=token, expires=token_payload["exp"]).check_blacklist():
+    if BlacklistedAccessToken(
+        token=token, expires=token_payload["exp"]
+    ).check_blacklist():
         raise ApiUnauthorized("Token blacklisted.")
     token_payload["token"] = token
     return token_payload

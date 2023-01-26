@@ -45,7 +45,12 @@ class routeAuthLogin(Resource):
         url_logging(logger, g.url)
         args = login_args.parse_args(strict=True)
         w = AuthLogin(g.connection, payload=ns.payload, **args)
-        return run_worker(worker=w, args=args, run_method=w.post, ok_code=201,)
+        return run_worker(
+            worker=w,
+            args=args,
+            run_method=w.post,
+            ok_code=201,
+        )
 
 
 @ns.route(
@@ -62,7 +67,12 @@ class routeAuthLogout(Resource):
         url_logging(logger, g.url)
         args = {"token": self.post.token, "exp": self.post.exp}
         w = AuthLogout(g.connection, payload=ns.payload, **args)
-        return run_worker(worker=w, args=args, run_method=w.post, ok_code=201,)
+        return run_worker(
+            worker=w,
+            args=args,
+            run_method=w.post,
+            ok_code=201,
+        )
 
 
 @ns.route(
@@ -78,4 +88,9 @@ class routeRefreshToken(Resource):
         url_logging(logger, g.url)
         args = refresh_token_args.parse_args(strict=True)
         w = RefreshToken(g.connection, payload=ns.payload, **args)
-        return run_worker(worker=w, args=args, run_method=w.post, ok_code=201,)
+        return run_worker(
+            worker=w,
+            args=args,
+            run_method=w.post,
+            ok_code=201,
+        )
