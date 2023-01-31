@@ -126,8 +126,9 @@ class AuthLogin(APIWorker):
         if fingerprint not in active_fingerprints:
             return self._new_refresh_token(fingerprint)
         else:
-            logger.warning("this user is already logged in")
-            raise ApiUnauthorized(description="failed to authorization")
+            for key, values in user_sessions.items():
+                if fingerprint == json.loads(values)["fingerprint"]:
+                    return key.decode()
 
     def _new_refresh_token(self, fingerprint):
         """
