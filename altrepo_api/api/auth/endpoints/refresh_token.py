@@ -56,7 +56,7 @@ class RefreshToken(APIWorker):
         if self.blacklisted.get_token_from_blacklist():
             self.validation_results.append("Token to blacklisted")
 
-        if self.refresh_token is False:
+        if self.refresh_token is None:
             self.validation_results.append("User is not authorized")
 
         if self.validation_results != []:
