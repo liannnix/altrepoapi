@@ -9,5 +9,5 @@ services:
       context: .
       dockerfile: Dockerfile-tests
     volumes:
-      - ./tests/api.conf
+      - ./tests/api.conf:/tests/api.conf
     command: python3 -m pytest --disable-pytest-warnings --durations=0 --durations-min=1.0
