@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from collections import namedtuple
+from typing import Any, NamedTuple
 
 from altrepo_api.utils import (
     datetime_to_iso,
@@ -28,16 +29,24 @@ from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
 from ..sql import sql
 from altrepo_api.api.license.endpoints.license import LicenseParser
+from .common import FindBuildTaskMixixn, SQLRequestError, NoDataFoundInDB
 
 
-class PackageInfo(APIWorker):
+class PackageInfo(FindBuildTaskMixixn, APIWorker):
     """Retrieves package info from DB."""
+
+    class SQLRequestError(SQLRequestError):
+        pass
+
+    class NoDataFoundInDB(NoDataFoundInDB):
+        pass
 
     def __init__(self, connection, pkghash, **kwargs):
         self.pkghash = pkghash
         self.conn = connection
         self.args = kwargs
         self.sql = sql
+        self.lut = lut
         super().__init__()
 
     def check_params(self):
@@ -54,59 +63,176 @@ class PackageInfo(APIWorker):
         else:
             return True
 
-    @staticmethod
-    def _parse_task_gear(pkgname, subtask, git_base_url):
-        """Builds link to Git repository based on information from subtask.
+    class PackageMeta(NamedTuple):
+        name: str
+        version: str
+        release: str
+        arch: str
+        epoch: int
+        buildtime: int
+        url: str
+        license: str
+        summary: str
+        description: str
+        packager: str
+        packager_nickname: str
+        category: str
 
-        Args:
-            pkgname (str): source package name
-            subtask (dict): subtask information
-            git_base_url (str): Git repository base URL
+    class PackageVersion(NamedTuple):
+        branch: str
+        version: str
+        release: str
+        pkghash: int
 
-        Returns:
-            str: link to Git repositroy
-        """
+    def maintainers(self) -> list[str]:
+        maintainers = []
+        response = self.send_sql_request(
+            self.sql.get_pkg_maintainers.format(pkghash=self.pkghash)
+        )
+        if not self.sql_status:
+            raise self.SQLRequestError
 
-        def delete_epoch(evr):
-            #  delete epoch from evr
-            if ":" in evr:
-                return evr.split(":")[-1]
-            return evr
+        for el in response[0][0]:
+            if "altlinux" in el:
+                nickname = get_nickname_from_packager(el)
+                if nickname not in maintainers:
+                    maintainers.append(nickname)
 
-        link_ = ""
-        if subtask["type"] == "copy":
-            # 'copy' always has only 'subtask_package'
-            link_ = pkgname
-        elif subtask["type"] == "delete" and subtask["srpm_name"] != "":
-            # XXX: bug workaround for girar changes @ e74d8067009d
-            link_ = f"{git_base_url}/srpms/{pkgname[0]}/{pkgname}.git"
-            if subtask["srpm_evr"] != "":
-                link_ += f"?a=tree;hb={delete_epoch(subtask['srpm_evr'])}"
-        elif subtask["type"] == "delete":
-            # 'delete' return only package name
-            link_ = pkgname
-        elif subtask["dir"] != "" or subtask["type"] == "gear":
-            # 'gear' and 'rebuild' + 'unknown' with gears
-            link_ = f"{git_base_url}/gears/{pkgname[0]}/{pkgname}.git"
-            if subtask["tag_id"] != "":
-                link_ += f"?a=tree;hb={subtask['tag_id']}"
-        elif subtask["srpm_name"] != "" or subtask["type"] == "srpm":
-            # 'srpm' and 'rebuild' + 'unknown' with srpm
-            link_ = f"{git_base_url}/srpms/{pkgname[0]}/{pkgname}.git"
-            if subtask["srpm_evr"] != "":
-                link_ += f"?a=tree;hb={delete_epoch(subtask['srpm_evr'])}"
-        return link_
+        return maintainers
+
+    def acl(self) -> list[str]:
+        response = self.send_sql_request(
+            self.sql.get_pkg_acl.format(name=self.pkg_info.name, branch=self.branch)
+        )
+        if not self.sql_status:
+            raise self.SQLRequestError
+
+        return response[0][0] if response else []
+
+    def package_versions(self) -> list[PackageVersion]:
+        if self.is_src:
+            request_line = self.sql.get_pkg_versions.format(name=self.pkg_info.name)
+        else:
+            request_line = self.sql.get_pkg_binary_versions.format(
+                name=self.pkg_info.name, arch=self.pkg_info.arch
+            )
+
+        response = self.send_sql_request(request_line)
+        if not self.sql_status:
+            raise self.SQLRequestError
+
+        # sort package versions by branch
+        branches = sort_branches([el[0] for el in response])
+        versions = tuplelist_to_dict(response, 3)
+
+        # XXX: workaround for multiple versions of returned for certain branch
+        return [self.PackageVersion(*(b, *versions[b][-3:])) for b in branches]
+
+    def dependencies(self) -> list[dict[str, Any]]:
+        PkgDeps = namedtuple("PkgDeps", ["name", "version", "flag"])
+        dependencies = []
+
+        if self.is_src:
+            response = self.send_sql_request(
+                self.sql.get_pkg_dependencies.format(pkghash=self.pkghash)
+            )
+            if not self.sql_status:
+                raise self.SQLRequestError
+
+            dependencies = [PkgDeps(*el)._asdict() for el in response]
+
+            # change numeric flag on text
+            for el in dependencies:
+                el["flag_decoded"] = dp_flags_decode(el["flag"], lut.rpmsense_flags)
+                el["type"] = "require"
+
+        return dependencies
+
+    def changelog(self) -> list[dict[str, Any]]:
+        Changelog = namedtuple("Changelog", ["date", "name", "nick", "evr", "message"])
+
+        response = self.send_sql_request(
+            (
+                self.sql.get_pkg_changelog,
+                {"pkghash": self.pkghash, "limit": self.chlog_length},
+            )
+        )
+        if not self.sql_status:
+            raise self.SQLRequestError
+        if not response:
+            raise self.NoDataFoundInDB
+
+        return [Changelog(datetime_to_iso(el[1]), *el[2:])._asdict() for el in response]
+
+    def beehive_status(self) -> list[dict[str, Any]]:
+        BeehiveStatus = namedtuple(
+            "BeehiveStatus",
+            ["arch", "status", "build_time", "updated", "ftbfs_since"],
+        )
+
+        if self.branch not in lut.known_beehive_branches:
+            # return empty result list if branch not in beehive branches
+            return []
+
+        # get last beehive errors by package hash
+        response = self.send_sql_request(
+            (
+                self.sql.get_last_bh_rebuild_status_by_hsh,
+                {"pkghash": self.pkghash, "branch": self.branch},
+            )
+        )
+        if not self.sql_status:
+            raise self.SQLRequestError
+
+        bh_status = [BeehiveStatus(*el)._asdict() for el in response]
+
+        for bh in bh_status:
+            epoch_ = self.pkg_info.epoch
+            if epoch_ == 0:
+                epoch_version = self.pkg_info.version
+            else:
+                epoch_version = str(epoch_) + ":" + self.pkg_info.version
+
+            url = "/".join(
+                (
+                    lut.beehive_base,
+                    "logs",
+                    "Sisyphus" if self.branch == "sisyphus" else self.branch,
+                    bh["arch"],
+                    "archive",
+                    bh["updated"].strftime("%Y/%m%d"),
+                    "error",
+                    "-".join(
+                        (self.pkg_info.name, epoch_version, self.pkg_info.release)
+                    ),
+                )
+            )
+            if bh["status"] == "error":
+                bh["url"] = url
+            else:
+                bh["url"] = ""
+            bh["updated"] = datetime_to_iso(bh["updated"])
+            bh["ftbfs_since"] = datetime_to_iso(bh["ftbfs_since"])
+
+        return bh_status
+
+    def license_tokens(self) -> list[dict[str, Any]]:
+        lp = LicenseParser(connection=self.conn, license_str=self.pkg_info.license)
+        lp.parse_license()
+
+        if not lp.status:
+            raise self.SQLRequestError("Failed to get license tokens", error=lp.error)
+        if not lp.tokens:
+            return []
+        return [{"token": k, "license": v} for k, v in lp.tokens.items()]
 
     def get(self):
         self.branch = self.args["branch"]
         self.chlog_length = self.args["changelog_last"]
-        self.pkg_type = self.args["package_type"]
-
-        pkg_type_to_sql = {"source": 1, "binary": 0}
-        source = pkg_type_to_sql[self.pkg_type]
+        self.is_src = {"source": 1, "binary": 0}[self.args["package_type"]]
 
         # get package info
-        pkg_src_or_bin = f"AND pkg_sourcepackage = {source}"
+        pkg_src_or_bin = f"AND pkg_sourcepackage = {self.is_src}"
 
         response = self.send_sql_request(
             self.sql.get_pkg_info.format(pkghash=self.pkghash, source=pkg_src_or_bin)
@@ -116,182 +242,83 @@ class PackageInfo(APIWorker):
         if not response:
             return self.store_error(
                 {
-                    "message": f"No packages found in last packages with hash {self.pkghash}",
+                    "message": f"No data found in DB for package {self.pkghash}",
                     "args": self.args,
                 }
             )
 
-        PkgMeta = namedtuple(
-            "PkgMeta",
-            [
-                "name",
-                "version",
-                "release",
-                "arch",
-                "epoch",
-                "buildtime",
-                "url",
-                "license",
-                "summary",
-                "description",
-                "packager",
-                "packager_nickname",
-                "category",
-            ],
-        )
+        self.pkg_info = self.PackageMeta(*response[0])
 
-        pkg_info = PkgMeta(*response[0])
-
-        # get package task
+        # get package build task
         pkg_task = 0
         pkg_tasks = []
+        pkg_subtask = 0
         pkg_task_date = None
         gear_link = ""
 
-        SubtaskMeta = namedtuple(
-            "SubtaskMeta",
-            [
-                "repo",
-                "id",
-                "sub_id",
-                "type",
-                "dir",
-                "tag_id",
-                "srpm_name",
-                "srpm_evr",
-                "changed",
-            ],
-        )
-
-        # clear pkg_tasks for taskless branches
-        if self.branch in lut.taskless_branches:
-            pkg_task = 0
-            pkg_tasks = []
-            pkg_task_date = None
-        else:
-            response = self.send_sql_request(
-                self.sql.get_task_gears_by_hash.format(pkghash=self.pkghash)
-            )
-            if not self.sql_status:
-                return self.error
-
-            if response:
-                for task in [SubtaskMeta(*el)._asdict() for el in response]:
-                    if task["repo"] == self.branch:
-                        pkg_task = task["id"]
-                        pkg_task_date = datetime_to_iso(task["changed"])
-                        if task["type"] != "copy":
-                            gear_link = self._parse_task_gear(
-                                pkg_info.name, task, lut.gitalt_base
-                            )
-                            pkg_tasks.append(
-                                {"type": "build", "id": pkg_task, "date": pkg_task_date}
-                            )
-                            break
-                        else:
-                            pkg_tasks.append(
-                                {"type": "copy", "id": pkg_task, "date": pkg_task_date}
-                            )
-                    else:
-                        if task["type"] != "copy":
-                            pkg_task = task["id"]
-                            pkg_task_date = datetime_to_iso(task["changed"])
-                            gear_link = self._parse_task_gear(
-                                pkg_info.name, task, lut.gitalt_base
-                            )
-                            pkg_tasks.append(
-                                {"type": "build", "id": pkg_task, "date": pkg_task_date}
-                            )
-                            break
-
-        # get package maintainers from changelog
-        pkg_maintainers = []
-
-        response = self.send_sql_request(
-            self.sql.get_pkg_maintainers.format(pkghash=self.pkghash)
-        )
-        if not self.sql_status:
+        try:
+            if self.branch not in lut.taskless_branches:
+                # get package build tasks by hash
+                (
+                    pkg_task,
+                    pkg_subtask,
+                    pkg_task_date,
+                    gear_link,
+                    pkg_tasks,
+                ) = self.find_and_parse_build_task()
+            # get package maintainers from changelog
+            pkg_maintainers = self.maintainers()
+            # get package ACLs
+            pkg_acl = self.acl()
+            # get package versions
+            pkg_versions = self.package_versions()
+            # get package dependencies
+            pkg_dependencies = self.dependencies()
+            # get package changelog
+            changelog_list = self.changelog()
+            # get package beehive rebuild status
+            bh_status = self.beehive_status()
+            # get package license tokens
+            license_tokens = self.license_tokens()
+        except self.SQLRequestError as e:
+            if e.error:
+                return e.error
             return self.error
-
-        for el in response[0][0]:
-            if "altlinux" in el:
-                nickname = get_nickname_from_packager(el)
-                if nickname not in pkg_maintainers:
-                    pkg_maintainers.append(nickname)
-
-        # get package ACLs
-        pkg_acl = []
-
-        response = self.send_sql_request(
-            self.sql.get_pkg_acl.format(name=pkg_info.name, branch=self.branch)
-        )
-        if not self.sql_status:
-            return self.error
-
-        if response:
-            pkg_acl = response[0][0]
-
-        # get package versions
-        pkg_versions = []
-
-        if source:
-            request_line = self.sql.get_pkg_versions.format(name=pkg_info.name)
-        else:
-            request_line = self.sql.get_pkg_binary_versions.format(
-                name=pkg_info.name, arch=pkg_info.arch
+        except self.NoDataFoundInDB:
+            return self.store_error(
+                {
+                    "message": f"No data found in DB for package {self.pkghash}",
+                    "args": self.args,
+                }
             )
-
-        response = self.send_sql_request(request_line)
-        if not self.sql_status:
-            return self.error
-
-        # sort package versions by branch
-        pkg_branches = sort_branches([el[0] for el in response])
-        pkg_versions = tuplelist_to_dict(response, 3)
-
-        # XXX: workaround for multiple versions of returned for certain branch
-        PkgVersions = namedtuple(
-            "PkgVersions", ["branch", "version", "release", "pkghash"]
-        )
-
-        pkg_versions = [
-            PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
-        ]
-
-        # get package dependencies
-        pkg_dependencies = []
-        if source == 1:
-            response = self.send_sql_request(
-                self.sql.get_pkg_dependencies.format(pkghash=self.pkghash)
-            )
-            if not self.sql_status:
-                return self.error
-
-            PkgDependencies = namedtuple("PkgDependencies", ["name", "version", "flag"])
-            pkg_dependencies = [PkgDependencies(*el)._asdict() for el in response]
-
-            # change numeric flag on text
-            for el in pkg_dependencies:
-                el["flag_decoded"] = dp_flags_decode(el["flag"], lut.rpmsense_flags)
 
         # get provided binary and source packages
         package_archs = {}
-        if source:
-            request_line = self.sql.get_binary_pkgs.format(
-                pkghash=self.pkghash, branch=self.branch
-            )
+        if not (pkg_task and pkg_subtask):
+            if self.is_src:
+                request_line = self.sql.get_binary_pkgs.format(
+                    pkghash=self.pkghash, branch=self.branch
+                )
+            else:
+                request_line = self.sql.get_source_pkgs.format(pkghash=self.pkghash)
         else:
-            request_line = self.sql.get_source_pkgs.format(pkghash=self.pkghash)
+            # (bug: #45195)
+            if self.is_src:
+                request_line = self.sql.get_binaries_from_task.format(
+                    taskid=pkg_task, subtaskid=pkg_subtask, changed=pkg_task_date
+                )
+            else:
+                request_line = self.sql.get_source_pkgs.format(pkghash=self.pkghash)
 
         response = self.send_sql_request(request_line)
         if not self.sql_status:
             return self.error
 
         if response:
-            if source:
+            if self.is_src:
                 # FIXME: (bug #41537) some binaries built from old source package
                 # in not 'DONE' tasks leads to misleading build time
-                pkg_info = pkg_info._replace(buildtime=response[0][2])
+                self.pkg_info = self.pkg_info._replace(buildtime=response[0][2])
                 # find appropriate hash for 'noarch' packages using build task
                 # and architecture precedence
                 _bin_pkgs_arch_hshs_from_task = {}
@@ -352,79 +379,6 @@ class PackageInfo(APIWorker):
                 for elem in response:
                     package_archs[elem[0]] = {"src": str(elem[1])}
 
-        # get package changelog
-        response = self.send_sql_request(
-            (
-                self.sql.get_pkg_changelog,
-                {"pkghash": self.pkghash, "limit": self.chlog_length},
-            )
-        )
-        if not self.sql_status:
-            return self.error
-        if not response:
-            return self.store_error(
-                {
-                    "message": f"No packages found in last packages with hash {self.pkghash}",
-                    "args": self.args,
-                }
-            )
-
-        Changelog = namedtuple("Changelog", ["date", "name", "nick", "evr", "message"])
-
-        changelog_list = [
-            Changelog(datetime_to_iso(el[1]), *el[2:])._asdict() for el in response
-        ]
-
-        # get package beehive rebuild status
-        if self.branch not in lut.known_beehive_branches:
-            # return empty result list if branch not in beehive branches
-            bh_status = []
-        else:
-            # get last beehive errors by package hash
-            response = self.send_sql_request(
-                (
-                    self.sql.get_last_bh_rebuild_status_by_hsh,
-                    {"pkghash": self.pkghash, "branch": self.branch},
-                )
-            )
-            if not self.sql_status:
-                return self.error
-
-            BeehiveStatus = namedtuple(
-                "BeehiveStatus",
-                ["arch", "status", "build_time", "updated", "ftbfs_since"],
-            )
-
-            bh_status = [BeehiveStatus(*el)._asdict() for el in response]
-
-            for bh in bh_status:
-                epoch_ = pkg_info.epoch
-                if epoch_ == 0:
-                    epoch_version = pkg_info.version
-                else:
-                    epoch_version = str(epoch_) + ":" + pkg_info.version
-
-                url = "/".join(
-                    (
-                        lut.beehive_base,
-                        "logs",
-                        "Sisyphus" if self.branch == "sisyphus" else self.branch,
-                        bh["arch"],
-                        "archive",
-                        bh["updated"].strftime("%Y/%m%d"),
-                        "error",
-                        "-".join(
-                            (pkg_info.name, epoch_version, pkg_info.release)
-                        ),
-                    )
-                )
-                if bh["status"] == "error":
-                    bh["url"] = url
-                else:
-                    bh["url"] = ""
-                bh["updated"] = datetime_to_iso(bh["updated"])
-                bh["ftbfs_since"] = datetime_to_iso(bh["ftbfs_since"])
-
         res_package_archs = []
         for k, v in package_archs.items():
             tmp = {"name": k, "archs": [], "pkghash": []}
@@ -433,23 +387,9 @@ class PackageInfo(APIWorker):
                 tmp["pkghash"].append(str(hash))
             res_package_archs.append(tmp)
 
-        # get package license tokens
-        license_tokens = []
-
-        lp = LicenseParser(connection=self.conn, license_str=pkg_info.license)
-        lp.parse_license()
-
-        if lp.status:
-            if lp.tokens:
-                license_tokens = [
-                    {"token": k, "license": v} for k, v in lp.tokens.items()
-                ]
-        else:
-            return lp.error
-
         # fix gear_link for binary packages
-        if source == 0:
-            pkgname_binary = pkg_info.name
+        if not self.is_src:
+            pkgname_binary = self.pkg_info.name
             try:
                 pkgname_source = list(package_archs.keys())[0]
                 in_ = f"{pkgname_binary[0]}/{pkgname_binary}.git"
@@ -462,7 +402,7 @@ class PackageInfo(APIWorker):
         res = {
             "pkghash": str(self.pkghash),
             "request_args": self.args,
-            **pkg_info._asdict(),
+            **self.pkg_info._asdict(),
             "task": pkg_task,
             "task_date": pkg_task_date if pkg_task_date is not None else "",
             "gear": gear_link,
@@ -471,7 +411,7 @@ class PackageInfo(APIWorker):
             "changelog": changelog_list,
             "maintainers": pkg_maintainers,
             "acl": pkg_acl,
-            "versions": pkg_versions,
+            "versions": [p._asdict() for p in pkg_versions],
             "beehive": bh_status,
             "dependencies": pkg_dependencies,
             "license_tokens": license_tokens,
