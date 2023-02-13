@@ -21,10 +21,11 @@ from altrepo_api.utils import (
     sort_branches,
     bytes2human,
 )
-
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
+
 from ..sql import sql
+from .common import FindBuildSubtaskMixin, SQLRequestError
 
 
 def make_link_to_task(base, task, subtask, arch, filename, is_src):
@@ -65,7 +66,7 @@ def make_link_to_task_arepo(base, task, filename):
     )
 
 
-class PackageDownloadLinks(APIWorker):
+class PackageDownloadLinks(FindBuildSubtaskMixin, APIWorker):
     """Build source and binary packages downloads links."""
 
     def __init__(self, connection, pkghash, **kwargs):
@@ -81,6 +82,7 @@ class PackageDownloadLinks(APIWorker):
 
     def get(self):
         self.branch = self.args["branch"]
+        self.is_src = 1
         bin_pkgs = {}
 
         # return no download links from sisyphus_e2k branch
@@ -105,19 +107,27 @@ class PackageDownloadLinks(APIWorker):
         )
         PkgInfo = namedtuple("PkgInfo", ["file", "arch", "size"])
 
-        response = self.send_sql_request(
-            self.sql.get_build_task_by_hash.format(
-                pkghash=self.pkghash, branch=self.branch
-            )
-        )
-        if not self.sql_status:
+        try:
+            build_subtask = self.find_build_subtask()
+        except SQLRequestError:
             return self.error
 
         subtasks = []
 
-        if response:
+        if build_subtask is not None:
             #  use hashes from task
             use_task = True
+
+            response = self.send_sql_request(
+                self.sql.get_build_task_iterations.format(
+                    taskid=build_subtask.task_id,
+                    subtaskid=build_subtask.subtask_id,
+                    changed=build_subtask.task_changed,
+                )
+            )
+            if not self.sql_status:
+                return self.error
+
             subtasks = [TaskInfo(*el)._asdict() for el in response]
 
             # get package hashes and archs from Tasks

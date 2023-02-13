@@ -535,7 +535,7 @@ WHERE pkg_hash IN
 ORDER BY pkg_buildtime DESC
 """
 
-    get_build_task_by_hash = """
+    get_build_task_iterations = """
 SELECT
     task_id,
     subtask_id,
@@ -543,26 +543,9 @@ SELECT
     titer_srcrpm_hash,
     titer_pkgs_hash
 FROM TaskIterations
-WHERE (task_id, task_changed) IN
-(
-    SELECT
-    argMax(task_id, task_changed),
-    max(task_changed)
-    FROM TaskIterations
-    WHERE titer_srcrpm_hash = {pkghash} AND task_id IN
-    (
-        SELECT task_id
-        FROM TaskStates
-        WHERE task_state = 'DONE'
-    )
-)
-    AND titer_srcrpm_hash = {pkghash}
-    AND
-    (
-        SELECT count(task_id)
-        FROM Tasks
-        WHERE task_repo = '{branch}'
-    ) != 0
+WHERE task_id = {taskid}
+    AND subtask_id = {subtaskid}
+    AND task_changed = '{changed}'
 """
 
     get_build_task_by_bin_hash = """
