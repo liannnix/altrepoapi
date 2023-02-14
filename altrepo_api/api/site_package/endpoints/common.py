@@ -1,3 +1,19 @@
+# ALTRepo API
+# Copyright (C) 2021-2022  BaseALT Ltd
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 from datetime import datetime
 from typing import Any, NamedTuple, Protocol, Union
 
@@ -37,22 +53,6 @@ class SubtaskInfo(NamedTuple):
 
 
 # Protocols
-class PackageInfo(Protocol):
-    name: str
-    version: str
-    release: str
-    arch: str
-    epoch: int
-    buildtime: int
-    url: str
-    license: str
-    summary: str
-    description: str
-    packager: str
-    packager_nickname: str
-    category: str
-
-
 class _pAPIWorker(Protocol):
     sql: SQL
     sql_status: bool
@@ -68,6 +68,10 @@ class _pAPIWorker(Protocol):
         ...
 
 
+class _pPackageInfo(Protocol):
+    name: str
+
+
 class _pLUT(Protocol):
     gitalt_base: str
 
@@ -77,7 +81,7 @@ class _pHasLUT(Protocol):
 
 
 class _pHasPackeInfo(Protocol):
-    pkg_info: PackageInfo
+    pkg_info: _pPackageInfo
 
 
 class _pHasBranchHashAndSrcFlag(Protocol):
@@ -96,9 +100,6 @@ class _pFindBuildSubtaskMixin(_pHasBranchHashAndSrcFlag, _pAPIWorker, Protocol):
 
 
 class _pFindBuildTaskMixixn(_pFindBuildSubtaskMixin, Protocol):
-    def find_build_subtask(self) -> Union[SubtaskInfo, None]:
-        ...
-
     def _parse_task_gear(self, subtask: SubtaskInfo) -> str:
         ...
 
@@ -153,18 +154,10 @@ class FindBuildSubtaskMixin:
     ) -> Union[SubtaskInfo, None]:
         pkg_task = 0
 
-        def _get_first_by_id(task_id, subtasks: list[SubtaskInfo]):
-            for sub in subtasks:
-                if sub.task_id == task_id:
-                    yield sub
-                    break
-
         # get package build tasks by hash
-        try:
-            build_tasks, build_subtasks = self._get_build_tasks()
-        except SQLRequestError:
-            raise
+        build_tasks, build_subtasks = self._get_build_tasks()
 
+        # find task from current branch if any
         for t in build_tasks:
             if t.branch == self.branch:
                 pkg_task = t.task_id
@@ -172,8 +165,9 @@ class FindBuildSubtaskMixin:
 
         if pkg_task:
             # we've found build task in given brunch
-            for sub in _get_first_by_id(pkg_task, build_subtasks):
-                return sub
+            for sub in build_subtasks:
+                if sub.task_id == pkg_task:
+                    return sub
         else:
             # no build task found in given brunch, so try to find one from another branch
             for sub in build_subtasks:
@@ -195,29 +189,54 @@ class FindBuildTaskMixixn(FindBuildSubtaskMixin, ParseTaskGearMixin):
         pkg_task_date = ""
         gear_link = ""
 
-        sub = self.find_build_subtask()
-        if sub is None:
+        tasks, subtasks = self._get_build_tasks()
+
+        if not tasks or not subtasks:
             return pkg_task, pkg_subtask, pkg_task_date, gear_link, pkg_tasks
 
-        pkg_task = sub.task_id
-        pkg_subtask = sub.subtask_id
-        pkg_task_date = datetime_to_iso(sub.task_changed)
+        subs = {s.task_id: s for s in subtasks}
 
-        if pkg_task:
-            # we've found build task in given brunch
-            if sub.type != "copy":
-                gear_link = self._parse_task_gear(sub)
-                type_ = "build"
+        # filter out build tasks from other branches with same source package hash (closes #45195)
+        branch_tasks = list(filter(lambda x: x.branch == self.branch, tasks))
+        if branch_tasks and subs[branch_tasks[0].task_id].type != "copy":
+            sub = subs[branch_tasks[0].task_id]
+            pkg_task = sub.task_id
+            pkg_subtask = sub.subtask_id
+            pkg_task_date = datetime_to_iso(sub.task_changed)
+            gear_link = self._parse_task_gear(sub)
+            pkg_tasks.append(
+                {"type": "build", "id": pkg_task, "date": pkg_task_date}
+            )
+            return pkg_task, pkg_subtask, pkg_task_date, gear_link, pkg_tasks
+
+        for task in tasks:
+            sub = subs[task.task_id]
+            if sub.branch == self.branch:
+                # we've found build task in given brunch
+                pkg_task = sub.task_id
+                pkg_subtask = sub.subtask_id
+                pkg_task_date = datetime_to_iso(sub.task_changed)
+                if sub.type != "copy":
+                    gear_link = self._parse_task_gear(sub)
+                    pkg_tasks.append(
+                        {"type": "build", "id": pkg_task, "date": pkg_task_date}
+                    )
+                    break
+                else:
+                    pkg_tasks.append(
+                        {"type": "copy", "id": pkg_task, "date": pkg_task_date}
+                    )
             else:
-                type_ = "copy"
-            pkg_tasks.append({"type": type_, "id": pkg_task, "date": pkg_task_date})
-        else:
-            # no build task found in given brunch, use one from another branch
-            if sub.type != "copy":
-                gear_link = self._parse_task_gear(sub)
-                pkg_tasks.append(
-                    {"type": "build", "id": pkg_task, "date": pkg_task_date}
-                )
+                # no build task found in given brunch, use one from another branch
+                if sub.type != "copy":
+                    pkg_task = sub.task_id
+                    pkg_subtask = sub.subtask_id
+                    pkg_task_date = datetime_to_iso(sub.task_changed)
+                    gear_link = self._parse_task_gear(sub)
+                    pkg_tasks.append(
+                        {"type": "build", "id": pkg_task, "date": pkg_task_date}
+                    )
+                    break
 
         return pkg_task, pkg_subtask, pkg_task_date, gear_link, pkg_tasks
 

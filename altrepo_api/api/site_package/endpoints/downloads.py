@@ -114,7 +114,10 @@ class PackageDownloadLinks(FindBuildSubtaskMixin, APIWorker):
 
         subtasks = []
 
-        if build_subtask is not None:
+        if (
+            build_subtask is not None
+            and self.branch not in lut.taskless_branches
+        ):  # FIXME: use task only if task branch == self.branch
             #  use hashes from task
             use_task = True
 
@@ -158,6 +161,8 @@ class PackageDownloadLinks(FindBuildSubtaskMixin, APIWorker):
             # try to find 'arepo' packages from task
             if "i586" in bin_pkgs:
                 # get all 'x86_64-i586' packages from task plan
+                # FIXME: use BranchPackageHistory table here
+                # FIXME: usetask state from first request
                 response = self.send_sql_request(
                     self.sql.get_arepo_pkgs_by_task.format(
                         taskid=subtasks[0]["task_id"]
