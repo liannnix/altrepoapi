@@ -6,6 +6,18 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.9.1] - 2023-02-14
+
+Regular API code updates and fixes.
+
+### Added
+- support for custom response headers
+### Changed
+### Fixed
+- multithreading logging issues (partially)
+- site/package_info: search build task algorithm (closes #45195)
+- site/Package_downloads_src: use same build task algorithm as site/package_info route
+
 ## [1.9.0] - 2022-12-12
 
 Regular API code updates and fixes.
