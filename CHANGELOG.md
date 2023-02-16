@@ -6,6 +6,15 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.9.2] - 2023-02-16
+
+Regular API code updates and fixes.
+
+### Added
+- support loggign to console (stderr)
+### Changed
+### Fixed
+
 ## [1.9.1] - 2023-02-14
 
 Regular API code updates and fixes.
