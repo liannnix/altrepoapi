@@ -44,8 +44,9 @@ class BasePathNamespace:
     SQL_DEBUG = False
     # logging settings
     LOG_LEVEL = logging.INFO
-    LOG_TO_FILE = True
+    LOG_TO_FILE = False
     LOG_TO_SYSLOG = False
+    LOG_TO_CONSOLE = True
     # misc settings
     DEPENDENCY_MAX_DEPTH = 5
     # API admin credentials

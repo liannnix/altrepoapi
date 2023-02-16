@@ -46,6 +46,7 @@ PARAMS = {
         "sql_debug": ("SQL_DEBUG", "bool"),
         "log_to_file": ("LOG_TO_FILE", "bool"),
         "log_to_syslog": ("LOG_TO_SYSLOG", "bool"),
+        "log_to_console": ("LOG_TO_CONSOLE", "bool"),
     },
 }
 

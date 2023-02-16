@@ -20,3 +20,4 @@ LOG_LEVEL = 3            # 0 : critical, 1 : error, 2 : warning, 3 : info, 4 : d
 SQL_DEBUG = false
 LOG_TO_FILE = true
 LOG_TO_SYSLOG = false    # usually not avallable inside container
+LOG_TO_CONSOLE = false
