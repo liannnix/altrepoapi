@@ -29,7 +29,7 @@ logger = get_logger(__name__)
 
 @app.route("/")
 def hello():
-    return redirect("api", code=302)
+    return redirect("/api/", code=302)
 
 
 @app.before_request
