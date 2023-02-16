@@ -100,9 +100,7 @@ def get_logger(name: str) -> logging.Logger:
 
         if settings.LOG_TO_CONSOLE:
             # stderr handler config
-            fmt = logging.Formatter(
-                "%(asctime)s\t%(levelname)-9s%(name)s %(module)s %(funcName)s %(lineno)d\t%(message)s"
-            )
+            fmt = logging.Formatter("%(levelname)-9s: %(message)s")
 
             file_handler = logging.StreamHandler()
             file_handler.setFormatter(fmt)
