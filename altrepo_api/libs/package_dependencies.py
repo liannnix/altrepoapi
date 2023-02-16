@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from collections import namedtuple
 from typing import Any, Iterable, Literal
 
-from altrepo_api.api.base import ConnectionProto
+from altrepo_api.api.base import ConnectionProtocol
 from altrepo_api.utils import get_logger
 from .librpm_functions import Dependency, check_dependency_overlap
 from .exceptions import SqlRequestError
@@ -321,7 +321,7 @@ class PackageDependencies:
 
     def __init__(
         self,
-        connection: ConnectionProto,
+        connection: ConnectionProtocol,
         source_packages_hashes: Iterable[int],
         branch: str,
         archs: list[str],
@@ -620,7 +620,7 @@ class FindPackagesDependencies:
 
     def __init__(
         self,
-        connection: ConnectionProto,
+        connection: ConnectionProtocol,
         in_packages_hashes: Iterable[int],
         branch: str,
         archs: Iterable[str],

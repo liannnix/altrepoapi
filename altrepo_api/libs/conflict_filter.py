@@ -17,7 +17,7 @@
 from collections import defaultdict, namedtuple
 from dataclasses import dataclass
 
-from altrepo_api.api.base import ConnectionProto
+from altrepo_api.api.base import ConnectionProtocol
 from altrepo_api.utils import get_logger, remove_duplicate
 
 from .librpm_functions import check_dependency_overlap
@@ -72,7 +72,7 @@ class ConflictFilter:
 
     def __init__(
         self,
-        connection: ConnectionProto,
+        connection: ConnectionProtocol,
         debug_sql: bool = False,
     ):
         self.conn = connection

@@ -26,7 +26,7 @@ WorkerResultWithoutHeaders = tuple[Any, int]
 WorkerResult = Union[WorkerResultWithHeaders, WorkerResultWithoutHeaders]
 
 
-class ConnectionProto(Protocol):
+class ConnectionProtocol(Protocol):
     request_line: Union[str, tuple[str, Any]]
 
     def send_request(self, **query_kwargs) -> tuple[bool, Any]:
@@ -53,7 +53,7 @@ class APIWorker:
         self.status: bool = False
         self.error: tuple[Any, int]
         self.sql_status: bool = False
-        self.conn: ConnectionProto
+        self.conn: ConnectionProtocol
         self.validation_results: list[str] = []
 
     def _log_error(self, severity: int) -> None:
@@ -81,7 +81,7 @@ class APIWorker:
                     x for x in requestline[0].split("\n") if len(x) > 0
                 ]
             else:
-                response["sql_request"] = [x for x in requestline.split("\n")]  # type: ignore
+                response["sql_request"] = [x for x in requestline.split("\n")]
         return response, code
 
     def _store_sql_error(self, message: Any, severity: int, http_code: int) -> None:
