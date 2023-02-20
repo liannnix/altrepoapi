@@ -29,7 +29,7 @@ from logging import handlers
 from packaging import version
 from typing import Any, Iterable, Union
 from urllib.parse import unquote
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from altrepo_api.settings import namespace as settings
 
@@ -375,3 +375,8 @@ def send_file_compat(
         as_attachment=as_attachment,
         download_name=attachment_filename,
     )
+
+
+def make_tmp_table_name(name: str) -> str:
+    """Generates quite unique temporary table name."""
+    return f"_tmp_{name}_{str(uuid4()).split('-')[-1]}"
