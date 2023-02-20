@@ -19,7 +19,12 @@ from collections import namedtuple
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
 from ..sql import sql
-from altrepo_api.utils import sort_branches, tuplelist_to_dict, dp_flags_decode
+from altrepo_api.utils import (
+    sort_branches,
+    tuplelist_to_dict,
+    dp_flags_decode,
+    make_tmp_table_name,
+)
 
 
 class DependsBinPackage(APIWorker):
@@ -130,7 +135,7 @@ class PackagesDependence(APIWorker):
         pkg_hash = response
 
         # create temporary table with pkg_hash
-        tmp_table = "tmp_pkghash"
+        tmp_table = make_tmp_table_name("tmp_pkghash")
         _ = self.send_sql_request(
             self.sql.create_tmp_table.format(
                 tmp_table=tmp_table, columns="(pkg_hash UInt64)"
@@ -264,7 +269,7 @@ class DependsSrcPackage(APIWorker):
         pkg_info = PkgInfo(*response[0])  # type: ignore
 
         # build dependencies
-        tmp_table = "_TmpSrcDepends"
+        tmp_table = make_tmp_table_name("src_depends")
         _ = self.send_sql_request(
             self.sql.make_src_depends_tmp.format(
                 tmp_table=tmp_table, pkghash=self.pkghash
@@ -288,7 +293,7 @@ class DependsSrcPackage(APIWorker):
             el["flag_decoded"] = dp_flags_decode(el["flag"], lut.rpmsense_flags)
 
         # get source packages from last branch state by dependency names
-        tmp_table_2 = "_TmpSrcByBinDeps"
+        tmp_table_2 = make_tmp_table_name("src_by_bin_deps")
         _ = self.send_sql_request(
             self.sql.make_src_by_bin_deps_tmp.format(
                 tmp_table_2=tmp_table_2, tmp_table=tmp_table, branch=branch
