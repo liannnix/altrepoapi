@@ -1,0 +1,239 @@
+# ALTRepo API
+# Copyright (C) 2021-2022  BaseALT Ltd
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from collections import defaultdict
+from typing import NamedTuple, Union
+
+from altrepo_api.api.base import APIWorker
+from ..sql import sql
+
+
+class FindImages(APIWorker):
+    """
+    Find images which contain binary packages with the same names as binaries
+    from a task. A task should be in the one of the following states:
+    EPERM, TESTED or DONE
+    """
+
+    def __init__(self, connection, id_, **kwargs) -> None:
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        self.task_id = id_
+        super().__init__()
+
+    def check_task_id(self):
+        response = self.send_sql_request(self.sql.check_task.format(id=self.task_id))
+        if not self.sql_status:
+            return False
+
+        return response[0][0] != 0
+
+    def get(self):
+        task = defaultdict(list)  # type: ignore
+        task["task_id"] = self.task_id
+
+        response = self.send_sql_request(
+            self.sql.get_last_task_info.format(task_id=self.task_id)
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error(
+                {"Error": f"No data found in database for task '{self.task_id}'"}
+            )
+
+        (
+            task["task_state"],
+            task["task_message"],
+            task["task_changed"],
+            task["task_try"],
+            task["task_iter"],
+            task["task_branch"],
+        ) = response[0][1:]
+
+        if task["task_state"] not in ("TESTED", "DONE", "EPERM"):
+            return self.store_error(
+                {"Error": f"Task '{self.task_id}' isn't in state TESTED, DONE or EPERM"}
+            )
+
+        archs = ("noarch", "aarch64", "armh", "i586", "ppc64le", "x86_64")
+
+        response = self.send_sql_request(
+            self.sql.get_subtasks_binaries_with_sources.format(
+                task_id=task["task_id"],
+                task_try=task["task_try"],
+                task_iter=task["task_iter"],
+                task_changed=task["task_changed"],
+                archs=archs,
+            )
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error(
+                {"Error": f"No data found in database for task '{self.task_id}'"}
+            )
+
+        class Subtask(NamedTuple):
+            id: int
+            type: str
+            srcpkg_name: str
+            srcpkg_version: str
+            srcpkg_release: str
+
+        class SubtaskWithBinary(NamedTuple):
+            id: int
+            type: str
+            srcpkg_name: str
+            pkg_version: str
+            pkg_release: str
+            binpkg_name: str
+            binpkg_arch: str
+
+        class ArepoPackage(NamedTuple):
+            binpkg_name: str
+            binpkg_version: str
+            binpkg_release: str
+            type: str = "build"
+            binpkg_arch: str = "x86_64-i586"
+
+        class Image(NamedTuple):
+            filename: str
+            edition: str
+            tag: str
+            buildtime: str
+            binpkg_name: str
+            binpkg_version: str
+            binpkg_release: str
+            binpkg_arch: str
+            binpkg_hash: str
+
+        def inner_join(
+            packages: list[Union[SubtaskWithBinary, ArepoPackage]], images: list[Image]
+        ) -> list[tuple[Union[SubtaskWithBinary, ArepoPackage], Image]]:
+            return [
+                (package, image) for image in images for package in packages
+                if (
+                    (package.binpkg_name, package.binpkg_arch)
+                    == (image.binpkg_name, image.binpkg_arch)
+                )
+            ]
+
+        def get_images_by_binary_pkgs_names(branch, pkgs_names):
+            _tmp_table = "tmp_pkgs_names"
+            response = self.send_sql_request(
+                self.sql.get_images_by_binary_pkgs_names.format(
+                    branch=branch,
+                    tmp_table=_tmp_table
+                ),
+                external_tables=[
+                    {
+                        "name": _tmp_table,
+                        "structure": [
+                            ("pkg_name", "String"),
+                        ],
+                        "data": [
+                            {"pkg_name": binpkg_name}
+                            for binpkg_name in pkgs_names
+                        ]
+                    },
+                ]
+            )
+            return response
+
+        subtasks = [SubtaskWithBinary(*el) for el in response]
+
+        response = get_images_by_binary_pkgs_names(
+            task["task_branch"],
+            {s.binpkg_name for s in subtasks}
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error(
+                {"Error": f"No data found in database for task '{self.task_id}'"}
+            )
+
+        images = [Image(*el) for el in response]
+
+        joined = inner_join(subtasks, images)
+
+        groupped_by_subtask = defaultdict(list)
+
+        for subtask, image in joined:
+            sub = Subtask(*subtask[:5])
+            groupped_by_subtask[sub].append(image)
+
+        task["subtasks"] = sorted(
+            [
+                {
+                    **subtask._asdict(),
+                    "images": sorted(
+                        [image._asdict() for image in images],
+                        key=lambda image: image["filename"],
+                    ),
+                }
+                for subtask, images in groupped_by_subtask.items()
+            ],
+            key=lambda subtask: subtask["id"],
+        )
+
+        response = self.send_sql_request(
+            self.sql.get_task_arepo_packages.format(
+                task_id=task["task_id"],
+                task_try=task["task_try"],
+                task_iter=task["task_iter"],
+            )
+        )
+        if not self.sql_status:
+            return self.error
+        if response:
+            arepo_packages = [ArepoPackage(*el) for el in response]
+
+            response = get_images_by_binary_pkgs_names(
+                task["task_branch"],
+                {a.binpkg_name for a in arepo_packages}
+            )
+            if not self.sql_status:
+                return self.error
+
+            images = [Image(*el) for el in response]
+
+            joined = inner_join(arepo_packages, images)
+
+            groupped_by_arepo = defaultdict(list)
+
+            for arepo_package, image in joined:
+                groupped_by_arepo[arepo_package].append(image)
+
+            task["arepo"] = sorted(
+                [
+                    {
+                        **arepo_package._asdict(),
+                        "images": sorted(
+                            [image._asdict() for image in images],
+                            key=lambda image: image["filename"],
+                        ),
+                    }
+                    for arepo_package, images in groupped_by_arepo.items()
+                ],
+                key=lambda arepo_package: arepo_package["binpkg_name"],
+            )
+        else:
+            task["arepo"] = []
+
+        return task, 200

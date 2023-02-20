@@ -694,5 +694,161 @@ GROUP BY task_id
 ORDER BY changed DESC
 """
 
+    get_last_task_info = """
+WITH
+    last_task_state AS
+    (
+        SELECT
+            task_id,
+            argMax(task_state, task_changed) AS state,
+            argMax(task_message, task_changed) AS message,
+            max(task_changed) AS changed
+        FROM TaskStates
+        WHERE task_id = {task_id}
+        GROUP BY task_id
+    ),
+    task_try_iter AS
+    (
+        SELECT DISTINCT
+            task_id,
+            task_try,
+            task_iter
+        FROM TaskIterations
+        WHERE (task_id, task_changed) = (
+            SELECT
+                task_id,
+                changed
+            FROM last_task_state
+        )
+    ),
+    (
+        SELECT DISTINCT task_repo
+        FROM Tasks
+        WHERE task_id = {task_id}
+    ) AS task_branch
+SELECT
+    *,
+    task_branch
+FROM last_task_state
+LEFT JOIN task_try_iter AS TI USING (task_id)
+"""
+
+    get_subtasks_binaries_with_sources = """
+WITH all_sources AS
+(
+    -- added source packages
+    SELECT
+        task_id,
+        subtask_id,
+        'build' AS action,
+        srcpkg_hash
+    FROM Tasks
+    INNER JOIN (
+        SELECT DISTINCT
+            task_id,
+            subtask_id,
+            titer_srcrpm_hash AS srcpkg_hash
+        FROM TaskIterations
+        WHERE (task_id, task_changed) = ({task_id}, '{task_changed}')
+            AND (titer_status != 'deleted')
+    ) AS T USING (task_id, subtask_id)
+    WHERE (subtask_type != 'delete')
+        AND (subtask_deleted = 0)
+        AND (task_id, task_changed) = ({task_id}, '{task_changed}')
+    UNION ALL
+    -- deleted source packages
+    SELECT
+        task_id,
+        subtask_id,
+        'delete' AS action,
+        pkg_hash AS srcpkg_hash
+    FROM Packages
+    INNER JOIN (
+        SELECT
+            task_id,
+            subtask_id,
+            subtask_package
+        FROM Tasks
+        WHERE (subtask_deleted = 0)
+            AND (subtask_type = 'delete')
+            AND (task_id, task_changed) = ({task_id}, '{task_changed}')
+    ) AS T ON T.subtask_package = pkg_name
+    WHERE pkg_hash IN (
+        SELECT pkgh_mmh
+        FROM PackageHash
+        WHERE pkgh_sha256 IN (
+            SELECT tplan_sha256
+            FROM TaskPlanPkgHash
+            WHERE (tplan_hash IN murmurHash3_64('{task_id}{task_try}{task_iter}src'))
+                AND (tplan_action = 'delete')
+        )
+    )
+)
+SELECT DISTINCT
+    subtask_id,
+    action,
+    sourcepkgname AS srcpkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_name AS binpkg_name,
+    pkg_arch AS binpkg_arch
+FROM all_packages_with_source
+INNER JOIN all_sources AS S
+    ON pkg_srcrpm_hash = S.srcpkg_hash
+WHERE pkg_sourcepackage = 0
+    AND pkg_srcrpm_hash IN (SELECT srcpkg_hash FROM all_sources)
+    AND (pkg_arch IN {archs})
+"""
+
+    get_task_arepo_packages = """
+WITH task_plan_hashes AS
+    (
+        SELECT pkgh_mmh
+        FROM PackageHash
+        WHERE pkgh_sha256 IN (
+            SELECT tplan_sha256
+            FROM TaskPlanPkgHash
+            WHERE (tplan_hash IN murmurHash3_64('{task_id}{task_try}{task_iter}x86_64-i586'))
+                AND (tplan_action = 'add')
+        )
+    )
+SELECT
+    pkg_name,
+    pkg_version,
+    pkg_release
+FROM Packages
+WHERE pkg_hash IN (task_plan_hashes)
+"""
+
+    get_images_by_binary_pkgs_names = """
+SELECT DISTINCT
+    img_file,
+    img_edition,
+    img_tag,
+    pkgset_date AS img_buildtime,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_arch,
+    pkg_hash
+FROM lv_all_image_packages
+WHERE (pkg_hash IN (
+    SELECT DISTINCT pkg_hash
+    FROM Packages
+    WHERE (pkg_name IN (SELECT pkg_name FROM {tmp_table}))
+    AND (pkg_sourcepackage = 0)
+))
+AND (img_branch = '{branch}')
+AND (img_tag IN (
+    SELECT img_tag
+    FROM (
+        SELECT img_tag, argMax(img_show, ts) AS img_show
+        FROM ImageTagStatus
+        GROUP BY img_tag
+    )
+    WHERE img_show = 'show'
+))
+"""
+
 
 sql = SQL()

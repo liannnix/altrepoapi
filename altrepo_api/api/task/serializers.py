@@ -397,3 +397,70 @@ task_history_model = ns.model(
         ),
     },
 )
+
+find_images_by_task_image_el_model = ns.model(
+    "FindImagesByTaskImageElementModel",
+    {
+        "filename": fields.String(description="image filename"),
+        "edition": fields.String(description="image edition"),
+        "tag": fields.String(description="image tag"),
+        "buildtime": fields.DateTime(description="image built date in ISO8601 format"),
+        "binpkg_name": fields.String(description="image's binary package name"),
+        "binpkg_version": fields.String(description="image's binary package version"),
+        "binpkg_release": fields.String(description="image's binary package release"),
+        "binpkg_arch": fields.String(description="image's binary package architecture"),
+        "binpkg_hash": fields.String(description="image's binary package hash")
+    }
+)
+find_images_by_task_subtask_el_model = ns.model(
+    "FindImagesByTaskSubtaskElementModel",
+    {
+        "id": fields.Integer(description="subtask id"),
+        "type": fields.String(description="subtask type"),
+        "srcpkg_name": fields.String(description="subtask's source package name"),
+        "srcpkg_version": fields.String(description="subtask's source package version"),
+        "srcpkg_release": fields.String(description="subtask's source package release"),
+        "images": fields.Nested(
+            find_images_by_task_image_el_model,
+            description="affected images (by binary packages)",
+            as_list=True
+        ),
+    }
+)
+find_images_by_task_arepo_el_model = ns.model(
+    "FindImagesByTaskArepoElementModel",
+    {
+        "type": fields.String(description="subtask type"),
+        "binpkg_name": fields.String(description="image's binary package name"),
+        "binpkg_version": fields.String(description="image's binary package version"),
+        "binpkg_release": fields.String(description="image's binary package release"),
+        "binpkg_arch": fields.String(description="image's binary package architecture"),
+        "images": fields.Nested(
+            find_images_by_task_image_el_model,
+            description="affected images (by binary packages)",
+            as_list=True
+        ),
+    }
+)
+find_images_by_task_model = ns.model(
+    "FindImagesByTaskModel",
+    {
+        "task_id": fields.Integer(description="task id"),
+        "task_state": fields.String(description="task state"),
+        "task_branch": fields.String(description="task branch"),
+        "task_try": fields.Integer(description="task try"),
+        "task_iter": fields.Integer(description="task iter"),
+        "task_message": fields.String(description="task message"),
+        "task_changed": fields.DateTime(descrption="task changed date in ISO8601 format"),
+        "subtasks": fields.Nested(
+            find_images_by_task_subtask_el_model,
+            description="subtasks",
+            as_list=True
+        ),
+        "arepo": fields.Nested(
+            find_images_by_task_arepo_el_model,
+            description="arepo packages",
+            as_list=True
+        )
+    }
+)
