@@ -17,7 +17,7 @@
 from uuid import UUID
 from collections import namedtuple
 
-from altrepo_api.utils import bytes2human
+from altrepo_api.utils import bytes2human, make_tmp_table_name
 from altrepo_api.api.base import APIWorker
 from ..sql import sql
 from ...misc import lut
@@ -274,7 +274,7 @@ class LastImagePackages(APIWorker):
         else:
             cve = ""
 
-        tmp_pkg_hashes = "tmp_pkg_hashes"
+        tmp_pkg_hashes = make_tmp_table_name("pkg_hashes")
         if component is not None:
             component = f"AND pkgset_nodename = '{component}'"
         else:
@@ -288,7 +288,7 @@ class LastImagePackages(APIWorker):
         if not self.sql_status:
             return self.error
 
-        tmp_table = "tmp_img_pkg_info"
+        tmp_table = make_tmp_table_name("img_pkg_info")
         _ = self.send_sql_request(
             self.sql.tmp_img_pkg_info.format(
                 tmp_table=tmp_table, tmp_pkg_hashes=tmp_pkg_hashes
