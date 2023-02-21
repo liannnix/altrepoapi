@@ -16,7 +16,7 @@ from flask import url_for
             "subtasks": [
                 {
                     "id": 1500,
-                    "type": "build",
+                    "type": "rebuild",
                     "srcpkg_name": "tar",
                     "srcpkg_version": "1.34.0.16.12d67f44",
                     "srcpkg_release": "alt1",
@@ -26,7 +26,7 @@ from flask import url_for
                 },
                 {
                     "id": 1040,
-                    "type": "build",
+                    "type": "gear",
                     "srcpkg_name": "coreutils",
                     "srcpkg_version": "9.1.0.8.e08752",
                     "srcpkg_release": "alt1",
@@ -48,7 +48,7 @@ from flask import url_for
             "subtasks": [
                 {
                     "id": 1000,
-                    "type": "build",
+                    "type": "srpm",
                     "srcpkg_name": "lash",
                     "srcpkg_version": "0.5.4",
                     "srcpkg_release": "alt1_49",
@@ -70,7 +70,7 @@ from flask import url_for
             "subtasks": [
                 {
                     "id": 100,
-                    "type": "build",
+                    "type": "gear",
                     "srcpkg_name": "nvidia_glx_common",
                     "srcpkg_version": "525.85.05",
                     "srcpkg_release": "alt260",
@@ -103,7 +103,7 @@ from flask import url_for
             "subtasks": [
                 {
                     "id": 200,
-                    "type": "build",
+                    "type": "gear",
                     "srcpkg_name": "zabbix",
                     "srcpkg_version": "5.0.12",
                     "srcpkg_release": "alt0.p9.1",
