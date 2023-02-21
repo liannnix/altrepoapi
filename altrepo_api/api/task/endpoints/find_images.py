@@ -157,6 +157,33 @@ class FindImages(APIWorker):
 
         subtasks = [SubtaskWithBinary(*el) for el in response]
 
+        response = self.send_sql_request(
+            self.sql.get_task_arepo_packages.format(
+                task_id=task["task_id"],
+                task_try=task["task_try"],
+                task_iter=task["task_iter"],
+            )
+        )
+        if not self.sql_status:
+            return self.error
+        if response:
+            arepo = []
+            for subtask in subtasks:
+                if subtask.binpkg_arch == "i586":
+                    swb = SubtaskWithBinary(
+                        subtask.id,
+                        subtask.type,
+                        subtask.srcpkg_name,
+                        subtask.pkg_version,
+                        subtask.pkg_release,
+                        f"i586-{subtask.binpkg_name}",
+                        "x86_64-i586"
+                    )
+                    if (swb[5], *swb[3:5]) in response:
+                        arepo.append(swb)
+
+            subtasks.extend(arepo)
+
         response = get_images_by_binary_pkgs_names(
             task["task_branch"],
             {s.binpkg_name for s in subtasks}
@@ -191,49 +218,5 @@ class FindImages(APIWorker):
             ],
             key=lambda subtask: subtask["id"],
         )
-
-        response = self.send_sql_request(
-            self.sql.get_task_arepo_packages.format(
-                task_id=task["task_id"],
-                task_try=task["task_try"],
-                task_iter=task["task_iter"],
-            )
-        )
-        if not self.sql_status:
-            return self.error
-        if response:
-            arepo_packages = [ArepoPackage(*el) for el in response]
-
-            response = get_images_by_binary_pkgs_names(
-                task["task_branch"],
-                {a.binpkg_name for a in arepo_packages}
-            )
-            if not self.sql_status:
-                return self.error
-
-            images = [Image(*el) for el in response]
-
-            joined = inner_join(arepo_packages, images)
-
-            groupped_by_arepo = defaultdict(list)
-
-            for arepo_package, image in joined:
-                groupped_by_arepo[arepo_package].append(image)
-
-            task["arepo"] = sorted(
-                [
-                    {
-                        **arepo_package._asdict(),
-                        "images": sorted(
-                            [image._asdict() for image in images],
-                            key=lambda image: image["filename"],
-                        ),
-                    }
-                    for arepo_package, images in groupped_by_arepo.items()
-                ],
-                key=lambda arepo_package: arepo_package["binpkg_name"],
-            )
-        else:
-            task["arepo"] = []
 
         return task, 200
