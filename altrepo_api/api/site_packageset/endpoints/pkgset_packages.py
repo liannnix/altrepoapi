@@ -17,7 +17,7 @@
 from collections import namedtuple
 from datetime import timedelta
 
-from altrepo_api.utils import sort_branches, datetime_to_iso
+from altrepo_api.utils import sort_branches, datetime_to_iso, make_tmp_table_name
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
@@ -229,7 +229,7 @@ class LastBranchPackages(APIWorker):
             tmp_table = self.sql.get_last_branch_hsh_source.format(branch=self.branch)
         else:
             # get source packages diff from current branch state and previous one
-            tmp_table = "tmp_srcpkg_hashes"
+            tmp_table = make_tmp_table_name("srcpkg_hashes")
 
             _ = self.send_sql_request(
                 self.sql.get_last_branch_src_diff.format(
