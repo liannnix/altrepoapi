@@ -16,7 +16,7 @@
 
 from collections import namedtuple
 
-from altrepo_api.utils import datetime_to_iso
+from altrepo_api.utils import datetime_to_iso, make_tmp_table_name
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
@@ -115,7 +115,7 @@ class TasksByPackage(APIWorker):
 
         if len(tasks_for_pkg_names_search) != 0:
             # create temporary table with task_id, subtask_id
-            tmp_table = "tmp_task_ids"
+            tmp_table = make_tmp_table_name("task_ids")
 
             _ = self.send_sql_request(
                 self.sql.create_tmp_table.format(
@@ -265,7 +265,7 @@ class TasksByMaintainer(APIWorker):
 
         if len(tasks_for_pkg_names_search) != 0:
             # create temporary table with task_id, subtask_id
-            tmp_table = "tmp_task_ids"
+            tmp_table = make_tmp_table_name("task_ids")
 
             _ = self.send_sql_request(
                 self.sql.create_tmp_table.format(

@@ -16,7 +16,11 @@
 
 from collections import namedtuple
 
-from altrepo_api.utils import datetime_to_iso, get_nickname_from_packager
+from altrepo_api.utils import (
+    datetime_to_iso,
+    get_nickname_from_packager,
+    make_tmp_table_name,
+)
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
@@ -102,7 +106,7 @@ class LastTaskPackages(APIWorker):
         src_pkg_hashes = {t["titer_srcrpm_hash"] for t in tasks}
 
         # create temporary table for source package hashes
-        tmp_table = "tmp_srcpkg_hashes"
+        tmp_table = make_tmp_table_name("srcpkg_hashes")
 
         _ = self.send_sql_request(
             self.sql.create_tmp_table.format(
