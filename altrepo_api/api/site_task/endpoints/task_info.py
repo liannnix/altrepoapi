@@ -14,13 +14,151 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from collections import namedtuple
+from datetime import datetime
+from typing import Any, Iterable, NamedTuple
 
 from altrepo_api.utils import datetime_to_iso, make_tmp_table_name
-
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
+
 from ..sql import sql
+
+
+class SubtaskMeta(NamedTuple):
+    id: int
+    sub_id: int
+    repo: str
+    owner: str
+    type: str
+    dir: str
+    tag_id: str
+    srpm_name: str
+    srpm_evr: str
+    package: str
+    pkg_from: str
+    changed: datetime
+
+
+class TaskMeta(NamedTuple):
+    id: int
+    state: str
+    changed: datetime
+    packages: list[SubtaskMeta]
+
+
+def _build_gear_link(
+    subtask: SubtaskMeta, git_base_url: str = lut.gitalt_base
+) -> tuple[str, str]:
+    """Parse task gears
+
+    Args:
+        pkg (dict): subtask info with keys:
+            ['type', 'dir', 'tag_id', 'srpm_name', 'srpm_evr', 'package', 'pkg_from']
+
+        git_base_url (str): base git url for links ('http://git.altlinux.org')
+
+    Returns:
+        tuple: return package type [gear|srpm|copy|delete] and link (git)
+    """
+
+    def delete_epoch(evr):
+        #  delete epoch from evr
+        if ":" in evr:
+            return evr.split(":")[-1]
+        return evr
+
+    type_ = ""
+    link_ = ""
+    if subtask.type == "copy":
+        # 'copy' always has only 'subtask_package'
+        type_ = "search"
+        link_ = subtask.package
+        if subtask.pkg_from != "":
+            link_ += f"&{subtask.pkg_from}"
+    elif subtask.type == "delete" and subtask.srpm_name != "":
+        # FIXME: bug workaround for girar changes @ e74d8067009d
+        type_ = "srpm"
+        link_ = f"{git_base_url}/srpms/{subtask.srpm_name[0]}/{subtask.srpm_name}.git"
+        if subtask.srpm_evr != "":
+            link_ += f"?a=tree;hb={delete_epoch(subtask.srpm_evr)}"
+    elif subtask.type == "delete":
+        # 'delete' return only package name
+        type_ = "delete"
+        link_ = subtask.package
+    elif subtask.dir != "" or subtask.type == "gear":
+        # 'gear' and 'rebuild' + 'unknown' with gears
+        type_ = "gear"
+        link_ = git_base_url + subtask.dir
+        if subtask.tag_id != "":
+            link_ += f"?a=tree;hb={subtask.tag_id}"
+    elif subtask.srpm_name != "" or subtask.type == "srpm":
+        # 'srpm' and 'rebuild' + 'unknown' with srpm
+        type_ = "srpm"
+        link_ = f"{git_base_url}/srpms/{subtask.srpm_name[0]}/{subtask.srpm_name}.git"
+        if subtask.srpm_evr != "":
+            link_ += f"?a=tree;hb={delete_epoch(subtask.srpm_evr)}"
+
+    return type_, link_
+
+
+def _process_tasks(
+    tasks: Iterable[TaskMeta], pkg_names: dict[tuple[int, int], tuple[str, ...]]
+) -> list[dict[str, Any]]:
+    res = []
+
+    for task in tasks:
+        pkg_ls = []
+        pkg_type = ""
+        pkg_link = ""
+        pkg_name = ""
+        pkg_version = ""
+        pkg_release = ""
+
+        for subtask in task.packages:
+            pkg_name, pkg_version, pkg_release = pkg_names.get(
+                (subtask.id, subtask.sub_id), ("", "", "")
+            )
+
+            if subtask.package != "":
+                pkg_name = subtask.package
+            elif subtask.srpm_name != "":
+                pkg_name = subtask.srpm_name
+
+            if subtask.dir != "" and not subtask.dir.startswith("/gears/"):
+                if pkg_name:
+                    # XXX: replace `/people/%maintainer%/packages/*` like links with git one
+                    subtask = subtask._replace(
+                        dir=f"/gears/{pkg_name[0]}/{pkg_name}.git"
+                    )
+                else:
+                    pkg_name = subtask.dir.split("/")[-1][:-4]
+            elif subtask.dir.startswith("/gears/"):
+                pkg_name = subtask.dir.split("/")[-1][:-4]
+
+            pkg_type, pkg_link = _build_gear_link(subtask)
+
+            pkg_ls.append(
+                {
+                    "type": pkg_type,
+                    "link": pkg_link,
+                    "name": pkg_name,
+                    "version": pkg_version,
+                    "release": pkg_release,
+                }
+            )
+
+        res.append(
+            {
+                "id": task.id,
+                "state": task.state,
+                "changed": datetime_to_iso(task.changed),
+                "branch": task.packages[0].repo,
+                "owner": task.packages[0].owner,
+                "packages": pkg_ls,
+            }
+        )
+
+    return res
 
 
 class TasksByPackage(APIWorker):
@@ -36,59 +174,6 @@ class TasksByPackage(APIWorker):
         self.logger.debug(f"args : {self.args}")
         return True
 
-    @staticmethod
-    def _build_gear_link(subtask, git_base_url):
-        """Parse task gears
-
-        Args:
-            pkg (dict): subtask info with keys:
-                ['type', 'dir', 'tag_id', 'srpm_name', 'srpm_evr', 'package', 'pkg_from']
-
-            git_base_url (str): base git url for links ('http://git.altlinux.org')
-
-        Returns:
-            tuple: return package type [gear|srpm|copy|delete] and link (git)
-        """
-
-        def delete_epoch(evr):
-            #  delete epoch from evr
-            if ":" in evr:
-                return evr.split(":")[-1]
-            return evr
-
-        type_ = ""
-        link_ = ""
-        if subtask["type"] == "copy":
-            # 'copy' always has only 'subtask_package'
-            type_ = "search"
-            link_ = subtask["package"]
-            if subtask["pkg_from"] != "":
-                link_ += f"&{subtask['pkg_from']}"
-        elif subtask["type"] == "delete" and subtask["srpm_name"] != "":
-            # FIXME: bug workaround for girar changes @ e74d8067009d
-            type_ = "srpm"
-            link_ = f"{git_base_url}/srpms/{subtask['srpm_name'][0]}/{subtask['srpm_name']}.git"
-            if subtask["srpm_evr"] != "":
-                link_ += f"?a=tree;hb={delete_epoch(subtask['srpm_evr'])}"
-        elif subtask["type"] == "delete":
-            # 'delete' return only package name
-            type_ = "delete"
-            link_ = subtask["package"]
-        elif subtask["dir"] != "" or subtask["type"] == "gear":
-            # 'gear' and 'rebuild' + 'unknown' with gears
-            type_ = "gear"
-            link_ = git_base_url + subtask["dir"]
-            if subtask["tag_id"] != "":
-                link_ += f"?a=tree;hb={subtask['tag_id']}"
-        elif subtask["srpm_name"] != "" or subtask["type"] == "srpm":
-            # 'srpm' and 'rebuild' + 'unknown' with srpm
-            type_ = "srpm"
-            link_ = f"{git_base_url}/srpms/{subtask['srpm_name'][0]}/{subtask['srpm_name']}.git"
-            if subtask["srpm_evr"] != "":
-                link_ += f"?a=tree;hb={delete_epoch(subtask['srpm_evr'])}"
-
-        return type_, link_
-
     def get(self):
         self.name = self.args["name"]
 
@@ -102,16 +187,16 @@ class TasksByPackage(APIWorker):
                 {"message": f"No data found in database for package '{self.name}'"}
             )
 
-        TaskMeta = namedtuple("TaskMeta", ["id", "state", "changed", "packages"])
+        tasks = [
+            TaskMeta(*el[0:3], packages=[SubtaskMeta(*s) for s in el[3]])
+            for el in response
+        ]
 
-        retval = [TaskMeta(*el)._asdict() for el in response]
-
-        tasks_for_pkg_names_search = []
         pkg_names = {}
 
-        for task in retval:
-            for s in task["packages"]:
-                tasks_for_pkg_names_search.append((s[0], s[1]))
+        tasks_for_pkg_names_search = [
+            (s.id, s.sub_id) for t in tasks for s in t.packages
+        ]
 
         if len(tasks_for_pkg_names_search) != 0:
             # create temporary table with task_id, subtask_id
@@ -130,7 +215,7 @@ class TasksByPackage(APIWorker):
                 (
                     self.sql.insert_into_tmp_table.format(tmp_table=tmp_table),
                     (
-                        {"task_id": int(el[0]), "subtask_id": int(el[1])}
+                        {"task_id": el[0], "subtask_id": el[1]}
                         for el in tasks_for_pkg_names_search
                     ),
                 )
@@ -146,79 +231,10 @@ class TasksByPackage(APIWorker):
                 return self.error
 
             if response:
-                pkg_names = {(el[0], el[1]): el[2:] for el in response if el[2] != ""}  # type: ignore
+                pkg_names = {(el[0], el[1]): el[2:] for el in response if el[2] != ""}
 
-        res = []
-
-        SubtaskMeta = namedtuple(
-            "SubtaskMeta",
-            [
-                "id",
-                "sub_id",
-                "repo",
-                "owner",
-                "type",
-                "dir",
-                "tag_id",
-                "srpm_name",
-                "srpm_evr",
-                "package",
-                "pkg_from",
-                "changed",
-            ],
-        )
-
-        for task in retval:
-            pkg_ls = []
-            pkg_type = ""
-            pkg_link = ""
-            pkg_name = ""
-            pkg_version = ""
-            pkg_release = ""
-
-            for s in task["packages"]:
-                subtask = SubtaskMeta(*s)._asdict()
-                pkg_name, pkg_version, pkg_release = pkg_names.get(  # type: ignore
-                    (int(subtask["id"]), int(subtask["sub_id"])), ("", "", "")
-                )
-
-                if subtask["package"] != "":
-                    pkg_name = subtask["package"]
-                elif subtask["srpm_name"] != "":
-                    pkg_name = subtask["srpm_name"]
-
-                if subtask["dir"] != "" and not subtask["dir"].startswith("/gears/"):
-                    if pkg_name:
-                        subtask["dir"] = f"/gears/{pkg_name[0]}/{pkg_name}.git"
-                    else:
-                        pkg_name = subtask["dir"].split("/")[-1][:-4]
-                elif subtask["dir"].startswith("/gears/"):
-                    pkg_name = subtask["dir"].split("/")[-1][:-4]
-
-                pkg_type, pkg_link = self._build_gear_link(subtask, lut.gitalt_base)
-
-                pkg_ls.append(
-                    {
-                        "type": pkg_type,
-                        "link": pkg_link,
-                        "name": pkg_name,
-                        "version": pkg_version,
-                        "release": pkg_release,
-                    }
-                )
-
-            res.append(
-                {
-                    "id": task["id"],
-                    "state": task["state"],
-                    "changed": datetime_to_iso(task["changed"]),
-                    "branch": task["packages"][0][2],
-                    "owner": task["packages"][0][3],
-                    "packages": pkg_ls,
-                }
-            )
-
-        res = {"request_args": self.args, "length": len(res), "tasks": res}
+        res_ = _process_tasks(tasks, pkg_names)
+        res = {"request_args": self.args, "length": len(res_), "tasks": res_}
 
         return res, 200
 
@@ -252,16 +268,16 @@ class TasksByMaintainer(APIWorker):
                 {"message": "No data not found in database", "args": self.args}
             )
 
-        TaskMeta = namedtuple("TaskMeta", ["id", "state", "changed", "packages"])
+        tasks = [
+            TaskMeta(*el[0:3], packages=[SubtaskMeta(*s) for s in el[3]])
+            for el in response
+        ]
 
-        retval = [TaskMeta(*el)._asdict() for el in response]
-
-        tasks_for_pkg_names_search = []
         pkg_names = {}
 
-        for task in retval:
-            for s in task["packages"]:
-                tasks_for_pkg_names_search.append((s[0], s[1]))
+        tasks_for_pkg_names_search = [
+            (s.id, s.sub_id) for t in tasks for s in t.packages
+        ]
 
         if len(tasks_for_pkg_names_search) != 0:
             # create temporary table with task_id, subtask_id
@@ -280,7 +296,7 @@ class TasksByMaintainer(APIWorker):
                 (
                     self.sql.insert_into_tmp_table.format(tmp_table=tmp_table),
                     (
-                        {"task_id": int(el[0]), "subtask_id": int(el[1])}
+                        {"task_id": el[0], "subtask_id": el[1]}
                         for el in tasks_for_pkg_names_search
                     ),
                 )
@@ -296,80 +312,10 @@ class TasksByMaintainer(APIWorker):
                 return self.error
 
             if response:
-                pkg_names = {(el[0], el[1]): el[2:] for el in response if el[2] != ""}  # type: ignore
+                pkg_names = {(el[0], el[1]): el[2:] for el in response if el[2] != ""}
 
-        res = []
-
-        SubtaskMeta = namedtuple(
-            "SubtaskMeta",
-            [
-                "id",
-                "sub_id",
-                "repo",
-                "owner",
-                "type",
-                "dir",
-                "tag_id",
-                "srpm_name",
-                "srpm_evr",
-                "package",
-                "pkg_from",
-                "changed",
-            ],
-        )
-
-        for task in retval:
-            pkg_ls = []
-            pkg_type = ""
-            pkg_link = ""
-            pkg_name = ""
-            pkg_version = ""
-            pkg_release = ""
-
-            for s in task["packages"]:
-                subtask = SubtaskMeta(*s)._asdict()
-                pkg_name, pkg_version, pkg_release = pkg_names.get(  # type: ignore
-                    (int(subtask["id"]), int(subtask["sub_id"])), ("", "", "")
-                )
-
-                if subtask["package"] != "":
-                    pkg_name = subtask["package"]
-                elif subtask["srpm_name"] != "":
-                    pkg_name = subtask["srpm_name"]
-
-                if subtask["dir"] != "" and not subtask["dir"].startswith("/gears/"):
-                    if pkg_name:
-                        subtask["dir"] = f"/gears/{pkg_name[0]}/{pkg_name}.git"
-                    else:
-                        pkg_name = subtask["dir"].split("/")[-1][:-4]
-                elif subtask["dir"].startswith("/gears/"):
-                    pkg_name = subtask["dir"].split("/")[-1][:-4]
-
-                pkg_type, pkg_link = TasksByPackage._build_gear_link(
-                    subtask, lut.gitalt_base
-                )
-
-                pkg_ls.append(
-                    {
-                        "type": pkg_type,
-                        "link": pkg_link,
-                        "name": pkg_name,
-                        "version": pkg_version,
-                        "release": pkg_release,
-                    }
-                )
-
-            res.append(
-                {
-                    "id": task["id"],
-                    "state": task["state"],
-                    "changed": datetime_to_iso(task["changed"]),
-                    "branch": task["packages"][0][2],
-                    "owner": task["packages"][0][3],
-                    "packages": pkg_ls,
-                }
-            )
-
-        res = {"request_args": self.args, "length": len(res), "tasks": res}
+        # exclude `DELETED` tasks from result
+        res_ = _process_tasks((t for t in tasks if t.state != "DELETED"), pkg_names)
+        res = {"request_args": self.args, "length": len(res_), "tasks": res_}
 
         return res, 200
