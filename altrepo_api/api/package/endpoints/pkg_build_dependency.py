@@ -18,7 +18,12 @@ from collections import namedtuple
 from typing import Optional
 
 from altrepo_api.settings import namespace as settings
-from altrepo_api.utils import get_logger, tuplelist_to_dict, join_tuples
+from altrepo_api.utils import (
+    get_logger,
+    tuplelist_to_dict,
+    join_tuples,
+    make_tmp_table_name,
+)
 
 from altrepo_api.api.base import APIWorker
 from ..sql import sql
@@ -76,7 +81,7 @@ class BuildDependency(APIWorker):
         # store source packages level 0
         src_pkgs_by_level = {0: tuple(input_pkgs)}
 
-        def store_src_pkgs_levels(levels_dict: dict) -> bool:
+        def store_src_pkgs_levels(levels_dict: dict, tmp_table: str) -> bool:
             """Select and store packages from temporary table splitted by dependecy levels.
 
             Args:
@@ -87,7 +92,7 @@ class BuildDependency(APIWorker):
             """
 
             response = self.send_sql_request(
-                self.sql.select_all_tmp_table.format(tmp_table="tmp_pkg_ls")
+                self.sql.select_all_tmp_table.format(tmp_table=tmp_table)
             )
             if not self.sql_status:
                 return False
@@ -102,7 +107,7 @@ class BuildDependency(APIWorker):
             return True
 
         # create temporary table with repository state hashes
-        tmp_repo_state = "tmp_repo_state_hshs"
+        tmp_repo_state = make_tmp_table_name("repo_state_hshs")
 
         _ = self.send_sql_request(
             self.sql.create_tmp_table.format(
@@ -133,7 +138,7 @@ class BuildDependency(APIWorker):
                 return
 
         # delete unused binary packages arch hashes and '*-debuginfo' package hashes
-        tmp_repo_state_filtered = "tmp_repo_state_hshs_filtered"
+        tmp_repo_state_filtered = make_tmp_table_name("repo_state_hshs_filtered")
 
         _ = self.send_sql_request(
             self.sql.create_tmp_table.format(
@@ -204,11 +209,11 @@ class BuildDependency(APIWorker):
             return
 
         # create tmp table with list of packages
-        tmp_table_name = "tmp_pkg_ls"
+        tmp_pkgs_list = make_tmp_table_name("packages_list")
 
         _ = self.send_sql_request(
             self.sql.create_tmp_table.format(
-                tmp_table=tmp_table_name, columns="(pkgname String)"
+                tmp_table=tmp_pkgs_list, columns="(pkgname String)"
             )
         )
         if not self.sql_status:
@@ -217,7 +222,7 @@ class BuildDependency(APIWorker):
         # base query - first iteration, build requires depth 1
         _ = self.send_sql_request(
             (
-                self.sql.insert_build_req_deep_1.format(tmp_table=tmp_table_name),
+                self.sql.insert_build_req_deep_1.format(tmp_table=tmp_pkgs_list),
                 {
                     "sfilter": sourcef,
                     "pkgs": input_pkgs,
@@ -231,7 +236,7 @@ class BuildDependency(APIWorker):
             return
 
         # store source packages level 1
-        if not store_src_pkgs_levels(src_pkgs_by_level):
+        if not store_src_pkgs_levels(src_pkgs_by_level, tmp_pkgs_list):
             return
 
         #  set depth to 2 if in 'oneandhalf' mode
@@ -240,14 +245,14 @@ class BuildDependency(APIWorker):
 
         if self.depth > 1:
             # sql wrapper for increase depth
-            deep_wrapper = self.sql.increase_depth_wrap.format(tmp_table=tmp_table_name)
+            deep_wrapper = self.sql.increase_depth_wrap.format(tmp_table=tmp_pkgs_list)
 
-            # process depth for every level and add results to pkg_ls
+            # process depth for every level and add results to `package_list`
             for _ in range(self.depth - 1):
                 _ = self.send_sql_request(
                     (
                         self.sql.insert_result_for_depth_level.format(
-                            wrapper=deep_wrapper, tmp_table=tmp_table_name
+                            wrapper=deep_wrapper, tmp_table=tmp_pkgs_list
                         ),
                         {
                             "sfilter": sourcef,
@@ -259,17 +264,19 @@ class BuildDependency(APIWorker):
                 if not self.sql_status:
                     return
                 # store source packages level 2..n
-                if not store_src_pkgs_levels(src_pkgs_by_level):
+                if not store_src_pkgs_levels(src_pkgs_by_level, tmp_pkgs_list):
                     return
 
         # if 'oneandhalf' is set search dependencies of level 1 source packages from level 2 binary packages
         # filter level 2 packages from which level1 packages are depends
         if self.oneandhalf:
             # create and fill temporary tables for source packages filtering
+            tmp_l1_pkgs = make_tmp_table_name("l1_pkgs")
+            tmp_l2_pkgs = make_tmp_table_name("l2_pkgs")
             # level 1 packages
             _ = self.send_sql_request(
                 self.sql.create_tmp_table.format(
-                    tmp_table="l1_pkgs", columns="(pkgname String)"
+                    tmp_table=tmp_l1_pkgs, columns="(pkgname String)"
                 )
             )
             if not self.sql_status:
@@ -277,7 +284,7 @@ class BuildDependency(APIWorker):
 
             _ = self.send_sql_request(
                 (
-                    self.sql.insert_into_tmp_table.format(tmp_table="l1_pkgs"),
+                    self.sql.insert_into_tmp_table.format(tmp_table=tmp_l1_pkgs),
                     ((pkg,) for pkg in src_pkgs_by_level[1]),
                 )
             )
@@ -287,7 +294,7 @@ class BuildDependency(APIWorker):
             # level 2 packages
             _ = self.send_sql_request(
                 self.sql.create_tmp_table.format(
-                    tmp_table="l2_pkgs", columns="(pkgname String)"
+                    tmp_table=tmp_l2_pkgs, columns="(pkgname String)"
                 )
             )
             if not self.sql_status:
@@ -295,7 +302,7 @@ class BuildDependency(APIWorker):
 
             _ = self.send_sql_request(
                 (
-                    self.sql.insert_into_tmp_table.format(tmp_table="l2_pkgs"),
+                    self.sql.insert_into_tmp_table.format(tmp_table=tmp_l2_pkgs),
                     ((pkg,) for pkg in src_pkgs_by_level[2]),
                 )
             )
@@ -306,7 +313,7 @@ class BuildDependency(APIWorker):
             response = self.send_sql_request(
                 (
                     self.sql.filter_l2_src_pkgs.format(
-                        tmp_table1="l1_pkgs", tmp_table2="l2_pkgs"
+                        tmp_table1=tmp_l1_pkgs, tmp_table2=tmp_l2_pkgs
                     ),
                     {"branch": self.branch, "archs": tuple(self.arch)},
                 )
@@ -325,14 +332,14 @@ class BuildDependency(APIWorker):
 
             # refill sorce packages temporary table
             _ = self.send_sql_request(
-                self.sql.truncate_tmp_table.format(tmp_table=tmp_table_name)
+                self.sql.truncate_tmp_table.format(tmp_table=tmp_pkgs_list)
             )
             if not self.sql_status:
                 return
 
             _ = self.send_sql_request(
                 (
-                    self.sql.insert_into_tmp_table.format(tmp_table=tmp_table_name),
+                    self.sql.insert_into_tmp_table.format(tmp_table=tmp_pkgs_list),
                     ((pkg,) for lvl in src_pkgs_by_level.values() for pkg in lvl),
                 )
             )
@@ -342,7 +349,7 @@ class BuildDependency(APIWorker):
         # get package acl
         response = self.send_sql_request(
             (
-                self.sql.get_acl.format(tmp_table=tmp_table_name),
+                self.sql.get_acl.format(tmp_table=tmp_pkgs_list),
                 {"branch": self.branch},
             )
         )
@@ -354,7 +361,7 @@ class BuildDependency(APIWorker):
             pkg_acl_dict[pkg[0]] = pkg[1][0]  # type: ignore
 
         # create temporary table for package dependencies
-        tmp_table_pkg_dep = "package_dependency"
+        tmp_table_pkg_dep = make_tmp_table_name("package_dependency")
 
         _ = self.send_sql_request(
             self.sql.create_tmp_table.format(
@@ -371,7 +378,7 @@ class BuildDependency(APIWorker):
             _ = self.send_sql_request(
                 (
                     self.sql.insert_src_deps.format(
-                        tmp_deps=tmp_table_pkg_dep, tmp_table=tmp_table_name
+                        tmp_deps=tmp_table_pkg_dep, tmp_table=tmp_pkgs_list
                     ),
                     {
                         "branch": self.branch,
@@ -390,7 +397,7 @@ class BuildDependency(APIWorker):
             _ = self.send_sql_request(
                 (
                     self.sql.insert_binary_deps.format(
-                        tmp_table=tmp_table_name, tmp_req=tmp_table_pkg_dep
+                        tmp_table=tmp_pkgs_list, tmp_req=tmp_table_pkg_dep
                     ),
                     {
                         "branch": self.branch,
@@ -425,7 +432,7 @@ class BuildDependency(APIWorker):
 
             response = self.send_sql_request(
                 (
-                    self.sql.select_finite_pkgs.format(tmp_table=tmp_table_name),
+                    self.sql.select_finite_pkgs.format(tmp_table=tmp_pkgs_list),
                     {"pkgs": tuple(all_dependencies)},
                 )
             )
@@ -488,7 +495,7 @@ class BuildDependency(APIWorker):
         response = self.send_sql_request(
             self.sql.get_output_data.format(
                 branch=self.branch,
-                tmp_table=tmp_table_name,
+                tmp_table=tmp_pkgs_list,
                 tmp_table2=tmp_repo_state,
             )
         )
@@ -534,7 +541,7 @@ class BuildDependency(APIWorker):
                 reqfilter_binpkgs = join_tuples(response)  # type: ignore
 
             base_query = self.sql.req_filter_by_binary.format(
-                pkg="{pkg}", tmp_table=tmp_table_name
+                pkg="{pkg}", tmp_table=tmp_pkgs_list
             )
 
             if len(reqfilter_binpkgs) == 1:
