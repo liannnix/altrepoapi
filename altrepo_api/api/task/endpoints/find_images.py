@@ -179,7 +179,11 @@ class FindImages(APIWorker):
                         f"i586-{subtask.binpkg_name}",
                         "x86_64-i586"
                     )
-                    if (swb[5], *swb[3:5]) in response:
+                    if (
+                        swb.binpkg_name,
+                        swb.pkg_version,
+                        swb.pkg_release
+                    ) in response:
                         arepo.append(swb)
 
             subtasks.extend(arepo)
