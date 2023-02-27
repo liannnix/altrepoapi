@@ -126,7 +126,9 @@ class FindImages(APIWorker):
             packages: list[Union[SubtaskWithBinary, ArepoPackage]], images: list[Image]
         ) -> list[tuple[Union[SubtaskWithBinary, ArepoPackage], Image]]:
             return [
-                (package, image) for image in images for package in packages
+                (package, image)
+                for image in images
+                for package in packages
                 if (
                     (package.binpkg_name, package.binpkg_arch)
                     == (image.binpkg_name, image.binpkg_arch)
@@ -137,8 +139,7 @@ class FindImages(APIWorker):
             _tmp_table = "tmp_pkgs_names"
             response = self.send_sql_request(
                 self.sql.get_images_by_binary_pkgs_names.format(
-                    branch=branch,
-                    tmp_table=_tmp_table
+                    branch=branch, tmp_table=_tmp_table
                 ),
                 external_tables=[
                     {
@@ -147,11 +148,10 @@ class FindImages(APIWorker):
                             ("pkg_name", "String"),
                         ],
                         "data": [
-                            {"pkg_name": binpkg_name}
-                            for binpkg_name in pkgs_names
-                        ]
+                            {"pkg_name": binpkg_name} for binpkg_name in pkgs_names
+                        ],
                     },
-                ]
+                ],
             )
             return response
 
@@ -169,28 +169,28 @@ class FindImages(APIWorker):
         if response:
             arepo = []
             for subtask in subtasks:
-                if subtask.binpkg_arch == "i586":
-                    swb = SubtaskWithBinary(
-                        subtask.id,
-                        subtask.type,
-                        subtask.srcpkg_name,
-                        subtask.pkg_version,
-                        subtask.pkg_release,
-                        f"i586-{subtask.binpkg_name}",
-                        "x86_64-i586"
+                arepo_base_pkg_name = f"i586-{subtask.binpkg_name}"
+                if (
+                    subtask.binpkg_arch == "i586"
+                    and (arepo_base_pkg_name, subtask.pkg_version, subtask.pkg_release)
+                    in response
+                ):
+                    arepo.append(
+                        SubtaskWithBinary(
+                            subtask.id,
+                            subtask.type,
+                            subtask.srcpkg_name,
+                            subtask.pkg_version,
+                            subtask.pkg_release,
+                            arepo_base_pkg_name,
+                            "x86_64-i586",
+                        )
                     )
-                    if (
-                        swb.binpkg_name,
-                        swb.pkg_version,
-                        swb.pkg_release
-                    ) in response:
-                        arepo.append(swb)
 
             subtasks.extend(arepo)
 
         response = get_images_by_binary_pkgs_names(
-            task["task_branch"],
-            {s.binpkg_name for s in subtasks}
+            task["task_branch"], {s.binpkg_name for s in subtasks}
         )
         if not self.sql_status:
             return self.error
@@ -207,8 +207,7 @@ class FindImages(APIWorker):
         if task["task_state"] == "DONE":
             # 0 - subtask, 1 - image
             joined = filter(
-                lambda entry: entry[1].buildtime <= task['task_changed'],
-                joined
+                lambda entry: entry[1].buildtime <= task["task_changed"], joined
             )
 
         groupped_by_subtask = defaultdict(list)
