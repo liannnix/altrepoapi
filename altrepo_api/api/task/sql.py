@@ -740,7 +740,7 @@ WITH all_sources AS
     SELECT
         task_id,
         subtask_id,
-        'build' AS action,
+        subtask_type,
         srcpkg_hash
     FROM Tasks
     INNER JOIN (
@@ -760,13 +760,14 @@ WITH all_sources AS
     SELECT
         task_id,
         subtask_id,
-        'delete' AS action,
+        subtask_type,
         pkg_hash AS srcpkg_hash
     FROM Packages
     INNER JOIN (
         SELECT
             task_id,
             subtask_id,
+            subtask_type,
             subtask_package
         FROM Tasks
         WHERE (subtask_deleted = 0)
@@ -786,7 +787,7 @@ WITH all_sources AS
 )
 SELECT DISTINCT
     subtask_id,
-    action,
+    subtask_type,
     sourcepkgname AS srcpkg_name,
     pkg_version,
     pkg_release,

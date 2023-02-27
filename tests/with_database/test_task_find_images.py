@@ -16,7 +16,7 @@ from flask import url_for
             "subtasks": [
                 {
                     "id": 1500,
-                    "type": "build",
+                    "type": "rebuild",
                     "srcpkg_name": "tar",
                     "srcpkg_version": "1.34.0.16.12d67f44",
                     "srcpkg_release": "alt1",
@@ -26,7 +26,7 @@ from flask import url_for
                 },
                 {
                     "id": 1040,
-                    "type": "build",
+                    "type": "gear",
                     "srcpkg_name": "coreutils",
                     "srcpkg_version": "9.1.0.8.e08752",
                     "srcpkg_release": "alt1",
@@ -35,7 +35,6 @@ from flask import url_for
                     ],
                 },
             ],
-            "arepo": [],
             "status_code": 200,
         },
         {
@@ -48,7 +47,7 @@ from flask import url_for
             "subtasks": [
                 {
                     "id": 1000,
-                    "type": "build",
+                    "type": "srpm",
                     "srcpkg_name": "lash",
                     "srcpkg_version": "0.5.4",
                     "srcpkg_release": "alt1_49",
@@ -57,7 +56,6 @@ from flask import url_for
                     ],
                 },
             ],
-            "arepo": [],
             "status_code": 200,
         },
         {
@@ -70,24 +68,13 @@ from flask import url_for
             "subtasks": [
                 {
                     "id": 100,
-                    "type": "build",
+                    "type": "gear",
                     "srcpkg_name": "nvidia_glx_common",
                     "srcpkg_version": "525.85.05",
                     "srcpkg_release": "alt260",
                     "binpkgs_names": [
-                        "nvidia_glx_common"
-                    ],
-                },
-            ],
-            "arepo": [
-                {
-                    "type": "build",
-                    "binpkg_name": "i586-nvidia_glx_common",
-                    "binpkg_version": "525.85.05",
-                    "binpkg_release": "alt260",
-                    "binpkg_arch": "x86_64-i586",
-                    "binpkgs_names": [
-                        "i586-nvidia_glx_common",
+                        "nvidia_glx_common",
+                        "i586-nvidia_glx_common"
                     ],
                 },
             ],
@@ -103,7 +90,7 @@ from flask import url_for
             "subtasks": [
                 {
                     "id": 200,
-                    "type": "build",
+                    "type": "gear",
                     "srcpkg_name": "zabbix",
                     "srcpkg_version": "5.0.12",
                     "srcpkg_release": "alt0.p9.1",
@@ -114,7 +101,6 @@ from flask import url_for
                     ],
                 },
             ],
-            "arepo": [],
             "status_code": 200,
         },
         {
@@ -165,7 +151,6 @@ def test_find_images_by_task(client, kwargs):
             assert data[field] == kwargs[field]
 
         subtasks = data["subtasks"]
-        arepos = data["arepo"]
 
         for test_subtask in kwargs["subtasks"]:
             fields = ["id", "type", "srcpkg_name", "srcpkg_version", "srcpkg_release"]
@@ -196,64 +181,6 @@ def test_find_images_by_task(client, kwargs):
                 images_from_response = {
                     tuple(img.values())
                     for img in subtask["images"]
-                    if img["binpkg_name"] == binpkg_name
-                }
-
-                images_from_testdata = {
-                    gather(
-                        image,
-                        [
-                            "file",
-                            "edition",
-                            "tag",
-                            "date",
-                            "name",
-                            "version",
-                            "release",
-                            "arch",
-                            "pkghash"
-                        ]
-                    )
-                    for image in resp.json["images"]
-                }
-
-                assert images_from_response == images_from_testdata
-
-        for test_arepo in kwargs["arepo"]:
-            fields = [
-                "type",
-                "binpkg_name",
-                "binpkg_version",
-                "binpkg_release",
-                "binpkg_arch"
-            ]
-            arepo_metas = [gather(arepo, fields) for arepo in arepos]
-            assert gather(test_arepo, fields) in arepo_metas
-
-            for arp in arepos:
-                if arp["binpkg_name"] == test_arepo["binpkg_name"]:
-                    arepo = arp
-
-            arepo_all_binpkgs_names = {
-                arp["binpkg_name"] for arp in arepo["images"]
-            }
-
-            assert {*test_arepo["binpkgs_names"]} == arepo_all_binpkgs_names
-
-            for binpkg_name in arepo_all_binpkgs_names:
-                url = url_for(
-                    "api.image_route_find_images_by_package",
-                    branch=kwargs["task_branch"],
-                    pkg_name=binpkg_name,
-                    pkg_type="binary",
-                    img_show="active"
-                )
-                resp = client.get(url)
-                assert resp.status_code == 200
-
-                images_from_response = {
-                    tuple(img.values())
-                    for img in arepo["images"]
                     if img["binpkg_name"] == binpkg_name
                 }
 

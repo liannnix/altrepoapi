@@ -427,21 +427,6 @@ find_images_by_task_subtask_el_model = ns.model(
         ),
     }
 )
-find_images_by_task_arepo_el_model = ns.model(
-    "FindImagesByTaskArepoElementModel",
-    {
-        "type": fields.String(description="subtask type"),
-        "binpkg_name": fields.String(description="image's binary package name"),
-        "binpkg_version": fields.String(description="image's binary package version"),
-        "binpkg_release": fields.String(description="image's binary package release"),
-        "binpkg_arch": fields.String(description="image's binary package architecture"),
-        "images": fields.Nested(
-            find_images_by_task_image_el_model,
-            description="affected images (by binary packages)",
-            as_list=True
-        ),
-    }
-)
 find_images_by_task_model = ns.model(
     "FindImagesByTaskModel",
     {
@@ -457,10 +442,5 @@ find_images_by_task_model = ns.model(
             description="subtasks",
             as_list=True
         ),
-        "arepo": fields.Nested(
-            find_images_by_task_arepo_el_model,
-            description="arepo packages",
-            as_list=True
-        )
     }
 )
