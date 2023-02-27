@@ -177,12 +177,18 @@ def test_find_images_by_task(client, kwargs):
                 )
                 resp = client.get(url)
                 assert resp.status_code == 200
+                resp = resp.json
 
                 images_from_response = {
                     tuple(img.values())
                     for img in subtask["images"]
                     if img["binpkg_name"] == binpkg_name
                 }
+
+                if data["task_state"] == "DONE":
+                    resp["images"] = list(filter(
+                        lambda entry: entry["date"] <= data["task_changed"], resp["images"]
+                    ))
 
                 images_from_testdata = {
                     gather(
@@ -199,7 +205,7 @@ def test_find_images_by_task(client, kwargs):
                             "pkghash"
                         ]
                     )
-                    for image in resp.json["images"]
+                    for image in resp["images"]
                 }
 
                 assert images_from_response == images_from_testdata
