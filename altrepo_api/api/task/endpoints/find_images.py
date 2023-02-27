@@ -199,6 +199,14 @@ class FindImages(APIWorker):
 
         joined = inner_join(subtasks, images)
 
+        # discard too old images which can't be affected by the task
+        if task["task_state"] == "DONE":
+            # 0 - subtask, 1 - image
+            joined = filter(
+                lambda entry: entry[1].buildtime <= task['task_changed'],
+                joined
+            )
+
         groupped_by_subtask = defaultdict(list)
 
         for subtask, image in joined:
