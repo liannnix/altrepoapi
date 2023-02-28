@@ -17,7 +17,7 @@
 from flask import Flask, redirect, g, request
 
 from altrepo_api import read_config
-from altrepo_api.utils import get_logger, CustomJSONEncoder
+from altrepo_api.utils import get_logger, json_default
 
 from altrepo_api.database.connection import Connection
 from altrepo_api.api_v1 import blueprint as api_bp
@@ -67,7 +67,8 @@ def configure_app(flask_app):
     flask_app.config["RESTX_MASK_SWAGGER"] = False
     flask_app.config["BUNDLE_ERRORS"] = True
     flask_app.config["RESTX_INCLUDE_ALL_MODELS"] = False
-    flask_app.config["RESTX_JSON"] = {"cls": CustomJSONEncoder}
+    # pass custom default JSON object conversion handler
+    flask_app.config["RESTX_JSON"] = {"default": json_default}
 
 
 def initialize_app(flask_app):

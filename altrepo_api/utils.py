@@ -15,7 +15,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import datetime
-import json
 import logging
 import mmh3
 import re
@@ -31,6 +30,11 @@ from typing import Any, Iterable, Union
 from urllib.parse import unquote
 from uuid import UUID, uuid4
 
+try:
+    from ujson import dumps
+except ImportError:
+    from json import dumps
+
 from altrepo_api.settings import namespace as settings
 
 
@@ -43,16 +47,15 @@ class logger_level:
     CRITICAL = logging.CRITICAL
 
 
-class CustomJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        # convert datetime to ISO string representation
-        if isinstance(obj, datetime.datetime):
-            return obj.isoformat()
-        # convert UUID to string
-        if isinstance(obj, UUID):
-            return str(obj)
-
-        return json.JSONEncoder.default(self, obj)
+def json_default(obj):
+    # convert datetime to ISO string representation
+    if isinstance(obj, datetime.datetime):
+        return obj.isoformat()
+    # convert UUID to string
+    if isinstance(obj, UUID):
+        return str(obj)
+    
+    return obj
 
 
 def mmhash(val: Any) -> int:
@@ -165,7 +168,7 @@ def convert_to_json(keys: list[str], values: list[Any], sort: bool = False) -> s
                     js[i]["date"], "%Y-%m-%d %H:%M:%S"
                 )
 
-    return json.dumps(js, sort_keys=sort)
+    return dumps(js, sort_keys=sort)
 
 
 def join_tuples(tuple_list: list[tuple[Any, ...]]) -> tuple[Any, ...]:
