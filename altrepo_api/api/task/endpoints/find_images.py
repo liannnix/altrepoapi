@@ -15,7 +15,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from collections import defaultdict
-from typing import NamedTuple, Union
+from datetime import datetime
+from typing import Any, NamedTuple, Union, overload
 
 from altrepo_api.api.base import APIWorker
 from ..sql import sql
@@ -43,7 +44,7 @@ class FindImages(APIWorker):
         return response[0][0] != 0
 
     def get(self):
-        task = defaultdict(list)  # type: ignore
+        task: dict[str, Any] = {}
         task["task_id"] = self.task_id
 
         response = self.send_sql_request(
@@ -115,16 +116,31 @@ class FindImages(APIWorker):
             filename: str
             edition: str
             tag: str
-            buildtime: str
+            buildtime: datetime
             binpkg_name: str
             binpkg_version: str
             binpkg_release: str
             binpkg_arch: str
             binpkg_hash: str
 
+        @overload
         def inner_join(
-            packages: list[Union[SubtaskWithBinary, ArepoPackage]], images: list[Image]
-        ) -> list[tuple[Union[SubtaskWithBinary, ArepoPackage], Image]]:
+            packages: list[SubtaskWithBinary],
+            images: list[Image],
+        ) -> list[tuple[Any, Image]]:
+            ...
+
+        @overload
+        def inner_join(
+            packages: list[ArepoPackage],
+            images: list[Image],
+        ) -> list[tuple[ArepoPackage, Image]]:
+            ...
+
+        def inner_join(
+            packages: Union[list[SubtaskWithBinary], list[ArepoPackage]],
+            images: list[Image],
+        ) -> list[tuple[Any, Image]]:
             return [
                 (package, image)
                 for image in images
@@ -134,26 +150,6 @@ class FindImages(APIWorker):
                     == (image.binpkg_name, image.binpkg_arch)
                 )
             ]
-
-        def get_images_by_binary_pkgs_names(branch, pkgs_names):
-            _tmp_table = "tmp_pkgs_names"
-            response = self.send_sql_request(
-                self.sql.get_images_by_binary_pkgs_names.format(
-                    branch=branch, tmp_table=_tmp_table
-                ),
-                external_tables=[
-                    {
-                        "name": _tmp_table,
-                        "structure": [
-                            ("pkg_name", "String"),
-                        ],
-                        "data": [
-                            {"pkg_name": binpkg_name} for binpkg_name in pkgs_names
-                        ],
-                    },
-                ],
-            )
-            return response
 
         subtasks = [SubtaskWithBinary(*el) for el in response]
 
@@ -189,8 +185,20 @@ class FindImages(APIWorker):
 
             subtasks.extend(arepo)
 
-        response = get_images_by_binary_pkgs_names(
-            task["task_branch"], {s.binpkg_name for s in subtasks}
+        _tmp_table = "tmp_pkgs_names"
+        response = self.send_sql_request(
+            self.sql.get_images_by_binary_pkgs_names.format(
+                branch=task["task_branch"], tmp_table=_tmp_table
+            ),
+            external_tables=[
+                {
+                    "name": _tmp_table,
+                    "structure": [
+                        ("pkg_name", "String"),
+                    ],
+                    "data": [{"pkg_name": s.binpkg_name} for s in subtasks],
+                },
+            ],
         )
         if not self.sql_status:
             return self.error
@@ -203,14 +211,14 @@ class FindImages(APIWorker):
 
         joined = inner_join(subtasks, images)
 
-        # discard too old images which can't be affected by the task
+        # discard images which binaries are newer and can't be affected by the task
         if task["task_state"] == "DONE":
             # 0 - subtask, 1 - image
             joined = filter(
                 lambda entry: entry[1].buildtime <= task["task_changed"], joined
             )
 
-        groupped_by_subtask = defaultdict(list)
+        groupped_by_subtask: dict[Subtask, list[Image]] = defaultdict(list)
 
         for subtask, image in joined:
             sub = Subtask(*subtask[:5])
