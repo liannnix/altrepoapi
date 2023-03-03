@@ -422,7 +422,14 @@ class PackageDependencies:
                 if not dep_hash or dep_hash not in hashes:
                     # pick the first package name from a list as `apt` does
                     dep_hash = deps_pkgs_names_rev[
-                        next(iter(deps_pkgs_names.values())).bin
+                        # preserve package sorting in `apt` manner
+                        next(
+                            iter(
+                                p
+                                for p in deps_pkgs_names.values()
+                                if deps_pkgs_names_rev[p.bin] in hashes
+                            )
+                        ).bin
                     ]
                 # update excluded hashes list
                 t = self.ambiguous_dependencies[k][dep_name][dep_hash]
