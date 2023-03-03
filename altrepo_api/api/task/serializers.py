@@ -417,9 +417,10 @@ find_images_by_task_subtask_el_model = ns.model(
     {
         "id": fields.Integer(description="subtask id"),
         "type": fields.String(description="subtask type"),
-        "srcpkg_name": fields.String(description="subtask's source package name"),
-        "srcpkg_version": fields.String(description="subtask's source package version"),
-        "srcpkg_release": fields.String(description="subtask's source package release"),
+        "srpm_name": fields.String(description="subtask srpm name"),
+        "srpm_hash": fields.String(description="subtask srpm hash"),
+        "pkg_version": fields.String(description="subtask's source package version"),
+        "pkg_release": fields.String(description="subtask's source package release"),
         "images": fields.Nested(
             find_images_by_task_image_el_model,
             description="affected images (by binary packages)",
@@ -427,20 +428,35 @@ find_images_by_task_subtask_el_model = ns.model(
         ),
     }
 )
+find_image_by_task_iteration_el_model = ns.model(
+    "FindImagesByTaskIterationElementModel",
+    {
+        "task_try": fields.Integer(description="task try"),
+        "task_iter": fields.Integer(description="task iter")
+    }
+)
 find_images_by_task_model = ns.model(
     "FindImagesByTaskModel",
     {
         "task_id": fields.Integer(description="task id"),
         "task_state": fields.String(description="task state"),
-        "task_branch": fields.String(description="task branch"),
+        "task_testonly": fields.Integer(description="task is test-only"),
+        "task_repo": fields.String(description="task repo"),
+        "task_owner": fields.String(description="task owner"),
         "task_try": fields.Integer(description="task try"),
         "task_iter": fields.Integer(description="task iter"),
         "task_message": fields.String(description="task message"),
         "task_changed": fields.DateTime(descrption="task changed date in ISO8601 format"),
+        "dependencies": fields.List(fields.Integer, description="task dependencies"),
         "subtasks": fields.Nested(
             find_images_by_task_subtask_el_model,
             description="subtasks",
             as_list=True
         ),
+        "iterations": fields.Nested(
+            find_image_by_task_iteration_el_model,
+            descriptions="iterations",
+            as_list=True
+        )
     }
 )

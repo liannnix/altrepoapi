@@ -16,7 +16,7 @@
 
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, NamedTuple, Union, overload
+from typing import Any, NamedTuple
 
 from altrepo_api.api.base import APIWorker
 from ..sql import sql
@@ -44,6 +44,49 @@ class FindImages(APIWorker):
         return response[0][0] != 0
 
     def get(self):
+        class Subtask(NamedTuple):
+            id: int
+            type: str
+            srpm_name: str
+            srpm_hash: str
+            pkg_version: str
+            pkg_release: str
+
+        class SubtaskWithBinary(NamedTuple):
+            id: int
+            type: str
+            srpm_name: str
+            srpm_hash: str
+            pkg_version: str
+            pkg_release: str
+            binpkg_name: str
+            binpkg_arch: str
+
+        class Image(NamedTuple):
+            filename: str
+            edition: str
+            tag: str
+            buildtime: datetime
+            binpkg_name: str
+            binpkg_version: str
+            binpkg_release: str
+            binpkg_arch: str
+            binpkg_hash: str
+
+        def inner_join(
+            packages: list[SubtaskWithBinary],
+            images: list[Image],
+        ) -> list[tuple[SubtaskWithBinary, Image]]:
+            return [
+                (package, image)
+                for image in images
+                for package in packages
+                if (
+                    (package.binpkg_name, package.binpkg_arch)
+                    == (image.binpkg_name, image.binpkg_arch)
+                )
+            ]
+
         task: dict[str, Any] = {}
         task["task_id"] = self.task_id
 
@@ -59,17 +102,36 @@ class FindImages(APIWorker):
 
         (
             task["task_state"],
+            task["dependencies"],
+            task["task_testonly"],
             task["task_message"],
             task["task_changed"],
             task["task_try"],
             task["task_iter"],
-            task["task_branch"],
+            task["task_repo"],
+            task["task_owner"],
         ) = response[0][1:]
 
         if task["task_state"] not in ("TESTED", "DONE", "EPERM"):
             return self.store_error(
                 {"Error": f"Task '{self.task_id}' isn't in state TESTED, DONE or EPERM"}
             )
+
+        response = self.send_sql_request(
+            self.sql.get_task_iterations.format(task_id=self.task_id)
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error(
+                {"message": "No data not found in database"},
+            )
+
+        task["iterations"] = sorted(
+            [{"task_try": r[0], "task_iter": r[1]} for r in response[0][0]],
+            key=lambda el: (el["task_try"], el["task_iter"]),
+            reverse=True
+        )
 
         archs = ("noarch", "aarch64", "armh", "i586", "ppc64le", "x86_64")
 
@@ -88,68 +150,6 @@ class FindImages(APIWorker):
             return self.store_error(
                 {"Error": f"No data found in database for task '{self.task_id}'"}
             )
-
-        class Subtask(NamedTuple):
-            id: int
-            type: str
-            srcpkg_name: str
-            srcpkg_version: str
-            srcpkg_release: str
-
-        class SubtaskWithBinary(NamedTuple):
-            id: int
-            type: str
-            srcpkg_name: str
-            pkg_version: str
-            pkg_release: str
-            binpkg_name: str
-            binpkg_arch: str
-
-        class ArepoPackage(NamedTuple):
-            binpkg_name: str
-            binpkg_version: str
-            binpkg_release: str
-            type: str = "build"
-            binpkg_arch: str = "x86_64-i586"
-
-        class Image(NamedTuple):
-            filename: str
-            edition: str
-            tag: str
-            buildtime: datetime
-            binpkg_name: str
-            binpkg_version: str
-            binpkg_release: str
-            binpkg_arch: str
-            binpkg_hash: str
-
-        @overload
-        def inner_join(
-            packages: list[SubtaskWithBinary],
-            images: list[Image],
-        ) -> list[tuple[Any, Image]]:
-            ...
-
-        @overload
-        def inner_join(
-            packages: list[ArepoPackage],
-            images: list[Image],
-        ) -> list[tuple[ArepoPackage, Image]]:
-            ...
-
-        def inner_join(
-            packages: Union[list[SubtaskWithBinary], list[ArepoPackage]],
-            images: list[Image],
-        ) -> list[tuple[Any, Image]]:
-            return [
-                (package, image)
-                for image in images
-                for package in packages
-                if (
-                    (package.binpkg_name, package.binpkg_arch)
-                    == (image.binpkg_name, image.binpkg_arch)
-                )
-            ]
 
         subtasks = [SubtaskWithBinary(*el) for el in response]
 
@@ -175,7 +175,8 @@ class FindImages(APIWorker):
                         SubtaskWithBinary(
                             subtask.id,
                             subtask.type,
-                            subtask.srcpkg_name,
+                            subtask.srpm_name,
+                            subtask.srpm_hash,
                             subtask.pkg_version,
                             subtask.pkg_release,
                             arepo_base_pkg_name,
@@ -188,7 +189,7 @@ class FindImages(APIWorker):
         _tmp_table = "tmp_pkgs_names"
         response = self.send_sql_request(
             self.sql.get_images_by_binary_pkgs_names.format(
-                branch=task["task_branch"], tmp_table=_tmp_table
+                branch=task["task_repo"], tmp_table=_tmp_table
             ),
             external_tables=[
                 {
@@ -202,10 +203,6 @@ class FindImages(APIWorker):
         )
         if not self.sql_status:
             return self.error
-        if not response:
-            return self.store_error(
-                {"Error": f"No data found in database for task '{self.task_id}'"}
-            )
 
         images = [Image(*el) for el in response]
 
@@ -221,7 +218,7 @@ class FindImages(APIWorker):
         groupped_by_subtask: dict[Subtask, list[Image]] = defaultdict(list)
 
         for subtask, image in joined:
-            sub = Subtask(*subtask[:5])
+            sub = Subtask(*subtask[:6])
             groupped_by_subtask[sub].append(image)
 
         task["subtasks"] = sorted(
