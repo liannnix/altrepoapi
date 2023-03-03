@@ -701,6 +701,8 @@ WITH
         SELECT
             task_id,
             argMax(task_state, task_changed) AS state,
+            argMax(task_depends, task_changed) AS depends,
+            argMax(task_testonly, task_changed) AS testonly,
             argMax(task_message, task_changed) AS message,
             max(task_changed) AS changed
         FROM TaskStates
@@ -721,16 +723,30 @@ WITH
             FROM last_task_state
         )
     ),
+    task_branch AS
     (
-        SELECT DISTINCT task_repo
+        SELECT DISTINCT
+            task_id,
+            task_repo,
+            task_owner
         FROM Tasks
         WHERE task_id = {task_id}
-    ) AS task_branch
+    )
 SELECT
-    *,
-    task_branch
-FROM last_task_state
+    TS.*,
+    task_try,
+    task_iter,
+    task_repo,
+    task_owner
+FROM last_task_state AS TS
 LEFT JOIN task_try_iter AS TI USING (task_id)
+LEFT JOIN task_branch AS TB ON TB.task_id = TI.task_id
+"""
+
+    get_task_iterations = """
+SELECT groupUniqArray((task_try, task_iter))
+FROM TaskIterations
+WHERE task_id = {task_id}
 """
 
     get_subtasks_binaries_with_sources = """
@@ -788,7 +804,8 @@ WITH all_sources AS
 SELECT DISTINCT
     subtask_id,
     subtask_type,
-    sourcepkgname AS srcpkg_name,
+    sourcepkgname AS subtask_srpm_name,
+    pkg_srcrpm_hash,
     pkg_version,
     pkg_release,
     pkg_name AS binpkg_name,
@@ -796,8 +813,7 @@ SELECT DISTINCT
 FROM all_packages_with_source
 INNER JOIN all_sources AS S
     ON pkg_srcrpm_hash = S.srcpkg_hash
-WHERE pkg_sourcepackage = 0
-    AND pkg_srcrpm_hash IN (SELECT srcpkg_hash FROM all_sources)
+WHERE (pkg_sourcepackage = 0)
     AND (pkg_arch IN {archs})
 """
 
