@@ -54,7 +54,7 @@ def json_default(obj):
     # convert UUID to string
     if isinstance(obj, UUID):
         return str(obj)
-    
+
     return obj
 
 
