@@ -6,6 +6,22 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.9.3] - 2023-03-05
+
+Regular API code updates and fixes.
+
+### Added
+- utils: make_tmp_table_name()
+- task/find_images route
+### Changed
+- updated copyright year
+- code refactored to use make_tmp_table_name()
+- refactored site/task_info enpoint code
+- custom JSON serializer: class -> function
+### Fixed
+- libs/package_dependencies: ambiguous provides handling error
+- task/find_images: find only images enabled by edition and tag simultaneously
+
 ## [1.9.2] - 2023-02-16
 
 Regular API code updates and fixes.
