@@ -7,52 +7,6 @@ from flask import url_for
     "kwargs",
     [
         {
-            "task_id": 299031,
-            "task_state": "DONE",
-            "task_testonly": 0,
-            "task_repo": "sisyphus",
-            "task_owner": "ldv",
-            "task_try": 7,
-            "task_iter": 3,
-            "task_message": "update gnulib and its dependencies",
-            "task_changed": "2022-04-28T17:00:42",
-            "dependencies": [],
-            "subtasks": [
-                {
-                    "id": 1500,
-                    "type": "rebuild",
-                    "srpm_name": "tar",
-                    "srpm_hash": "2673889282892285332",
-                    "pkg_version": "1.34.0.16.12d67f44",
-                    "pkg_release": "alt1",
-                    "binpkgs_names": [
-                        "tar",
-                    ],
-                },
-                {
-                    "id": 1040,
-                    "type": "gear",
-                    "srpm_name": "coreutils",
-                    "srpm_hash": "2793915567944400253",
-                    "pkg_version": "9.1.0.8.e08752",
-                    "pkg_release": "alt1",
-                    "binpkgs_names": [
-                        "coreutils"
-                    ],
-                },
-            ],
-            "iterations": [
-                {"task_try": 7, "task_iter": 3},
-                {"task_try": 6, "task_iter": 1},
-                {"task_try": 5, "task_iter": 1},
-                {"task_try": 4, "task_iter": 1},
-                {"task_try": 3, "task_iter": 1},
-                {"task_try": 2, "task_iter": 1},
-                {"task_try": 1, "task_iter": 1},
-            ],
-            "status_code": 200,
-        },
-        {
             "task_id": 312990,
             "task_state": "DONE",
             "task_testonly": 0,
