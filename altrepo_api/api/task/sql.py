@@ -838,6 +838,19 @@ WHERE pkg_hash IN (task_plan_hashes)
 """
 
     get_images_by_binary_pkgs_names = """
+WITH editions_status AS (
+    SELECT img_edition,
+           argMax(img_show, ts) AS edition_show
+    FROM ImageStatus
+    WHERE img_branch = '{branch}'
+    GROUP BY img_edition
+),
+tags_status AS (
+    SELECT img_tag,
+           argMax(img_show, ts) AS tag_show
+    FROM ImageTagStatus
+    GROUP BY img_tag
+)
 SELECT DISTINCT
     img_file,
     img_edition,
@@ -856,15 +869,8 @@ WHERE (pkg_hash IN (
     AND (pkg_sourcepackage = 0)
 ))
 AND (img_branch = '{branch}')
-AND (img_tag IN (
-    SELECT img_tag
-    FROM (
-        SELECT img_tag, argMax(img_show, ts) AS img_show
-        FROM ImageTagStatus
-        GROUP BY img_tag
-    )
-    WHERE img_show = 'show'
-))
+AND img_edition IN (select img_edition FROM editions_status WHERE edition_show = 'show')
+AND img_tag IN (select img_tag FROM tags_status WHERE tag_show = 'show')
 """
 
 
