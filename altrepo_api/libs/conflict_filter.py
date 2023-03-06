@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2022  BaseALT Ltd
+# Copyright (C) 2021-2023  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -17,7 +17,7 @@
 from collections import defaultdict, namedtuple
 from dataclasses import dataclass
 
-from altrepo_api.api.base import ConnectionProto
+from altrepo_api.api.base import ConnectionProtocol
 from altrepo_api.utils import get_logger, remove_duplicate
 
 from .librpm_functions import check_dependency_overlap
@@ -72,7 +72,7 @@ class ConflictFilter:
 
     def __init__(
         self,
-        connection: ConnectionProto,
+        connection: ConnectionProtocol,
         debug_sql: bool = False,
     ):
         self.conn = connection

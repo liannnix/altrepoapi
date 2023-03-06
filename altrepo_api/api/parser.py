@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2022  BaseALT Ltd
+# Copyright (C) 2021-2023  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -23,7 +23,7 @@ from altrepo_api.api.misc import lut
 
 
 class ParserFactory:
-    """Register reqparse arguments and builds request parsers by list of items."""
+    """Registers request parser argument items and builds RequestParser by list of items."""
 
     def __init__(self) -> None:
         self.items: list = []
@@ -37,7 +37,7 @@ class ParserFactory:
         return self.lindex
 
     def build_parser(self, *items: int) -> reqparse.RequestParser:
-        """Builds RequestParser instance from list of parser's items."""
+        """Builds RequestParser instance from list of registered items."""
 
         parser = reqparse.RequestParser()
         for item in items:

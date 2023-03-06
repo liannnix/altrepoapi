@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2022  BaseALT Ltd
+# Copyright (C) 2021-2023  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -28,6 +28,7 @@ from .endpoints.find_packageset import FindPackageset
 from .endpoints.misconflict_packages import TaskMisconflictPackages
 from .endpoints.build_dependency_set import TaskBuildDependencySet
 from .endpoints.task_build_dependency import TaskBuildDependency
+from .endpoints.find_images import FindImages
 from .parsers import (
     task_info_args,
     task_repo_args,
@@ -46,6 +47,7 @@ from .serializers import (
     misconflict_pkgs_model,
     task_find_pkgset_model,
     task_history_model,
+    find_images_by_task_model,
 )
 
 ns = get_namespace()
@@ -215,4 +217,29 @@ class routeTaskHistory(Resource):
         url_logging(logger, g.url)
         args = task_history_args.parse_args(strict=True)
         w = TaskHistory(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/find_images/<int:id>",
+    doc={
+        "params": {"id": "task ID"},
+        "description": (
+            "Get the newest images which contain binary packages with the same "
+            "names as binaries from a task with one of the following states: "
+            "EPERM, TESTED or DONE. "
+            "Listed only active images for task's branch."
+        ),
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeFindImages(Resource):
+    # @ns.expect()
+    @ns.marshal_with(find_images_by_task_model)
+    def get(self, id):
+        url_logging(logger, g.url)
+        args = {}
+        w = FindImages(g.connection, id, **args)
+        if not w.check_task_id():
+            ns.abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
         return run_worker(worker=w, args=args)

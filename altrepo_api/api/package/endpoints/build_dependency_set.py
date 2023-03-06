@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2022  BaseALT Ltd
+# Copyright (C) 2021-2023  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -16,7 +16,7 @@
 
 from altrepo_api.utils import get_logger, join_tuples
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.base import ConnectionProto
+from altrepo_api.api.base import ConnectionProtocol
 from altrepo_api.libs.package_dependencies import PackageDependencies
 from altrepo_api.libs.exceptions import SqlRequestError
 from ..sql import sql
@@ -27,7 +27,7 @@ class BuildDependencySet(APIWorker):
 
     def __init__(
         self,
-        connection: ConnectionProto,
+        connection: ConnectionProtocol,
         packages: list[str],
         branch: str,
         archs: list[str],
@@ -85,7 +85,7 @@ class BuildDependencySet(APIWorker):
 class PackageBuildDependencySet(APIWorker):
     """Retrieves source packages build dependencies."""
 
-    def __init__(self, connection: ConnectionProto, **kwargs) -> None:
+    def __init__(self, connection: ConnectionProtocol, **kwargs) -> None:
         self.conn = connection
         self.args = kwargs
         self.logger = get_logger(__name__)

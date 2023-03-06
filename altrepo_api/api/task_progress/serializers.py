@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2022  BaseALT Ltd
+# Copyright (C) 2021-2023  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -68,6 +68,7 @@ tasks_list_el_model = ns.model(
         "task_owner": fields.String(description="task owner"),
         "task_try": fields.Integer(description="task try number"),
         "task_iter": fields.Integer(description="task iteration number"),
+        "task_testonly": fields.Integer(description="task test only"),
         "task_changed": fields.DateTime(description="task changed"),
         "task_message": fields.String(description="task message"),
         "task_stage": fields.String(description="task stage"),
@@ -162,7 +163,7 @@ subtask_info_el_model = ns.model(
     },
 )
 task_info_model = ns.model(
-    "TaskInfoModel",
+    "TaskProgressTaskInfoModel",
     {
         "task_id": fields.Integer(description="task id"),
         "task_repo": fields.String(description="repository name"),
@@ -170,6 +171,7 @@ task_info_model = ns.model(
         "task_owner": fields.String(description="task owner"),
         "task_try": fields.Integer(description="task try number"),
         "task_iter": fields.Integer(description="task iteration number"),
+        "task_testonly": fields.Integer(description="task test only"),
         "task_changed": fields.DateTime(description="task changed"),
         "task_message": fields.String(description="task message"),
         "task_stage": fields.String(description="task stage"),

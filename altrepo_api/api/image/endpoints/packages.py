@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2022  BaseALT Ltd
+# Copyright (C) 2021-2023  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -16,6 +16,7 @@
 
 from collections import namedtuple
 
+from altrepo_api.utils import make_tmp_table_name
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
 from ..sql import sql
@@ -82,7 +83,7 @@ class CheckPackages(APIWorker):
         packages = [pkg2ntuple(p) for p in self.payload["packages"]]
 
         # create temporary table with input packages
-        tmp_table = "_TmpInPkgs"
+        tmp_table = make_tmp_table_name("in_packages")
         _ = self.send_sql_request(
             self.sql.create_tmp_table.format(
                 tmp_table=tmp_table,
@@ -203,7 +204,7 @@ class CheckPackages(APIWorker):
         packages = [pkg2ntuple(p) for p in self.payload["packages"]]
 
         # create temporary table with input packages
-        tmp_table = "_TmpInPkgs"
+        tmp_table = make_tmp_table_name("in_packages")
         _ = self.send_sql_request(
             self.sql.create_tmp_table.format(
                 tmp_table=tmp_table, columns=self.sql.tmp_table_columns
@@ -227,7 +228,7 @@ class CheckPackages(APIWorker):
         pkgs_in_tasks = set()
 
         # create temporary table with packages in DB for branch
-        tmp_table2 = "_TmpPkgsInBranch"
+        tmp_table2 = make_tmp_table_name("packages_in_branch")
         _ = self.send_sql_request(
             self.sql.tmp_pkgs_in_branch.format(
                 tmp_table=tmp_table2, tmp_table2=tmp_table, branch=self.branch
@@ -236,7 +237,7 @@ class CheckPackages(APIWorker):
         if not self.sql_status:
             return self.error
 
-        tmp_table3 = "_TmpPkgHshsByNEVR"
+        tmp_table3 = make_tmp_table_name("packages_hashes_by_nevr")
         _ = self.send_sql_request(
             self.sql.tmp_pkgs_by_nevr.format(
                 tmp_table=tmp_table3, tmp_table2=tmp_table, branch=self.branch

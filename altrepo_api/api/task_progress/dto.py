@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2022  BaseALT Ltd
+# Copyright (C) 2021-2023  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -65,6 +65,7 @@ class TaskMeta:
     task_owner: str
     task_try: int
     task_iter: int
+    task_testonly: int
     task_changed: datetime.datetime
     task_message: str
     task_stage: str

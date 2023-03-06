@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2022  BaseALT Ltd
+# Copyright (C) 2021-2023  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -396,4 +396,67 @@ task_history_model = ns.model(
             as_list=True,
         ),
     },
+)
+
+find_images_by_task_image_el_model = ns.model(
+    "FindImagesByTaskImageElementModel",
+    {
+        "filename": fields.String(description="image filename"),
+        "edition": fields.String(description="image edition"),
+        "tag": fields.String(description="image tag"),
+        "buildtime": fields.DateTime(description="image built date in ISO8601 format"),
+        "binpkg_name": fields.String(description="image's binary package name"),
+        "binpkg_version": fields.String(description="image's binary package version"),
+        "binpkg_release": fields.String(description="image's binary package release"),
+        "binpkg_arch": fields.String(description="image's binary package architecture"),
+        "binpkg_hash": fields.String(description="image's binary package hash")
+    }
+)
+find_images_by_task_subtask_el_model = ns.model(
+    "FindImagesByTaskSubtaskElementModel",
+    {
+        "id": fields.Integer(description="subtask id"),
+        "type": fields.String(description="subtask type"),
+        "srpm_name": fields.String(description="subtask srpm name"),
+        "srpm_hash": fields.String(description="subtask srpm hash"),
+        "pkg_version": fields.String(description="subtask's source package version"),
+        "pkg_release": fields.String(description="subtask's source package release"),
+        "images": fields.Nested(
+            find_images_by_task_image_el_model,
+            description="affected images (by binary packages)",
+            as_list=True
+        ),
+    }
+)
+find_image_by_task_iteration_el_model = ns.model(
+    "FindImagesByTaskIterationElementModel",
+    {
+        "task_try": fields.Integer(description="task try"),
+        "task_iter": fields.Integer(description="task iter")
+    }
+)
+find_images_by_task_model = ns.model(
+    "FindImagesByTaskModel",
+    {
+        "task_id": fields.Integer(description="task id"),
+        "task_state": fields.String(description="task state"),
+        "task_testonly": fields.Integer(description="task is test-only"),
+        "task_repo": fields.String(description="task repo"),
+        "task_owner": fields.String(description="task owner"),
+        "task_try": fields.Integer(description="task try"),
+        "task_iter": fields.Integer(description="task iter"),
+        "task_message": fields.String(description="task message"),
+        "task_changed": fields.DateTime(descrption="task changed date in ISO8601 format"),
+        "dependencies": fields.List(fields.Integer, description="task dependencies"),
+        "subtasks": fields.Nested(
+            find_images_by_task_subtask_el_model,
+            description="subtasks",
+            as_list=True
+        ),
+        "iterations": fields.Nested(
+            find_image_by_task_iteration_el_model,
+            descriptions="iterations",
+            as_list=True
+        )
+    }
 )

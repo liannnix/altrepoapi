@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2022  BaseALT Ltd
+# Copyright (C) 2021-2023  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -17,7 +17,7 @@
 from flask import Flask, redirect, g, request
 
 from altrepo_api import read_config
-from altrepo_api.utils import get_logger, CustomJSONEncoder
+from altrepo_api.utils import get_logger, json_default
 
 from altrepo_api.database.connection import Connection
 from altrepo_api.api_v1 import blueprint as api_bp
@@ -29,7 +29,7 @@ logger = get_logger(__name__)
 
 @app.route("/")
 def hello():
-    return redirect("api", code=302)
+    return redirect("/api/", code=302)
 
 
 @app.before_request
@@ -52,6 +52,13 @@ def default_error_handler(e):
         return {"message": message}, 500
 
 
+@app.after_request
+def add_headers(response):
+    """Add headers to all API responses here."""
+    # response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
+
+
 def configure_app(flask_app):
     flask_app.config["SWAGGER_UI_DOC_EXPANSION"] = "list"
     flask_app.config["SWAGGER_UI_REQUEST_DURATION"] = True
@@ -59,7 +66,9 @@ def configure_app(flask_app):
     flask_app.config["ERROR_404_HELP"] = False
     flask_app.config["RESTX_MASK_SWAGGER"] = False
     flask_app.config["BUNDLE_ERRORS"] = True
-    flask_app.config["RESTX_JSON"] = {"cls": CustomJSONEncoder}
+    flask_app.config["RESTX_INCLUDE_ALL_MODELS"] = False
+    # pass custom default JSON object conversion handler
+    flask_app.config["RESTX_JSON"] = {"default": json_default}
 
 
 def initialize_app(flask_app):

@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2022  BaseALT Ltd
+# Copyright (C) 2021-2023  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -16,7 +16,7 @@
 
 from collections import defaultdict, namedtuple
 
-from altrepo_api.utils import join_tuples, datetime_to_iso
+from altrepo_api.utils import join_tuples, datetime_to_iso, make_tmp_table_name
 
 from altrepo_api.api.base import APIWorker
 from ..sql import sql
@@ -56,15 +56,16 @@ class TaskDiff(APIWorker):
         task_add_pkgs = self.tr.task_add_pkgs
         task_del_pkgs = self.tr.task_del_pkgs
 
+        tmp_repo_hashes = make_tmp_table_name("repo_hashes")
         _ = self.send_sql_request(
-            self.sql.create_tmp_hshs_table.format(table="tmpRepoHshs")
+            self.sql.create_tmp_hshs_table.format(table=tmp_repo_hashes)
         )
         if not self.sql_status:
             return self.error
 
         _ = self.send_sql_request(
             (
-                self.sql.insert_into_tmp_hshs_table.format(table="tmpRepoHshs"),
+                self.sql.insert_into_tmp_hshs_table.format(table=tmp_repo_hashes),
                 ({"pkghash": x} for x in repo_pkgs),
             )
         )
@@ -74,8 +75,9 @@ class TaskDiff(APIWorker):
         result_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
 
         # create tmp table with task del packages hashes
+        tmp_task_del_hashes = make_tmp_table_name("task_del_hashes")
         _ = self.send_sql_request(
-            self.sql.create_tmp_hshs_table.format(table="tmpTaskDelHshs")
+            self.sql.create_tmp_hshs_table.format(table=tmp_task_del_hashes)
         )
         if not self.sql_status:
             return self.error
@@ -83,7 +85,9 @@ class TaskDiff(APIWorker):
         if task_del_pkgs:
             _ = self.send_sql_request(
                 (
-                    self.sql.insert_into_tmp_hshs_table.format(table="tmpTaskDelHshs"),
+                    self.sql.insert_into_tmp_hshs_table.format(
+                        table=tmp_task_del_hashes
+                    ),
                     ({"pkghash": x} for x in task_del_pkgs),
                 )
             )
@@ -91,7 +95,7 @@ class TaskDiff(APIWorker):
                 return self.error
 
             response = self.send_sql_request(
-                self.sql.diff_packages_by_hshs.format(table="tmpTaskDelHshs")
+                self.sql.diff_packages_by_hshs.format(table=tmp_task_del_hashes)
             )
             if not self.sql_status:
                 return self.error
@@ -107,8 +111,9 @@ class TaskDiff(APIWorker):
                         result_dict[p_arch][p_name]["del"].append(p_fname)
 
         # create tmp table with task add packages hashes
+        tmp_task_add_hashes = make_tmp_table_name("task_add_hashes")
         _ = self.send_sql_request(
-            self.sql.create_tmp_hshs_table.format(table="tmpTaskAddHshs")
+            self.sql.create_tmp_hshs_table.format(table=tmp_task_add_hashes)
         )
         if not self.sql_status:
             return self.error
@@ -116,7 +121,9 @@ class TaskDiff(APIWorker):
         if task_add_pkgs:
             _ = self.send_sql_request(
                 (
-                    self.sql.insert_into_tmp_hshs_table.format(table="tmpTaskAddHshs"),
+                    self.sql.insert_into_tmp_hshs_table.format(
+                        table=tmp_task_add_hashes
+                    ),
                     ({"pkghash": x} for x in task_add_pkgs),
                 )
             )
@@ -124,7 +131,7 @@ class TaskDiff(APIWorker):
                 return self.error
 
             response = self.send_sql_request(
-                self.sql.diff_packages_by_hshs.format(table="tmpTaskAddHshs")
+                self.sql.diff_packages_by_hshs.format(table=tmp_task_add_hashes)
             )
             if not self.sql_status:
                 return self.error
@@ -184,9 +191,9 @@ class TaskDiff(APIWorker):
         # get package hashes from repo state by names from plan add/delete hashes
         response = self.send_sql_request(
             self.sql.diff_repo_pkgs.format(
-                tmp_table1="tmpRepoHshs",
-                tmp_table2="tmpTaskAddHshs",
-                tmp_table3="tmpTaskDelHshs",
+                tmp_table1=tmp_repo_hashes,
+                tmp_table2=tmp_task_add_hashes,
+                tmp_table3=tmp_task_del_hashes,
             )
         )
         if not self.sql_status:
@@ -205,14 +212,14 @@ class TaskDiff(APIWorker):
 
         # get dependencies for packages from current repository state
         _ = self.send_sql_request(
-            self.sql.truncate_tmp_table.format(table="tmpRepoHshs")
+            self.sql.truncate_tmp_table.format(table=tmp_repo_hashes)
         )
         if not self.sql_status:
             return self.error
 
         _ = self.send_sql_request(
             (
-                self.sql.insert_into_tmp_hshs_table.format(table="tmpRepoHshs"),
+                self.sql.insert_into_tmp_hshs_table.format(table=tmp_repo_hashes),
                 ({"pkghash": x} for x in repo_pkgs_filtered),
             )
         )
@@ -220,7 +227,7 @@ class TaskDiff(APIWorker):
             return self.error
 
         response = self.send_sql_request(
-            self.sql.diff_depends_by_hshs.format(table="tmpRepoHshs")
+            self.sql.diff_depends_by_hshs.format(table=tmp_repo_hashes)
         )
         if not self.sql_status:
             return self.error
@@ -229,7 +236,7 @@ class TaskDiff(APIWorker):
 
         # get depends for added packages from task
         response = self.send_sql_request(
-            self.sql.diff_depends_by_hshs.format(table="tmpTaskAddHshs")
+            self.sql.diff_depends_by_hshs.format(table=tmp_task_add_hashes)
         )
         if not self.sql_status:
             return self.error
@@ -238,7 +245,7 @@ class TaskDiff(APIWorker):
 
         # get depends for deleted packages from task
         response = self.send_sql_request(
-            self.sql.diff_depends_by_hshs.format(table="tmpTaskDelHshs")
+            self.sql.diff_depends_by_hshs.format(table=tmp_task_del_hashes)
         )
         if not self.sql_status:
             return self.error
@@ -410,7 +417,7 @@ class TaskHistory(APIWorker):
                 return self.store_error(
                     {"Error": f"Failed to get data for task {start_task}"},
                     self.LL.ERROR,
-                    500,
+                    404,
                 )
 
             start_date = response[0][0]  # type: ignore
@@ -426,7 +433,7 @@ class TaskHistory(APIWorker):
                 return self.store_error(
                     {"Error": f"Failed to get data for task {end_task}"},
                     self.LL.ERROR,
-                    500,
+                    404,
                 )
 
             end_date = response[0][0]  # type: ignore

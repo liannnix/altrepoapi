@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2022  BaseALT Ltd
+# Copyright (C) 2021-2023  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -16,7 +16,7 @@
 
 from collections import namedtuple
 
-from altrepo_api.utils import tuplelist_to_dict
+from altrepo_api.utils import tuplelist_to_dict, make_tmp_table_name
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
@@ -50,9 +50,10 @@ class PackageByFileName(APIWorker):
 
         file_names = {}
         # if file:
+        tmp_file_names = make_tmp_table_name("file_names")
         _ = self.send_sql_request(
             (
-                self.sql.gen_table_fnhshs_by_file.format(tmp_table="TmpFileNames"),
+                self.sql.gen_table_fnhshs_by_file.format(tmp_table=tmp_file_names),
                 {"elem": self.file},
             )
         )
@@ -60,7 +61,7 @@ class PackageByFileName(APIWorker):
             return self.error
 
         response = self.send_sql_request(
-            self.sql.select_all_tmp_table.format(tmp_table="TmpFileNames")
+            self.sql.select_all_tmp_table.format(tmp_table=tmp_file_names)
         )
         if not self.sql_status:
             return self.error
@@ -75,12 +76,13 @@ class PackageByFileName(APIWorker):
         for f in response:
             file_names[f[0]] = f[1]
 
+        tmp_files = make_tmp_table_name("files")
         _ = self.send_sql_request(
             (
                 self.sql.gen_table_hshs_by_file.format(
-                    tmp_table="TmpFiles",
+                    tmp_table=tmp_files,
                     param=self.sql.gen_table_hshs_by_file_mod_hashname.format(
-                        tmp_table="TmpFileNames"
+                        tmp_table=tmp_file_names
                     ),
                 ),
                 {"branch": self.branch, "arch": self.arch},
@@ -90,7 +92,7 @@ class PackageByFileName(APIWorker):
             return self.error
 
         response = self.send_sql_request(
-            self.sql.select_all_tmp_table.format(tmp_table="TmpFiles")
+            self.sql.select_all_tmp_table.format(tmp_table=tmp_files)
         )
         if not self.sql_status:
             return self.error
@@ -113,7 +115,7 @@ class PackageByFileName(APIWorker):
 
         response = self.send_sql_request(
             (
-                self.sql.pkg_by_file_get_meta_by_hshs.format(tmp_table="TmpFiles"),
+                self.sql.pkg_by_file_get_meta_by_hshs.format(tmp_table=tmp_files),
                 {"branch": self.branch},
             )
         )
@@ -170,10 +172,11 @@ class PackageByFileMD5(APIWorker):
             self.arch = lut.known_archs
         self.arch = tuple(self.arch)
 
+        tmp_files = make_tmp_table_name("files")
         _ = self.send_sql_request(
             (
                 self.sql.gen_table_hshs_by_file.format(
-                    tmp_table="TmpFiles", param=self.sql.gen_table_hshs_by_file_mod_md5
+                    tmp_table=tmp_files, param=self.sql.gen_table_hshs_by_file_mod_md5
                 ),
                 {"branch": self.branch, "arch": self.arch, "elem": self.md5},
             )
@@ -182,7 +185,7 @@ class PackageByFileMD5(APIWorker):
             return self.error
 
         response = self.send_sql_request(
-            self.sql.select_all_tmp_table.format(tmp_table="TmpFiles")
+            self.sql.select_all_tmp_table.format(tmp_table=tmp_files)
         )
         if not self.sql_status:
             return self.error
@@ -203,7 +206,7 @@ class PackageByFileMD5(APIWorker):
             [f_hashnames.add(x) for x in v]
         # 2. select real file names from DB
         response = self.send_sql_request(
-            self.sql.pkg_by_file_get_fnames_by_fnhashs.format(tmp_table="TmpFiles")
+            self.sql.pkg_by_file_get_fnames_by_fnhashs.format(tmp_table=tmp_files)
         )
         if not self.sql_status:
             return self.error
@@ -228,7 +231,7 @@ class PackageByFileMD5(APIWorker):
 
         response = self.send_sql_request(
             (
-                self.sql.pkg_by_file_get_meta_by_hshs.format(tmp_table="TmpFiles"),
+                self.sql.pkg_by_file_get_meta_by_hshs.format(tmp_table=tmp_files),
                 {"branch": self.branch},
             )
         )

@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2022  BaseALT Ltd
+# Copyright (C) 2021-2023  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -282,8 +282,9 @@ class FindTasks(APIWorker):
                 task_try=el[1],
                 task_iter=el[2],
                 task_message=el[3],
-                task_stage=el[5],
-                dependencies=el[6],
+                task_testonly=el[4],
+                task_stage=el[6],
+                dependencies=el[7],
             )
 
         # get task approval info by task_id

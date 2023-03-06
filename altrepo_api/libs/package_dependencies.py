@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2022  BaseALT Ltd
+# Copyright (C) 2021-2023  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -14,15 +14,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import string
-import random
-
 from dataclasses import dataclass
 from collections import namedtuple
 from typing import Any, Iterable, Literal
 
-from altrepo_api.api.base import ConnectionProto
-from altrepo_api.utils import get_logger
+from altrepo_api.api.base import ConnectionProtocol
+from altrepo_api.utils import get_logger, make_tmp_table_name
 from .librpm_functions import Dependency, check_dependency_overlap
 from .exceptions import SqlRequestError
 
@@ -30,15 +27,6 @@ USE_SHADOW_TABLES_DEPS_PROVIDE = False
 USE_SHADOW_TABLES_DEPS_REQUIRE = True
 
 logger = get_logger(__name__)
-
-
-def _make_tmp_table_name(prefix: str, length: int = 5) -> str:
-    return (
-        "tmp_"
-        + prefix
-        + "_"
-        + "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
-    )
 
 
 @dataclass(frozen=True)
@@ -321,7 +309,7 @@ class PackageDependencies:
 
     def __init__(
         self,
-        connection: ConnectionProto,
+        connection: ConnectionProtocol,
         source_packages_hashes: Iterable[int],
         branch: str,
         archs: list[str],
@@ -434,7 +422,14 @@ class PackageDependencies:
                 if not dep_hash or dep_hash not in hashes:
                     # pick the first package name from a list as `apt` does
                     dep_hash = deps_pkgs_names_rev[
-                        next(iter(deps_pkgs_names.values())).bin
+                        # preserve package sorting in `apt` manner
+                        next(
+                            iter(
+                                p
+                                for p in deps_pkgs_names.values()
+                                if deps_pkgs_names_rev[p.bin] in hashes
+                            )
+                        ).bin
                     ]
                 # update excluded hashes list
                 t = self.ambiguous_dependencies[k][dep_name][dep_hash]
@@ -486,7 +481,7 @@ class PackageDependencies:
         return self._get_package_dep_set(packages_hashes=tuple(tmp_list))
 
     def build_result(self) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-        tmp_table = _make_tmp_table_name("all_hshs")
+        tmp_table = make_tmp_table_name("all_hshs")
 
         if USE_SHADOW_TABLES_DEPS_REQUIRE:
             # create shadow last_depends table
@@ -620,7 +615,7 @@ class FindPackagesDependencies:
 
     def __init__(
         self,
-        connection: ConnectionProto,
+        connection: ConnectionProtocol,
         in_packages_hashes: Iterable[int],
         branch: str,
         archs: Iterable[str],
@@ -635,7 +630,7 @@ class FindPackagesDependencies:
         self.duplicated_provides: dict[int, dict[str, set[int]]] = {}
         self.error = ""
         self._debug = debug_sql
-        self._tmp_table = _make_tmp_table_name("pkg_hshs")
+        self._tmp_table = make_tmp_table_name("pkg_hshs")
 
     def _store_sql_error(self, message):
         self.error = {"message": message}

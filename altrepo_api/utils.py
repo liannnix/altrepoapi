@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2022  BaseALT Ltd
+# Copyright (C) 2021-2023  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -15,7 +15,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import datetime
-import json
 import logging
 import mmh3
 import re
@@ -29,7 +28,12 @@ from logging import handlers
 from packaging import version
 from typing import Any, Iterable, Union
 from urllib.parse import unquote
-from uuid import UUID
+from uuid import UUID, uuid4
+
+try:
+    from ujson import dumps
+except ImportError:
+    from json import dumps
 
 from altrepo_api.settings import namespace as settings
 
@@ -43,16 +47,15 @@ class logger_level:
     CRITICAL = logging.CRITICAL
 
 
-class CustomJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        # convert datetime to ISO string representation
-        if isinstance(obj, datetime.datetime):
-            return obj.isoformat()
-        # convert UUID to string
-        if isinstance(obj, UUID):
-            return str(obj)
+def json_default(obj):
+    # convert datetime to ISO string representation
+    if isinstance(obj, datetime.datetime):
+        return obj.isoformat()
+    # convert UUID to string
+    if isinstance(obj, UUID):
+        return str(obj)
 
-        return json.JSONEncoder.default(self, obj)
+    return obj
 
 
 def mmhash(val: Any) -> int:
@@ -92,11 +95,21 @@ def get_logger(name: str) -> logging.Logger:
             )
 
             file_handler = handlers.RotatingFileHandler(
-                filename=settings.LOG_FILE, maxBytes=2**26, backupCount=10
+                filename=settings.LOG_FILE, maxBytes=2**26, backupCount=1
             )
             file_handler.setFormatter(fmt)
 
             root_logger.addHandler(file_handler)
+
+        if settings.LOG_TO_CONSOLE:
+            # stderr handler config
+            fmt = logging.Formatter("%(levelname)-9s: %(message)s")
+
+            file_handler = logging.StreamHandler()
+            file_handler.setFormatter(fmt)
+
+            root_logger.addHandler(file_handler)
+
         # pass if no logging handlers enabled
         pass
 
@@ -134,7 +147,7 @@ def response_error_parser(response: Any) -> dict[str, Any]:
         return {"message": response}
 
 
-def convert_to_dict(keys: list, values: list) -> dict:
+def convert_to_dict(keys: list[Any], values: list[Any]) -> dict[Any, Any]:
     res = {}
 
     for i in range(len(values)):
@@ -143,7 +156,7 @@ def convert_to_dict(keys: list, values: list) -> dict:
     return res
 
 
-def convert_to_json(keys: list, values: list, sort: bool = False) -> str:
+def convert_to_json(keys: list[str], values: list[Any], sort: bool = False) -> str:
     js = {}
 
     for i in range(len(values)):
@@ -155,30 +168,32 @@ def convert_to_json(keys: list, values: list, sort: bool = False) -> str:
                     js[i]["date"], "%Y-%m-%d %H:%M:%S"
                 )
 
-    return json.dumps(js, sort_keys=sort)
+    return dumps(js, sort_keys=sort)
 
 
-def join_tuples(tuple_list: list) -> tuple:
+def join_tuples(tuple_list: list[tuple[Any, ...]]) -> tuple[Any, ...]:
     return tuple([tuple_[0] for tuple_ in tuple_list])
 
 
 # convert tuple or list of tuples to dict by set keys
-def tuplelist_to_dict(tuplelist: list, num: int) -> dict:
+def tuplelist_to_dict(
+    tuplelist: Iterable[tuple[Any, ...]], num: int
+) -> dict[Any, list[Any]]:
     result_dict = defaultdict(list)
-    for tuple_ in tuplelist:
-        count = tuple_[1] if num == 1 else tuple_[1 : num + 1]
+    for tpl in tuplelist:
+        data = tpl[1] if num == 1 else tpl[1 : num + 1]
 
-        if isinstance(count, tuple):
-            result_dict[tuple_[0]] += [elem for elem in count]
-        elif isinstance(count, list):
-            result_dict[tuple_[0]] += count
+        if isinstance(data, tuple):
+            result_dict[tpl[0]] += list(data)
+        elif isinstance(data, list):
+            result_dict[tpl[0]] += data
         else:
-            result_dict[tuple_[0]].append(count)
+            result_dict[tpl[0]].append(data)
 
     return result_dict
 
 
-def remove_duplicate(list_: list) -> list:
+def remove_duplicate(list_: list[Any]) -> list[Any]:
     return list(set(list_))
 
 
@@ -200,7 +215,7 @@ def datetime_to_iso(dt: datetime.datetime) -> str:
     return dt.isoformat()
 
 
-def sort_branches(branches: Iterable) -> tuple:
+def sort_branches(branches: Iterable[str]) -> tuple[str]:
     """Use predefined sort list order for branch sorting."""
     res = []
     branches = set(branches)
@@ -256,7 +271,7 @@ def get_nickname_from_packager(packager: str) -> str:
     return nickname
 
 
-def dp_flags_decode(dp_flag: int, dp_decode_table: list) -> list[str]:
+def dp_flags_decode(dp_flag: int, dp_decode_table: list[str]) -> list[str]:
     res = []
     if dp_flag < 0:
         return []
@@ -285,7 +300,7 @@ def full_file_permissions(file_type: str, file_mode: int) -> str:
         "fifo": "p",
     }
 
-    def rwx(perms):
+    def rwx(perms: int) -> str:
         res = ""
         if perms & 0x04:
             res += "r"
@@ -301,7 +316,7 @@ def full_file_permissions(file_type: str, file_mode: int) -> str:
             res += "-"
         return res
 
-    def file_permissions(perms):
+    def file_permissions(perms: int) -> str:
         flags = (perms >> 9) & 0x07
         res = ""
         for i in range(3):
@@ -363,3 +378,8 @@ def send_file_compat(
         as_attachment=as_attachment,
         download_name=attachment_filename,
     )
+
+
+def make_tmp_table_name(name: str) -> str:
+    """Generates quite unique temporary table name."""
+    return f"_tmp_{name}_{str(uuid4()).split('-')[-1]}"

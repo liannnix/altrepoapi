@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2022  BaseALT Ltd
+# Copyright (C) 2021-2023  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -15,9 +15,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from collections import defaultdict, namedtuple
-from typing import Optional
+from typing import Iterable, Optional
 
-from altrepo_api.utils import get_logger, tuplelist_to_dict, remove_duplicate
+from altrepo_api.utils import (
+    get_logger,
+    tuplelist_to_dict,
+    remove_duplicate,
+    make_tmp_table_name,
+)
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
@@ -34,7 +39,7 @@ class MisconflictPackages(APIWorker):
         connection,
         packages: tuple[str],
         branch: str,
-        archs: Optional[tuple[str]],
+        archs: Optional[Iterable[str]],
         **kwargs,
     ) -> None:
         self.conn = connection
@@ -52,13 +57,11 @@ class MisconflictPackages(APIWorker):
         task_repo_hashes: Optional[tuple[int, ...]] = None,
     ):
         # do all kind of black magic here
-        self.packages = tuple(self.packages)
-        if self.archs:
-            if "noarch" not in self.archs:
-                self.archs.append("noarch")
+        self.packages = self.packages
+        if self.archs and "noarch" not in self.archs:
+            self.archs.append("noarch")
         else:
             self.archs = lut.default_archs
-        self.archs = tuple(self.archs)
 
         if not pkg_hashes:
             # get hash for package names
@@ -74,8 +77,8 @@ class MisconflictPackages(APIWorker):
                 _ = self.store_error(
                     {
                         "message": (
-                            f"Packages {list(self.packages)} not in package set '{self.branch}'"
-                            f" for archs {list(self.archs)}"
+                            f"Packages {self.packages} not in package set '{self.branch}'"
+                            f" for archs {self.archs}"
                         )
                     }
                 )
@@ -93,7 +96,7 @@ class MisconflictPackages(APIWorker):
                         "message": (
                             f"Packages ({set(self.packages) - input_pkgs_names}) not in"
                             f" package set '{self.branch}'"
-                            f" for archs {list(self.archs)}"
+                            f" for archs {self.archs}"
                         )
                     }
                 )
@@ -102,7 +105,7 @@ class MisconflictPackages(APIWorker):
             input_pkg_hshs = tuple(pkg_hashes)
 
         # store input_pkg_hashes to temporary table
-        tmp_pkg_hshs = "tmp_input_pkg_hshs"
+        tmp_pkg_hshs = make_tmp_table_name("input_pkg_hshs")
 
         _ = self.send_sql_request(
             self.sql.create_tmp_table.format(
@@ -122,7 +125,7 @@ class MisconflictPackages(APIWorker):
             return
 
         # create temporary table with repository state hashes
-        tmp_repo_state = "tmp_repo_state_hshs"
+        tmp_repo_state = make_tmp_table_name("repo_state_hshs")
 
         _ = self.send_sql_request(
             self.sql.create_tmp_table.format(
@@ -152,7 +155,7 @@ class MisconflictPackages(APIWorker):
             if not self.sql_status:
                 return
         # delete unused binary packages arch hashes and '*-debuginfo' package hashes
-        tmp_repo_state_filtered = "tmp_repo_state_hshs_filtered"
+        tmp_repo_state_filtered = make_tmp_table_name("repo_state_hshs_filtered")
 
         _ = self.send_sql_request(
             self.sql.create_tmp_table.format(
@@ -218,7 +221,7 @@ class MisconflictPackages(APIWorker):
 
         # check whether files has the same md5, mode, mtime and class
         # and exclude such conflicts like the `apt` and `rpm` does
-        _tmp_table = "tmp_file_conflicts"
+        _tmp_table = make_tmp_table_name("file_conflicts")
         response = self.send_sql_request(
             self.sql.misconflict_check_file_conflicts.format(tmp_table=_tmp_table),
             external_tables=[
@@ -298,7 +301,7 @@ class MisconflictPackages(APIWorker):
 
         # 2. select real file names from DB
         # use external table to do not exceed `max query size` limit
-        _tmp_table = "tmp_file_name_hashes"
+        _tmp_table = make_tmp_table_name("file_name_hashes")
         response = self.send_sql_request(
             self.sql.misconflict_get_fnames_by_fnhashs.format(tmp_table=_tmp_table),
             external_tables=[

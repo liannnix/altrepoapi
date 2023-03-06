@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2022  BaseALT Ltd
+# Copyright (C) 2021-2023  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -44,8 +44,9 @@ class BasePathNamespace:
     SQL_DEBUG = False
     # logging settings
     LOG_LEVEL = logging.INFO
-    LOG_TO_FILE = True
+    LOG_TO_FILE = False
     LOG_TO_SYSLOG = False
+    LOG_TO_CONSOLE = True
     # misc settings
     DEPENDENCY_MAX_DEPTH = 5
     # API admin credentials

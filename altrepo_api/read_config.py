@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2022  BaseALT Ltd
+# Copyright (C) 2021-2023  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -46,6 +46,7 @@ PARAMS = {
         "sql_debug": ("SQL_DEBUG", "bool"),
         "log_to_file": ("LOG_TO_FILE", "bool"),
         "log_to_syslog": ("LOG_TO_SYSLOG", "bool"),
+        "log_to_console": ("LOG_TO_CONSOLE", "bool"),
     },
 }
 

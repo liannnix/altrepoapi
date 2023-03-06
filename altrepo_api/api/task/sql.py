@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2022  BaseALT Ltd
+# Copyright (C) 2021-2023  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -692,6 +692,185 @@ WHERE task_id IN
     AND task_changed <= '{t2_changed}'
 GROUP BY task_id
 ORDER BY changed DESC
+"""
+
+    get_last_task_info = """
+WITH
+    last_task_state AS
+    (
+        SELECT
+            task_id,
+            argMax(task_state, task_changed) AS state,
+            argMax(task_depends, task_changed) AS depends,
+            argMax(task_testonly, task_changed) AS testonly,
+            argMax(task_message, task_changed) AS message,
+            max(task_changed) AS changed
+        FROM TaskStates
+        WHERE task_id = {task_id}
+        GROUP BY task_id
+    ),
+    task_try_iter AS
+    (
+        SELECT DISTINCT
+            task_id,
+            task_try,
+            task_iter
+        FROM TaskIterations
+        WHERE (task_id, task_changed) = (
+            SELECT
+                task_id,
+                changed
+            FROM last_task_state
+        )
+    ),
+    task_branch AS
+    (
+        SELECT DISTINCT
+            task_id,
+            task_repo,
+            task_owner
+        FROM Tasks
+        WHERE task_id = {task_id}
+    )
+SELECT
+    TS.*,
+    task_try,
+    task_iter,
+    task_repo,
+    task_owner
+FROM last_task_state AS TS
+LEFT JOIN task_try_iter AS TI USING (task_id)
+LEFT JOIN task_branch AS TB ON TB.task_id = TI.task_id
+"""
+
+    get_task_iterations = """
+SELECT groupUniqArray((task_try, task_iter))
+FROM TaskIterations
+WHERE task_id = {task_id}
+"""
+
+    get_subtasks_binaries_with_sources = """
+WITH all_sources AS
+(
+    -- added source packages
+    SELECT
+        task_id,
+        subtask_id,
+        subtask_type,
+        srcpkg_hash
+    FROM Tasks
+    INNER JOIN (
+        SELECT DISTINCT
+            task_id,
+            subtask_id,
+            titer_srcrpm_hash AS srcpkg_hash
+        FROM TaskIterations
+        WHERE (task_id, task_changed) = ({task_id}, '{task_changed}')
+            AND (titer_status != 'deleted')
+    ) AS T USING (task_id, subtask_id)
+    WHERE (subtask_type != 'delete')
+        AND (subtask_deleted = 0)
+        AND (task_id, task_changed) = ({task_id}, '{task_changed}')
+    UNION ALL
+    -- deleted source packages
+    SELECT
+        task_id,
+        subtask_id,
+        subtask_type,
+        pkg_hash AS srcpkg_hash
+    FROM Packages
+    INNER JOIN (
+        SELECT
+            task_id,
+            subtask_id,
+            subtask_type,
+            subtask_package
+        FROM Tasks
+        WHERE (subtask_deleted = 0)
+            AND (subtask_type = 'delete')
+            AND (task_id, task_changed) = ({task_id}, '{task_changed}')
+    ) AS T ON T.subtask_package = pkg_name
+    WHERE pkg_hash IN (
+        SELECT pkgh_mmh
+        FROM PackageHash
+        WHERE pkgh_sha256 IN (
+            SELECT tplan_sha256
+            FROM TaskPlanPkgHash
+            WHERE (tplan_hash IN murmurHash3_64('{task_id}{task_try}{task_iter}src'))
+                AND (tplan_action = 'delete')
+        )
+    )
+)
+SELECT DISTINCT
+    subtask_id,
+    subtask_type,
+    sourcepkgname AS subtask_srpm_name,
+    pkg_srcrpm_hash,
+    pkg_version,
+    pkg_release,
+    pkg_name AS binpkg_name,
+    pkg_arch AS binpkg_arch
+FROM all_packages_with_source
+INNER JOIN all_sources AS S
+    ON pkg_srcrpm_hash = S.srcpkg_hash
+WHERE (pkg_sourcepackage = 0)
+    AND (pkg_arch IN {archs})
+"""
+
+    get_task_arepo_packages = """
+WITH task_plan_hashes AS
+    (
+        SELECT pkgh_mmh
+        FROM PackageHash
+        WHERE pkgh_sha256 IN (
+            SELECT tplan_sha256
+            FROM TaskPlanPkgHash
+            WHERE (tplan_hash IN murmurHash3_64('{task_id}{task_try}{task_iter}x86_64-i586'))
+                AND (tplan_action = 'add')
+        )
+    )
+SELECT
+    pkg_name,
+    pkg_version,
+    pkg_release
+FROM Packages
+WHERE pkg_hash IN (task_plan_hashes)
+"""
+
+    get_images_by_binary_pkgs_names = """
+WITH editions_status AS (
+    SELECT img_edition,
+           argMax(img_show, ts) AS edition_show
+    FROM ImageStatus
+    WHERE img_branch = '{branch}'
+    GROUP BY img_edition
+),
+tags_status AS (
+    SELECT img_tag,
+           argMax(img_show, ts) AS tag_show
+    FROM ImageTagStatus
+    GROUP BY img_tag
+)
+SELECT DISTINCT
+    img_file,
+    img_edition,
+    img_tag,
+    pkgset_date AS img_buildtime,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_arch,
+    pkg_hash
+FROM lv_all_image_packages
+WHERE (pkg_hash IN (
+    SELECT DISTINCT pkg_hash
+    FROM Packages
+    WHERE (pkg_name IN (SELECT pkg_name FROM {tmp_table}))
+    AND (pkg_sourcepackage = 0)
+))
+AND (img_branch = '{branch}')
+AND img_edition IN (select img_edition FROM editions_status WHERE edition_show = 'show')
+AND img_tag IN (select img_tag FROM tags_status WHERE tag_show = 'show')
 """
 
 
