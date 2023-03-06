@@ -1,0 +1,6 @@
+object 83f5c81f861edad5ad3025bfdedf311bc4c02f76
+type commit
+tag v1.9.3
+tagger Danil Shein <dshein@altlinux.org> 1678106739 +0300
+
+task/find_images
