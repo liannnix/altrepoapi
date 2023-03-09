@@ -38,3 +38,23 @@ acl_groups_model = ns.model(
         ),
     },
 )
+
+acl_by_packages_el_model = ns.model(
+    "AclByPackagesElementModel",
+    {
+        "name": fields.String(description="package name"),
+        "date": fields.DateTime(description="last ACL update date"),
+        "members": fields.List(fields.String(description="members")),
+    },
+)
+acl_by_packages_model = ns.model(
+    "AclByPackagesModel",
+    {
+        "branch": fields.String(description="packages' branch"),
+        "packages": fields.Nested(
+            acl_by_packages_el_model,
+            description="packages with its ACL members",
+            as_list=True,
+        ),
+    },
+)

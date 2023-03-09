@@ -22,8 +22,9 @@ from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
 
 from .namespace import get_namespace
 from .endpoints.groups import AclGroups
-from .parsers import acl_groups_args
-from .serializers import acl_groups_model
+from .endpoints.packages import AclByPackages
+from .parsers import acl_groups_args, acl_by_packages_args
+from .serializers import acl_groups_model, acl_by_packages_model
 
 ns = get_namespace()
 
@@ -42,4 +43,24 @@ class routeAclGroups(Resource):
         url_logging(logger, g.url)
         args = acl_groups_args.parse_args(strict=True)
         w = AclGroups(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/by_packages/<string:branch>",
+    doc={
+        "params": {"branch": "branch name"},
+        "description": "ACL groups for source packages list in specific branch",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeAclByPackages(Resource):
+    @ns.expect(acl_by_packages_args)
+    @ns.marshal_list_with(acl_by_packages_model)
+    def get(self, branch):
+        url_logging(logger, g.url)
+        args = acl_by_packages_args.parse_args(strict=True)
+        w = AclByPackages(g.connection, branch, **args)
+        if not w.check_branch():
+            ns.abort(404, message=f"Branch '{branch}' not found in database")
         return run_worker(worker=w, args=args)
