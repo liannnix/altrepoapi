@@ -41,9 +41,7 @@ class AclByPackages(APIWorker):
 
         _tmp_table = "tmp_pkgs_names"
         response = self.send_sql_request(
-            self.sql.get_acl_by_packages.format(
-                branch=branch, tmp_table=_tmp_table
-            ),
+            self.sql.get_acl_by_packages.format(branch=branch, tmp_table=_tmp_table),
             external_tables=[
                 {
                     "name": _tmp_table,
