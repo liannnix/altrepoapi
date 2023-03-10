@@ -46,12 +46,10 @@ class routeAclGroups(Resource):
         return run_worker(worker=w, args=args)
 
 
-@ns.route(
-    "/by_packages",
-    doc={
-        "description": "ACL groups for source packages list in specific branch",
-        "responses": GET_RESPONSES_400_404,
-    },
+@ns.route("/by_packages")
+@ns.doc(
+    description="ACL groups for source packages list in specific branch",
+    responses=GET_RESPONSES_400_404,
 )
 class routeAclByPackages(Resource):
     @ns.expect(acl_by_packages_args)
