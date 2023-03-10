@@ -19,7 +19,6 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class SQL:
-
     get_pkg_name_by_srcpkg = """
 SELECT DISTINCT pkg_name
 FROM Packages

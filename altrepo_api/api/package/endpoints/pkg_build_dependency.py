@@ -521,7 +521,6 @@ class BuildDependency(APIWorker):
         # filter result packages list by dependencies
         filter_pkgs = None
         if self.reqfilter or self.reqfiltersrc:
-
             if self.reqfilter:
                 reqfilter_binpkgs = tuple(self.reqfilter)
             else:

@@ -97,7 +97,6 @@ class ConflictFilter:
         logger.error(self.error)
 
     def _get_dict_conflict_provide(self, hshs: list[int]) -> DepsDictType:
-
         # get conflicts and provides by hash
         self.conn.request_line = (
             self.sql.get_dependencies,

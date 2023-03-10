@@ -115,8 +115,7 @@ class PackageDownloadLinks(FindBuildSubtaskMixin, APIWorker):
         subtasks = []
 
         if (
-            build_subtask is not None
-            and self.branch not in lut.taskless_branches
+            build_subtask is not None and self.branch not in lut.taskless_branches
         ):  # FIXME: use task only if task branch == self.branch
             #  use hashes from task
             use_task = True

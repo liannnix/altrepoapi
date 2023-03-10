@@ -204,9 +204,7 @@ class FindBuildTaskMixixn(FindBuildSubtaskMixin, ParseTaskGearMixin):
             pkg_subtask = sub.subtask_id
             pkg_task_date = datetime_to_iso(sub.task_changed)
             gear_link = self._parse_task_gear(sub)
-            pkg_tasks.append(
-                {"type": "build", "id": pkg_task, "date": pkg_task_date}
-            )
+            pkg_tasks.append({"type": "build", "id": pkg_task, "date": pkg_task_date})
             return pkg_task, pkg_subtask, pkg_task_date, gear_link, pkg_tasks
 
         for task in tasks:
