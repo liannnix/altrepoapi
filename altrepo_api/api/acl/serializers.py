@@ -43,7 +43,7 @@ acl_by_packages_el_model = ns.model(
     "AclByPackagesElementModel",
     {
         "name": fields.String(description="package name"),
-        "date": fields.DateTime(description="last ACL update date"),
+        "updated": fields.DateTime(description="last ACL update date"),
         "members": fields.List(fields.String(description="members")),
     },
 )

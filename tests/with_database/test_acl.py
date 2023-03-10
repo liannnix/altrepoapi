@@ -43,7 +43,7 @@ def test_acl_groups(client, kwargs):
             "result": [
                 {
                     "name": "awesome",
-                    "date": "2023-03-08T19:55:53",
+                    "updated": "2023-03-08T19:55:53",
                     "members": ["lakostis", "@everybody"],
                 },
             ],
@@ -55,12 +55,12 @@ def test_acl_groups(client, kwargs):
             "result": [
                 {
                     "name": "binutils",
-                    "date": "2022-08-02T18:24:02",
+                    "updated": "2022-08-02T18:24:02",
                     "members": ["glebfm"],
                 },
                 {
                     "name": "coreutils",
-                    "date": "2021-09-14T12:19:00",
+                    "updated": "2021-09-14T12:19:00",
                     "members": ["@core"],
                 },
             ],
@@ -97,5 +97,5 @@ def test_acl_by_packages(client, kwargs):
         assert len(result) == len(kwargs["result"])
         for res, test in zip(result, kwargs["result"]):
             assert res["name"] == test["name"]
-            assert res["date"] == test["date"]
+            assert res["updated"] == test["updated"]
             assert res["members"] == test["members"]

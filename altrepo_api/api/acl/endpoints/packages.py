@@ -38,7 +38,7 @@ class AclByPackages(APIWorker):
     def get(self):
         class Package(NamedTuple):
             name: str
-            date: datetime
+            updated: datetime
             members: list[str]
 
         packages_names = tuple(self.args["packages_names"])
