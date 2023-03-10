@@ -18,22 +18,17 @@ from typing import NamedTuple
 from datetime import datetime
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.misc import lut
 from ..sql import sql
 
 
 class AclByPackages(APIWorker):
     """Retrieves ACL members list for specific packages and branch."""
 
-    def __init__(self, connection, branch, **kwargs):
+    def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
         self.sql = sql
-        self.branch = branch
         super().__init__()
-
-    def check_branch(self):
-        return self.branch in lut.known_branches
 
     def get(self):
         class Package(NamedTuple):
@@ -41,12 +36,13 @@ class AclByPackages(APIWorker):
             updated: datetime
             members: list[str]
 
+        branch = self.args["branch"]
         packages_names = tuple(self.args["packages_names"])
 
         _tmp_table = "tmp_pkgs_names"
         response = self.send_sql_request(
             self.sql.get_acl_by_packages.format(
-                branch=self.branch, tmp_table=_tmp_table
+                branch=branch, tmp_table=_tmp_table
             ),
             external_tables=[
                 {
@@ -64,7 +60,7 @@ class AclByPackages(APIWorker):
         packages = [Package(*r) for r in response]
 
         res = {
-            "branch": self.branch,
+            "branch": branch,
             "packages": sorted(
                 [r._asdict() for r in packages], key=lambda p: p["name"]
             ),

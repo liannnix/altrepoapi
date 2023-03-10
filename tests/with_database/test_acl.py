@@ -76,7 +76,7 @@ def test_acl_groups(client, kwargs):
             "branch": "non-existing-branch",
             "packages_names": ["placeholder"],
             "result": [],
-            "status_code": 404,
+            "status_code": 400,
         },
     ],
 )

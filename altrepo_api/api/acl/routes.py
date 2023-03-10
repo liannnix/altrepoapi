@@ -47,9 +47,8 @@ class routeAclGroups(Resource):
 
 
 @ns.route(
-    "/by_packages/<string:branch>",
+    "/by_packages",
     doc={
-        "params": {"branch": "branch name"},
         "description": "ACL groups for source packages list in specific branch",
         "responses": GET_RESPONSES_400_404,
     },
@@ -57,10 +56,8 @@ class routeAclGroups(Resource):
 class routeAclByPackages(Resource):
     @ns.expect(acl_by_packages_args)
     @ns.marshal_list_with(acl_by_packages_model)
-    def get(self, branch):
+    def get(self):
         url_logging(logger, g.url)
         args = acl_by_packages_args.parse_args(strict=True)
-        w = AclByPackages(g.connection, branch, **args)
-        if not w.check_branch():
-            ns.abort(404, message=f"Branch '{branch}' not found in database")
+        w = AclByPackages(g.connection, **args)
         return run_worker(worker=w, args=args)

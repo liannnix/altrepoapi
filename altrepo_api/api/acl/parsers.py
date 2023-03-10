@@ -47,4 +47,4 @@ packages_list = parser.register_item(
 
 
 acl_groups_args = parser.build_parser(branch, acl_group_opt)
-acl_by_packages_args = parser.build_parser(packages_list)
+acl_by_packages_args = parser.build_parser(branch, packages_list)
