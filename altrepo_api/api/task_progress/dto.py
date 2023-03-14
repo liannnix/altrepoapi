@@ -53,6 +53,8 @@ class SubtaskMeta:
     subtask_pkg_from: str
     subtask_changed: datetime.datetime
     type: str
+    src_pkg_name: str = ""
+    src_pkg_hash: str = ""
     archs: list[SubtaskArchsMeta] = field(default_factory=list)
     approval: list[TaskApprovalMeta] = field(default_factory=list)
 
