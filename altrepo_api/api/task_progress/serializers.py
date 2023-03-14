@@ -152,6 +152,8 @@ subtask_info_el_model = ns.model(
         "subtask_pkg_from": fields.String(description="subtask package from"),
         "subtask_changed": fields.DateTime(description="subtask changed"),
         "type": fields.String(description="subtask type"),
+        "src_pkg_name": fields.String(description="source package name"),
+        "src_pkg_hash": fields.String(description="source package hash"),
         "archs": fields.Nested(
             subtask_archs_model, description="list of subtask architectures"
         ),
