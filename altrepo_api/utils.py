@@ -383,3 +383,23 @@ def send_file_compat(
 def make_tmp_table_name(name: str) -> str:
     """Generates quite unique temporary table name."""
     return f"_tmp_{name}_{str(uuid4()).split('-')[-1]}"
+
+
+def arch_sort_index(arch: str) -> int:
+    return {
+        "src": 0,
+        "noarch": -1,
+        "x86_64": -2,
+        "i586": -3,
+        "aarch64": -4,
+        "armh": -5,
+        "ppc64le": -6,
+        "riscv64": -7,
+        "mipsel": -8,
+        "e2k": -9,
+        "e2kv4": -10,
+        "e2kv5": -11,
+        "e2kv6": -12,
+        "x86_64-i586": -13,
+    }.get(arch, -100)
+
