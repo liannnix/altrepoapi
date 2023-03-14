@@ -6,6 +6,17 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.9.4] - 2023-03-14
+
+Regular API code updates and fixes.
+
+### Added
+- acl/by_packages route
+- debug logging of total request elapsed time
+### Changed
+- /task/progress/task_info: add source package name and hash
+### Fixed
+
 ## [1.9.3] - 2023-03-05
 
 Regular API code updates and fixes.
