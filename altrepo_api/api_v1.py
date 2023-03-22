@@ -22,22 +22,22 @@ from altrepo_api.version import __version__
 from altrepo_api.settings import namespace as settings
 from altrepo_api.api.auth.decorators import auth_required
 
+from altrepo_api.api.acl import ns as acl_ns
 from altrepo_api.api.bug import ns as bug_ns
 from altrepo_api.api.task import ns as task_ns
 from altrepo_api.api.task_progress import ns as task_progress_ns
 from altrepo_api.api.package import ns as package_ns
 from altrepo_api.api.packageset import ns as packageset_ns
 from altrepo_api.api.dependencies import ns as dependencies_ns
+from altrepo_api.api.image import ns as image_ns
+from altrepo_api.api.export import ns as export_ns
+from altrepo_api.api.license import ns as license_ns
 from altrepo_api.api.site_task import ns as site_task_ns
 from altrepo_api.api.site_image import ns as site_image_ns
 from altrepo_api.api.site_package import ns as site_package_ns
 from altrepo_api.api.site_pkgset_info import ns as site_pkgset_info
 from altrepo_api.api.site_maintainer import ns as site_maintainer_ns
 from altrepo_api.api.site_packageset import ns as site_packageset_ns
-from altrepo_api.api.export import ns as export_ns
-from altrepo_api.api.image import ns as image_ns
-from altrepo_api.api.license import ns as license_ns
-from altrepo_api.api.acl import ns as acl_ns
 
 
 authorizations = {
@@ -58,6 +58,7 @@ api = Api(
     authorizations=authorizations,
 )
 
+# XXX: order is important here
 api.add_namespace(task_ns)
 api.add_namespace(task_progress_ns)
 api.add_namespace(package_ns)
@@ -65,15 +66,15 @@ api.add_namespace(packageset_ns)
 api.add_namespace(acl_ns)
 api.add_namespace(bug_ns)
 api.add_namespace(dependencies_ns)
+api.add_namespace(image_ns)
+api.add_namespace(export_ns)
+api.add_namespace(license_ns)
 api.add_namespace(site_task_ns)
 api.add_namespace(site_image_ns)
 api.add_namespace(site_package_ns)
 api.add_namespace(site_pkgset_info)
 api.add_namespace(site_maintainer_ns)
 api.add_namespace(site_packageset_ns)
-api.add_namespace(export_ns)
-api.add_namespace(image_ns)
-api.add_namespace(license_ns)
 
 version_fields = api.model(
     "APIVersion",
