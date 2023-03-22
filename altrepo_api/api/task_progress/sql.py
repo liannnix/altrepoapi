@@ -19,7 +19,6 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class SQL:
-
     check_task = """
 SELECT count(task_id)
 FROM TaskStates
@@ -634,6 +633,30 @@ GROUP BY
     task_id,
     subtask_id,
     stype
+"""
+
+    get_pkg_hashes = """
+WITH pkg_hashes AS (
+    SELECT subtask_id,
+           titer_srcrpm_hash,
+           subtask_arch
+    FROM TaskIterations
+    WHERE task_id = {task_id}
+      AND task_changed = '{task_changed}'
+      AND titer_srcrpm_hash != 0
+)
+SELECT
+    subtask_id,
+    groupUniqArray((titer_srcrpm_hash, subtask_arch, TT.pkg_name))
+FROM pkg_hashes
+LEFT JOIN (
+    SELECT pkg_name, pkg_hash
+    FROM Packages
+    WHERE pkg_hash IN (
+        SELECT titer_srcrpm_hash FROM pkg_hashes
+    )
+) AS TT ON TT.pkg_hash = titer_srcrpm_hash
+GROUP BY subtask_id
 """
 
 

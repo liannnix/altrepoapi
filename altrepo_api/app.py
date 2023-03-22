@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import time
 from flask import Flask, redirect, g, request
 
 from altrepo_api import read_config
@@ -36,11 +37,14 @@ def hello():
 def init_db_connection():
     g.connection = Connection()
     g.url = request.url
+    g.start = time.perf_counter()
 
 
 @app.teardown_request
 def drop_connection(exception):
-    g.connection.drop_connection()  # type: ignore
+    g.connection.drop_connection()
+    elapsed = time.perf_counter() - g.start
+    logger.info(f"Request to '{g.url}' elapsed {elapsed:.3f} seconds")
 
 
 @app.errorhandler  # type: ignore

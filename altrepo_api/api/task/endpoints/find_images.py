@@ -130,7 +130,7 @@ class FindImages(APIWorker):
         task["iterations"] = sorted(
             [{"task_try": r[0], "task_iter": r[1]} for r in response[0][0]],
             key=lambda el: (el["task_try"], el["task_iter"]),
-            reverse=True
+            reverse=True,
         )
 
         archs = ("noarch", "aarch64", "armh", "i586", "ppc64le", "x86_64")
@@ -218,7 +218,7 @@ class FindImages(APIWorker):
         groupped_by_subtask: dict[Subtask, list[Image]] = defaultdict(list)
 
         for subtask, image in joined:
-            sub = Subtask(*subtask[:6])
+            sub = Subtask(*subtask[:6])  # type: ignore
             groupped_by_subtask[sub].append(image)
 
         task["subtasks"] = sorted(

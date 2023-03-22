@@ -409,8 +409,8 @@ find_images_by_task_image_el_model = ns.model(
         "binpkg_version": fields.String(description="image's binary package version"),
         "binpkg_release": fields.String(description="image's binary package release"),
         "binpkg_arch": fields.String(description="image's binary package architecture"),
-        "binpkg_hash": fields.String(description="image's binary package hash")
-    }
+        "binpkg_hash": fields.String(description="image's binary package hash"),
+    },
 )
 find_images_by_task_subtask_el_model = ns.model(
     "FindImagesByTaskSubtaskElementModel",
@@ -424,16 +424,16 @@ find_images_by_task_subtask_el_model = ns.model(
         "images": fields.Nested(
             find_images_by_task_image_el_model,
             description="affected images (by binary packages)",
-            as_list=True
+            as_list=True,
         ),
-    }
+    },
 )
 find_image_by_task_iteration_el_model = ns.model(
     "FindImagesByTaskIterationElementModel",
     {
         "task_try": fields.Integer(description="task try"),
-        "task_iter": fields.Integer(description="task iter")
-    }
+        "task_iter": fields.Integer(description="task iter"),
+    },
 )
 find_images_by_task_model = ns.model(
     "FindImagesByTaskModel",
@@ -446,17 +446,17 @@ find_images_by_task_model = ns.model(
         "task_try": fields.Integer(description="task try"),
         "task_iter": fields.Integer(description="task iter"),
         "task_message": fields.String(description="task message"),
-        "task_changed": fields.DateTime(descrption="task changed date in ISO8601 format"),
+        "task_changed": fields.DateTime(
+            descrption="task changed date in ISO8601 format"
+        ),
         "dependencies": fields.List(fields.Integer, description="task dependencies"),
         "subtasks": fields.Nested(
-            find_images_by_task_subtask_el_model,
-            description="subtasks",
-            as_list=True
+            find_images_by_task_subtask_el_model, description="subtasks", as_list=True
         ),
         "iterations": fields.Nested(
             find_image_by_task_iteration_el_model,
             descriptions="iterations",
-            as_list=True
-        )
-    }
+            as_list=True,
+        ),
+    },
 )

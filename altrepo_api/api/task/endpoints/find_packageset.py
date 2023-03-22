@@ -56,7 +56,7 @@ class FindPackageset(APIWorker):
                 }
             )
 
-        packages = join_tuples(response)  # type: ignore
+        packages = join_tuples(response)
 
         if self.args["branches"]:
             branchs_cond = f"AND pkgset_name IN {tuple(self.args['branches'])}"

@@ -14,7 +14,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from altrepo_api.api.parser import parser, branch_name_type, acl_group_type
+from altrepo_api.api.parser import (
+    parser,
+    branch_name_type,
+    acl_group_type,
+    pkg_name_type,
+)
 
 
 branch = parser.register_item(
@@ -31,6 +36,15 @@ acl_group_opt = parser.register_item(
     help="ACL group name",
     location="args",
 )
+packages_list = parser.register_item(
+    "packages_names",
+    type=pkg_name_type,
+    action="split",
+    required=True,
+    help="source packages names",
+    location="args",
+)
 
 
 acl_groups_args = parser.build_parser(branch, acl_group_opt)
+acl_by_packages_args = parser.build_parser(branch, packages_list)

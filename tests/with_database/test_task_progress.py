@@ -54,7 +54,7 @@ def test_all_tasks_branches(client):
         {"input": TASK_IN_DB, "branch": BRANCH_IN_DB, "status_code": 200},
         {"input": TASK_IN_DB, "status_code": 200},
         {"input": TASK_IN_DB, "branch": "p10", "status_code": 404},
-        {"input": "310", "branch": BRANCH_IN_DB, "status_code": 200},
+        {"input": "315", "branch": BRANCH_IN_DB, "status_code": 200},
         {"input": TASK_IN_DB, "branch": BRANCH_NOT_IN_DB, "status_code": 400},
         {"input": f"{TASK_IN_DB},p10", "branch": BRANCH_IN_DB, "status_code": 404},
         {"input": f"{TASK_IN_DB},@rider", "status_code": 200},

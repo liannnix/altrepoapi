@@ -53,5 +53,18 @@ WHERE acl_branch = '{branch}'
 GROUP BY acl_for
 """
 
+    get_acl_by_packages = """
+SELECT
+    argMax(acl_for, acl_date),
+    max(acl_date),
+    argMax(acl_list, acl_date)
+FROM Acl
+WHERE (acl_branch = '{branch}')
+    AND (acl_for IN (SELECT pkg_name FROM {tmp_table}))
+GROUP BY
+    acl_for,
+    acl_branch
+"""
+
 
 sql = SQL()
