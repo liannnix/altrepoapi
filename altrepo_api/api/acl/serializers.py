@@ -58,3 +58,22 @@ acl_by_packages_model = ns.model(
         ),
     },
 )
+
+acl_maintainer_groups_el_model = ns.model(
+    "AclMaintainerGroupsElementModel",
+    {
+        "name": fields.String(description="branch name"),
+        "groups": fields.List(fields.String(description="maintainer's groups")),
+    },
+)
+acl_maintainer_groups_model = ns.model(
+    "AclMaintainerGroupsModel",
+    {
+        "nickname": fields.String(description="maintainer's nickname"),
+        "branches": fields.Nested(
+            acl_maintainer_groups_el_model,
+            description="branches with maintainer and groups",
+            as_list=True,
+        ),
+    },
+)

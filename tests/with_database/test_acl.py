@@ -99,3 +99,54 @@ def test_acl_by_packages(client, kwargs):
             assert res["name"] == test["name"]
             assert res["updated"] == test["updated"]
             assert res["members"] == test["members"]
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "nickname": "amakeenk",
+            "branches": [
+                {
+                    "name": "p10",
+                    "groups": [
+                        "@tester",
+                    ],
+                },
+            ],
+            "status_code": 200,
+        },
+        {
+            "nickname": "ldv",
+            "branches": [
+                {
+                    "name": "p10",
+                    "groups": ["@core", "@cpan", "@kernel", "@maint", "@openldap"],
+                },
+                {
+                    "name": "sisyphus",
+                    "groups": ["@core", "@cpan", "@kernel", "@openldap"],
+                },
+            ],
+            "status_code": 200,
+        },
+    ],
+)
+def test_acl_find_groups(client, kwargs):
+    url = url_for(
+        "api.acl_route_maintainer_groups",
+        nickname=kwargs["nickname"],
+        branch=",".join(branch["name"] for branch in kwargs["branches"]),
+    )
+    response = client.get(url)
+    assert response.status_code == kwargs["status_code"]
+
+    if response.status_code == 200:
+        assert response.json["nickname"] == kwargs["nickname"]
+
+        branches = response.json["branches"]
+
+        assert len(branches) == len(kwargs["branches"])
+        for res, test in zip(branches, kwargs["branches"]):
+            assert res["name"] == test["name"]
+            assert res["groups"] == test["groups"]
