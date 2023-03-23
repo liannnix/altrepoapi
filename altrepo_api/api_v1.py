@@ -30,6 +30,7 @@ from altrepo_api.api.package import ns as package_ns
 from altrepo_api.api.packageset import ns as packageset_ns
 from altrepo_api.api.dependencies import ns as dependencies_ns
 from altrepo_api.api.image import ns as image_ns
+from altrepo_api.api.files import ns as file_ns
 from altrepo_api.api.export import ns as export_ns
 from altrepo_api.api.license import ns as license_ns
 from altrepo_api.api.site_task import ns as site_task_ns
@@ -67,6 +68,7 @@ api.add_namespace(acl_ns)
 api.add_namespace(bug_ns)
 api.add_namespace(dependencies_ns)
 api.add_namespace(image_ns)
+api.add_namespace(file_ns)
 api.add_namespace(export_ns)
 api.add_namespace(license_ns)
 api.add_namespace(site_task_ns)
