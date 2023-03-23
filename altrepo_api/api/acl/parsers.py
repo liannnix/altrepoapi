@@ -19,6 +19,7 @@ from altrepo_api.api.parser import (
     branch_name_type,
     acl_group_type,
     pkg_name_type,
+    maintainer_nick_type,
 )
 
 
@@ -26,6 +27,14 @@ branch = parser.register_item(
     "branch",
     type=branch_name_type,
     required=True,
+    help="name of packageset",
+    location="args",
+)
+branch_opt = parser.register_item(
+    "branch",
+    type=branch_name_type,
+    required=False,
+    action="split",
     help="name of packageset",
     location="args",
 )
@@ -44,7 +53,15 @@ packages_list = parser.register_item(
     help="source packages names",
     location="args",
 )
+acl_nickname = parser.register_item(
+    "nickname",
+    type=maintainer_nick_type,
+    required=True,
+    help="ACL member nickname",
+    location="args",
+)
 
 
 acl_groups_args = parser.build_parser(branch, acl_group_opt)
+acl_maintainer_groups_args = parser.build_parser(branch_opt, acl_nickname)
 acl_by_packages_args = parser.build_parser(branch, packages_list)
