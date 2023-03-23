@@ -26,11 +26,13 @@ from .endpoints.dependecy_info import (
     PackagesDependence,
     DependsSrcPackage,
 )
-from .parsers import pkgs_depends_args, src_pkg_depends_args
+from .endpoints.backport_helper import BackportHelper
+from .parsers import pkgs_depends_args, src_pkg_depends_args, backport_helper_args
 from .serializers import (
     package_dependencies_model,
     depends_packages_model,
     package_build_deps_model,
+    backport_helper_model
 )
 
 ns = get_namespace()
@@ -88,4 +90,19 @@ class routeDependsSrcPackage(Resource):
         url_logging(logger, g.url)
         args = src_pkg_depends_args.parse_args(strict=True)
         w = DependsSrcPackage(g.connection, pkghash, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route("/backport_helper")
+@ns.doc(
+    description="Find packages required to backport too",
+    responses=GET_RESPONSES_400_404,
+)
+class routeAclByPackages(Resource):
+    @ns.expect(backport_helper_args)
+    @ns.marshal_list_with(backport_helper_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = backport_helper_args.parse_args(strict=True)
+        w = BackportHelper(g.connection, **args)
         return run_worker(worker=w, args=args)
