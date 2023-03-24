@@ -191,13 +191,14 @@ class BackportHelper(APIWorker):
             depth += 1
 
         # deduplication for O(n) + removing packages with 'src' arch
-        flattened = {
-            package: depth
+        flattened = [
+            (depth, package)
             for depth, level in backport_list
             for package in level
-            if package.arch != "src" and depth != 0
-        }
-        dedup = [(i + 1, k) for i, (k, _) in enumerate(flattened.items())]
+            if package.arch != "src"
+        ]
+        dedup = {v: k for k, v in flattened if k != 0}
+        dedup = [(v, k) for k, v in dedup.items()]
 
         count = len(dedup)
         maxdepth = max([depth for depth, _ in dedup]) if dedup else 0
@@ -214,10 +215,10 @@ class BackportHelper(APIWorker):
             "dependencies": sorted(
                 [
                     {
-                        "depth": depth,
+                        "depth": depth+1,
                         "packages": sorted(level, key=lambda p: p["srpm"]),
                     }
-                    for depth, level in backports.items()
+                    for depth, (_, level) in enumerate(backports.items())
                 ],
                 key=lambda e: e["depth"],
                 reverse=True,
