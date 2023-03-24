@@ -63,3 +63,55 @@ def test_file_search(client, kwargs):
         assert data != {}
         assert data["length"] != 0
         assert data["files"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "branch": BRANCH_IN_DB,
+            "input": FILE_IN_DB[0],
+            "status_code": 200
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "input": FILE_IN_DB[1],
+            "status_code": 200
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "input": FILE_IN_DB[2],
+            "status_code": 200
+        },
+        {
+            "branch": BRANCH_NOT_IN_DB,
+            "input": FILE_IN_DB[0],
+            "status_code": 400
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "input": INVALID_FILE_NAME,
+            "status_code": 400
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "input": FILE_NOT_IN_DB,
+            "status_code": 404
+        },
+    ],
+)
+def test_fast_file_search(client, kwargs):
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("status_code",):
+            continue
+        if v is not None:
+            params[k] = v
+    url = url_for("api.files_route_fast_file_search_lookup")
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["length"] != 0
+        assert data["files"] != []
