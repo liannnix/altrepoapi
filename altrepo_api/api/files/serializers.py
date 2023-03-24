@@ -43,3 +43,20 @@ files_model = ns.model(
         ),
     },
 )
+
+fast_file_search_el_model = ns.model(
+    "FastFileSearchElementModel",
+    {
+        "file_name": fields.String(description="file name")
+    },
+)
+fast_file_search_model = ns.model(
+    "FastFileSearchModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of files found"),
+        "files": fields.Nested(
+            fast_file_search_el_model, description="file list", as_list=True
+        ),
+    },
+)

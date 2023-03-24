@@ -109,3 +109,54 @@ class FileSearch(APIWorker):
 
         res = {"request_args": self.args, "length": len(res), "files": res}
         return res, 200
+
+
+class FastFileSearchLookup(APIWorker):
+    """
+    Fast search files by name or directory.
+    """
+
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        self.validation_results = []
+
+        if self.args["files_limit"] and self.args["files_limit"] < 1:
+            self.validation_results.append(
+                "files_limit should be greater or equal to 1"
+            )
+
+        if self.validation_results != []:
+            return False
+        return True
+
+    def get(self):
+        input_val = self.args["input"]
+        branch = self.args["branch"]
+        files_limit = self.args["files_limit"]
+
+        if files_limit:
+            limit_clause = f"LIMIT {files_limit}"
+        else:
+            limit_clause = ""
+
+        response = self.send_sql_request(
+            self.sql.fast_find_files.format(
+                branch=branch, input=input_val, limit=limit_clause
+            )
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error(
+                {"message": "No data not found in database"},
+            )
+
+        files = [{"file_name": el[0]} for el in response]
+        res = {"request_args": self.args, "length": len(files), "files": files}
+        return res, 200

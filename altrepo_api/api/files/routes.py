@@ -19,11 +19,11 @@ from flask_restx import Resource
 
 from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
-from .endpoints.file_search import FileSearch
+from .endpoints.file_search import FileSearch, FastFileSearchLookup
 
 from .namespace import get_namespace
-from .parsers import file_search_args
-from .serializers import files_model
+from .parsers import file_search_args, fast_file_search_args
+from .serializers import files_model, fast_file_search_model
 
 ns = get_namespace()
 
@@ -45,3 +45,20 @@ class routeFileSearch(Resource):
         args = file_search_args.parse_args(strict=True)
         w = FileSearch(g.connection, **args)
         return run_worker(worker=w, run_method=w.get, args=args)
+
+
+@ns.route(
+    "/fast_file_search_lookup",
+    doc={
+        "description": "Fast search files by name or directory.",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeFastFileSearchLookup(Resource):
+    @ns.expect(fast_file_search_args)
+    @ns.marshal_with(fast_file_search_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = file_search_args.parse_args(strict=True)
+        w = FastFileSearchLookup(g.connection, **args)
+        return run_worker(worker=w, args=args)

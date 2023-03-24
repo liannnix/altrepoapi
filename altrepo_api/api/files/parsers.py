@@ -37,6 +37,14 @@ files_limit_opt = parser.register_item(
     help="number of files to get",
     location="args",
 )
+fast_file_search_limit_opt = parser.register_item(
+    "files_limit",
+    type=int,
+    required=False,
+    default=10,
+    help="number of files to get",
+    location="args",
+)
 input_val = parser.register_item(
     "input",
     type=file_search_type,
@@ -48,3 +56,4 @@ input_val = parser.register_item(
 
 # build parsers
 file_search_args = parser.build_parser(branch, input_val, files_limit_opt)
+fast_file_search_args = parser.build_parser(branch, input_val, fast_file_search_limit_opt)
