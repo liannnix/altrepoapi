@@ -60,3 +60,25 @@ fast_file_search_model = ns.model(
         ),
     },
 )
+
+packages_by_el_model = ns.model(
+    "PackagesByFileElementModel",
+    {
+        "hash": fields.String(description="package hash UInt64 as string"),
+        "name": fields.String(description="package name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "arch": fields.String(description="package architecture"),
+    },
+)
+packages_by_model = ns.model(
+    "PackagesByFileModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of package found"),
+        "packages": fields.Nested(
+            packages_by_el_model, description="package list", as_list=True
+        ),
+    },
+)
+

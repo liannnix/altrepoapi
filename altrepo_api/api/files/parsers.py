@@ -52,8 +52,16 @@ input_val = parser.register_item(
     help="file name or directory",
     location="args",
 )
+file_name = parser.register_item(
+    "file_name",
+    type=file_search_type,
+    required=True,
+    help="file name or directory",
+    location="args",
+)
 
 
 # build parsers
 file_search_args = parser.build_parser(branch, input_val, files_limit_opt)
 fast_file_search_args = parser.build_parser(branch, input_val, fast_file_search_limit_opt)
+packages_by_file_args = parser.build_parser(branch, file_name)

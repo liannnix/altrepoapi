@@ -20,10 +20,19 @@ from flask_restx import Resource
 from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
 from .endpoints.file_search import FileSearch, FastFileSearchLookup
+from .endpoints.packages_by_file import PackagesByFile
 
 from .namespace import get_namespace
-from .parsers import file_search_args, fast_file_search_args
-from .serializers import files_model, fast_file_search_model
+from .parsers import (
+    file_search_args,
+    fast_file_search_args,
+    packages_by_file_args
+)
+from .serializers import (
+    files_model,
+    fast_file_search_model,
+    packages_by_model
+)
 
 ns = get_namespace()
 
@@ -61,4 +70,21 @@ class routeFastFileSearchLookup(Resource):
         url_logging(logger, g.url)
         args = file_search_args.parse_args(strict=True)
         w = FastFileSearchLookup(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/packages_by_file",
+    doc={
+        "description": "Get a list of packages to which the specified file belongs.",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routePackagesByFile(Resource):
+    @ns.expect(packages_by_file_args)
+    @ns.marshal_with(packages_by_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = packages_by_file_args.parse_args(strict=True)
+        w = PackagesByFile(g.connection, **args)
         return run_worker(worker=w, args=args)
