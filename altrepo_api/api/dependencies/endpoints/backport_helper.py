@@ -16,7 +16,6 @@
 
 from re import match
 from typing import NamedTuple, Iterable, Literal
-from collections import defaultdict
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut

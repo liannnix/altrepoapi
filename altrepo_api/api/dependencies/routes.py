@@ -98,7 +98,7 @@ class routeDependsSrcPackage(Resource):
     description="Find packages required to backport too",
     responses=GET_RESPONSES_400_404,
 )
-class routeAclByPackages(Resource):
+class routeBackportHelper(Resource):
     @ns.expect(backport_helper_args)
     @ns.marshal_list_with(backport_helper_model)
     def get(self):
