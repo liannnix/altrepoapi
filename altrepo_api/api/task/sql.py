@@ -873,5 +873,53 @@ AND img_edition IN (select img_edition FROM editions_status WHERE edition_show =
 AND img_tag IN (select img_tag FROM tags_status WHERE tag_show = 'show')
 """
 
+    get_task_last_try_iter = """
+WITH last_task_state AS
+(
+    SELECT
+        task_id,
+        max(task_changed) AS changed
+    FROM TaskStates
+    WHERE task_id = {task_id}
+    GROUP BY task_id
+)
+SELECT DISTINCT
+    task_try,
+    task_iter
+FROM TaskIterations
+WHERE (task_id, task_changed) = (
+    SELECT
+        task_id,
+        changed
+    FROM last_task_state
+)
+"""
+
+    get_task_packages = """
+SELECT
+    pkg_sourcerpm,
+    pkg_sourcepackage,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_disttag,
+    pkg_buildtime,
+    pkg_arch,
+    pkg_packager_email
+FROM Packages
+WHERE pkg_hash IN
+(
+    SELECT pkgh_mmh
+    FROM PackageHash
+    WHERE pkgh_sha256 IN
+    (
+        SELECT tplan_sha256
+        FROM TaskPlanPkgHash
+        WHERE tplan_hash IN {tplan_hshs}
+            AND tplan_action = 'add'
+    )
+)
+"""
+
 
 sql = SQL()

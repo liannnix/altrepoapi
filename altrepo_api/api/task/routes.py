@@ -29,6 +29,7 @@ from .endpoints.misconflict_packages import TaskMisconflictPackages
 from .endpoints.build_dependency_set import TaskBuildDependencySet
 from .endpoints.task_build_dependency import TaskBuildDependency
 from .endpoints.find_images import FindImages
+from .endpoints.task_packages import TaskPackages
 from .parsers import (
     task_info_args,
     task_repo_args,
@@ -48,6 +49,7 @@ from .serializers import (
     task_find_pkgset_model,
     task_history_model,
     find_images_by_task_model,
+    task_packages_model
 )
 
 ns = get_namespace()
@@ -240,6 +242,28 @@ class routeFindImages(Resource):
         url_logging(logger, g.url)
         args = {}
         w = FindImages(g.connection, id, **args)
+        if not w.check_task_id():
+            ns.abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/packages/<int:id>",
+    doc={
+        "params": {"id": "task ID"},
+        "description": (
+            "Get information about packages from task "
+        ),
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeTaskPackages(Resource):
+    # @ns.expect()
+    @ns.marshal_with(task_packages_model)
+    def get(self, id):
+        url_logging(logger, g.url)
+        args = {}
+        w = TaskPackages(g.connection, id, **args)
         if not w.check_task_id():
             ns.abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
         return run_worker(worker=w, args=args)
