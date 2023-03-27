@@ -103,10 +103,17 @@ class BackportHelper(APIWorker):
         self.validation_results = []
 
         if not backport_possible(self.args["from_branch"], self.args["into_branch"]):
-            self.validation_results.append("backport is not possible")
+            self.validation_results.append(
+                f'Branch {self.args["from_branch"]} not inherited from  {self.args["into_branch"]}'
+            )
 
-        if (set(self.args["archs"]) - set(lut.known_archs)):
-            self.validation_results.append("unknown architecture(-s)")
+        excessive_archs = set()
+        if self.args["archs"] is not None:
+            excessive_archs = set(self.args["archs"]) - set(lut.known_archs)
+        if excessive_archs:
+            self.validation_results.append(
+                f"unknown architecture(-s): {excessive_archs}"
+            )
 
         if self.validation_results != []:
             return False
@@ -114,19 +121,13 @@ class BackportHelper(APIWorker):
             return True
 
     def get(self):
-        def linked_arches(requirement: Dependency, providement: Dependency) -> bool:
-            return requirement.arch in ("src", "noarch") or requirement.arch in (
-                providement.arch,
-                "noarch",
-            )
-
         def find_unmet_dependencies(
             requirements: set[Dependency], providements: set[Dependency]
         ) -> set[Dependency]:
             resolved = set()
             for req in requirements:
                 for prov in providements:
-                    if linked_arches(req, prov):
+                    if req.arch in ("src", "noarch", prov.arch):
                         if check_dependency_overlap(
                             prov.dp_name,
                             prov.dp_version,
@@ -165,7 +166,7 @@ class BackportHelper(APIWorker):
             dependencies_names = dependencies_names.difference(memory)
 
             requires = self._get_dependencies(
-                from_branch, dependencies_names,  "require"
+                from_branch, dependencies_names, "require"
             )
             provides = self._get_dependencies(
                 into_branch, {d.dp_name for d in requires}, "provide"
@@ -190,38 +191,44 @@ class BackportHelper(APIWorker):
 
             depth += 1
 
-        # deduplication for O(n) + removing packages with 'src' arch
-        flattened = [
-            (depth, package)
-            for depth, level in backport_list
-            for package in level
-            if package.arch != "src"
-        ]
-        dedup = {v: k for k, v in flattened if k != 0}
-        dedup = [(v, k) for k, v in dedup.items()]
+        max_depth = 0
+        uniq_packages: dict[Package, int] = {}
 
-        count = len(dedup)
-        maxdepth = max([depth for depth, _ in dedup]) if dedup else 0
+        for depth, package in (
+            (lvl, pkg)
+            for lvl, pkgs in backport_list
+            for pkg in pkgs
+            if pkg.arch != "src"
+        ):
+            if depth > uniq_packages.get(package, 0):
+                uniq_packages[package] = depth
+            if depth > max_depth:
+                max_depth = depth
 
         # back to levels
-        backports = defaultdict(list)
-        for depth, package in dedup:
-            backports[depth].append(package._asdict())
+        dependencies = [
+            {
+                "depth": depth,
+                "packages": [
+                    package._asdict()
+                    for package in sorted(
+                        (
+                            p
+                            for p, _ in filter(
+                                lambda x: x[1] == depth, uniq_packages.items()
+                            )
+                        ),
+                        key=lambda p: (p.srpm, p.name),
+                    )
+                ],
+            }
+            for depth in range(max_depth, 0, -1)
+        ]
 
         res = {
             "request_args": self.args,
-            "count": count,
-            "maxdepth": maxdepth,
-            "dependencies": sorted(
-                [
-                    {
-                        "depth": depth+1,
-                        "packages": sorted(level, key=lambda p: p["srpm"]),
-                    }
-                    for depth, (_, level) in enumerate(backports.items())
-                ],
-                key=lambda e: e["depth"],
-                reverse=True,
-            ),
+            "count": len(dependencies),
+            "maxdepth": max_depth,
+            "dependencies": dependencies,
         }
         return res, 200
