@@ -141,3 +141,39 @@ package_build_deps_model = ns.model(
         ),
     },
 )
+
+backport_helper_el_model = ns.model(
+    "BackportHelperBinaryElementModel",
+    {
+        "srpm": fields.String(description="package srpm"),
+        "name": fields.String(description="package name"),
+        "epoch": fields.Integer(description="package epoch"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "arch": fields.String(description="packages arch"),
+    },
+)
+backport_helper_depth_el_model = ns.model(
+    "BackportHelperBinaryDepthElementModel",
+    {
+        "depth": fields.Integer(description="dependency depth"),
+        "packages": fields.Nested(
+            backport_helper_el_model,
+            description="packages dependencies list",
+            as_list=True
+        )
+    }
+)
+backport_helper_model = ns.model(
+    "BackportHelperModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "count": fields.Integer(description="number of packages found"),
+        "maxdepth": fields.Integer(description="maxium depth reached"),
+        "dependencies": fields.Nested(
+            backport_helper_depth_el_model,
+            description="packages dependencies list by depth",
+            as_list=True
+        ),
+    }
+)

@@ -163,5 +163,61 @@ WHERE dp_name = '{dp_name}'
 group by pkgset_name
 """
 
+    get_dependencies = """
+SELECT
+    pkg_sourcerpm,
+    pkg_name,
+    pkg_epoch,
+    pkg_version,
+    pkg_release,
+    if(pkg_sourcepackage, 'src', pkg_arch) AS pkg_arch,
+    dp_type,
+    dp_name,
+    dp_flag,
+    dp_version
+FROM Packages
+INNER JOIN
+(
+    SELECT DISTINCT
+        pkgset_name,
+        pkg_hash,
+        dp_type,
+        dp_name,
+        dp_flag,
+        dp_version
+    FROM static_last_packages
+    INNER JOIN
+    (
+        WITH hashes AS
+            (
+                SELECT pkg_hash
+                FROM Depends
+                WHERE (dp_name IN (SELECT name FROM {tmp_table}))
+                    AND (dp_type = 'provide')
+            )
+        SELECT DISTINCT
+            pkg_hash,
+            dp_type,
+            dp_name,
+            dp_flag,
+            dp_version
+        FROM Depends
+        WHERE (pkg_hash IN (
+            SELECT pkg_hash
+            FROM hashes
+            UNION ALL
+            SELECT pkg_srcrpm_hash
+            FROM Packages
+            WHERE pkg_hash IN (
+                SELECT pkg_hash
+                FROM hashes
+            )
+        )) AND dp_type = '{dptype}'
+    ) AS D USING (pkg_hash)
+) AS H USING (pkg_hash)
+WHERE (pkgset_name = '{branch}')
+    AND (pkg_arch IN {archs})
+"""
+
 
 sql = SQL()
