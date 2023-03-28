@@ -402,4 +402,3 @@ def arch_sort_index(arch: str) -> int:
         "e2kv6": -12,
         "x86_64-i586": -13,
     }.get(arch, -100)
-
