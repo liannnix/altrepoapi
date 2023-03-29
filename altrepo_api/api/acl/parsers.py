@@ -18,7 +18,7 @@ from altrepo_api.api.parser import (
     parser,
     branch_name_type,
     acl_group_type,
-    pkg_name_type,
+    pkg_name_list_type,
     maintainer_nick_type,
 )
 
@@ -47,7 +47,7 @@ acl_group_opt = parser.register_item(
 )
 packages_list = parser.register_item(
     "packages_names",
-    type=pkg_name_type,
+    type=pkg_name_list_type,
     action="split",
     required=True,
     help="source packages names",
