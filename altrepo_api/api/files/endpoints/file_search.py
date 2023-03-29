@@ -157,6 +157,6 @@ class FastFileSearchLookup(APIWorker):
                 {"message": "No data not found in database"},
             )
 
-        files = [{"file_name": el[0]} for el in response]
+        files = sorted([{"file_name": el[0]} for el in response], key=lambda k: len(k["file_name"]))
         res = {"request_args": self.args, "length": len(files), "files": files}
         return res, 200
