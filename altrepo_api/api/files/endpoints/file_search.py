@@ -100,7 +100,7 @@ class FileSearch(APIWorker):
             ],
         )
 
-        res = [FileSearchMeta(*el)._asdict() for el in response]
+        res = sorted([FileSearchMeta(*el)._asdict() for el in response], key=lambda k: len(k["file_name"]))
 
         for elem in res:
             elem["file_mode"] = full_file_permissions(
