@@ -461,30 +461,50 @@ find_images_by_task_model = ns.model(
     },
 )
 
-task_packages_el_model = ns.model(
-    "TaskPackagesElementModel",
+task_packages_package_el_model = ns.model(
+    "TaskPackagesPackageElementModel",
     {
-        "sourcepkgname": fields.String(description="source package name"),
-        "packages": fields.List(fields.String, description="binary packages list"),
+        "name": fields.String(description="package name"),
+        "epoch": fields.Integer(description="package epoch"),
         "version": fields.String(description="package version"),
         "release": fields.String(description="package release"),
         "disttag": fields.String(description="package disttag"),
-        "packager_email": fields.String(description="package packager email"),
-        "buildtime": fields.String(description="package build time"),
-        "archs": fields.List(fields.String, description="binary packages archs"),
+        "buildtime": fields.DateTime(description="package build time"),
+        "arch": fields.String(description="package architecture"),
     },
 )
-
+task_packages_subtask_el_model = ns.model(
+    "TaskPackagesSubtaskElementModel",
+    {
+        "subtask": fields.Integer(description="subtask id"),
+        "source": fields.Nested(
+            task_packages_package_el_model, description="source package"
+        ),
+        "binaries": fields.Nested(
+            task_packages_package_el_model, description="binary packages", as_list=True
+        ),
+    },
+)
 task_packages_model = ns.model(
     "TaskPackagesModel",
     {
         "id": fields.Integer(description="task id"),
-        "task_packages": fields.List(fields.String, description="request arguments"),
-        "length": fields.Integer(description="number of packages found"),
-        "packages": fields.Nested(
-            task_packages_el_model,
-            description="package set packages information",
+        "repo": fields.String(description="task repo"),
+        "owner": fields.String(description="task owner"),
+        "state": fields.String(description="task state"),
+        "testonly": fields.Integer(description="task is test-only"),
+        "try": fields.Integer(description="task last try"),
+        "iter": fields.Integer(description="task last iteration"),
+        "message": fields.String(description="task message"),
+        "dependencies": fields.List(fields.Integer(description="task dependencies")),
+        "length": fields.Integer(description="number of subtasks found"),
+        "subtasks": fields.Nested(
+            task_packages_subtask_el_model,
+            description="subtask packages",
             as_list=True,
+        ),
+        "arepo": fields.Nested(
+            task_packages_package_el_model, description="arepo packages", as_list=True
         ),
     },
 )

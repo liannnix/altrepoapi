@@ -14,13 +14,10 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from datetime import datetime
 from collections import defaultdict
 from typing import NamedTuple
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.utils import mmhash
-from altrepo_api.api.misc import lut
 from ..sql import sql
 
 
@@ -45,18 +42,16 @@ class TaskPackages(APIWorker):
 
     def get(self):
         class Package(NamedTuple):
-            srpm: str
-            source: int
-            pkg_name: str
-            pkg_version: str
-            pkg_release: str
-            pkg_disttag: str
-            pkg_buildtime: str
-            pkg_arch: str
-            pkg_packager_email: str
+            name: str
+            epoch: int
+            version: str
+            release: str
+            disttag: str
+            buildtime: str
+            arch: str
 
         response = self.send_sql_request(
-            self.sql.get_task_last_try_iter.format(task_id=self.task_id)
+            self.sql.get_last_task_info.format(task_id=self.task_id)
         )
         if not self.sql_status:
             return self.error
@@ -64,67 +59,103 @@ class TaskPackages(APIWorker):
             return self.store_error(
                 {"Error": f"No data found in database for task '{self.task_id}'"}
             )
-
-        last_try = response[0][0]
-        last_iter = response[0][1]
-
-        archs = lut.default_archs + ["x86_64-i586", "src"]
-
-        tplans_hashes = [
-            mmhash(f"{self.task_id}{last_try}{last_iter}{arch}") for arch in archs
-        ]
-
-        response = self.send_sql_request(
-            self.sql.get_task_packages.format(tplan_hshs=tplans_hashes)
-        )
-        if not self.sql_status:
-            return self.error
-        if not response:
-            return self.store_error(
-                {"Error": f"No data found in database for task '{self.task_id}'"}
-            )
-        packages = [Package(*r) for r in response if r[-2] != "x86_64-i586"]
-        arepo_packages = [Package(*r) for r in response if r[-2] == "x86_64-i586"]
 
         result = defaultdict(list)
         result["id"] = self.task_id
-        result["task_packages"] = [
-            package.pkg_name for package in packages if package.source
-        ]
-        result["length"] = len(result["task_packages"])
 
-        grouped = defaultdict(list)
-        for package in packages:
-            grouped[package.srpm].append(package)
+        for index, field in enumerate(
+            [
+                "state",
+                "dependencies",
+                "testonly",
+                "message",
+                "changed",
+                "try",
+                "iter",
+                "repo",
+                "owner",
+            ],
+            1,
+        ):
+            result[field] = response[0][index]
 
-            arepo = next(
-                (
-                    arepo
-                    for arepo in arepo_packages
-                    if f"i586-{package.pkg_name}" == arepo.pkg_name
-                ),
-                None,
+        response = self.send_sql_request(
+            self.sql.get_task_subtasks_packages_hashes.format(
+                task_id=self.task_id, task_try=result["try"], task_iter=result["iter"]
             )
-            if arepo:
-                grouped[package.srpm].append(arepo)
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error(
+                {"Error": f"No data found in database for task '{self.task_id}'"}
+            )
 
-        for packages in grouped.values():
-            srcpkg = [p for p in packages if p.source][0]
-            disttag = [p.pkg_disttag for p in packages if not p.source][0]
-            binaries_names = {p.pkg_name for p in packages if not p.source}
-            archs = {p.pkg_arch for p in packages if not p.source}
+        subtasks = {
+            source: (subtask, binaries) for subtask, source, binaries in response
+        }
 
-            result["packages"].append(
+        response = self.send_sql_request(
+            self.sql.get_task_arepo_packages_hashes.format(
+                task_id=self.task_id, task_try=result["try"], task_iter=result["iter"]
+            )
+        )
+        if not self.sql_status:
+            return self.error
+
+        arepos = [p[0] for p in response]
+
+        hashes = arepos.copy()
+        for source, (_, binaries) in subtasks.items():
+            hashes.append(source)
+            hashes.extend(binaries)
+
+        _tmp_table = "tmp_pkgs_hashes"
+        response = self.send_sql_request(
+            self.sql.get_packages_by_hashes.format(tmp_table=_tmp_table),
+            external_tables=[
                 {
-                    "sourcepkgname": srcpkg.pkg_name,
-                    "packages": binaries_names,
-                    "version": srcpkg.pkg_version,
-                    "release": srcpkg.pkg_release,
-                    "disttag": disttag,
-                    "packager_email": srcpkg.pkg_packager_email,
-                    "buildtime": datetime.fromtimestamp(srcpkg.pkg_buildtime),
-                    "archs": archs,
+                    "name": _tmp_table,
+                    "structure": [
+                        ("pkg_hash", "UInt64"),
+                    ],
+                    "data": [{"pkg_hash": int(hash)} for hash in hashes],
+                },
+            ],
+        )
+        if not self.sql_status:
+            return self.error
+
+        packages_map = {r[0]: Package(*r[1:]) for r in response}
+
+        packages = {
+            (subtask, packages_map[srchash]): [
+                packages_map[binhash]
+                for binhash in binhashes
+                if binhash in packages_map
+            ]
+            for srchash, (subtask, binhashes) in subtasks.items()
+        }
+
+        result["arepo"] = sorted(
+            [packages_map[arepo]._asdict() for arepo in arepos],
+            key=lambda el: el["name"],
+        )
+
+        result["subtasks"] = sorted(
+            [
+                {
+                    "subtask": subtask,
+                    "source": source._asdict() | {"disttag": binaries[0].disttag},
+                    "binaries": sorted(
+                        [binary._asdict() for binary in binaries],
+                        key=lambda el: (el["name"], el["arch"]),
+                    ),
                 }
-            )
+                for (subtask, source), binaries in packages.items()
+            ],
+            key=lambda el: el["subtask"],
+        )
+        result["length"] = len(result["subtasks"])
 
         return result, 200
