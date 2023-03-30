@@ -76,8 +76,7 @@ class FileSearch(APIWorker):
                     "name": _tmp_table,
                     "structure": [
                         ("fn_name", "String"),
-                        ("lead", "UInt64"),
-                        ("fn_hash", "UInt64"),
+                        ("pkg_hash", "UInt64"),
                     ],
                     "data": find_files,
                 }

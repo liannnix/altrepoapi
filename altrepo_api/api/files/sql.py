@@ -21,18 +21,24 @@ from dataclasses import dataclass
 class SQL:
 
     find_files = """
-SELECT 
-    splitByChar('|', search_string)[2] as fn_name, 
-    lead,
-    murmurHash3_64(fn_name) as fn_hash
+SELECT
+    fn_name, any(lead) AS pkg_hash
 FROM (
-    SELECT argMax(lead, ts) as lead,
-           search_string
-    FROM FileSearch
-    WHERE search_string ILIKE '{branch}|%{input}%|%|binary|%'
-    GROUP BY search_string
-    {limit}
+    SELECT
+        splitByChar('|', search_string)[2] as fn_name,
+        lead
+    FROM (
+        SELECT
+            search_string,
+            argMax(lead, ts) as lead
+        FROM FileSearch
+        WHERE search_string ILIKE '{branch}|%{input}%|%|binary|%'
+        GROUP BY search_string
+    )
 )
+GROUP BY fn_name
+ORDER BY length(fn_name)
+{limit}
 """
 
     fast_find_files = """
@@ -51,10 +57,10 @@ SELECT DISTINCT
     file_mode
 FROM Files
 LEFT JOIN (
-    SELECT fn_name, fn_hash FROM {tmp_table}
+    SELECT fn_name, murmurHash3_64(fn_name) AS fn_hash FROM {tmp_table}
 ) AS TT ON TT.fn_hash = file_hashname
 WHERE (file_hashname, pkg_hash) IN (
-    SELECT fn_hash, lead FROM {tmp_table}
+    SELECT murmurHash3_64(fn_name), pkg_hash FROM {tmp_table}
 )
 """
 
@@ -77,7 +83,7 @@ WHERE pkgset_name = '{branch}'
     AND pkg_hash IN (SELECT * FROM {tmp_table})
     AND pkg_buildtime >= 0
     AND pkg_sourcepackage = 0
-ORDER BY pkg_name    
+ORDER BY pkg_name
 """
 
 
