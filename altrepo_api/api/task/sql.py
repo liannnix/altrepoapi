@@ -873,5 +873,55 @@ AND img_edition IN (select img_edition FROM editions_status WHERE edition_show =
 AND img_tag IN (select img_tag FROM tags_status WHERE tag_show = 'show')
 """
 
+    get_task_subtasks_packages_hashes = """
+SELECT
+    subtask_id,
+    titer_srcrpm_hash,
+    groupArray(titer_pkgs_hash)
+FROM TaskIterations
+ARRAY JOIN titer_pkgs_hash
+WHERE (task_id = {task_id})
+    AND (task_try = {task_try})
+    AND (task_iter = {task_iter})
+    AND (titer_pkgs_hash != 0)
+GROUP BY
+    subtask_id,
+    titer_srcrpm_hash
+"""
+
+    get_task_arepo_packages_hashes = """
+SELECT pkgh_mmh
+FROM PackageHash
+WHERE pkgh_sha256 IN
+(
+    SELECT tplan_sha256
+    FROM TaskPlanPkgHash
+    WHERE tplan_hash IN murmurHash3_64('{task_id}{task_try}{task_iter}x86_64-i586')
+        AND (tplan_action = 'add')
+)
+"""
+
+    get_packages_by_hashes = """
+SELECT
+    argMax(pkg_hash, pkg_buildtime),
+    pkg_name,
+    pkg_epoch,
+    pkg_version,
+    pkg_release,
+    pkg_disttag,
+    toDateTime(max(pkg_buildtime)),
+    IF(pkg_sourcepackage, '', pkg_arch)
+FROM Packages
+WHERE pkg_hash IN (SELECT pkg_hash FROM {tmp_table})
+GROUP BY
+    pkg_name,
+    pkg_epoch,
+    pkg_version,
+    pkg_release,
+    pkg_disttag,
+    pkg_sourcepackage,
+    pkg_arch
+"""
+
 
 sql = SQL()
