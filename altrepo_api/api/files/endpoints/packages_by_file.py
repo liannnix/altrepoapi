@@ -31,7 +31,7 @@ class PackagesByFile(APIWorker):
         super().__init__()
 
     def get(self):
-        file_name = self.args["file_name"]
+        file_name = self.args["file_name"].replace("_", r"\_")
         branch = self.args["branch"]
 
         pkg_hshs = self.send_sql_request(

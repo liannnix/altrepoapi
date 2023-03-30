@@ -45,7 +45,7 @@ class FileSearch(APIWorker):
         return True
 
     def get(self):
-        input_val = self.args["input"]
+        input_val = self.args["input"].replace("_", r"\_")
         branch = self.args["branch"]
         files_limit = self.args["files_limit"]
 
@@ -136,7 +136,7 @@ class FastFileSearchLookup(APIWorker):
         return True
 
     def get(self):
-        input_val = self.args["input"]
+        input_val = self.args["input"].replace("_", r"\_")
         branch = self.args["branch"]
         files_limit = self.args["files_limit"]
 
