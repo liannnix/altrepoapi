@@ -6,6 +6,21 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.9.5] - 2023-03-30
+
+Regular API code updates and fixes.
+
+### Added
+- `file` namespace and routes
+    **Note**: requires FileSearch table
+- `task/packages` route
+- `acl/maintainer_groups` route
+- `dependencies/backport_helper` route
+### Changed
+- API routes namespaces order in SwaggerUI
+### Fixed
+- `acl/by_packages` request arguments validation (closes #43540)
+
 ## [1.9.4] - 2023-03-14
 
 Regular API code updates and fixes.
