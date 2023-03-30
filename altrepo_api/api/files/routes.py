@@ -42,7 +42,7 @@ logger = get_logger(__name__)
 @ns.route(
     "/file_search",
     doc={
-        "description": "Find files by name or directory",
+        "description": "Find files by name including partial occurrence.",
         "responses": GET_RESPONSES_400_404,
     },
 )
@@ -59,7 +59,7 @@ class routeFileSearch(Resource):
 @ns.route(
     "/fast_file_search_lookup",
     doc={
-        "description": "Fast search files by name or directory.",
+        "description": "Fast search files by name including partial occurrence.",
         "responses": GET_RESPONSES_400_404,
     },
 )
@@ -76,7 +76,7 @@ class routeFastFileSearchLookup(Resource):
 @ns.route(
     "/packages_by_file",
     doc={
-        "description": "Get a list of packages to which the specified file belongs.",
+        "description": "Get a list of packages to which the specified file belongs to.",
         "responses": GET_RESPONSES_400_404,
     },
 )

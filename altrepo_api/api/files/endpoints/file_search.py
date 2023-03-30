@@ -13,6 +13,7 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 from collections import namedtuple
 
 from altrepo_api.api.base import APIWorker
@@ -100,7 +101,10 @@ class FileSearch(APIWorker):
             ],
         )
 
-        res = sorted([FileSearchMeta(*el)._asdict() for el in response], key=lambda k: len(k["file_name"]))
+        res = sorted(
+            (FileSearchMeta(*el)._asdict() for el in response),
+            key=lambda k: (len(k["file_name"]), k["file_name"])
+        )
 
         for elem in res:
             elem["file_mode"] = full_file_permissions(
@@ -157,6 +161,9 @@ class FastFileSearchLookup(APIWorker):
                 {"message": "No data not found in database"},
             )
 
-        files = sorted([{"file_name": el[0]} for el in response], key=lambda k: len(k["file_name"]))
+        files = [
+            {"file_name": f}
+            for f in sorted((el[0] for el in response), key=lambda k: (len(k), k))
+        ]
         res = {"request_args": self.args, "length": len(files), "files": files}
         return res, 200

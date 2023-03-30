@@ -92,7 +92,7 @@ __acl_group_match = re.compile(r"^@?[a-z0-9\_]+$")
 # task search
 __task_search_match = re.compile(r"^(@?[\w\.\+\-\_]{2,},?)+$")
 # file search
-__file_search_match = re.compile(r"^(@?[\w\.\+\-\_\/\{\}\$\#\%\:\=\@]{3,},?)+$")
+__file_search_match = re.compile(r"^[\w\/\.\+\- $#%:=@\{\}]{3,}$")
 
 
 # custom validators

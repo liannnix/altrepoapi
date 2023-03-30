@@ -62,7 +62,7 @@ fast_file_search_model = ns.model(
 )
 
 packages_by_el_model = ns.model(
-    "PackagesByFileElementModel",
+    "FilePackagesByFileElementModel",
     {
         "hash": fields.String(description="package hash UInt64 as string"),
         "name": fields.String(description="package name"),
@@ -72,7 +72,7 @@ packages_by_el_model = ns.model(
     },
 )
 packages_by_model = ns.model(
-    "PackagesByFileModel",
+    "FilePackagesByFileModel",
     {
         "request_args": fields.Raw(description="request arguments"),
         "length": fields.Integer(description="number of package found"),
