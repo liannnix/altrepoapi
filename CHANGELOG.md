@@ -6,6 +6,23 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.9.6] - 2023-03-31
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+**Breaking change**
+- change file related request namespace `files` -> `file`
+- route name `files/file_search` -> `file/search`
+- route name `files/fast_file_search_lookup` -> `file/fast_lookup`
+- `file/search` argument names
+- `file/fast_lookup` argument names
+### Fixed
+- `file` routes code errors
+- `file/search` route logic
+- `file/fast_lookup` route result relevance
+
 ## [1.9.5] - 2023-03-30
 
 Regular API code updates and fixes.
