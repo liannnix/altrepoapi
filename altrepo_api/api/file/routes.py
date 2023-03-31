@@ -23,16 +23,8 @@ from .endpoints.file_search import FileSearch, FastFileSearchLookup
 from .endpoints.packages_by_file import PackagesByFile
 
 from .namespace import get_namespace
-from .parsers import (
-    file_search_args,
-    fast_file_search_args,
-    packages_by_file_args
-)
-from .serializers import (
-    files_model,
-    fast_file_search_model,
-    packages_by_model
-)
+from .parsers import file_search_args, fast_lookup_args, packages_by_file_args
+from .serializers import files_model, fast_file_search_model, packages_by_model
 
 ns = get_namespace()
 
@@ -40,7 +32,7 @@ logger = get_logger(__name__)
 
 
 @ns.route(
-    "/file_search",
+    "/search",
     doc={
         "description": "Find files by name including partial occurrence.",
         "responses": GET_RESPONSES_400_404,
@@ -57,18 +49,18 @@ class routeFileSearch(Resource):
 
 
 @ns.route(
-    "/fast_file_search_lookup",
+    "/fast_lookup",
     doc={
         "description": "Fast search files by name including partial occurrence.",
         "responses": GET_RESPONSES_400_404,
     },
 )
-class routeFastFileSearchLookup(Resource):
-    @ns.expect(fast_file_search_args)
+class routeFastLookup(Resource):
+    @ns.expect(fast_lookup_args)
     @ns.marshal_with(fast_file_search_model)
     def get(self):
         url_logging(logger, g.url)
-        args = file_search_args.parse_args(strict=True)
+        args = fast_lookup_args.parse_args(strict=True)
         w = FastFileSearchLookup(g.connection, **args)
         return run_worker(worker=w, args=args)
 

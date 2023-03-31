@@ -23,32 +23,32 @@ BRANCH_NOT_IN_DB = "abc"
     [
         {
             "branch": BRANCH_IN_DB,
-            "input": FILE_IN_DB[0],
+            "file_name": FILE_IN_DB[0],
             "status_code": 200
         },
         {
             "branch": BRANCH_IN_DB,
-            "input": FILE_IN_DB[1],
+            "file_name": FILE_IN_DB[1],
             "status_code": 200
         },
         {
             "branch": BRANCH_IN_DB,
-            "input": FILE_IN_DB[2],
+            "file_name": FILE_IN_DB[2],
             "status_code": 200
         },
         {
             "branch": BRANCH_NOT_IN_DB,
-            "input": FILE_IN_DB[0],
+            "file_name": FILE_IN_DB[0],
             "status_code": 400
         },
         {
             "branch": BRANCH_IN_DB,
-            "input": INVALID_FILE_NAME,
+            "file_name": INVALID_FILE_NAME,
             "status_code": 400
         },
         {
             "branch": BRANCH_IN_DB,
-            "input": FILE_NOT_IN_DB,
+            "file_name": FILE_NOT_IN_DB,
             "status_code": 404
         },
     ],
@@ -60,7 +60,7 @@ def test_file_search(client, kwargs):
             continue
         if v is not None:
             params[k] = v
-    url = url_for("api.files_route_file_search")
+    url = url_for("api.file_route_file_search")
     response = client.get(url, query_string=params)
     data = response.json
     assert response.status_code == kwargs["status_code"]
@@ -75,44 +75,44 @@ def test_file_search(client, kwargs):
     [
         {
             "branch": BRANCH_IN_DB,
-            "input": FILE_IN_DB[0],
+            "file_name": FILE_IN_DB[0],
             "status_code": 200
         },
         {
             "branch": BRANCH_IN_DB,
-            "input": FILE_IN_DB[1],
+            "file_name": FILE_IN_DB[1],
             "status_code": 200
         },
         {
             "branch": BRANCH_IN_DB,
-            "input": FILE_IN_DB[2],
+            "file_name": FILE_IN_DB[2],
             "status_code": 200
         },
         {
             "branch": BRANCH_NOT_IN_DB,
-            "input": FILE_IN_DB[0],
+            "file_name": FILE_IN_DB[0],
             "status_code": 400
         },
         {
             "branch": BRANCH_IN_DB,
-            "input": INVALID_FILE_NAME,
+            "file_name": INVALID_FILE_NAME,
             "status_code": 400
         },
         {
             "branch": BRANCH_IN_DB,
-            "input": FILE_NOT_IN_DB,
+            "file_name": FILE_NOT_IN_DB,
             "status_code": 404
         },
     ],
 )
-def test_fast_file_search(client, kwargs):
+def test_fast_lookup(client, kwargs):
     params = {}
     for k, v in kwargs.items():
         if k in ("status_code",):
             continue
         if v is not None:
             params[k] = v
-    url = url_for("api.files_route_fast_file_search_lookup")
+    url = url_for("api.file_route_fast_lookup")
     response = client.get(url, query_string=params)
     data = response.json
     assert response.status_code == kwargs["status_code"]
@@ -170,7 +170,7 @@ def test_packages_by_file(client, kwargs):
         if v is not None:
             params[k] = v
 
-    url = url_for("api.files_route_packages_by_file")
+    url = url_for("api.file_route_packages_by_file")
     response = client.get(url, query_string=params)
     data = response.json
     assert response.status_code == kwargs["status_code"]

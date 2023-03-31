@@ -16,7 +16,7 @@
 
 from flask_restx import Namespace
 
-namespace = Namespace("files", description="file information API")
+namespace = Namespace("file", description="file information API")
 
 
 def get_namespace():

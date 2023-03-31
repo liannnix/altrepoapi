@@ -36,19 +36,17 @@ class FileSearch(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["files_limit"] and self.args["files_limit"] < 1:
-            self.validation_results.append(
-                "files_limit should be greater or equal to 1"
-            )
+        if self.args["limit"] and self.args["limit"] < 1:
+            self.validation_results.append("limit should be greater or equal to 1")
 
         if self.validation_results != []:
             return False
         return True
 
     def get(self):
-        input_val = self.args["input"].replace("_", r"\_")
+        input_val = self.args["file_name"].replace("_", r"\_")
         branch = self.args["branch"]
-        files_limit = self.args["files_limit"]
+        files_limit = self.args["limit"]
 
         if files_limit:
             limit_clause = f"LIMIT {files_limit}"
@@ -102,7 +100,7 @@ class FileSearch(APIWorker):
 
         res = sorted(
             (FileSearchMeta(*el)._asdict() for el in response),
-            key=lambda k: (len(k["file_name"]), k["file_name"])
+            key=lambda k: (len(k["file_name"]), k["file_name"]),
         )
 
         for elem in res:
@@ -129,22 +127,22 @@ class FastFileSearchLookup(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["files_limit"] and self.args["files_limit"] < 1:
-            self.validation_results.append(
-                "files_limit should be greater or equal to 1"
-            )
+        if self.args["limit"] and self.args["limit"] < 1:
+            self.validation_results.append("limit should be greater or equal to 1")
 
         if self.validation_results != []:
             return False
         return True
 
     def get(self):
-        input_val = self.args["input"].replace("_", r"\_")
+        input_val = self.args["file_name"].replace("_", r"\_")
         branch = self.args["branch"]
-        files_limit = self.args["files_limit"]
+        files_limit = self.args["limit"]
 
         if files_limit:
-            limit_clause = f"LIMIT {files_limit}"
+            # FIXME: extend limit here to get more relevant results due to
+            # sorting implemented on API side to decrease SQL request time
+            limit_clause = f"LIMIT {files_limit * 4}"
         else:
             limit_clause = ""
 
@@ -164,5 +162,8 @@ class FastFileSearchLookup(APIWorker):
             {"file_name": f}
             for f in sorted((el[0] for el in response), key=lambda k: (len(k), k))
         ]
+        # XXX: apply actual limit value to results here
+        if files_limit:
+            files = files[:files_limit]
         res = {"request_args": self.args, "length": len(files), "files": files}
         return res, 200
