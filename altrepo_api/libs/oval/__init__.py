@@ -13,3 +13,12 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""OVAL language implementation
+
+This module provides partial OVAL language version 5.11 classes hierarchy
+implementation used to build OVAL definitions XML files for closed bugs and
+vulnerabilities of packages of ALT Linux distributions.
+"""
+
+from .altlinux_errata import ALTLinuxAdvisory, Bugzilla, CVE, Severity

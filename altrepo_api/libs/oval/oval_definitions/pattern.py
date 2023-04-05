@@ -13,3 +13,19 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import re
+
+
+reDefinitionIDPattern = re.compile(r"oval:[A-Za-z0-9_\-\.]+:def:[1-9][0-9]*")
+reObjectIDPattern = re.compile(r"oval:[A-Za-z0-9_\-\.]+:obj:[1-9][0-9]*")
+reStateIDPattern = re.compile(r"oval:[A-Za-z0-9_\-\.]+:ste:[1-9][0-9]*")
+reTestIDPattern = re.compile(r"oval:[A-Za-z0-9_\-\.]+:tst:[1-9][0-9]*")
+reVariableIDPattern = re.compile(r"oval:[A-Za-z0-9_\-\.]+:var:[1-9][0-9]*")
+
+DefinitionIDPattern = str
+VariableIDPattern = str
+ObjectIDPattern = str
+StateIDPattern = str
+TestIDPattern = str
+ItemIDPattren = int  # unsigned int!
