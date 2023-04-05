@@ -56,6 +56,12 @@ class LookupTables:
         "p9_e2k",
         "p10_e2k",
     ]
+    oval_export_branches = [
+        "p9",
+        "p10",
+        "c9f2",
+        "sisyphus",
+    ]
     no_downloads_branches = ["sisyphus_e2k", "p9_e2k", "p10_e2k"]
     repology_export_branches = ["sisyphus", "p9", "p10"]
     known_archs = [
