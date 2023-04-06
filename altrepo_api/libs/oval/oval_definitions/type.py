@@ -693,7 +693,7 @@ class OvalDefinitions:
     generator: GeneratorType
     definitions: Optional[DefinitionsType] = None
     tests: Optional[TestsType] = None
-    objects: Optional[TestsType] = None
+    objects: Optional[ObjectsType] = None
     states: Optional[StatesType] = None
     variables: Optional[VariablesType] = None
     signature: Optional[Signature] = None
@@ -709,6 +709,8 @@ class OvalDefinitions:
             r.append(self.tests.to_xml())
         if self.objects is not None:
             r.append(self.objects.to_xml())
+        if self.states is not None:
+            r.append(self.states.to_xml())
         if self.variables is not None:
             r.append(self.variables.to_xml())
         if self.signature is not None:

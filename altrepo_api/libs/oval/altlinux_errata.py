@@ -21,12 +21,15 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
+from altrepo_api.api.misc import lut
+
 from .oval_definitions.utils import make_sub_element
 
 
 ALT_LINUX_COPYRIGHT = f"Copyright {datetime.now().year} BaseALT Ltd."
-BUGZILLA_BASE_URL = "https://bugzilla.altlinux.org"
 ALT_LINUX_ADVISORY_FROM = "errata.altlinux.org"
+# BUGZILLA_BASE_URL = "https://bugzilla.altlinux.org"
+BUGZILLA_BASE_URL = lut.bugzilla_base
 
 
 class Severity(Enum):
