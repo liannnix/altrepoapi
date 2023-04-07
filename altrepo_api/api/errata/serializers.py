@@ -20,11 +20,10 @@ from .namespace import get_namespace
 
 ns = get_namespace()
 
-oval_export_model = ns.model(
-    "OvalExportModel",
+oval_branches_model = ns.model(
+    "OvalBranchesModel",
     {
-        "request_args": fields.Raw(description="request arguments"),
-        "length": fields.Integer(description="number of bugs found"),
-        "definitions": fields.Raw(description="OVAL definitions"),
+        "length": fields.Integer(description="number of branches"),
+        "branches": fields.List(fields.String, description="OVAL export available branches"),
     },
 )

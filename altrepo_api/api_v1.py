@@ -71,6 +71,7 @@ api.add_namespace(dependencies_ns)
 api.add_namespace(file_ns)
 api.add_namespace(image_ns)
 api.add_namespace(export_ns)
+api.add_namespace(errata_ns)
 api.add_namespace(license_ns)
 api.add_namespace(site_task_ns)
 api.add_namespace(site_image_ns)
@@ -78,7 +79,6 @@ api.add_namespace(site_package_ns)
 api.add_namespace(site_pkgset_info)
 api.add_namespace(site_maintainer_ns)
 api.add_namespace(site_packageset_ns)
-api.add_namespace(errata_ns)
 
 version_fields = api.model(
     "APIVersion",

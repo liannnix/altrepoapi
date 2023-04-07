@@ -19,27 +19,76 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class SQL:
-    get_pkg_name_by_srcpkg = """
-SELECT DISTINCT pkg_name
+    get_bin_pkgs_by_src_hshs = """
+SELECT DISTINCT
+    pkg_hash,
+    pkg_name,
+    pkg_epoch,
+    pkg_version,
+    pkg_release,
+    pkg_srcrpm_hash
 FROM Packages
 WHERE pkg_srcrpm_hash IN
 (
     SELECT pkg_hash FROM {tmp_table}
 )
     AND pkg_sourcepackage = 0
-    AND pkg_name NOT LIKE '%%-devel'
+    -- AND pkg_name NOT LIKE '%%-devel'
     AND pkg_name NOT LIKE '%%-debuginfo'
 """
 
     get_bugzilla_summary_by_ids = """
 SELECT
     bz_id,
-    argMax(bz_summary, ts),
+    argMax(bz_summary, ts)
 FROM Bugzilla
 WHERE bz_id IN (
     SELECT bz_id FROM {tmp_table}
 )
 GROUP BY bz_id
+"""
+
+    get_errata_history_by_branch_tasks = """
+WITH
+done_subtasks AS (
+    SELECT DISTINCT
+        task_id,
+        subtask_id
+    FROM Tasks
+    WHERE task_repo = '{branch}'
+        AND task_id IN (
+            SELECT task_id FROM TaskStates WHERE task_state = 'DONE'
+        )
+        AND subtask_deleted = 0
+)
+SELECT DISTINCT *
+FROM ErrataHistory
+WHERE eh_type = 'task'
+    AND (task_id, subtask_id) IN done_subtasks
+    AND task_state = 'DONE'
+    {pkg_name_clause}
+ORDER BY task_changed
+"""
+
+    get_vulns_info_by_ids = """
+SELECT
+    vuln_id,
+    vuln_summary,
+    vuln_score,
+    vuln_severity,
+    vuln_url,
+    vuln_modified_date,
+    vuln_published_date,
+    vuln_json
+FROM Vulnerabilities
+WHERE (vuln_id, vuln_hash) IN (
+    SELECT
+        vuln_id,
+        argMax(vuln_hash, ts)
+    FROM Vulnerabilities
+    WHERE vuln_id IN (SELECT vuln_id FROM {tmp_table})
+    GROUP BY vuln_id
+)
 """
 
 

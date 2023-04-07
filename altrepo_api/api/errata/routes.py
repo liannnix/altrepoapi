@@ -15,19 +15,41 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from flask import g
-from flask_restx import Resource
+from flask_restx import Resource, abort
 
-from altrepo_api.utils import get_logger, url_logging
-from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
+from altrepo_api.utils import (
+    get_logger,
+    url_logging,
+    send_file_compat,
+    response_error_parser,
+)
+from altrepo_api.api.base import run_worker, GET_RESPONSES_404, GET_RESPONSES_400_404
 
 from .namespace import get_namespace
 from .parsers import oval_export_args
-from .serializers import oval_export_model
-from .endpoints.oval import OvalExport
+from .serializers import oval_branches_model
+from .endpoints.oval import OvalExport, OvalBranches
 
 ns = get_namespace()
 
 logger = get_logger(__name__)
+
+
+@ns.route(
+    "/export/oval/branches",
+    doc={
+        "description": "Get branches with OVAL definitions export available",
+        "responses": GET_RESPONSES_404,
+    },
+)
+class routePackageSetBinaries(Resource):
+    # @ns.expect(xxx_args)
+    @ns.marshal_with(oval_branches_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = {}
+        w = OvalBranches(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
@@ -39,9 +61,27 @@ logger = get_logger(__name__)
 )
 class routeOvalExport(Resource):
     @ns.expect(oval_export_args)
-    @ns.marshal_list_with(oval_export_model)
+    @ns.produces(["application/zip"])
     def get(self, branch):
         url_logging(logger, g.url)
         args = oval_export_args.parse_args(strict=True)
         w = OvalExport(g.connection, branch, **args)
-        return run_worker(worker=w, args=args)
+        if not w.check_params():
+            abort(
+                400,
+                message="Request parameters validation error",
+                args=args,
+                validation_message=w.validation_results,
+            )
+        result, code = w.get()
+        if code != 200:
+            abort(code, **response_error_parser(result))
+        file = result["file"]
+        file_name = result["file_name"]
+        file.seek(0)
+        return send_file_compat(
+            file=file,
+            as_attachment=True,
+            mimetype="application/zip",
+            attachment_filename=file_name,
+        )
