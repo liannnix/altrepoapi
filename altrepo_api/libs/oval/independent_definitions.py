@@ -136,9 +136,9 @@ class Textfilecontent54Object(ObjectType):
         *,
         id: str,
         version: int,
-        filepath: EntityObjectStringType,
-        path: EntityObjectStringType,
-        filename: EntityObjectStringType,
+        filepath: Union[EntityObjectStringType, None],
+        path: Union[EntityObjectStringType, None],
+        filename: Union[EntityObjectStringType, None],
         pattern: EntityObjectStringType,
         instance: EntityObjectIntType,
         behaviors: Optional[Textfilecontent54Behaviors] = None,
@@ -148,9 +148,17 @@ class Textfilecontent54Object(ObjectType):
         notes: Optional[NotesType] = None,
         signature: Optional[Signature] = None,
     ):
-        self.filepath = filepath
-        self.path = path
-        self.filename = filename
+        if filepath is not None and (path is not None or filename is not None):
+            raise ValueError(
+                "Either `filepath` or `path` and `filename` should be specified"
+            )
+        if (path is not None and filename is None) or (
+            path is None and filename is not None
+        ):
+            raise ValueError("Both `path` and `filename` should be specified")
+        self.filepath = filepath  # type: ignore
+        self.path = path  # type: ignore
+        self.filename = filename  # type: ignore
         self.pattern = pattern
         self.instance = instance
         self.behaviors = behaviors
@@ -171,9 +179,12 @@ class Textfilecontent54Object(ObjectType):
         if self.behaviors is not None:
             r.append(self.behaviors.to_xml())
 
-        r.append(self.filepath.to_xml())
-        r.append(self.path.to_xml())
-        r.append(self.filename.to_xml())
+        if self.filepath is not None:
+            r.append(self.filepath.to_xml())
+        if self.path is not None:
+            r.append(self.path.to_xml())
+        if self.filename is not None:
+            r.append(self.filename.to_xml())
         r.append(self.pattern.to_xml())
         r.append(self.instance.to_xml())
 
