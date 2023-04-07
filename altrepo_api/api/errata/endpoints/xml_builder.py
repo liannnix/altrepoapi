@@ -1,0 +1,634 @@
+# ALTRepo API
+# Copyright (C) 2021-2023  BaseALT Ltd
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import json
+import logging
+import xml.etree.ElementTree as xml
+
+from dataclasses import dataclass
+from datetime import datetime
+from io import BytesIO
+from typing import Any, Iterable, Literal, NamedTuple, Union
+
+from altrepo_api.libs.oval.altlinux_errata import (
+    ALTLinuxAdvisory,
+    Bugzilla,
+    CVE,
+    Severity,
+)
+from altrepo_api.libs.oval.linux_definitions import (
+    RPMInfoObject,
+    RPMInfoState,
+    RPMInfoTest,
+    # RPMVerifyFileObject,
+    # RPMVerifyFileState,
+    # RPMVerifyFileTest,
+    # RPMVerifyPackageObject,
+    # RPMVerifyPackageState,
+    # RPMVerifyPackageTest,
+)
+from altrepo_api.libs.oval.oval_definitions.type import (
+    AffectedType,
+    CriteriaType,
+    CriterionType,
+    OvalDefinitions,
+    MetadataType,
+    GeneratorType,
+    DefinitionType,
+    DefinitionsType,
+    ObjectRefType,
+    ObjectsType,
+    ObjectType,
+    ReferenceType,
+    StateRefType,
+    StatesType,
+    StateType,
+    TestsType,
+    TestType,
+)
+from altrepo_api.libs.oval.oval_definitions.enumeration import (
+    CheckEnumeration,
+    ClassEnumeration,
+    FamilyEnumeration,
+    OperatorEnumeration,
+    OperationEnumeration,
+    # SimpleDatatypeEnumeration,
+)
+from altrepo_api.libs.oval.oval_definitions.entity import (
+    EntityObjectIntType,
+    EntityObjectStringType,
+    # EntityObjectAnySimpleType,
+    # EntityStateIntType,
+    # EntityStateStringType,
+    EntityStateAnySimpleType,
+    EntityStateEVRStringType,
+)
+from altrepo_api.libs.oval.independent_definitions import (
+    Textfilecontent54Object,
+    Textfilecontent54State,
+    Textfilecontent54Test,
+)
+
+
+GENERATOR_PRODUCT_NAME = "ALT Linux Errata System"
+ALT_LINUX_OVAL_ID_PREFIX = "org.altlinux.errata"
+XML_VERSION = 1
+ERRATA_BASE_URL = "https://errata.altlinux.org"
+NVD_CVE_BASE_URL = "https://nvd.nist.gov/vuln/detail"
+# FIXME: clarify actual product names for each branch
+PRODUCTS = {
+    "p9": [
+        "ALT Server",
+        "ALT Virtualization Server",
+        "ALT Workstation",
+        "ALT Workstation K",
+        "ALT Education",
+        "Simply Linux",
+        "Starterkit",
+    ],
+    "p10": [
+        "ALT Server",
+        "ALT Virtualization Server",
+        "ALT Workstation",
+        "ALT Workstation K",
+        "ALT Education",
+        "Simply Linux",
+        "Starterkit",
+    ],
+    "c9f2": ["ALT SPWorkstation", "ALT SPServer"],
+}
+PRODUCT_CPE = {
+    "p9": [
+        "cpe:/o:alt:kworkstation:9",
+        "cpe:/o:alt:workstation:9",
+        "cpe:/o:alt:server:9",
+        "cpe:/o:alt:server-v:9",
+        "cpe:/o:alt:education:9",
+        "cpe:/o:alt:slinux:9",
+        "cpe:/o:alt:starterkit:9",  # FIXME: now version in CPE set as `p9`
+    ],
+    "p10": [
+        "cpe:/o:alt:kworkstation:10",
+        "cpe:/o:alt:workstation:10",
+        "cpe:/o:alt:server:10",
+        "cpe:/o:alt:server-v:10",
+        "cpe:/o:alt:education:10",
+        "cpe:/o:alt:slinux:10",
+        "cpe:/o:alt:starterkit:10",  # FIXME: now version in CPE set as `p10`
+    ],
+    "c9f2": ["cpe:/o:alt:spworkstation:8.4", "cpe:/o:alt:spserver:8.4"],
+}
+BRANCH_CHECK_REGEX = {
+    "p9": (r"cpe:\/o:alt:[a-z\-]+:p?(\d+)(?:\.\d)*", "9"),
+    "p10": (r"cpe:\/o:alt:[a-z\-]+:p?(\d+)(?:\.\d)*", "10"),
+    "c9f2": (r"cpe:\/o:alt:sp(?:server|workstation):p?(\d\.\d)*", "8.4"),
+}
+NUM_TO_SEVERITY = {0: "NONE", 1: "LOW", 2: "MEDUM", 3: "HIGH", 4: "CRITICAL"}
+SEVERITY_TO_NUM = {v: k for k, v in NUM_TO_SEVERITY.items()}
+
+logger = logging.getLogger(__name__)
+
+
+class ErrataHistoryRecord(NamedTuple):
+    eh_hash: int
+    eh_type: Literal["task", "branch", "bulletin"]
+    eh_source: Literal["branch", "changelog"]
+    eh_references_type: list[str]
+    eh_references_link: list[str]
+    errata_id: str
+    pkg_hash: int
+    pkg_name: str
+    pkg_version: str
+    pkg_release: str
+    pkgset_name: str
+    pkgset_date: datetime
+    task_id: int
+    subtask_id: int
+    task_state: str
+    task_changed: datetime
+
+
+class PackageInfo(NamedTuple):
+    hash: int
+    name: str
+    epoch: int
+    version: str
+    release: str
+    srcrpm_hash: int
+
+
+class BinaryPackage(NamedTuple):
+    name: str
+    epoch: int
+    version: str
+    release: str
+
+
+class BugzillaInfo(NamedTuple):
+    id: int = 0
+    summary: str = ""
+
+
+class VulnerabilityInfo(NamedTuple):
+    id: str = ""
+    summary: str = ""
+    score: float = 0.0
+    severity: str = ""
+    url: str = ""
+    modified: datetime = datetime.now()
+    published: datetime = datetime.now()
+    json: str = ""
+
+
+@dataclass
+class SeqIndex:
+    objects: int
+    states: int
+    tests: int
+
+
+@dataclass
+class CriteriaStruct:
+    errata: ErrataHistoryRecord
+    indexes: SeqIndex
+    criteria: CriteriaType
+    objects: list[ObjectType]
+    states: list[StateType]
+    tests: list[TestType]
+
+
+def make_xml_file_name(errata_id: str) -> str:
+    parts = errata_id.split("-")
+    return f"{parts[0]}{parts[1]}-{parts[2]}{parts[3]}.xml"
+
+
+def num_to_severity_enum(num: int) -> Severity:
+    if num <= 0 or num > 4:
+        return Severity.NONE
+    if num == 1:
+        return Severity.LOW
+    elif num == 2:
+        return Severity.MEDIUM
+    elif num == 3:
+        return Severity.HIGH
+    else:
+        return Severity.CRITICAL
+
+
+def serial_from_errata_id(errata_id: str) -> str:
+    return "".join(errata_id.split("-")[2:-1])
+
+
+def vuln_id_to_sort_key(vuln: str) -> Union[tuple[int, int], str]:
+    try:
+        if vuln.startswith("BDU:"):
+            s = vuln.lstrip("BDU:").split(":")[0]
+            return (int(s.split("-")[1]), int(s.split("-")[2]))
+        elif vuln.startswith("CVE-"):
+            s = vuln.lstrip("CVE-").split(":")[0]
+            return (int(s.split("-")[1]), int(s.split("-")[2]))
+        else:
+            return vuln
+    except (TypeError, ValueError, IndexError):
+        logger.debug(f"Failed to parse `{vuln}` for sort key tuple")
+        return vuln
+
+
+def oval_id(type: Literal["def", "obj", "tst", "ste"], serial: str, index: int = 0):
+    oval_id = f"oval:{ALT_LINUX_OVAL_ID_PREFIX}:{type}:{serial}"
+    if index:
+        oval_id += "{:03d}".format(index)
+    return oval_id
+
+
+def build_test_altlinux_distr_installed(
+    branch: str, serial: str, seq: int
+) -> tuple[TestType, ObjectType, StateType]:
+    cpe_version_pattern, version_value = BRANCH_CHECK_REGEX[branch]
+
+    object = Textfilecontent54Object(
+        id=oval_id("obj", serial, seq),
+        version=XML_VERSION,
+        filepath=None,
+        path=EntityObjectStringType("path", value="/etc"),
+        filename=EntityObjectStringType("filepath", value="os-release"),
+        pattern=EntityObjectStringType("pattern", value=cpe_version_pattern),
+        instance=EntityObjectIntType("instance", value="1"),
+        comment="Evaluate `/etc/os-release` file content",
+    )
+    object.pattern.attributes.operation = OperationEnumeration.pattern_match
+
+    state = Textfilecontent54State(
+        id=oval_id("ste", serial, seq),
+        version=XML_VERSION,
+        comment="verify distribution branch",
+        subexpression=EntityStateAnySimpleType(
+            "subexpression", value=version_value, datatype=None, entity_check=None
+        ),
+    )
+    state.subexpression.attributes.operation = OperationEnumeration.equals  # type: ignore
+
+    test = Textfilecontent54Test(
+        id=oval_id("tst", serial, seq),
+        version=XML_VERSION,
+        check=CheckEnumeration.all,
+        comment=f"ALT Linux based on branch '{branch}' must be installed",
+        object=ObjectRefType(object.id),
+        states=[
+            StateRefType(state.id),
+        ],
+    )
+
+    return (test, object, state)
+
+
+def collect_uniq_binaries(packages: list[PackageInfo]) -> list[BinaryPackage]:
+    uniq = set()
+
+    for pkg in packages:
+        bin_pkg = BinaryPackage(
+            name=pkg.name,
+            epoch=pkg.epoch,
+            version=pkg.version,
+            release=pkg.release,
+        )
+        uniq.add(bin_pkg)
+
+    return sorted(uniq, key=lambda x: x.name)
+
+
+class OVALBuilder:
+    def __init__(
+        self,
+        erratas: list[ErrataHistoryRecord],
+        binaries: dict[int, list[PackageInfo]],
+        bugz: dict[int, BugzillaInfo],
+        vulns: dict[str, VulnerabilityInfo],
+    ) -> None:
+        self.erratas = erratas
+        self.binaries = binaries
+        self.bugz = bugz
+        self.vulns = vulns
+
+    def _build_vendor(self, errata: ErrataHistoryRecord) -> ALTLinuxAdvisory:
+        bugs_list: list[tuple[int, BugzillaInfo]] = []
+        vulns_list: list[tuple[str, VulnerabilityInfo]] = []
+        max_priority = SEVERITY_TO_NUM["LOW"]
+        # collect bugs and vulnerabilities descriptions and references
+        for type_, link in zip(errata.eh_references_type, errata.eh_references_link):
+            if type_ == "bug":
+                bug = self.bugz.get(int(link))
+                if bug is not None:
+                    bugs_list.append((int(link), bug))
+            elif type_ == "vuln":
+                vuln = self.vulns.get(link)
+                if vuln is not None:
+                    vulns_list.append((link, vuln))
+                    vuln_priority = SEVERITY_TO_NUM.get(vuln.severity.upper(), 0)
+                    if vuln_priority > max_priority:
+                        max_priority = vuln_priority
+        # colect CVEs
+        cves: list[CVE] = []
+        for vuln_id, vuln in sorted(
+            vulns_list,
+            key=lambda x: vuln_id_to_sort_key(x[0]),
+        ):
+            cvss3 = ""
+            href = vuln.url
+            impact = num_to_severity_enum(
+                SEVERITY_TO_NUM.get(vuln.severity.upper(), SEVERITY_TO_NUM["LOW"])
+            )
+            cwe = ""
+            public = None
+
+            # parse CVE contents
+            cve_json: dict[str, Any] = {}
+            try:
+                cve_json = json.loads(vuln.json)
+            except Exception:
+                logger.debug(f"Failed to parse vulnerability JSON for {vuln_id}")
+                pass
+            else:
+                # get CWE
+                try:
+                    cwe = cve_json["cve"]["problemtype"]["problemtype_data"][0][
+                        "description"
+                    ][0]["value"]
+                except (IndexError, KeyError, TypeError):
+                    pass
+                # get CVSS3
+                try:
+                    cvss3 = cve_json["impact"]["baseMetricV3"]["cvssV3"]["vectorString"]
+                except (IndexError, KeyError, TypeError):
+                    pass
+                # get published date
+                try:
+                    public = datetime.fromisoformat(
+                        cve_json["publishedDate"].replace("Z", "+00:00")
+                    )
+                except (KeyError, ValueError, TypeError):
+                    pass
+
+            cves.append(
+                CVE(
+                    id=vuln_id,
+                    cvss3=cvss3,
+                    href=href,
+                    impact=impact,  # type: ignore
+                    cwe=cwe,
+                    public=public,
+                )
+            )
+        # colect bugs
+        bugs: list[Bugzilla] = []
+        for bug in sorted(bugs_list, key=lambda x: x[0]):
+            bugs.append(Bugzilla(id=bug[0], summary=bug[1].summary))
+        # collect affected CPEs
+        cpes = PRODUCT_CPE.get(errata.pkgset_name, [])
+        # set advisory dates
+        errata_created = errata.task_changed
+        errata_updated = errata.task_changed
+        # build vendor advisory
+        return ALTLinuxAdvisory(
+            severity=num_to_severity_enum(max_priority),  # type: ignore
+            issued=errata_created,
+            updated=errata_updated,
+            cve=cves,
+            bugzilla=bugs,
+            affected_cpe_list=cpes,
+        )
+
+    def _build_meta(self, errata: ErrataHistoryRecord) -> MetadataType:
+        fix_list = []
+        vulns_list = []
+        bugs_list = []
+        references: list[ReferenceType] = []
+        cve_references: list[ReferenceType] = []
+
+        references.append(
+            ReferenceType(
+                source="".join(errata.errata_id.split("-")[0:2]),
+                ref_id=errata.errata_id,
+                ref_url=f"{ERRATA_BASE_URL}/{errata.errata_id}",
+            )
+        )
+
+        # collect bugs and vulnerabilities descriptions and references
+        for type_, link in zip(errata.eh_references_type, errata.eh_references_link):
+            if type_ == "bug":
+                bug = self.bugz.get(int(link))
+                if bug is not None:
+                    bugs_list.append(f"#{link}: {bug.summary}")
+                else:
+                    logger.debug(f"Failed to get bug details for {link}")
+            elif type_ == "vuln":
+                vuln = self.vulns.get(link)
+                if vuln is not None:
+                    vulns_list.append(f"{link}: {vuln.summary}")
+                    if vuln.id.startswith("CVE-"):
+                        cve_references.append(
+                            ReferenceType(
+                                source="CVE", ref_id=vuln.id, ref_url=vuln.url
+                            )
+                        )
+                else:
+                    logger.debug(f"Failed to get vulnerability details for {link}")
+                    vulns_list.append(f"{link}: description unavailable")
+                    if link.startswith("CVE-"):
+                        cve_references.append(
+                            ReferenceType(
+                                source="CVE",
+                                ref_id=link,
+                                ref_url=f"{NVD_CVE_BASE_URL}/{link}",
+                            )
+                        )
+
+        references.extend(sorted(cve_references, key=lambda x: x.ref_id))
+
+        fix_list = "\n\n * ".join(
+            sorted(vulns_list, key=lambda x: vuln_id_to_sort_key(x)) + sorted(bugs_list)
+        )
+
+        description = (
+            f"This update upgrades {errata.pkg_name} to version {errata.pkg_version}-{errata.pkg_release}. "
+            f"\nSecurity Fix(es):\n\n * {fix_list}"
+        )
+
+        return MetadataType(
+            title=(
+                f"{errata.errata_id}: package `{errata.pkg_name}` update "
+                f"to version {errata.pkg_version}-{errata.pkg_release}"
+            ),
+            description=description,
+            references=references,
+            extension_point=self._build_vendor(errata),
+            affected=[
+                AffectedType(
+                    family=FamilyEnumeration.unix,
+                    platform=[
+                        f"ALT Linux branch {errata.pkgset_name}",
+                    ],
+                    product=[p for p in PRODUCTS.get(errata.pkgset_name, [])],
+                ),
+            ],
+        )
+
+    def _process_binaries(self, struct: CriteriaStruct):
+        serial = serial_from_errata_id(struct.errata.errata_id)
+
+        #  create new criteria child object
+        criteria = CriteriaType(operator=OperatorEnumeration.OR)
+        criteria.criterions = []
+
+        evr_state: dict[str, StateType] = {}
+
+        for binary in collect_uniq_binaries(self.binaries[struct.errata.pkg_hash]):
+            evr = f"{binary.epoch}:{binary.version}-{binary.release}"
+            comment_obj = f"{binary.name} is installed"
+            comment_ste = f"package EVR is earlier than {evr}"
+            comment_tst = f"{binary.name} is earlier than {evr}"
+
+            # build package object
+            object = RPMInfoObject(
+                id=oval_id("obj", serial, struct.indexes.objects),
+                version=XML_VERSION,
+                comment=comment_obj,
+                name=EntityObjectStringType("name", value=binary.name),
+            )
+            struct.indexes.objects += 1
+            struct.objects.append(object)
+
+            # build state object
+            if evr not in evr_state:
+                state = RPMInfoState(
+                    id=oval_id("ste", serial, struct.indexes.states),
+                    version=XML_VERSION,
+                    comment=comment_ste,
+                    evr=EntityStateEVRStringType("evr", value=evr, entity_check=None),
+                )
+                state.evr.attributes.operation = OperationEnumeration.less_than  # type: ignore
+                struct.indexes.states += 1
+                struct.states.append(state)
+                evr_state[evr] = state
+            else:
+                state = evr_state[evr]
+
+            # build test object
+            test = RPMInfoTest(
+                id=oval_id("tst", serial, struct.indexes.tests),
+                version=XML_VERSION,
+                comment=comment_tst,
+                check=CheckEnumeration.all,
+                object=ObjectRefType(object.id),
+                states=[StateRefType(state.id)],
+            )
+            struct.indexes.tests += 1
+            struct.tests.append(test)
+
+            # build criterion
+            criteria.criterions.append(
+                CriterionType(test_ref=test.id, comment=comment_tst)
+            )
+
+        #  add binaries tests criteria to root one
+        struct.criteria.criterias = [criteria]
+
+    def _build_criteria(
+        self, errata: ErrataHistoryRecord
+    ) -> tuple[CriteriaType, list[ObjectType], list[StateType], list[TestType]]:
+        serial = serial_from_errata_id(errata.errata_id)
+        obj_seq = 1
+        test_seq = 1
+        state_seq = 1
+
+        def inc(*args):
+            for arg in args:
+                arg += 1
+
+        # need to create test, states and objects that matches
+        # 1. Linux distribution installed with exact branch
+        # 2. Binary packages (found by source package) installed in system
+        # and version is less that specified
+        # 3. build criteria that contains buid tests with proper logical relation operations
+
+        # 1: Linux distribution installed with exact branch
+        t, o, s = build_test_altlinux_distr_installed(
+            errata.pkgset_name, serial, test_seq
+        )
+        inc(obj_seq, test_seq, state_seq)
+
+        objects: list[ObjectType] = [o]
+        states: list[StateType] = [s]
+        tests: list[TestType] = [t]
+
+        criteria = CriteriaType(operator=OperatorEnumeration.AND)
+
+        criteria.criterions = [
+            CriterionType(test_ref=t.id, comment="ALT Linux must be installed"),
+        ]
+
+        # 2: build crieria for binary pakages
+        self._process_binaries(
+            struct=CriteriaStruct(
+                errata=errata,
+                indexes=SeqIndex(obj_seq, state_seq, test_seq),
+                criteria=criteria,
+                objects=objects,
+                states=states,
+                tests=tests,
+            )
+        )
+
+        return criteria, objects, states, tests
+
+    def build_one_xml(self, errata: ErrataHistoryRecord) -> tuple[str, BytesIO]:
+        xml_file = BytesIO()
+        xml_file_name = make_xml_file_name(errata.errata_id)
+
+        metadata = self._build_meta(errata)
+        criteria, objects, states, tests = self._build_criteria(errata)
+
+        defintion = DefinitionType(
+            id=oval_id("def", serial_from_errata_id(errata.errata_id)),
+            version=XML_VERSION,
+            class_=ClassEnumeration.patch,
+            metadata=metadata,
+            criteria=criteria,
+        )
+
+        root = OvalDefinitions(
+            generator=GeneratorType(
+                timestamp=errata.task_changed,
+                product_name=GENERATOR_PRODUCT_NAME,
+            ),
+            definitions=DefinitionsType(
+                [
+                    defintion,
+                ]
+            ),
+            objects=ObjectsType(objects),
+            states=StatesType(states),
+            tests=TestsType(tests),
+        )
+
+        tree = xml.ElementTree(root.to_xml())
+        tree.write(xml_file)
+
+        return xml_file_name, xml_file
+
+    def build(self) -> Iterable[tuple[str, BytesIO]]:
+        for errata in self.erratas:
+            yield self.build_one_xml(errata)
