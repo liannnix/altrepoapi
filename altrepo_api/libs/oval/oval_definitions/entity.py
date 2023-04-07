@@ -272,7 +272,26 @@ class EntityStateComplexBaseType(EntitySimpleBaseType):
 
 @dataclass
 class EntityStateAnySimpleType(EntityStateSimpleBaseType):
-    pass
+    def __init__(
+        self,
+        tag: str,
+        value: Optional[str],
+        datatype: Optional[SimpleDatatypeEnumeration],
+        entity_check: Optional[CheckEnumeration],
+    ):
+        if datatype is not None:
+            self.attributes = EntityAttributeGroup(datatype=datatype)
+        else:
+            self.attributes = EntityAttributeGroup()
+        self.value = value
+        self.entity_check = entity_check
+        self.tag = tag
+
+    def to_xml(self) -> xml.Element:
+        r = super().to_xml()
+        if self.entity_check is not None:
+            r.set("entity_check", self.entity_check.value)
+        return r
 
 
 @dataclass
