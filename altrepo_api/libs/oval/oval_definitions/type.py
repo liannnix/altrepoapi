@@ -99,7 +99,7 @@ class GeneratorType:
     timestamp: datetime
     product_name: Optional[str] = None
     product_version: Optional[str] = None
-    schema_version: str = "5.11.1"  # language spec mention it to be double!
+    schema_version: str = "5.11"
     extension_point: Any = None
     _tag = "generator"
 
@@ -487,8 +487,8 @@ class StateType:
         if self.comment is not None:
             self.comment = NonEmptyStringType(self.comment)
 
-        if not reTestIDPattern.match(self.id):
-            raise ValueError(f"id [{self.id}] doesn't match with TestIDPattern")
+        if not reStateIDPattern.match(self.id):
+            raise ValueError(f"id [{self.id}] doesn't match with StateIDPattern")
 
         if self.operator is not None and not check_val_in_enum(
             self.operator.value, OperatorEnumeration
