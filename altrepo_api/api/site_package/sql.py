@@ -757,5 +757,26 @@ FROM Packages
 WHERE pkg_hash = {pkghash}
 """
 
+    get_new_pkg_version = """
+SELECT *
+FROM (
+    SELECT
+        argMax(task_id, task_changed) as task_id,
+        max(task_changed) as changed,
+        argMax(pkg_hash, task_changed) as pkghash,
+        argMax(pkg_version, task_changed) as version,
+        argMax(pkg_release, task_changed) as release
+    FROM BranchPackageHistory
+    WHERE pkg_name = '{pkg_name}'
+        AND tplan_action = 'add'
+        AND pkgset_name = '{branch}'
+        {source}
+        {arch}
+)
+WHERE (version, release) != ('{ver}', '{rel}')
+    AND (version, release) != ('{cur_ver}', '{cur_rel}')
+    AND task_id != 0
+"""
+
 
 sql = SQL()
