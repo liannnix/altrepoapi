@@ -546,7 +546,7 @@ class ObjectRefType:
 
     def to_xml(self) -> xml.Element:
         r = xml.Element(self._tag)
-        r.set("state_ref", self.object_ref)
+        r.set("object_ref", self.object_ref)
         return r
 
 

@@ -54,7 +54,7 @@ class CVE:
         r.text = self.id
         r.set("cvss3", self.cvss3)
         if self.cwe is not None:
-            r.set("cve", self.cwe)
+            r.set("cwe", self.cwe)
         r.set("href", self.href)
         r.set("impact", str(self.impact.value))
         if self.public is not None:
