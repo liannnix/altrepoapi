@@ -105,6 +105,16 @@ package_info_archs_el_model = ns.model(
         ),
     },
 )
+package_new_version_el_model = ns.model(
+    "SitePackageNewVersionModel",
+    {
+        "task_id": fields.Integer(description="task id"),
+        "date": fields.DateTime(description="task build date"),
+        "pkghash": fields.String(description="package hash UInt64 as string"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+    },
+)
 package_info_model = ns.model(
     "SitePackageInfoModel",
     {
@@ -144,6 +154,9 @@ package_info_model = ns.model(
         ),
         "versions": fields.Nested(
             package_versions_el_model, as_list=True, description="all package versions"
+        ),
+        "new_version": fields.Nested(
+            package_new_version_el_model, as_list=True, description="new package version"
         ),
         "beehive": fields.Nested(
             package_beehive_el_model, as_list=True, description="Beehive rebuild status"

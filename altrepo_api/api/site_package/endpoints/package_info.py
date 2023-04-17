@@ -226,6 +226,38 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
             return []
         return [{"token": k, "license": v} for k, v in lp.tokens.items()]
 
+    def new_package_version(self, versions: list[PackageVersion]) -> list[dict[str, Any]]:
+        new_version = []
+        ver_in_repo = {}
+        for el in versions:
+            if el and el.branch == self.branch:
+                ver_in_repo = el
+
+        if ver_in_repo:
+            NewPackageVersion = namedtuple(
+                "NewPackageVersion",
+                ["task_id", "date", "pkghash", "version", "release"],
+            )
+            pkg_arch = f"AND pkg_arch = '{self.pkg_info.arch}'" if self.is_src == 0 else ""
+            pkg_src_or_bin = f"AND pkg_sourcepackage = {self.is_src}"
+            response = self.send_sql_request(
+                self.sql.get_new_pkg_version.format(
+                    pkg_name=self.pkg_info.name,
+                    branch=self.branch,
+                    source=pkg_src_or_bin,
+                    arch=pkg_arch,
+                    ver=ver_in_repo.version,
+                    rel=ver_in_repo.release,
+                    cur_ver=self.pkg_info.version,
+                    cur_rel=self.pkg_info.release
+                ),
+            )
+            if not self.sql_status:
+                raise self.SQLRequestError
+            if response:
+                new_version = [NewPackageVersion(*el)._asdict() for el in response]
+        return new_version
+
     def get(self):
         self.branch = self.args["branch"]
         self.chlog_length = self.args["changelog_last"]
@@ -272,6 +304,7 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
             pkg_acl = self.acl()
             # get package versions
             pkg_versions = self.package_versions()
+            new_evr = self.new_package_version(versions=pkg_versions)
             # get package dependencies
             pkg_dependencies = self.dependencies()
             # get package changelog
@@ -412,6 +445,7 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
             "maintainers": pkg_maintainers,
             "acl": pkg_acl,
             "versions": [p._asdict() for p in pkg_versions],
+            "new_version": new_evr,
             "beehive": bh_status,
             "dependencies": pkg_dependencies,
             "license_tokens": license_tokens,
