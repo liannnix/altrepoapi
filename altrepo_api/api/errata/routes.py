@@ -68,14 +68,14 @@ class routeOvalExport(Resource):
         w = OvalExport(g.connection, branch, **args)
         if not w.check_params():
             abort(
-                400,
+                400,  # type: ignore
                 message="Request parameters validation error",
                 args=args,
                 validation_message=w.validation_results,
             )
         result, code = w.get()
         if code != 200:
-            abort(code, **response_error_parser(result))
+            abort(code, **response_error_parser(result))  # type: ignore
         file = result["file"]
         file_name = result["file_name"]
         file.seek(0)
