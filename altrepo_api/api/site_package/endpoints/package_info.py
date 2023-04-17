@@ -226,19 +226,22 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
             return []
         return [{"token": k, "license": v} for k, v in lp.tokens.items()]
 
-    def new_package_version(self, versions: list[PackageVersion]) -> list[dict[str, Any]]:
-        new_version = []
-        ver_in_repo = {}
+    def new_package_version(self, versions: list[PackageVersion]) -> dict[str, Any]:
+        ver_in_repo = None
+
         for el in versions:
             if el and el.branch == self.branch:
                 ver_in_repo = el
+                break
 
-        if ver_in_repo:
+        if ver_in_repo is not None:
             NewPackageVersion = namedtuple(
                 "NewPackageVersion",
                 ["task_id", "date", "pkghash", "version", "release"],
             )
-            pkg_arch = f"AND pkg_arch = '{self.pkg_info.arch}'" if self.is_src == 0 else ""
+            pkg_arch = (
+                f"AND pkg_arch = '{self.pkg_info.arch}'" if self.is_src == 0 else ""
+            )
             pkg_src_or_bin = f"AND pkg_sourcepackage = {self.is_src}"
             response = self.send_sql_request(
                 self.sql.get_new_pkg_version.format(
@@ -249,14 +252,15 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
                     ver=ver_in_repo.version,
                     rel=ver_in_repo.release,
                     cur_ver=self.pkg_info.version,
-                    cur_rel=self.pkg_info.release
+                    cur_rel=self.pkg_info.release,
                 ),
             )
             if not self.sql_status:
                 raise self.SQLRequestError
             if response:
-                new_version = [NewPackageVersion(*el)._asdict() for el in response]
-        return new_version
+                return NewPackageVersion(*response[0])._asdict()
+
+        return {}
 
     def get(self):
         self.branch = self.args["branch"]
@@ -352,6 +356,7 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
                 # FIXME: (bug #41537) some binaries built from old source package
                 # in not 'DONE' tasks leads to misleading build time
                 self.pkg_info = self.pkg_info._replace(buildtime=response[0][2])
+
                 # find appropriate hash for 'noarch' packages using build task
                 # and architecture precedence
                 _bin_pkgs_arch_hshs_from_task = {}
@@ -445,7 +450,7 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
             "maintainers": pkg_maintainers,
             "acl": pkg_acl,
             "versions": [p._asdict() for p in pkg_versions],
-            "new_version": new_evr,
+            "new_version": [new_evr] if new_evr else [],
             "beehive": bh_status,
             "dependencies": pkg_dependencies,
             "license_tokens": license_tokens,
