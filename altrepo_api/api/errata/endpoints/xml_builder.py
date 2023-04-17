@@ -23,6 +23,7 @@ from datetime import datetime
 from io import BytesIO
 from typing import Any, Iterable, Literal, NamedTuple, Union
 
+from altrepo_api.api.misc import lut
 from altrepo_api.libs.oval.altlinux_errata import (
     ALTLinuxAdvisory,
     Bugzilla,
@@ -255,8 +256,13 @@ def oval_id(type: Literal["def", "obj", "tst", "ste"], serial: str, index: int =
 
 
 def build_test_altlinux_distr_installed(
-    branch: str, serial: str, seq: int
+    branch: str,
 ) -> tuple[TestType, ObjectType, StateType]:
+    # ALT linux distribution branch test is always the fisrt one
+    seq = 1
+    # ID's prefix  defined with `lut.oval_export_branches_map` dict
+    serial = lut.oval_export_branches_map.get(branch, "999")
+
     cpe_version_pattern, version_value = BRANCH_CHECK_REGEX[branch]
 
     object = Textfilecontent54Object(
@@ -549,7 +555,6 @@ class OVALBuilder:
     def _build_criteria(
         self, errata: ErrataHistoryRecord
     ) -> tuple[CriteriaType, list[ObjectType], list[StateType], list[TestType]]:
-        serial = serial_from_errata_id(errata.errata_id)
         obj_seq = 1
         test_seq = 1
         state_seq = 1
@@ -561,12 +566,7 @@ class OVALBuilder:
         # 3. build criteria that contains buid tests with proper logical relation operations
 
         # 1: Linux distribution installed with exact branch
-        t, o, s = build_test_altlinux_distr_installed(
-            errata.pkgset_name, serial, test_seq
-        )
-        obj_seq += 1
-        test_seq += 1
-        state_seq += 1
+        t, o, s = build_test_altlinux_distr_installed(errata.pkgset_name)
 
         objects: list[ObjectType] = [o]
         states: list[StateType] = [s]
@@ -675,17 +675,15 @@ class OVALBuilder:
                 # collect common platform test criteria, test, state and object
                 if first_definition:
                     branch = errata.pkgset_name
-                    # collect date
+                    # collect data
                     (
                         platform_test,
                         platform_object,
                         platform_state,
-                    ) = build_test_altlinux_distr_installed(
-                        branch=branch, serial="1", seq=1
-                    )
+                    ) = build_test_altlinux_distr_installed(branch=branch)
                     platform_criterion = CriterionType(
                         test_ref=platform_test.id,
-                        comment=f"ALT Linux  based on branch '{branch}' must be installed",
+                        comment="ALT Linux must be installed",
                     )
                     # append collested data
                     objects.append(platform_object)
