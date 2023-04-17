@@ -554,10 +554,6 @@ class OVALBuilder:
         test_seq = 1
         state_seq = 1
 
-        def inc(*args):
-            for arg in args:
-                arg += 1
-
         # need to create test, states and objects that matches
         # 1. Linux distribution installed with exact branch
         # 2. Binary packages (found by source package) installed in system
@@ -568,7 +564,9 @@ class OVALBuilder:
         t, o, s = build_test_altlinux_distr_installed(
             errata.pkgset_name, serial, test_seq
         )
-        inc(obj_seq, test_seq, state_seq)
+        obj_seq += 1
+        test_seq += 1
+        state_seq += 1
 
         objects: list[ObjectType] = [o]
         states: list[StateType] = [s]
@@ -594,10 +592,9 @@ class OVALBuilder:
 
         return criteria, objects, states, tests
 
-    def build_one_xml(self, errata: ErrataHistoryRecord) -> tuple[str, BytesIO]:
-        xml_file = BytesIO()
-        xml_file_name = make_xml_file_name(errata.errata_id)
-
+    def _build_definition(
+        self, errata: ErrataHistoryRecord
+    ) -> tuple[DefinitionType, list[ObjectType], list[StateType], list[TestType]]:
         metadata = self._build_meta(errata)
         criteria, objects, states, tests = self._build_criteria(errata)
 
@@ -609,16 +606,24 @@ class OVALBuilder:
             criteria=criteria,
         )
 
+        return defintion, objects, states, tests
+
+    def build_one_xml(
+        self,
+        timestamp: datetime,
+        definitions: list[DefinitionType],
+        objects: list[ObjectType],
+        states: list[StateType],
+        tests: list[TestType],
+    ) -> BytesIO:
+        xml_file = BytesIO()
+
         root = OvalDefinitions(
             generator=GeneratorType(
-                timestamp=errata.task_changed,
+                timestamp=timestamp,
                 product_name=GENERATOR_PRODUCT_NAME,
             ),
-            definitions=DefinitionsType(
-                [
-                    defintion,
-                ]
-            ),
+            definitions=DefinitionsType(definitions),
             objects=ObjectsType(objects),
             states=StatesType(states),
             tests=TestsType(tests),
@@ -627,8 +632,87 @@ class OVALBuilder:
         tree = xml.ElementTree(root.to_xml())
         tree.write(xml_file)
 
-        return xml_file_name, xml_file
+        return xml_file
 
-    def build(self) -> Iterable[tuple[str, BytesIO]]:
-        for errata in self.erratas:
-            yield self.build_one_xml(errata)
+    def build(self, one_file: bool = False) -> Iterable[tuple[str, BytesIO]]:
+        if not one_file:
+            for errata in self.erratas:
+                xml_file_name = make_xml_file_name(errata.errata_id)
+                definition, objects, states, tests = self._build_definition(errata)
+                yield xml_file_name, self.build_one_xml(
+                    timestamp=errata.task_changed,
+                    definitions=[definition],
+                    objects=objects,
+                    states=states,
+                    tests=tests,
+                )
+        else:
+            timestamp = datetime.now()
+            xml_file = BytesIO()
+            branch = ""
+            first_definition = True
+
+            definitions: list[DefinitionType] = []
+            objects: list[ObjectType] = []
+            states: list[StateType] = []
+            tests: list[TestType] = []
+
+            # make document root
+            root = OvalDefinitions(
+                generator=GeneratorType(
+                    timestamp=timestamp,
+                    product_name=GENERATOR_PRODUCT_NAME,
+                ),
+                definitions=None,
+                objects=None,
+                states=None,
+                tests=None,
+            )
+
+            # collect contents from errata list
+            for errata in self.erratas:
+                _definition, _objects, _states, _tests = self._build_definition(errata)
+                # collect common platform test criteria, test, state and object
+                if first_definition:
+                    branch = errata.pkgset_name
+                    # collect date
+                    (
+                        platform_test,
+                        platform_object,
+                        platform_state,
+                    ) = build_test_altlinux_distr_installed(
+                        branch=branch, serial="1", seq=1
+                    )
+                    platform_criterion = CriterionType(
+                        test_ref=platform_test.id,
+                        comment=f"ALT Linux  based on branch '{branch}' must be installed",
+                    )
+                    # append collested data
+                    objects.append(platform_object)
+                    states.append(platform_state)
+                    tests.append(platform_test)
+
+                    first_definition = False
+                # replace common platform test criteria, test, state and object
+                _definition.criteria.criterions = [platform_criterion]  # type: ignore
+                # append errata current errata definitions, tests, objects and states
+                definitions.append(_definition)
+                objects.extend(_objects[1:])
+                states.extend(_states[1:])
+                tests.extend(_tests[1:])
+
+            # update document root
+            root.definitions = DefinitionsType(definitions)
+            root.objects = ObjectsType(objects)
+            root.states = StatesType(states)
+            root.tests = TestsType(tests)
+
+            tree = xml.ElementTree(root.to_xml())
+            tree.write(xml_file)
+
+            xml_file_name = "{branch}_{date}.xml".format(
+                branch=branch, date=timestamp.strftime("%Y%m%d")
+            )
+
+            yield xml_file_name, xml_file
+            return
