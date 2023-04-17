@@ -61,7 +61,10 @@ class OvalExport(APIWorker):
 
     def get(self):
         package_name = self.args["package_name"]
+        one_file = self.args["one_file"]
+        print(f"DBG: {one_file}")
         pkg_name_clause = ""
+
         if package_name:
             pkg_name_clause = f"AND pkg_name = '{package_name}'"
             zip_file_name = ZIP_FILE_NAME.format(self.branch + "_" + package_name)
@@ -174,7 +177,7 @@ class OvalExport(APIWorker):
             allowZip64=False,
             compresslevel=5,
         ) as zip_file:
-            for xml_file_name, xml_file in xml_bulder.build():
+            for xml_file_name, xml_file in xml_bulder.build(one_file):
                 zip_file.writestr(xml_file_name, xml_file.getvalue())
                 xml_file.close()
 

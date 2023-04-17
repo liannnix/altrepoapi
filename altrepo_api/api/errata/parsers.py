@@ -14,6 +14,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from flask_restx import inputs
+
 from altrepo_api.api.parser import parser, pkg_name_type
 
 package_name_opt = parser.register_item(
@@ -23,5 +25,13 @@ package_name_opt = parser.register_item(
     help="source or binary package name",
     location="args",
 )
+one_file_opt = parser.register_item(
+    "one_file",
+    type=inputs.boolean,
+    default=False,
+    required=False,
+    help="return OVAL definitions as one XML file",
+    location="args",
+)
 
-oval_export_args = parser.build_parser(package_name_opt)
+oval_export_args = parser.build_parser(package_name_opt, one_file_opt)
