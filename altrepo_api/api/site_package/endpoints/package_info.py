@@ -333,27 +333,40 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
         package_archs = {}
         if not (pkg_task and pkg_subtask):
             if self.is_src:
-                request_line = self.sql.get_binary_pkgs.format(
-                    pkghash=self.pkghash, branch=self.branch
+                response = self.send_sql_request(
+                    self.sql.get_binary_pkgs_from_last_pkgs.format(
+                        pkghash=self.pkghash, branch=self.branch
+                    )
                 )
+                if not response:
+                    response = self.send_sql_request(
+                        self.sql.get_binary_pkgs.format(
+                            pkghash=self.pkghash, branch=self.branch
+                        )
+                    )
             else:
-                request_line = self.sql.get_source_pkgs.format(pkghash=self.pkghash)
+                response = self.send_sql_request(
+                    self.sql.get_source_pkgs.format(pkghash=self.pkghash)
+                )
         else:
             # (bug: #45195)
             if self.is_src:
-                request_line = self.sql.get_binaries_from_task.format(
-                    taskid=pkg_task, subtaskid=pkg_subtask, changed=pkg_task_date
+                response = self.send_sql_request(
+                    self.sql.get_binaries_from_task.format(
+                        taskid=pkg_task, subtaskid=pkg_subtask, changed=pkg_task_date
+                    )
                 )
             else:
-                request_line = self.sql.get_source_pkgs.format(pkghash=self.pkghash)
+                response = self.send_sql_request(
+                    self.sql.get_source_pkgs.format(pkghash=self.pkghash)
+                )
 
-        response = self.send_sql_request(request_line)
         if not self.sql_status:
             return self.error
 
         if response:
             if self.is_src:
-                # FIXME: (bug #41537) some binaries built from old source package
+                # (bug #41537) some binaries built from old source package
                 # in not 'DONE' tasks leads to misleading build time
                 self.pkg_info = self.pkg_info._replace(buildtime=response[0][2])
 
