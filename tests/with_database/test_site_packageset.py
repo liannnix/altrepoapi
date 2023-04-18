@@ -10,6 +10,8 @@ GROUP_IN_DB_1 = "System/Configuration"  # has sub categories
 GROUP_IN_DB_2 = "Office"  # has no sub categories
 GROUP_NOT_IN_DB = "Fake group"
 SRC_PACKAGE_IN_DB = "curl"
+MULTI_PACKAGE_NAME_IN_DB = "python,storages"
+MULTI_PACKAGE_NAME_NOT_DB = "fakepackage,fakepackage"
 BIN_PACKAGE_IN_DB = "libcurl"
 PACKAGE_NOT_IN_DB = "fakepackage"
 PACKAGER_IN_DB = "rider"
@@ -337,6 +339,18 @@ def test_packagesets_by_hash(client, kwargs):
     [
         {"name": SRC_PACKAGE_IN_DB, "branch": None, "arch": None, "status_code": 200},
         {
+            "name": MULTI_PACKAGE_NAME_IN_DB,
+            "branch": None,
+            "arch": None,
+            "status_code": 200
+        },
+        {
+            "name": MULTI_PACKAGE_NAME_IN_DB,
+            "branch": BRANCH_IN_DB,
+            "arch": ARCH_IN_DB,
+            "status_code": 200
+        },
+        {
             "name": "getssl",
             "branch": "p10",
             "arch": None,
@@ -359,6 +373,18 @@ def test_packagesets_by_hash(client, kwargs):
             "branch": "p8",
             "arch": ARCH_IN_DB,
             "status_code": 200,
+        },
+        {
+            "name": MULTI_PACKAGE_NAME_NOT_DB,
+            "branch": None,
+            "arch": None,
+            "status_code": 404
+        },
+        {
+            "name": MULTI_PACKAGE_NAME_IN_DB,
+            "branch": BRANCH_NOT_IN_DB,
+            "arch": None,
+            "status_code": 400
         },
         {
             "name": BIN_PACKAGE_IN_DB,
@@ -405,7 +431,9 @@ def test_find_packages(client, kwargs):
     "kwargs",
     [
         {"name": SRC_PACKAGE_IN_DB, "branch": None, "status_code": 200},
+        {"name": MULTI_PACKAGE_NAME_IN_DB, "branch": None, "status_code": 200},
         {"name": BIN_PACKAGE_IN_DB, "branch": BRANCH_IN_DB, "status_code": 200},
+        {"name": MULTI_PACKAGE_NAME_IN_DB, "branch": BRANCH_IN_DB, "status_code": 200},
         {
             "name": "getssl",
             "branch": "p10",
@@ -416,6 +444,17 @@ def test_find_packages(client, kwargs):
             "branch": "sisyphus",
             "status_code": 200,
         },  # source package deleted from branch
+
+        {
+            "name": MULTI_PACKAGE_NAME_NOT_DB,
+            "branch": None,
+            "status_code": 404
+        },
+        {
+            "name": MULTI_PACKAGE_NAME_IN_DB,
+            "branch": BRANCH_NOT_IN_DB,
+            "status_code": 400
+        },
         {"name": PACKAGE_NOT_IN_DB, "branch": None, "status_code": 404},
         {"name": SRC_PACKAGE_IN_DB, "branch": BRANCH_NOT_IN_DB, "status_code": 400},
         {"name": "", "branch": None, "status_code": 400},
