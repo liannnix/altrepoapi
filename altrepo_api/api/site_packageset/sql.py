@@ -104,6 +104,7 @@ lp_preselect AS
         pkgset_name
     FROM static_last_packages
     WHERE pkg_name ILIKE '%{name}%'
+        {name_like}
         AND pkg_sourcepackage = 1
         {branch}
 ),
@@ -114,6 +115,7 @@ lp_preselect2 AS
         pkgset_name
     FROM static_last_packages
     WHERE pkg_name NOT ILIKE '%{name}%'
+        {name_not_like}
         AND pkg_sourcepackage = 1
         {branch}
 )
@@ -143,6 +145,7 @@ SELECT
 FROM Packages
 INNER JOIN lp_preselect2 AS LP2 USING (pkg_hash)
 WHERE pkg_name NOT ILIKE '%{name}%'
+    {name_not_like}
     AND pkg_sourcepackage = 1
     AND pkg_sourcerpm IN
     (
@@ -150,6 +153,7 @@ WHERE pkg_name NOT ILIKE '%{name}%'
         FROM Packages
         WHERE pkg_sourcepackage = 0
             AND pkg_name ILIKE '%{name}%'
+            {name_like}
             {arch}
     )
     {branch}
@@ -166,6 +170,7 @@ lp_preselect AS
         pkgset_name
     FROM static_last_packages
     WHERE pkg_name ILIKE '%{name}%'
+        {name_like}
         AND pkg_sourcepackage = 1
         {branch}
 ),
@@ -192,6 +197,7 @@ lp_preselect2 AS
         pkgset_name
     FROM static_last_packages
     WHERE pkg_name NOT ILIKE '%{name}%'
+        {name_not_like}
         AND pkg_sourcepackage = 1
         {branch}
 )
@@ -221,6 +227,7 @@ SELECT
 FROM Packages
 INNER JOIN lp_preselect2 AS LP2 USING (pkg_hash)
 WHERE pkg_name NOT ILIKE '%{name}%'
+    {name_not_like}
     AND pkg_sourcepackage = 1
     AND pkg_sourcerpm IN
     (
@@ -228,6 +235,7 @@ WHERE pkg_name NOT ILIKE '%{name}%'
         FROM Packages
         WHERE pkg_sourcepackage = 0
             AND pkg_name ILIKE '%{name}%'
+            {name_like}
             {arch}
             AND pkg_hash IN (
                 SELECT pkg_hash
@@ -247,6 +255,7 @@ deleted_src_pkgs AS (
     SELECT pkgset_name, pkg_name, hash
     FROM lv_branch_deleted_packages
     WHERE pkg_name ILIKE '%{name}%'
+    {name_like}
     {branch}
 )
 SELECT
@@ -284,6 +293,7 @@ SELECT DISTINCT
     groupUniqArray(pkgset_name)
 FROM static_last_packages
 WHERE pkg_name ILIKE '%{name}%'
+    {name_like}
     AND pkg_name NOT LIKE '%-debuginfo'
     {branch}
 GROUP BY
@@ -301,6 +311,7 @@ SELECT DISTINCT
     groupUniqArray(pkgset_name)
 FROM lv_branch_deleted_packages
 WHERE pkg_name ILIKE '%{name}%'
+{name_like}
 {branch}
 GROUP BY pkg_name
 ORDER BY pkg_name

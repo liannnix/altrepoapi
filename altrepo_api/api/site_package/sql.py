@@ -230,6 +230,34 @@ GROUP BY pkg_name
 ORDER BY pkg_name ASC
 """
 
+    get_binary_pkgs_from_last_pkgs = """
+WITH bin_pkgs as (
+SELECT DISTINCT 
+    pkg_name, 
+    pkg_hash 
+FROM Packages 
+WHERE pkg_srcrpm_hash = {pkghash}
+)
+SELECT DISTINCT
+    pkg_name,
+    arrayReverseSort(groupUniqArray((pkg_arch, pkg_hash))),
+    max(pkg_buildtime)
+FROM Packages
+WHERE (pkg_srcrpm_hash = {pkghash})
+AND pkg_hash IN (
+    SELECT pkg_hash FROM static_last_packages
+    WHERE pkgset_name = '{branch}'
+        AND (pkg_name, pkg_hash) IN (
+            SELECT pkg_name, pkg_hash 
+            FROM bin_pkgs
+        )
+    AND pkg_sourcepackage = 0
+)
+AND (pkg_sourcepackage = 0)
+GROUP BY pkg_name
+ORDER BY pkg_name ASC
+"""
+
     get_binaries_from_task = """
 SELECT
     pkg_name,
