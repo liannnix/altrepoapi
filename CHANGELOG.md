@@ -6,6 +6,19 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.10.2] - 2023-04-20
+
+Regular API code updates and fixes.
+
+### Added
+- `errata` routes namespace
+- `errata/export/oval` routes
+### Changed
+- `site/find_packages` and `site/fast_packages_search_lookup` now support search by multiple words
+### Fixed
+- source package build time in `site/package_info` route (closes: #41537)
+- `site/find_packages` and `site/fast_packages_search_lookup` maximum words quantity set to first 3, others are ignored
+
 ## [1.9.6] - 2023-03-31
 
 Regular API code updates and fixes.
