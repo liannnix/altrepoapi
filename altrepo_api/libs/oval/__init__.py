@@ -21,4 +21,4 @@ implementation used to build OVAL definitions XML files for closed bugs and
 vulnerabilities of packages of ALT Linux distributions.
 """
 
-from .altlinux_errata import ALTLinuxAdvisory, Bugzilla, CVE, Severity
+from .altlinux_errata import ALTLinuxAdvisory, Bugzilla, Severity, Vulnerability

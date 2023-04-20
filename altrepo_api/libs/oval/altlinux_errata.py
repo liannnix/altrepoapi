@@ -41,8 +41,9 @@ class Severity(Enum):
 
 
 @dataclass
-class CVE:
+class Vulnerability:
     id: str
+    cvss: str
     cvss3: str
     href: str
     impact: type[Severity]
@@ -50,9 +51,19 @@ class CVE:
     public: Optional[datetime] = None
 
     def to_xml(self) -> xml.Element:
-        r = xml.Element("cve")
+        if self.id.startswith("CVE-"):
+            cls = "cve"
+        elif self.id.startswith("BDU:"):
+            cls = "bdu"
+        else:
+            cls = "vuln"
+
+        r = xml.Element(cls)
         r.text = self.id
-        r.set("cvss3", self.cvss3)
+        if self.cvss:
+            r.set("cvss", self.cvss)
+        if self.cvss3:
+            r.set("cvss3", self.cvss3)
         if self.cwe is not None:
             r.set("cwe", self.cwe)
         r.set("href", self.href)
@@ -84,7 +95,7 @@ class ALTLinuxAdvisory:
     severity: type[Severity]
     issued: datetime
     updated: datetime
-    cve: list[CVE]
+    vuln: list[Vulnerability]
     bugzilla: list[Bugzilla]
     affected_cpe_list: list[str] = field(default_factory=list)
     rights: str = field(init=False, default=ALT_LINUX_COPYRIGHT)
@@ -96,8 +107,8 @@ class ALTLinuxAdvisory:
         make_sub_element(r, "rights", self.rights)
         make_sub_element(r, "issued", "", {"date": self.issued.strftime("%Y-%m-%d")})
         make_sub_element(r, "updated", "", {"date": self.updated.strftime("%Y-%m-%d")})
-        for cve in self.cve:
-            r.append(cve.to_xml())
+        for vuln in self.vuln:
+            r.append(vuln.to_xml())
         for bug in self.bugzilla:
             r.append(bug.to_xml())
         if self.affected_cpe_list:
