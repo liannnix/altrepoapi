@@ -24,6 +24,9 @@ from altrepo_api.api.misc import lut
 from ..sql import sql
 
 
+MAX_SEARCH_WORDS = 3
+
+
 def relevance_sort(pkgs_dict: dict[str, Any], pkg_name: str) -> list[tuple]:
     """Dumb sorting for package names by relevance."""
 
@@ -65,7 +68,7 @@ class PackagesetFindPackages(APIWorker):
 
         name_like_clause = ""
         name_not_like_clause = ""
-        for el in self.name[1:]:
+        for el in self.name[1:MAX_SEARCH_WORDS]:
             name_like_clause += f" AND pkg_name ILIKE '%{el}%'"
             name_not_like_clause += f" AND pkg_name NOT ILIKE '%{el}%'"
 
@@ -181,7 +184,7 @@ class FastPackagesSearchLookup(APIWorker):
         self.branch = ""
 
         name_like_clause = ""
-        for el in self.name[1:]:
+        for el in self.name[1:MAX_SEARCH_WORDS]:
             name_like_clause += f" AND pkg_name ILIKE '%{el}%'"
 
         if self.args["branch"] is not None:
