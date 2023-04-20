@@ -787,5 +787,9 @@ WHERE pkg_hash IN (
 {img_show}
 """
 
+    get_img_pkgset = """
+SELECT groupUniqArray(img_branch) FROM lv_image_packageset
+"""
+
 
 sql = SQL()
