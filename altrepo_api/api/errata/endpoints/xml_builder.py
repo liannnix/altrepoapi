@@ -27,8 +27,8 @@ from altrepo_api.api.misc import lut
 from altrepo_api.libs.oval.altlinux_errata import (
     ALTLinuxAdvisory,
     Bugzilla,
-    CVE,
     Severity,
+    Vulnerability,
 )
 from altrepo_api.libs.oval.linux_definitions import (
     RPMInfoObject,
@@ -89,7 +89,8 @@ ALT_LINUX_OVAL_ID_PREFIX = "org.altlinux.errata"
 XML_VERSION = 1
 ERRATA_BASE_URL = "https://errata.altlinux.org"
 NVD_CVE_BASE_URL = "https://nvd.nist.gov/vuln/detail"
-# FIXME: clarify actual product names for each branch
+FSTEC_BDU_BASE_URL = "https://bdu.fstec.ru/vul"
+
 PRODUCTS = {
     "p9": [
         "ALT Server",
@@ -119,7 +120,7 @@ PRODUCT_CPE = {
         "cpe:/o:alt:server-v:9",
         "cpe:/o:alt:education:9",
         "cpe:/o:alt:slinux:9",
-        "cpe:/o:alt:starterkit:9",  # FIXME: now version in CPE set as `p9`
+        "cpe:/o:alt:starterkit:9",  # XXX: now version in CPE set as `p9`
     ],
     "p10": [
         "cpe:/o:alt:kworkstation:10",
@@ -128,7 +129,7 @@ PRODUCT_CPE = {
         "cpe:/o:alt:server-v:10",
         "cpe:/o:alt:education:10",
         "cpe:/o:alt:slinux:10",
-        "cpe:/o:alt:starterkit:10",  # FIXME: now version in CPE set as `p10`
+        "cpe:/o:alt:starterkit:10",  # XXX: now version in CPE set as `p10`
     ],
     "c9f2": ["cpe:/o:alt:spworkstation:8.4", "cpe:/o:alt:spserver:8.4"],
 }
@@ -316,6 +317,124 @@ def collect_uniq_binaries(packages: list[PackageInfo]) -> list[BinaryPackage]:
     return sorted(uniq, key=lambda x: x.name)
 
 
+def _build_vuln_from_cve(vuln: VulnerabilityInfo) -> Vulnerability:
+    cwe = ""
+    cvss = ""
+    cvss3 = ""
+    public = None
+    href = vuln.url
+    impact = num_to_severity_enum(
+        SEVERITY_TO_NUM.get(vuln.severity.upper(), SEVERITY_TO_NUM["LOW"])
+    )
+
+    # parse CVE contents
+    _json: dict[str, Any] = {}
+    try:
+        _json = json.loads(vuln.json)
+    except Exception:
+        logger.debug(f"Failed to parse vulnerability JSON for {vuln.id}")
+        pass
+    else:
+        # get CWE
+        try:
+            cwe = _json["cve"]["problemtype"]["problemtype_data"][0]["description"][0][
+                "value"
+            ]
+        except (IndexError, KeyError, TypeError):
+            pass
+        # get CVSS
+        try:
+            cvss = _json["impact"]["baseMetricV2"]["cvssV2"]["vectorString"]
+        except (IndexError, KeyError, TypeError):
+            pass
+        # get CVSS3
+        try:
+            cvss3 = _json["impact"]["baseMetricV3"]["cvssV3"]["vectorString"]
+        except (IndexError, KeyError, TypeError):
+            pass
+        # get published date
+        try:
+            public = datetime.fromisoformat(
+                _json["publishedDate"].replace("Z", "+00:00")
+            )
+        except (KeyError, ValueError, TypeError):
+            pass
+
+    return Vulnerability(
+        id=vuln.id,
+        cvss=cvss,
+        cvss3=cvss3,
+        href=href,
+        impact=impact,  # type: ignore
+        cwe=cwe,
+        public=public,
+    )
+
+
+def _build_vuln_from_bdu(vuln: VulnerabilityInfo) -> Vulnerability:
+    cwe = ""
+    cvss = ""
+    cvss3 = ""
+    public = None
+    href = vuln.url
+    impact = num_to_severity_enum(
+        SEVERITY_TO_NUM.get(vuln.severity.upper(), SEVERITY_TO_NUM["LOW"])
+    )
+
+    # parse BDU contents
+    _json: dict[str, Any] = {}
+    try:
+        _json = json.loads(vuln.json)
+    except Exception:
+        logger.debug(f"Failed to parse vulnerability JSON for {vuln.id}")
+        pass
+    else:
+        # get CWE
+        try:
+            cwe = ", ".join(_json["cwe"])
+        except (IndexError, KeyError, TypeError):
+            pass
+        # get CVSS
+        try:
+            cvss = _json["cvss"]["vector"]["text"]
+        except (IndexError, KeyError, TypeError):
+            pass
+        # get CVSS3
+        try:
+            cvss3 = _json["cvss3"]["vector"]["text"]
+        except (IndexError, KeyError, TypeError):
+            pass
+        # get published date
+        try:
+            public = datetime.strptime(_json["identify_date"], "%d.%m.%Y")
+        except (KeyError, ValueError, TypeError):
+            pass
+
+    return Vulnerability(
+        id=vuln.id,
+        cvss=cvss,
+        cvss3=cvss3,
+        href=href,
+        impact=impact,  # type: ignore
+        cwe=cwe,
+        public=public,
+    )
+
+
+def _build_vuln_from_other(vuln: VulnerabilityInfo) -> Vulnerability:
+    return Vulnerability(
+        id=vuln.id,
+        href=vuln.url,
+        public=vuln.published,
+        impact=num_to_severity_enum(
+            SEVERITY_TO_NUM.get(vuln.severity.upper(), SEVERITY_TO_NUM["LOW"])
+        ),  # type: ignore
+        cwe="",
+        cvss="",
+        cvss3="",
+    )
+
+
 class OVALBuilder:
     def __init__(
         self,
@@ -346,58 +465,18 @@ class OVALBuilder:
                     vuln_priority = SEVERITY_TO_NUM.get(vuln.severity.upper(), 0)
                     if vuln_priority > max_priority:
                         max_priority = vuln_priority
-        # colect CVEs
-        cves: list[CVE] = []
+        # colect vulnerabilities
+        _vulns: list[Vulnerability] = []
         for vuln_id, vuln in sorted(
             vulns_list,
             key=lambda x: vuln_id_to_sort_key(x[0]),
         ):
-            cvss3 = ""
-            href = vuln.url
-            impact = num_to_severity_enum(
-                SEVERITY_TO_NUM.get(vuln.severity.upper(), SEVERITY_TO_NUM["LOW"])
-            )
-            cwe = ""
-            public = None
-
-            # parse CVE contents
-            cve_json: dict[str, Any] = {}
-            try:
-                cve_json = json.loads(vuln.json)
-            except Exception:
-                logger.debug(f"Failed to parse vulnerability JSON for {vuln_id}")
-                pass
+            if vuln_id.startswith("CVE-"):
+                _vulns.append(_build_vuln_from_cve(vuln))
+            elif vuln_id.startswith("BDU:"):
+                _vulns.append(_build_vuln_from_bdu(vuln))
             else:
-                # get CWE
-                try:
-                    cwe = cve_json["cve"]["problemtype"]["problemtype_data"][0][
-                        "description"
-                    ][0]["value"]
-                except (IndexError, KeyError, TypeError):
-                    pass
-                # get CVSS3
-                try:
-                    cvss3 = cve_json["impact"]["baseMetricV3"]["cvssV3"]["vectorString"]
-                except (IndexError, KeyError, TypeError):
-                    pass
-                # get published date
-                try:
-                    public = datetime.fromisoformat(
-                        cve_json["publishedDate"].replace("Z", "+00:00")
-                    )
-                except (KeyError, ValueError, TypeError):
-                    pass
-
-            cves.append(
-                CVE(
-                    id=vuln_id,
-                    cvss3=cvss3,
-                    href=href,
-                    impact=impact,  # type: ignore
-                    cwe=cwe,
-                    public=public,
-                )
-            )
+                _vulns.append(_build_vuln_from_other(vuln))
         # colect bugs
         bugs: list[Bugzilla] = []
         for bug in sorted(bugs_list, key=lambda x: x[0]):
@@ -412,7 +491,7 @@ class OVALBuilder:
             severity=num_to_severity_enum(max_priority),  # type: ignore
             issued=errata_created,
             updated=errata_updated,
-            cve=cves,
+            vuln=_vulns,
             bugzilla=bugs,
             affected_cpe_list=cpes,
         )
@@ -450,6 +529,14 @@ class OVALBuilder:
                                 source="CVE", ref_id=vuln.id, ref_url=vuln.url
                             )
                         )
+                    elif link.startswith("BDU:"):
+                        cve_references.append(
+                            ReferenceType(
+                                source="BDU", ref_id=vuln.id, ref_url=vuln.url
+                            )
+                        )
+                    else:
+                        logger.error(f"Failed to create reference for {link}")
                 else:
                     logger.debug(f"Failed to get vulnerability details for {link}")
                     vulns_list.append(f"{link}: description unavailable")
@@ -461,6 +548,16 @@ class OVALBuilder:
                                 ref_url=f"{NVD_CVE_BASE_URL}/{link}",
                             )
                         )
+                    elif link.startswith("BDU:"):
+                        cve_references.append(
+                            ReferenceType(
+                                source="BDU",
+                                ref_id=link,
+                                ref_url=f"{FSTEC_BDU_BASE_URL}/{link.split(':')[-1]}",
+                            )
+                        )
+                    else:
+                        logger.error(f"Failed to create reference for {link}")
 
         references.extend(sorted(cve_references, key=lambda x: x.ref_id))
 
