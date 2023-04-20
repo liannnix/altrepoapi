@@ -144,7 +144,9 @@ class OvalExport(APIWorker):
 
         # get vulnerabilities info by ids form errata
         vulns: dict[str, VulnerabilityInfo] = {}
+        bdus_by_cves: dict[str, VulnerabilityInfo] = {}
         if vuln_ids:
+            # collect vulnerabilities by references from errata records
             tmp_table = make_tmp_table_name("vuln_ids")
             response = self.send_sql_request(
                 self.sql.get_vulns_info_by_ids.format(tmp_table=tmp_table),
@@ -162,12 +164,31 @@ class OvalExport(APIWorker):
                 return self.store_error(
                     {"message": "No vulnerabilities info found in DB"}
                 )
-
             vulns = {
                 vuln.id: vuln for vuln in (VulnerabilityInfo(*el) for el in response)
             }
+            # collect BDUs by CVE id's references
+            response = self.send_sql_request(
+                self.sql.get_bdus_info_by_cve_ids.format(tmp_table=tmp_table),
+                external_tables=[
+                    {
+                        "name": tmp_table,
+                        "structure": [("vuln_id", "String")],
+                        "data": [{"vuln_id": vuln_id} for vuln_id in vuln_ids],
+                    },
+                ],
+            )
+            if not self.sql_status:
+                return self.error
+            if not response:
+                return self.store_error(
+                    {"message": "No vulnerabilities info found in DB"}
+                )
+            bdus_by_cves = {
+                vuln.id: vuln for vuln in (VulnerabilityInfo(*el) for el in response)
+            }
 
-        xml_bulder = OVALBuilder(erratas, binaries, bugz, vulns)
+        xml_bulder = OVALBuilder(erratas, binaries, bugz, vulns, bdus_by_cves)
 
         zip_buffer = BytesIO()
         with zipfile.ZipFile(

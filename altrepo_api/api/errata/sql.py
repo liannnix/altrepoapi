@@ -91,5 +91,33 @@ WHERE (vuln_id, vuln_hash) IN (
 )
 """
 
+    get_bdus_info_by_cve_ids = """
+SELECT
+    vuln_id,
+    vuln_summary,
+    vuln_score,
+    vuln_severity,
+    vuln_url,
+    vuln_modified_date,
+    vuln_published_date,
+    vuln_json,
+    vuln_references.link
+FROM Vulnerabilities
+WHERE (vuln_id, vuln_hash) IN (
+    SELECT
+        vuln_id,
+        argMax(vuln_hash, ts)
+    FROM Vulnerabilities
+    WHERE vuln_type = 'BDU'
+        AND hasAny(
+            vuln_references.link,
+            (
+                SELECT groupUniqArray(vuln_id) FROM {tmp_table}
+            )
+        )
+    GROUP BY vuln_id
+)
+"""
+
 
 sql = SQL()

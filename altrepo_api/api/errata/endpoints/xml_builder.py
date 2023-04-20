@@ -193,6 +193,7 @@ class VulnerabilityInfo(NamedTuple):
     modified: datetime = datetime.now()
     published: datetime = datetime.now()
     json: str = ""
+    refs: list[str] = list()
 
 
 @dataclass
@@ -442,30 +443,75 @@ class OVALBuilder:
         binaries: dict[int, list[PackageInfo]],
         bugz: dict[int, BugzillaInfo],
         vulns: dict[str, VulnerabilityInfo],
+        bdus_by_cves: dict[str, VulnerabilityInfo],
     ) -> None:
         self.erratas = erratas
         self.binaries = binaries
         self.bugz = bugz
         self.vulns = vulns
+        self.bdus_by_cves = bdus_by_cves
+        self.bdu_to_cve_map = {
+            bdu.id: {r for r in bdu.refs if r.startswith("CVE-")}
+            for bdu in self.bdus_by_cves.values()
+        }
+
+    def _errata_bug_links(self, errata: ErrataHistoryRecord) -> list[str]:
+        return [
+            l
+            for t, l in zip(errata.eh_references_type, errata.eh_references_link)
+            if t == "bug"
+        ]
+
+    def _errata_vuln_links(
+        self, errata: ErrataHistoryRecord, link_dbus_by_cves: bool = True
+    ) -> list[str]:
+        # collect vulnerabilities descriptions and references
+        errata_linked_vulns = {
+            l
+            for t, l in zip(errata.eh_references_type, errata.eh_references_link)
+            if t == "vuln"
+        }
+
+        if link_dbus_by_cves:
+            # extend vulnerabilities list by BDUs mapped by CVEs
+            linked_bdus: set[str] = set()
+            for bdu_id, linked_cves in self.bdu_to_cve_map.items():
+                for cve_id in (c for c in errata_linked_vulns if c.startswith("CVE-")):
+                    if cve_id in linked_cves:
+                        linked_bdus.add(bdu_id)
+            errata_linked_vulns = errata_linked_vulns.union(linked_bdus)
+
+        return list(errata_linked_vulns)
+
+    def _get_vuln_info_by_id(self, link: str) -> Union[VulnerabilityInfo, None]:
+        return self.vulns.get(link, self.bdus_by_cves.get(link, None))
 
     def _build_vendor(self, errata: ErrataHistoryRecord) -> ALTLinuxAdvisory:
         bugs_list: list[tuple[int, BugzillaInfo]] = []
         vulns_list: list[tuple[str, VulnerabilityInfo]] = []
         max_priority = SEVERITY_TO_NUM["LOW"]
-        # collect bugs and vulnerabilities descriptions and references
-        for type_, link in zip(errata.eh_references_type, errata.eh_references_link):
-            if type_ == "bug":
-                bug = self.bugz.get(int(link))
-                if bug is not None:
-                    bugs_list.append((int(link), bug))
-            elif type_ == "vuln":
-                vuln = self.vulns.get(link)
-                if vuln is not None:
-                    vulns_list.append((link, vuln))
-                    vuln_priority = SEVERITY_TO_NUM.get(vuln.severity.upper(), 0)
-                    if vuln_priority > max_priority:
-                        max_priority = vuln_priority
-        # colect vulnerabilities
+
+        # collect bugs descriptions and references
+        for link in self._errata_bug_links(errata):
+            bug = self.bugz.get(int(link))
+            if bug is not None:
+                bugs_list.append((int(link), bug))
+
+        # colect bugs objects
+        bugs: list[Bugzilla] = []
+        for bug in sorted(bugs_list, key=lambda x: x[0]):
+            bugs.append(Bugzilla(id=bug[0], summary=bug[1].summary))
+
+        # collect vulnerabilities descriptions and references
+        for link in self._errata_vuln_links(errata):
+            vuln = self._get_vuln_info_by_id(link)
+            if vuln is not None:
+                vulns_list.append((link, vuln))
+                vuln_priority = SEVERITY_TO_NUM.get(vuln.severity.upper(), 0)
+                if vuln_priority > max_priority:
+                    max_priority = vuln_priority
+
+        # colect vulnerabilities info objects
         _vulns: list[Vulnerability] = []
         for vuln_id, vuln in sorted(
             vulns_list,
@@ -477,15 +523,14 @@ class OVALBuilder:
                 _vulns.append(_build_vuln_from_bdu(vuln))
             else:
                 _vulns.append(_build_vuln_from_other(vuln))
-        # colect bugs
-        bugs: list[Bugzilla] = []
-        for bug in sorted(bugs_list, key=lambda x: x[0]):
-            bugs.append(Bugzilla(id=bug[0], summary=bug[1].summary))
+
         # collect affected CPEs
         cpes = PRODUCT_CPE.get(errata.pkgset_name, [])
+
         # set advisory dates
         errata_created = errata.task_changed
         errata_updated = errata.task_changed
+
         # build vendor advisory
         return ALTLinuxAdvisory(
             severity=num_to_severity_enum(max_priority),  # type: ignore
@@ -498,10 +543,10 @@ class OVALBuilder:
 
     def _build_meta(self, errata: ErrataHistoryRecord) -> MetadataType:
         fix_list = []
-        vulns_list = []
         bugs_list = []
+        vulns_list = []
         references: list[ReferenceType] = []
-        cve_references: list[ReferenceType] = []
+        vuln_references: list[ReferenceType] = []
 
         references.append(
             ReferenceType(
@@ -511,55 +556,52 @@ class OVALBuilder:
             )
         )
 
-        # collect bugs and vulnerabilities descriptions and references
-        for type_, link in zip(errata.eh_references_type, errata.eh_references_link):
-            if type_ == "bug":
-                bug = self.bugz.get(int(link))
-                if bug is not None:
-                    bugs_list.append(f"#{link}: {bug.summary}")
-                else:
-                    logger.debug(f"Failed to get bug details for {link}")
-            elif type_ == "vuln":
-                vuln = self.vulns.get(link)
-                if vuln is not None:
-                    vulns_list.append(f"{link}: {vuln.summary}")
-                    if vuln.id.startswith("CVE-"):
-                        cve_references.append(
-                            ReferenceType(
-                                source="CVE", ref_id=vuln.id, ref_url=vuln.url
-                            )
-                        )
-                    elif link.startswith("BDU:"):
-                        cve_references.append(
-                            ReferenceType(
-                                source="BDU", ref_id=vuln.id, ref_url=vuln.url
-                            )
-                        )
-                    else:
-                        logger.error(f"Failed to create reference for {link}")
-                else:
-                    logger.debug(f"Failed to get vulnerability details for {link}")
-                    vulns_list.append(f"{link}: description unavailable")
-                    if link.startswith("CVE-"):
-                        cve_references.append(
-                            ReferenceType(
-                                source="CVE",
-                                ref_id=link,
-                                ref_url=f"{NVD_CVE_BASE_URL}/{link}",
-                            )
-                        )
-                    elif link.startswith("BDU:"):
-                        cve_references.append(
-                            ReferenceType(
-                                source="BDU",
-                                ref_id=link,
-                                ref_url=f"{FSTEC_BDU_BASE_URL}/{link.split(':')[-1]}",
-                            )
-                        )
-                    else:
-                        logger.error(f"Failed to create reference for {link}")
+        # collect bugs descriptions and references
+        for link in self._errata_bug_links(errata):
+            bug = self.bugz.get(int(link))
+            if bug is not None:
+                bugs_list.append(f"#{link}: {bug.summary}")
+            else:
+                logger.debug(f"Failed to get bug details for {link}")
 
-        references.extend(sorted(cve_references, key=lambda x: x.ref_id))
+        # build vulnerabilities references
+        for link in self._errata_vuln_links(errata):
+            vuln = self._get_vuln_info_by_id(link)
+            if vuln is not None:
+                vulns_list.append(f"{link}: {vuln.summary}")
+                if vuln.id.startswith("CVE-"):
+                    vuln_references.append(
+                        ReferenceType(source="CVE", ref_id=vuln.id, ref_url=vuln.url)
+                    )
+                elif link.startswith("BDU:"):
+                    vuln_references.append(
+                        ReferenceType(source="BDU", ref_id=vuln.id, ref_url=vuln.url)
+                    )
+                else:
+                    logger.error(f"Failed to create reference for {link}")
+            else:
+                logger.debug(f"Failed to get vulnerability details for {link}")
+                vulns_list.append(f"{link}: description unavailable")
+                if link.startswith("CVE-"):
+                    vuln_references.append(
+                        ReferenceType(
+                            source="CVE",
+                            ref_id=link,
+                            ref_url=f"{NVD_CVE_BASE_URL}/{link}",
+                        )
+                    )
+                elif link.startswith("BDU:"):
+                    vuln_references.append(
+                        ReferenceType(
+                            source="BDU",
+                            ref_id=link,
+                            ref_url=f"{FSTEC_BDU_BASE_URL}/{link.split(':')[-1]}",
+                        )
+                    )
+                else:
+                    logger.error(f"Failed to create reference for {link}")
+
+        references.extend(sorted(vuln_references, key=lambda x: x.ref_id))
 
         fix_list = "\n\n * ".join(
             sorted(vulns_list, key=lambda x: vuln_id_to_sort_key(x)) + sorted(bugs_list)
