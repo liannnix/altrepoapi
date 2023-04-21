@@ -592,3 +592,11 @@ find_images_by_pkg_model = ns.model(
         ),
     },
 )
+
+image_packageset_model = ns.model(
+    "ImagePackageSetModel",
+    {
+        "length": fields.Integer(description="number of packagesets found"),
+        "branches": fields.List(fields.String, description="list of packagesets"),
+    },
+)

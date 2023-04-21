@@ -21,6 +21,7 @@ import json
 from collections import namedtuple
 
 from altrepo_api.api.base import APIWorker
+from altrepo_api.utils import sort_branches
 from ..sql import sql
 from ...misc import lut
 
@@ -325,4 +326,36 @@ class ActiveImages(APIWorker):
         res = [ActiveImagesInfo(*el)._asdict() for el in response]
 
         res = {"request_args": self.args, "length": len(res), "images": res}
+        return res, 200
+
+
+class ImagePackageSet(APIWorker):
+    """
+    Get a list of package sets which has an active images.
+    """
+
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def check_params(self):
+        return True
+
+    def get(self):
+        response = self.send_sql_request(
+            self.sql.get_img_pkgset
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error(
+                {"message": "No data not found in database", "args": self.args}
+            )
+
+        branches = sort_branches(response[0][0])
+
+        res = {"length": len(branches), "branches": list(branches)}
+
         return res, 200
