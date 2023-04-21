@@ -123,7 +123,8 @@ SELECT
     max(pkg_buildtime),
     argMax(pkg_url, pkg_buildtime),
     argMax(pkg_summary, pkg_buildtime),
-    any(pkg_group_)
+    any(pkg_group_),
+    1 AS is_source
 FROM Packages
 INNER JOIN lp_preselect AS LP USING (pkg_hash)
 WHERE pkg_hash IN
@@ -139,7 +140,8 @@ SELECT
     max(pkg_buildtime),
     argMax(pkg_url, pkg_buildtime),
     argMax(pkg_summary, pkg_buildtime),
-    any(pkg_group_)
+    any(pkg_group_),
+    0 AS is_source
 FROM Packages
 INNER JOIN lp_preselect2 AS LP2 USING (pkg_hash)
 WHERE NOT ({name_like})
@@ -201,7 +203,8 @@ SELECT
     max(pkg_buildtime),
     argMax(pkg_url, pkg_buildtime),
     argMax(pkg_summary, pkg_buildtime),
-    any(pkg_group_)
+    any(pkg_group_),
+    1 AS is_source
 FROM Packages
 INNER JOIN srcs_by_arch AS LP USING (pkg_hash)
 WHERE pkg_hash IN
@@ -217,7 +220,8 @@ SELECT
     max(pkg_buildtime),
     argMax(pkg_url, pkg_buildtime),
     argMax(pkg_summary, pkg_buildtime),
-    any(pkg_group_)
+    any(pkg_group_),
+    0 AS is_source
 FROM Packages
 INNER JOIN lp_preselect2 AS LP2 USING (pkg_hash)
 WHERE NOT {name_like}

@@ -98,7 +98,7 @@ class PackagesetFindPackages(APIWorker):
         )
 
         if response:
-            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 5), self.name[0])
+            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 6), self.name[0])
 
             for pkg in pkgs_sorted:
                 res.append(
@@ -109,6 +109,7 @@ class PackagesetFindPackages(APIWorker):
                         "summary": pkg[4],
                         "category": pkg[5],
                         "versions": [PkgMeta(*el)._asdict() for el in pkg[1]],
+                        "by_binary": True if pkg[6] == 0 else False
                     }
                 )
 
@@ -137,6 +138,7 @@ class PackagesetFindPackages(APIWorker):
                             "summary": pkg[4],
                             "category": pkg[5],
                             "versions": [PkgMeta(*el, True)._asdict() for el in pkg[1]],  # type: ignore
+                            "by_binary": False
                         }
                     )
                 else:
