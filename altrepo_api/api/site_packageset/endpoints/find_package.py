@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from collections import namedtuple
-from typing import Any
+from typing import Any, Callable
 
 from altrepo_api.utils import tuplelist_to_dict, sort_branches
 
@@ -25,27 +25,50 @@ from ..sql import sql
 
 
 MAX_SEARCH_WORDS = 3
+WEIGHT_MULT = 256
 
 
-def relevance_sort(pkgs_dict: dict[str, Any], pkg_name: str) -> list[tuple]:
-    """Dumb sorting for package names by relevance."""
+def predicate_all_match(key: str, names: list[str], value: Any) -> bool:
+    return all(key.lower().find(n) != -1 for n in names)
 
-    def relevance_weight(instr, substr):
-        return len(instr) + 100 * instr.find(substr)
 
-    l_in = []
-    l_out = []
+def predicate_all_match_and_is_source(key: str, names: list[str], value: Any) -> bool:
+    print(f"DBG: predicate : key : value : {key} : {value}")
+    try:
+        is_source = value[5] == 1
+    except (ValueError, TypeError, IndexError):
+        is_source = False
 
-    for k in pkgs_dict.keys():
-        if k.lower().find(pkg_name.lower()) == -1:
-            l_out.append(k)
-        else:
-            l_in.append(k)
+    return is_source and predicate_all_match(key, names, None)
 
-    l_in.sort(key=lambda x: relevance_weight(x.lower(), pkg_name.lower()))
-    l_out.sort()
 
-    return [(name, *pkgs_dict[name]) for name in (l_in + l_out)]
+def relevance_sort(
+    pkgs_dict: dict[str, Any],
+    pkg_names: list[str],
+    predicate: Callable[[str, list[str], Any], bool] = predicate_all_match,
+) -> list[tuple[Any, ...]]:
+    """Sorts packages by some relevance. Values that matches by predicate function
+    has precedence and those are not matched sorted in alphanumeric order."""
+
+    # names = sorted(n.lower() for n in pkg_names)
+    names = [n.lower() for n in pkg_names]
+
+    def relevance_weight(key: str):
+        # res = len(key) + 100 * key.find(names[0])
+        res = len(key) + WEIGHT_MULT * sum(key.find(n) for n in names)
+        print(f"DBG: key: weigth {key} : {res}")
+        return res
+
+    list_in = [k for k in pkgs_dict.keys() if predicate(k, names, pkgs_dict[k])]
+    list_out = [k for k in pkgs_dict.keys() if not predicate(k, names, pkgs_dict[k])]
+
+    list_in.sort(key=lambda x: relevance_weight(x))
+    list_out.sort()
+
+    print(f"DBG: list_in {list_in}")
+    print(f"DBG: list_out {list_out}")
+
+    return [(name, *pkgs_dict[name]) for name in (list_in + list_out)]
 
 
 class PackagesetFindPackages(APIWorker):
@@ -98,7 +121,11 @@ class PackagesetFindPackages(APIWorker):
         )
 
         if response:
-            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 6), self.name[0])
+            pkgs_sorted = relevance_sort(
+                tuplelist_to_dict(response, 6),
+                self.name,
+                predicate_all_match_and_is_source,
+            )
 
             for pkg in pkgs_sorted:
                 res.append(
@@ -109,7 +136,7 @@ class PackagesetFindPackages(APIWorker):
                         "summary": pkg[4],
                         "category": pkg[5],
                         "versions": [PkgMeta(*el)._asdict() for el in pkg[1]],
-                        "by_binary": True if pkg[6] == 0 else False
+                        "by_binary": True if pkg[6] == 0 else False,
                     }
                 )
 
@@ -123,7 +150,7 @@ class PackagesetFindPackages(APIWorker):
             return self.error
 
         if response:
-            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 5), self.name[0])
+            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 5), self.name)
 
             src_pkgs_found = {p["name"] for p in res}
 
@@ -138,7 +165,7 @@ class PackagesetFindPackages(APIWorker):
                             "summary": pkg[4],
                             "category": pkg[5],
                             "versions": [PkgMeta(*el, True)._asdict() for el in pkg[1]],  # type: ignore
-                            "by_binary": False
+                            "by_binary": False,
                         }
                     )
                 else:
@@ -193,7 +220,7 @@ class FastPackagesSearchLookup(APIWorker):
         res = []
 
         if response:
-            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 3), self.name[0])  # type: ignore
+            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 3), self.name)
 
             for pkg in pkgs_sorted:
                 if pkg[1] == 1:
@@ -218,7 +245,7 @@ class FastPackagesSearchLookup(APIWorker):
             return self.error
 
         if response:
-            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 5), self.name[0])
+            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 5), self.name)
             src_pkgs_found = {p["name"] for p in res if p["sourcepackage"] == "source"}
 
             for pkg in pkgs_sorted:
