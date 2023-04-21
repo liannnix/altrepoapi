@@ -103,8 +103,7 @@ lp_preselect AS
         pkg_hash,
         pkgset_name
     FROM static_last_packages
-    WHERE pkg_name ILIKE '%{name}%'
-        {name_like}
+    WHERE {name_like}
         AND pkg_sourcepackage = 1
         {branch}
 ),
@@ -114,8 +113,7 @@ lp_preselect2 AS
         pkg_hash,
         pkgset_name
     FROM static_last_packages
-    WHERE pkg_name NOT ILIKE '%{name}%'
-        {name_not_like}
+    WHERE NOT ({name_like})
         AND pkg_sourcepackage = 1
         {branch}
 )
@@ -125,7 +123,8 @@ SELECT
     max(pkg_buildtime),
     argMax(pkg_url, pkg_buildtime),
     argMax(pkg_summary, pkg_buildtime),
-    any(pkg_group_)
+    any(pkg_group_),
+    1 AS is_source
 FROM Packages
 INNER JOIN lp_preselect AS LP USING (pkg_hash)
 WHERE pkg_hash IN
@@ -141,19 +140,18 @@ SELECT
     max(pkg_buildtime),
     argMax(pkg_url, pkg_buildtime),
     argMax(pkg_summary, pkg_buildtime),
-    any(pkg_group_)
+    any(pkg_group_),
+    0 AS is_source
 FROM Packages
 INNER JOIN lp_preselect2 AS LP2 USING (pkg_hash)
-WHERE pkg_name NOT ILIKE '%{name}%'
-    {name_not_like}
+WHERE NOT ({name_like})
     AND pkg_sourcepackage = 1
     AND pkg_sourcerpm IN
     (
         SELECT pkg_sourcerpm
         FROM Packages
         WHERE pkg_sourcepackage = 0
-            AND pkg_name ILIKE '%{name}%'
-            {name_like}
+            AND {name_like}
             {arch}
     )
     {branch}
@@ -169,8 +167,7 @@ lp_preselect AS
         pkg_hash,
         pkgset_name
     FROM static_last_packages
-    WHERE pkg_name ILIKE '%{name}%'
-        {name_like}
+    WHERE {name_like}
         AND pkg_sourcepackage = 1
         {branch}
 ),
@@ -196,8 +193,7 @@ lp_preselect2 AS
         pkg_hash,
         pkgset_name
     FROM static_last_packages
-    WHERE pkg_name NOT ILIKE '%{name}%'
-        {name_not_like}
+    WHERE NOT {name_like}
         AND pkg_sourcepackage = 1
         {branch}
 )
@@ -207,7 +203,8 @@ SELECT
     max(pkg_buildtime),
     argMax(pkg_url, pkg_buildtime),
     argMax(pkg_summary, pkg_buildtime),
-    any(pkg_group_)
+    any(pkg_group_),
+    1 AS is_source
 FROM Packages
 INNER JOIN srcs_by_arch AS LP USING (pkg_hash)
 WHERE pkg_hash IN
@@ -223,19 +220,18 @@ SELECT
     max(pkg_buildtime),
     argMax(pkg_url, pkg_buildtime),
     argMax(pkg_summary, pkg_buildtime),
-    any(pkg_group_)
+    any(pkg_group_),
+    0 AS is_source
 FROM Packages
 INNER JOIN lp_preselect2 AS LP2 USING (pkg_hash)
-WHERE pkg_name NOT ILIKE '%{name}%'
-    {name_not_like}
+WHERE NOT {name_like}
     AND pkg_sourcepackage = 1
     AND pkg_sourcerpm IN
     (
         SELECT pkg_sourcerpm
         FROM Packages
         WHERE pkg_sourcepackage = 0
-            AND pkg_name ILIKE '%{name}%'
-            {name_like}
+            AND {name_like}
             {arch}
             AND pkg_hash IN (
                 SELECT pkg_hash
@@ -254,8 +250,7 @@ WITH
 deleted_src_pkgs AS (
     SELECT pkgset_name, pkg_name, hash
     FROM lv_branch_deleted_packages
-    WHERE pkg_name ILIKE '%{name}%'
-    {name_like}
+    WHERE {name_like}
     {branch}
 )
 SELECT
@@ -292,8 +287,7 @@ SELECT DISTINCT
     pkg_sourcepackage,
     groupUniqArray(pkgset_name)
 FROM static_last_packages
-WHERE pkg_name ILIKE '%{name}%'
-    {name_like}
+WHERE {name_like}
     AND pkg_name NOT LIKE '%-debuginfo'
     {branch}
 GROUP BY
@@ -310,8 +304,7 @@ SELECT DISTINCT
     1,
     groupUniqArray(pkgset_name)
 FROM lv_branch_deleted_packages
-WHERE pkg_name ILIKE '%{name}%'
-{name_like}
+WHERE {name_like}
 {branch}
 GROUP BY pkg_name
 ORDER BY pkg_name
