@@ -6,6 +6,17 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.10.4] - 2023-04-21
+
+Regular API code updates and fixes.
+
+### Added
+- BDU data in OVAL definitions
+### Changed
+- added `by_binary` feild in `site/find_packages` route response
+### Fixed
+- `site/find_packages` multiword search error
+
 ## [1.10.2] - 2023-04-20
 
 Regular API code updates and fixes.
