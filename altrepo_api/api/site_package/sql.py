@@ -232,10 +232,10 @@ ORDER BY pkg_name ASC
 
     get_binary_pkgs_from_last_pkgs = """
 WITH bin_pkgs as (
-SELECT DISTINCT 
-    pkg_name, 
-    pkg_hash 
-FROM Packages 
+SELECT DISTINCT
+    pkg_name,
+    pkg_hash
+FROM Packages
 WHERE pkg_srcrpm_hash = {pkghash}
 )
 SELECT DISTINCT
@@ -248,7 +248,7 @@ AND pkg_hash IN (
     SELECT pkg_hash FROM static_last_packages
     WHERE pkgset_name = '{branch}'
         AND (pkg_name, pkg_hash) IN (
-            SELECT pkg_name, pkg_hash 
+            SELECT pkg_name, pkg_hash
             FROM bin_pkgs
         )
     AND pkg_sourcepackage = 0
@@ -324,7 +324,7 @@ WHERE pkgset_name = %(branch)s
 SELECT
     task_id,
     any(subtask_id),
-    max(task_changed),
+    max(task_changed) AS changed,
     any(task_owner),
     any(subtask_userid)
 FROM Tasks
@@ -339,6 +339,7 @@ WHERE subtask_deleted = 0
         WHERE task_state = 'DONE'
     )
 GROUP BY task_id
+ORDER BY changed DESC
 """
 
     get_deleted_package_task_by_bin = """
@@ -357,7 +358,7 @@ WITH
 SELECT
     task_id,
     any(subtask_id),
-    max(task_changed),
+    max(task_changed) AS changed,
     any(task_owner),
     any(subtask_userid)
 FROM Tasks
@@ -372,6 +373,7 @@ WHERE subtask_deleted = 0
         WHERE task_state = 'DONE'
     )
 GROUP BY task_id
+ORDER BY changed DESC
 """
 
     get_delete_task_from_branch_history = """
