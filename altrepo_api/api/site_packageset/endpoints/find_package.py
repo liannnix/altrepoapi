@@ -33,7 +33,6 @@ def predicate_all_match(key: str, names: list[str], value: Any) -> bool:
 
 
 def predicate_all_match_and_is_source(key: str, names: list[str], value: Any) -> bool:
-    print(f"DBG: predicate : key : value : {key} : {value}")
     try:
         is_source = value[5] == 1
     except (ValueError, TypeError, IndexError):
@@ -56,17 +55,13 @@ def relevance_sort(
     def relevance_weight(key: str):
         # res = len(key) + 100 * key.find(names[0])
         res = len(key) + WEIGHT_MULT * sum(key.find(n) for n in names)
-        print(f"DBG: key: weigth {key} : {res}")
         return res
 
     list_in = [k for k in pkgs_dict.keys() if predicate(k, names, pkgs_dict[k])]
     list_out = [k for k in pkgs_dict.keys() if not predicate(k, names, pkgs_dict[k])]
 
-    list_in.sort(key=lambda x: relevance_weight(x))
+    list_in.sort(key=lambda x: relevance_weight(x.lower()))
     list_out.sort()
-
-    print(f"DBG: list_in {list_in}")
-    print(f"DBG: list_out {list_out}")
 
     return [(name, *pkgs_dict[name]) for name in (list_in + list_out)]
 
