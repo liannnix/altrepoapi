@@ -6,6 +6,16 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.10.5] - 2023-04-27
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- site/package_info: fix deleted packages handling
+- site/find_packages: fix search results relevance sorting
+
 ## [1.10.4] - 2023-04-21
 
 Regular API code updates and fixes.
