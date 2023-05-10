@@ -235,7 +235,7 @@ class Textfilecontent54State(StateType):
         self.subexpression = subexpression
         self.windows_view = windows_view
         super().__init__(
-            "rpminfo_state",
+            "textfilecontent54_state",
             id,
             version,
             comment,
