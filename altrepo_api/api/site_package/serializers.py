@@ -156,7 +156,9 @@ package_info_model = ns.model(
             package_versions_el_model, as_list=True, description="all package versions"
         ),
         "new_version": fields.Nested(
-            package_new_version_el_model, as_list=True, description="new package version"
+            package_new_version_el_model,
+            as_list=True,
+            description="new package version",
         ),
         "beehive": fields.Nested(
             package_beehive_el_model, as_list=True, description="Beehive rebuild status"
@@ -333,9 +335,6 @@ depends_packages_model = ns.model(
             bin_package_scripts_el_model,
             description="unpackaged directories information",
             as_list=True,
-        ),
-        "versions": fields.Nested(
-            package_versions_el_model, as_list=True, description="all package versions"
         ),
     },
 )
