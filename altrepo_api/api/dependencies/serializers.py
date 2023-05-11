@@ -29,16 +29,6 @@ all_pkgsets_el_model = ns.model(
     },
 )
 
-package_versions_el_model = ns.model(
-    "DependenciesPackageVersionsElementModel",
-    {
-        "branch": fields.String(description="package set name"),
-        "version": fields.String(description="package version"),
-        "release": fields.String(description="package release"),
-        "pkghash": fields.String(description="package hash UInt64 as string"),
-    },
-)
-
 package_dependencies_el_model = ns.model(
     "DependenciesPackageDependenciesElementModel",
     {
@@ -60,9 +50,6 @@ package_dependencies_model = ns.model(
             package_dependencies_el_model,
             description="package dependencies list",
             as_list=True,
-        ),
-        "versions": fields.Nested(
-            package_versions_el_model, as_list=True, description="all package versions"
         ),
     },
 )
