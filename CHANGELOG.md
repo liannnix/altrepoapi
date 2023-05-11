@@ -6,6 +6,16 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.10.6] - 2023-05-11
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- package/repocop: optimize SQL request
+### Fixed
+- libs/oval: Textfilecontent54State xml tag name
+
 ## [1.10.5] - 2023-04-27
 
 Regular API code updates and fixes.
