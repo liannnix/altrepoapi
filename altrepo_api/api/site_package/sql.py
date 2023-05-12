@@ -658,7 +658,6 @@ SELECT DISTINCT
 FROM last_packages
 WHERE pkg_hash = {pkghash}
     AND pkgset_name = '{branch}'
-    AND pkg_arch = '{arch}'
 """
 
     get_pkgs_md5_by_hshs = """
