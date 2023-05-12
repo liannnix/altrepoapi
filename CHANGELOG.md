@@ -6,6 +6,16 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.11.0] - 2023-05-12
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- remove legacy unused data
+- speed-up particular SQL requests
+### Fixed
+
 ## [1.10.6] - 2023-05-11
 
 Regular API code updates and fixes.
