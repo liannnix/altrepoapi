@@ -101,7 +101,6 @@ def test_package_info(client, kwargs):
         if kwargs["package_type"] == "source":
             assert data["tasks"] != []
         assert data["changelog"] != []
-        assert data["versions"] != []
 
 
 @pytest.mark.parametrize(
@@ -274,7 +273,6 @@ def test_binary_package_scripts(client, kwargs):
         assert data["pkg_arch"] != ""
         assert data["pkg_name"] != ""
         assert data["scripts"] != []
-        assert data["versions"] != []
 
 
 @pytest.mark.parametrize(

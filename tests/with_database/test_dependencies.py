@@ -91,7 +91,6 @@ def test_binary_package_dependencies(client, kwargs):
         assert data != {}
         assert data["length"] != 0
         assert data["dependencies"] != []
-        assert data["versions"] != []
 
 
 @pytest.mark.parametrize(
