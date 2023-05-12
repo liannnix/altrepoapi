@@ -72,12 +72,6 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
         packager_nickname: str
         category: str
 
-    class PackageVersion(NamedTuple):
-        branch: str
-        version: str
-        release: str
-        pkghash: int
-
     def maintainers(self) -> list[str]:
         maintainers = []
         response = self.send_sql_request(
