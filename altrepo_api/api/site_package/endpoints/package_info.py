@@ -35,12 +35,6 @@ from .common import FindBuildTaskMixixn, SQLRequestError, NoDataFoundInDB
 class PackageInfo(FindBuildTaskMixixn, APIWorker):
     """Retrieves package info from DB."""
 
-    class SQLRequestError(SQLRequestError):
-        pass
-
-    class NoDataFoundInDB(NoDataFoundInDB):
-        pass
-
     def __init__(self, connection, pkghash, **kwargs):
         self.pkghash = pkghash
         self.conn = connection
@@ -90,7 +84,7 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
             self.sql.get_pkg_maintainers.format(pkghash=self.pkghash)
         )
         if not self.sql_status:
-            raise self.SQLRequestError
+            raise SQLRequestError
 
         for el in response[0][0]:
             if "altlinux" in el:
@@ -105,28 +99,9 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
             self.sql.get_pkg_acl.format(name=self.pkg_info.name, branch=self.branch)
         )
         if not self.sql_status:
-            raise self.SQLRequestError
+            raise SQLRequestError
 
         return response[0][0] if response else []
-
-    def package_versions(self) -> list[PackageVersion]:
-        if self.is_src:
-            request_line = self.sql.get_pkg_versions.format(name=self.pkg_info.name)
-        else:
-            request_line = self.sql.get_pkg_binary_versions.format(
-                name=self.pkg_info.name, arch=self.pkg_info.arch
-            )
-
-        response = self.send_sql_request(request_line)
-        if not self.sql_status:
-            raise self.SQLRequestError
-
-        # sort package versions by branch
-        branches = sort_branches([el[0] for el in response])
-        versions = tuplelist_to_dict(response, 3)
-
-        # XXX: workaround for multiple versions of returned for certain branch
-        return [self.PackageVersion(*(b, *versions[b][-3:])) for b in branches]
 
     def dependencies(self) -> list[dict[str, Any]]:
         PkgDeps = namedtuple("PkgDeps", ["name", "version", "flag"])
@@ -137,7 +112,7 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
                 self.sql.get_pkg_dependencies.format(pkghash=self.pkghash)
             )
             if not self.sql_status:
-                raise self.SQLRequestError
+                raise SQLRequestError
 
             dependencies = [PkgDeps(*el)._asdict() for el in response]
 
@@ -158,9 +133,9 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
             )
         )
         if not self.sql_status:
-            raise self.SQLRequestError
+            raise SQLRequestError
         if not response:
-            raise self.NoDataFoundInDB
+            raise NoDataFoundInDB
 
         return [Changelog(datetime_to_iso(el[1]), *el[2:])._asdict() for el in response]
 
@@ -182,7 +157,7 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
             )
         )
         if not self.sql_status:
-            raise self.SQLRequestError
+            raise SQLRequestError
 
         bh_status = [BeehiveStatus(*el)._asdict() for el in response]
 
@@ -221,18 +196,26 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
         lp.parse_license()
 
         if not lp.status:
-            raise self.SQLRequestError("Failed to get license tokens", error=lp.error)
+            raise SQLRequestError("Failed to get license tokens", error=lp.error)
         if not lp.tokens:
             return []
         return [{"token": k, "license": v} for k, v in lp.tokens.items()]
 
-    def new_package_version(self, versions: list[PackageVersion]) -> dict[str, Any]:
+    def new_package_version(self) -> dict[str, Any]:
         ver_in_repo = None
 
-        for el in versions:
-            if el and el.branch == self.branch:
-                ver_in_repo = el
-                break
+        PackageVR = namedtuple("PackageVR", ["version", "release"])
+
+        response = self.send_sql_request(
+            self.sql.get_current_pkg_version.format(
+                name=self.pkg_info.name, branch=self.branch, is_src=self.is_src
+            )
+        )
+        if not self.sql_status:
+            raise SQLRequestError
+
+        if response:
+            ver_in_repo = PackageVR(*response[0])
 
         if ver_in_repo is not None:
             NewPackageVersion = namedtuple(
@@ -256,7 +239,7 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
                 ),
             )
             if not self.sql_status:
-                raise self.SQLRequestError
+                raise SQLRequestError
             if response:
                 return NewPackageVersion(*response[0])._asdict()
 
@@ -306,9 +289,8 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
             pkg_maintainers = self.maintainers()
             # get package ACLs
             pkg_acl = self.acl()
-            # get package versions
-            pkg_versions = self.package_versions()
-            new_evr = self.new_package_version(versions=pkg_versions)
+            # get package newest versions from DONE tasks
+            new_evr = self.new_package_version()
             # get package dependencies
             pkg_dependencies = self.dependencies()
             # get package changelog
@@ -317,11 +299,11 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
             bh_status = self.beehive_status()
             # get package license tokens
             license_tokens = self.license_tokens()
-        except self.SQLRequestError as e:
+        except SQLRequestError as e:
             if e.error:
                 return e.error
             return self.error
-        except self.NoDataFoundInDB:
+        except NoDataFoundInDB:
             return self.store_error(
                 {
                     "message": f"No data found in DB for package {self.pkghash}",
@@ -462,7 +444,6 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
             "changelog": changelog_list,
             "maintainers": pkg_maintainers,
             "acl": pkg_acl,
-            "versions": [p._asdict() for p in pkg_versions],
             "new_version": [new_evr] if new_evr else [],
             "beehive": bh_status,
             "dependencies": pkg_dependencies,

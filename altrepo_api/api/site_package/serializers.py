@@ -152,9 +152,6 @@ package_info_model = ns.model(
             as_list=True,
             description="package changelog",
         ),
-        "versions": fields.Nested(
-            package_versions_el_model, as_list=True, description="all package versions"
-        ),
         "new_version": fields.Nested(
             package_new_version_el_model,
             as_list=True,

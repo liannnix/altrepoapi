@@ -202,6 +202,16 @@ WHERE pkg_name = '{name}'
     AND pkg_sourcepackage = 0
 """
 
+    get_current_pkg_version = """
+SELECT DISTINCT
+    pkg_version,
+    pkg_release
+FROM static_last_packages
+WHERE pkg_name = '{name}'
+    AND pkgset_name = '{branch}'
+    AND pkg_sourcepackage = {is_src}
+"""
+
     get_pkg_dependencies = """
 SELECT
     dp_name,
