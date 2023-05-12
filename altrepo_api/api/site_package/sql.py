@@ -302,19 +302,6 @@ WHERE pkg_hash IN (
 """
 
     get_last_bh_rebuild_status_by_hsh = """
-WITH
-last_bh_updated AS
-(
-    SELECT
-        pkgset_name,
-        bh_arch as arch,
-        max(bh_updated) AS updated
-    FROM BeehiveStatus
-    WHERE pkgset_name = %(branch)s
-    GROUP BY
-        pkgset_name,
-        bh_arch
-)
 SELECT
     bh_arch,
     bh_status,
@@ -322,11 +309,13 @@ SELECT
     bh_updated,
     bh_ftbfs_since
 FROM BeehiveStatus
-WHERE pkgset_name = %(branch)s
-    AND pkg_hash = %(pkghash)s
-    AND (bh_arch, bh_updated) IN
-    (
-        SELECT arch, updated FROM last_bh_updated
+WHERE pkgset_name = '{branch}'
+    AND pkg_hash = {pkghash}
+    AND (bh_arch, bh_updated) IN (
+        SELECT bh_arch, max(bh_updated)
+        FROM BeehiveStatus
+        WHERE pkgset_name = '{branch}'
+        GROUP BY bh_arch
     )
 """
 

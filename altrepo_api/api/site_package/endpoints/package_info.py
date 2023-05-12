@@ -145,9 +145,8 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
 
         # get last beehive errors by package hash
         response = self.send_sql_request(
-            (
-                self.sql.get_last_bh_rebuild_status_by_hsh,
-                {"pkghash": self.pkghash, "branch": self.branch},
+            self.sql.get_last_bh_rebuild_status_by_hsh.format(
+                branch=self.branch, pkghash=self.pkghash
             )
         )
         if not self.sql_status:
