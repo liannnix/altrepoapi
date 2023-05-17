@@ -31,6 +31,7 @@ class LookupTables:
         "c8.1",
         "c9f1",
         "c9f2",
+        "c10f1",
         "p5",
         "p6",
         "p7",
