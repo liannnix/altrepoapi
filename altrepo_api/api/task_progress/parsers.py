@@ -13,6 +13,7 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from flask_restx import inputs
 
 from altrepo_api.api.parser import (
     parser,
@@ -70,11 +71,19 @@ input_val = parser.register_item(
     help="task search arguments",
     location="args",
 )
+by_package_opt = parser.register_item(
+    "by_package",
+    type=inputs.boolean,
+    required=False,
+    help="find tasks by source package name",
+    location="args",
+    default=False
+)
 
 
 # build parsers
 last_tasks_args = parser.build_parser(branch_opt, task_limit_opt)
 find_tasks_args = parser.build_parser(
-    input_val, owner_opt, branch_opt, state_opt, task_limit_100_opt
+    input_val, owner_opt, branch_opt, state_opt, task_limit_100_opt, by_package_opt
 )
 find_tasks_lookup_args = parser.build_parser(input_val, branch_opt, task_limit_opt)

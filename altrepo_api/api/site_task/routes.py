@@ -45,6 +45,7 @@ logger = get_logger(__name__)
 @ns.route(
     "/tasks_by_package",
     doc={
+        "deprecated": True,
         "description": "Get tasks list by source package name",
         "responses": GET_RESPONSES_400_404,
     },
@@ -80,6 +81,7 @@ class routeLastTaskPackages(Resource):
 @ns.route(
     "/tasks_by_maintainer",
     doc={
+        "deprecated": True,
         "description": "Get tasks list by maintainer nickname",
         "responses": GET_RESPONSES_400_404,
     },
