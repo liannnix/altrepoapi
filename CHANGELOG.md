@@ -6,6 +6,18 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.11.1] - 2023-05-17
+
+Regular API code updates and fixes.
+
+### Added
+- `c10f1` branch support
+- `task/progress/find_tasks`: `by_package` request parameter
+### Changed
+- deprecate `site/tasks_by_package` route
+- deprecate `site/tasks_by_maintainer` route
+### Fixed
+
 ## [1.11.0] - 2023-05-12
 
 Regular API code updates and fixes.
