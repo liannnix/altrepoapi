@@ -71,8 +71,8 @@ input_val = parser.register_item(
     help="task search arguments",
     location="args",
 )
-by_pkg_opt = parser.register_item(
-    "by_pkg",
+by_package_opt = parser.register_item(
+    "by_package",
     type=inputs.boolean,
     required=False,
     help="find tasks by source package name",
@@ -84,6 +84,6 @@ by_pkg_opt = parser.register_item(
 # build parsers
 last_tasks_args = parser.build_parser(branch_opt, task_limit_opt)
 find_tasks_args = parser.build_parser(
-    input_val, owner_opt, branch_opt, state_opt, task_limit_100_opt, by_pkg_opt
+    input_val, owner_opt, branch_opt, state_opt, task_limit_100_opt, by_package_opt
 )
 find_tasks_lookup_args = parser.build_parser(input_val, branch_opt, task_limit_opt)

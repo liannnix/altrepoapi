@@ -11,7 +11,7 @@ OWNER_IN_DB = "rider"
 OWNER_NOT_IN_DB = "fakeowner"
 COMPONENT_IN_DB = "curl"
 COMPONENT_NOT_IN_DB = "fakecomponent"
-PACKAGE_IN_DN = "curl"
+PACKAGE_IN_DB = "curl"
 PACKAGE_NOT_IN_DB = "fakepackagename"
 STATE_IN_DB = "DONE"
 STATE_NOT_IN_DB = "running"
@@ -121,10 +121,10 @@ def test_fast_tasks_search_lookup(client, kwargs):
         {"input": COMPONENT_IN_DB, "status_code": 200},
         {"input": COMPONENT_NOT_IN_DB, "status_code": 404},
         {"input": COMPONENT_IN_DB, "branch": BRANCH_NOT_IN_DB, "status_code": 400},
-        {"input": PACKAGE_IN_DN, "branch": BRANCH_IN_DB, "by_pkg": True, "status_code": 200},
-        {"input": PACKAGE_IN_DN, "by_pkg": True, "status_code": 200},
-        {"input": PACKAGE_IN_DN, "branch": PACKAGE_NOT_IN_DB, "by_pkg": True, "status_code": 400},
-        {"input": PACKAGE_NOT_IN_DB, "by_pkg": True, "status_code": 404},
+        {"input": PACKAGE_IN_DB, "branch": BRANCH_IN_DB, "by_package": True, "status_code": 200},
+        {"input": PACKAGE_IN_DB, "by_package": True, "status_code": 200},
+        {"input": PACKAGE_IN_DB, "branch": PACKAGE_NOT_IN_DB, "by_package": True, "status_code": 400},
+        {"input": PACKAGE_NOT_IN_DB, "by_package": True, "status_code": 404},
         {"input": None, "status_code": 400},
     ],
 )

@@ -173,7 +173,7 @@ class FindTasks(APIWorker):
 
     def get(self):
         input_val: list[str] = self.args["input"][:] if self.args["input"] else []
-        by_pkg = self.args["by_pkg"]
+        by_pkg = self.args["by_package"]
         branch = self.args["branch"]
         state = tuple(self.args["state"] if self.args["state"] else [])
         owner = self.args["owner"]
@@ -234,7 +234,7 @@ class FindTasks(APIWorker):
                                  "WHERE titer_srcrpm_hash IN (" \
                                  "SELECT pkg_hash " \
                                  "FROM Packages " \
-                                 f"WHERE (pkg_name LIKE '{v}') " \
+                                 f"WHERE (pkg_name = '{v}') " \
                                  "AND (pkg_sourcepackage = 1)" \
                                  "))"
             else:
