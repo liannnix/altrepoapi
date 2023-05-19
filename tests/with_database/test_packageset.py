@@ -7,6 +7,13 @@ BRANCH_NOT_IN_DB = "fakebranch"
 BRANCHES_IN_DB = ("sisyphus", "p9", "p10")
 ARCHS_IN_DB = "noarch,x86_64,i586"
 ARCHS_NOT_IN_DB = "x86_64,fakearch2"
+
+LIST_ARCHS_IN_DB = ["srpm", "x86_64"]
+ARCH_NOT_DB = "fakecomponent"
+
+LIST_COMPONENTS_IN_DB = ["srpm", "classic"]
+COMPONENT_NOT_DB = "fakecomponent"
+
 PACKAGES_IN_DB = ("curl", "mc", "python3")
 COMPONENT_UUID_IN_DB = "fcca9e30-10ba-4e2a-8169-b29536f64cb0"
 ROOT_UUID_IN_DB = "c18251da-614b-42db-8358-ff34880255eb"
@@ -187,6 +194,82 @@ def test_repository_statistics(client, kwargs):
 )
 def test_packages_by_uuid(client, kwargs):
     url = url_for("api.packageset_route_packages_by_uuid")
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("status_code",):
+            continue
+        if v is not None:
+            params[k] = v
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["length"] != 0
+        assert data["packages"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "branch": BRANCH_IN_DB,
+            "arch": LIST_ARCHS_IN_DB[0],
+            "component": LIST_COMPONENTS_IN_DB[0],
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "arch": LIST_ARCHS_IN_DB[1],
+            "component": LIST_COMPONENTS_IN_DB[1],
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "arch": LIST_ARCHS_IN_DB[0],
+            "component": LIST_COMPONENTS_IN_DB[1],
+            "status_code": 404,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "arch": LIST_ARCHS_IN_DB[1],
+            "component": LIST_COMPONENTS_IN_DB[0],
+            "status_code": 404,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "arch": LIST_ARCHS_IN_DB[1],
+            "component": COMPONENT_NOT_DB,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "arch": ARCH_NOT_DB,
+            "component": LIST_COMPONENTS_IN_DB[0],
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_NOT_IN_DB,
+            "arch": LIST_ARCHS_IN_DB[0],
+            "component": LIST_COMPONENTS_IN_DB[0],
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "arch": LIST_ARCHS_IN_DB[1],
+            "component": None,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "arch": None,
+            "component": LIST_COMPONENTS_IN_DB[0],
+            "status_code": 400,
+        },
+    ],
+)
+def test_packages_by_component(client, kwargs):
+    url = url_for("api.packageset_route_packages_by_component")
     params = {}
     for k, v in kwargs.items():
         if k in ("status_code",):
