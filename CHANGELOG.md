@@ -6,6 +6,13 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.11.2] - 2023-05-19
+
+### Added
+- `packageset/packages_by_component route` route
+### Changed
+### Fixed
+
 ## [1.11.1] - 2023-05-17
 
 Regular API code updates and fixes.
