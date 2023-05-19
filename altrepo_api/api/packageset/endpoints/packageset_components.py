@@ -21,7 +21,7 @@ from ..sql import sql
 
 class PackagesByUuid(APIWorker):
     """
-    Get packages from database by packageset component UUID.
+    Get packages from database by packageset component UUID or component and architecture.
     """
 
     def __init__(self, connection, **kwargs):
@@ -30,7 +30,56 @@ class PackagesByUuid(APIWorker):
         self.sql = sql
         super().__init__()
 
-    def get(self):
+    def get_by_component(self):
+        branch = self.args["branch"]
+        arch = self.args["arch"]
+        component = self.args["component"]
+        branch_clause = f"WHERE branch = '{branch}'"
+        self.args["uuid"] = ""
+
+        response = self.send_sql_request(
+            self.sql.get_repository_statistics.format(branch=branch_clause),
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error(
+                {
+                    "message": "No data found in database",
+                    "args": self.args,
+                }
+            )
+
+        Component = namedtuple(
+            "Component",
+            [
+                "arch",
+                "component",
+                "count",
+                "size",
+                "uuid"
+            ],
+        )
+
+        for cmp in (Component(*el) for el in response[0][2]):
+            if (arch, component) == (
+                    cmp.component if cmp.component == "srpm" else cmp.arch,
+                    cmp.component,
+            ):
+                self.args["uuid"] = cmp.uuid
+                break
+
+        if not self.args["uuid"]:
+            return self.store_error(
+                {
+                    "message": "No data found in database",
+                    "args": self.args,
+                }
+            )
+
+        return self.get_by_uuid()
+
+    def get_by_uuid(self):
         uuid = self.args["uuid"]
 
         response = self.send_sql_request(

@@ -53,6 +53,7 @@ parser = ParserFactory()
 # lookup tables
 # __pkg_groups = set(lut.pkg_groups)
 __known_archs = set(lut.known_archs)
+__known_repo_components = set(lut.known_repo_components)
 __known_states = set(lut.known_states)
 __known_branches = set(lut.known_branches)
 __known_img_archs = set(lut.known_image_archs)
@@ -176,6 +177,20 @@ def arch_name_type(value: Any) -> str:
 
 
 arch_name_type.__schema__ = {"type": "string"}
+
+
+def arch_component_name_type(value: Any) -> str:
+    """Architecture name validator for component."""
+
+    value = __get_string(value)
+    archs = __known_archs.copy()
+    archs.add("srpm")
+    if value not in archs:
+        raise ValueError("Invalid architecture name: {0}".format(value))
+    return value
+
+
+arch_component_name_type.__schema__ = {"type": "string"}
 
 
 def pkg_groups_type(value: Any) -> str:
@@ -523,3 +538,15 @@ def file_search_type(value: Any) -> str:
 
 
 file_search_type.__schema__ = {"type": "string", "pattern": __file_search_match.pattern}
+
+
+def repo_component_type(value: Any) -> str:
+    """Repository component validator."""
+
+    value = __get_string(value)
+    if value not in __known_repo_components:
+        raise ValueError("Invalid architecture name: {0}".format(value))
+    return value
+
+
+repo_component_type.__schema__ = {"type": "string"}
