@@ -76,6 +76,13 @@ class LookupTables:
         "e2kv5",
         "e2kv6",
     ]
+    known_repo_components = [
+        "debuginfo",
+        "classic",
+        "srpm",
+        "checkinstall",
+        "gostcrypto",
+    ]
     default_archs = ["x86_64", "i586", "aarch64", "armh", "ppc64le", "noarch"]
     package_params = [
         "pkg_cs",
