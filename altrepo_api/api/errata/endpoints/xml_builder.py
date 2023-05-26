@@ -120,7 +120,21 @@ PRODUCT_CPE = {
         "cpe:/o:alt:server-v:9",
         "cpe:/o:alt:education:9",
         "cpe:/o:alt:slinux:9",
-        "cpe:/o:alt:starterkit:9",  # XXX: now version in CPE set as `p9`
+        "cpe:/o:alt:starterkit:p9",  # XXX: now version in CPE set as `p9`
+        "cpe:/o:alt:kworkstation:9.1",
+        "cpe:/o:alt:workstation:9.1",
+        "cpe:/o:alt:server:9.1",
+        "cpe:/o:alt:server-v:9.1",
+        "cpe:/o:alt:education:9.1",
+        "cpe:/o:alt:slinux:9.1",
+        "cpe:/o:alt:starterkit:9.1",
+        "cpe:/o:alt:kworkstation:9.2",
+        "cpe:/o:alt:workstation:9.2",
+        "cpe:/o:alt:server:9.2",
+        "cpe:/o:alt:server-v:9.2",
+        "cpe:/o:alt:education:9.2",
+        "cpe:/o:alt:slinux:9.2",
+        "cpe:/o:alt:starterkit:9.2",
     ],
     "p10": [
         "cpe:/o:alt:kworkstation:10",
@@ -129,14 +143,30 @@ PRODUCT_CPE = {
         "cpe:/o:alt:server-v:10",
         "cpe:/o:alt:education:10",
         "cpe:/o:alt:slinux:10",
-        "cpe:/o:alt:starterkit:10",  # XXX: now version in CPE set as `p10`
+        "cpe:/o:alt:starterkit:p10",  # XXX: now version in CPE set as `p10`
+        "cpe:/o:alt:kworkstation:10.1",
+        "cpe:/o:alt:workstation:10.1",
+        "cpe:/o:alt:server:10.1",
+        "cpe:/o:alt:server-v:10.1",
+        "cpe:/o:alt:education:10.1",
+        "cpe:/o:alt:slinux:10.1",
+        "cpe:/o:alt:starterkit:10.1",
+        "cpe:/o:alt:kworkstation:10.2",
+        "cpe:/o:alt:workstation:10.2",
+        "cpe:/o:alt:server:10.2",
+        "cpe:/o:alt:server-v:10.2",
+        "cpe:/o:alt:education:10.2",
+        "cpe:/o:alt:slinux:10.2",
+        "cpe:/o:alt:starterkit:10.2",
     ],
     "c9f2": ["cpe:/o:alt:spworkstation:8.4", "cpe:/o:alt:spserver:8.4"],
+    "c10f1": ["cpe:/o:alt:spworkstation:10", "cpe:/o:alt:spserver:10"],
 }
 BRANCH_CHECK_REGEX = {
-    "p9": (r"cpe:\/o:alt:[a-z\-]+:p?(\d+)(?:\.\d)*", "9"),
-    "p10": (r"cpe:\/o:alt:[a-z\-]+:p?(\d+)(?:\.\d)*", "10"),
-    "c9f2": (r"cpe:\/o:alt:sp(?:server|workstation):p?(\d\.\d)*", "8.4"),
+    "p9": (r"cpe:\/o:alt:(?!sp)[a-z\-]+:p?(\d+)(?:\.\d)*", "9"),
+    "p10": (r"cpe:\/o:alt:(?!sp)[a-z\-]+:p?(\d+)(?:\.\d)*", "10"),
+    "c9f2": (r"cpe:\/o:alt:sp(?:server|workstation):(\d\.\d)", "8.4"),
+    "c10f1": (r"cpe:\/o:alt:sp(?:server|workstation):(\d+)", "10"),
 }
 NUM_TO_SEVERITY = {0: "NONE", 1: "LOW", 2: "MEDUM", 3: "HIGH", 4: "CRITICAL"}
 SEVERITY_TO_NUM = {v: k for k, v in NUM_TO_SEVERITY.items()}
