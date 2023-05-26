@@ -6,7 +6,20 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.11.3] - 2023-05-26
+
+Regular API code updates and fixes.
+
+### Added
+- `errata/export/oval`: support for upcoming `c10` branch
+### Changed
+- `errata/export/oval`: product CPE list in `<advisory><affected_cpe_list>` section for `p9` and `p10` branches
+### Fixed
+- `errata/export/oval`: branch detection regular expressions
+
 ## [1.11.2] - 2023-05-19
+
+Regular API code updates and fixes.
 
 ### Added
 - `packageset/packages_by_component route` route
