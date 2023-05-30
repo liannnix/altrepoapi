@@ -40,6 +40,7 @@ from altrepo_api.api.site_pkgset_info import ns as site_pkgset_info
 from altrepo_api.api.site_maintainer import ns as site_maintainer_ns
 from altrepo_api.api.site_packageset import ns as site_packageset_ns
 from altrepo_api.api.errata import ns as errata_ns
+from altrepo_api.api.vulnerabilities import ns as vuln_ns
 
 
 authorizations = {
@@ -72,6 +73,7 @@ api.add_namespace(file_ns)
 api.add_namespace(image_ns)
 api.add_namespace(export_ns)
 api.add_namespace(errata_ns)
+api.add_namespace(vuln_ns)
 api.add_namespace(license_ns)
 api.add_namespace(site_task_ns)
 api.add_namespace(site_image_ns)
