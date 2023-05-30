@@ -148,3 +148,14 @@ def compare_versions(
         _make_rpm_evrdt_struct(epoch1, version1, release1, disttag1, buildtime1),
         _make_rpm_evrdt_struct(epoch2, version2, release2, disttag2, buildtime2),
     )
+
+
+def version_less_or_equal(
+    version1: str, version2: str, strictly_less: bool = False
+) -> bool:
+    """Simple version comparison without additional field (epoch, release, disttag,...)."""
+    eq = compare_versions(version1=version1, version2=version2)
+    if strictly_less:
+        return eq < 0
+    else:
+        return eq < 1
