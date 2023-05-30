@@ -13,11 +13,12 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from collections import namedtuple
+
 from dataclasses import asdict
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.utils import arch_sort_index
+
 from ..dto import (
     TaskMeta,
     TaskState,

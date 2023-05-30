@@ -13,10 +13,12 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 from dataclasses import asdict
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
+
 from ..sql import sql
 from ..dto import (
     FastSearchTaskMeta,
