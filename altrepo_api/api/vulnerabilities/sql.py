@@ -40,7 +40,7 @@ class SQL:
 
     ERRATA_LOOKUP_BRANCHES = {"p9", "p10", "p11", "sisyphus", "c9f2", "c10f1"}
 
-    get_vuln_info_by_id = """
+    get_vuln_info_by_ids = """
 SELECT
     vuln_hash,
     vuln_id,
@@ -51,6 +51,7 @@ SELECT
     vuln_modified_date,
     vuln_published_date,
     vuln_json,
+    vuln_references.type,
     vuln_references.link
 FROM Vulnerabilities
 WHERE (vuln_id, vuln_hash) IN (
@@ -58,24 +59,27 @@ WHERE (vuln_id, vuln_hash) IN (
         vuln_id,
         argMax(vuln_hash, ts)
     FROM Vulnerabilities
-    WHERE vuln_id = '{vuln_id}'
+    WHERE vuln_id IN {tmp_table}
     GROUP BY vuln_id
 )
 """
 
-    get_cve_cpe_matching = """
-SELECT groupUniqArray(
-    tuple(
-        cpm_cpe,
-        cpm_version_start,
-        cpm_version_end,
-        cpm_version_start_excluded,
-        cpm_version_end_excluded
+    get_cves_cpe_matching = """
+SELECT
+    vuln_id,
+    groupUniqArray(
+        tuple(
+            cpm_cpe,
+            cpm_version_start,
+            cpm_version_end,
+            cpm_version_start_excluded,
+            cpm_version_end_excluded
+        )
     )
-)
 FROM CpeMatch
-WHERE vuln_hash = {vuln_hash}
+WHERE vuln_hash IN {tmp_table}
     AND cpm_cpe LIKE 'cpe:2.3:a:%'
+GROUP BY vuln_id
 """
 
     get_packages_and_cpes = """

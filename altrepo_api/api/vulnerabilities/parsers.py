@@ -14,11 +14,25 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from altrepo_api.api.parser import parser, cve_id_type, bdu_id_type, branch_name_type
+from altrepo_api.api.parser import (
+    parser,
+    cve_id_type,
+    cve_id_list_type,
+    bdu_id_type,
+    branch_name_type,
+)
 
 cve_id = parser.register_item(
     "vuln_id",
     type=cve_id_type,
+    required=True,
+    help="CVE id",
+    location="args",
+)
+cve_id_list = parser.register_item(
+    "vuln_id",
+    type=cve_id_list_type,
+    action="split",
     required=True,
     help="CVE id",
     location="args",
@@ -41,4 +55,5 @@ branch_opt = parser.register_item(
 
 cve_info_args = parser.build_parser(cve_id)
 bdu_info_args = parser.build_parser(bdu_id)
-cve_vulnerable_packages_args = parser.build_parser(cve_id, branch_opt)
+cve_vulnerable_packages_args = parser.build_parser(cve_id_list, branch_opt)
+bdu_vulnerable_packages_args = parser.build_parser(bdu_id, branch_opt)

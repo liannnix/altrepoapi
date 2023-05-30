@@ -76,8 +76,12 @@ vuln_errata_model = ns.model(
         "task_state": fields.String(description="task state"),
         "hash": fields.String(description="package hash", attribute="pkg_hash"),
         "name": fields.String(description="package name", attribute="pkg_name"),
-        "version": fields.String(description="package version", attribute="pkg_version"),
-        "release": fields.String(description="package release", attribute="pkg_release"),
+        "version": fields.String(
+            description="package version", attribute="pkg_version"
+        ),
+        "release": fields.String(
+            description="package release", attribute="pkg_release"
+        ),
         "vulns": fields.List(
             fields.String,
             description="Errata closed vulnerabilities list",
@@ -94,14 +98,18 @@ vulnerable_package_model = ns.model(
         "release": fields.String(description="package release"),
         "vuln_id": fields.String(description="vulnerability id"),
         "vulnerable": fields.Boolean(description="is package vulnerable"),
-        "fixed": fields.Boolean(description="is package vulnerability closed by Errata"),
+        "fixed": fields.Boolean(
+            description="is package vulnerability closed by Errata"
+        ),
         "cpe_matches": fields.Nested(
             vuln_cpe_match_model,
             description="CPE matches list that package is vulnerable through",
+            as_list=True,
         ),
         "fixed_in": fields.Nested(
             vuln_errata_model,
             description="Errata list that closes vulnerability for package",
+            as_list=True,
         ),
     },
 )
@@ -110,10 +118,12 @@ cve_packages_model = ns.model(
     {
         "request_args": fields.Raw(description="request arguments"),
         "vuln_info": fields.Nested(
-            vulnerability_model, description="vulnerabilty information"
+            vulnerability_model, description="vulnerabilty information", as_list=True
         ),
         "packages": fields.Nested(
-            vulnerable_package_model, description="vulnerable packages information"
+            vulnerable_package_model,
+            description="vulnerable packages information",
+            as_list=True,
         ),
     },
 )

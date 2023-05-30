@@ -21,7 +21,12 @@ from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
 
 from .namespace import get_namespace
-from .parsers import cve_info_args, bdu_info_args, cve_vulnerable_packages_args
+from .parsers import (
+    cve_info_args,
+    bdu_info_args,
+    cve_vulnerable_packages_args,
+    bdu_vulnerable_packages_args,
+)
 from .serializers import vulnerability_info_model, cve_packages_model
 from .endpoints.vuln import VulnInfo
 from .endpoints.cve import VulnerablePackageByCve
@@ -63,6 +68,23 @@ class routeVulnerablePackageByCve(Resource):
         args = cve_vulnerable_packages_args.parse_args(strict=True)
         w = VulnerablePackageByCve(g.connection, **args)
         return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/bdu/packages",
+    doc={
+        "description": "Get BDU vulnerabilty information for packages in latest branch state",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeVulnerablePackageByBdu(Resource):
+    @ns.expect(bdu_vulnerable_packages_args)
+    @ns.marshal_with(cve_packages_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = bdu_vulnerable_packages_args.parse_args(strict=True)
+        w = VulnerablePackageByCve(g.connection, **args)
+        return run_worker(worker=w, run_method=w.get_by_bdu, args=args)
 
 
 @ns.route(

@@ -96,6 +96,7 @@ __task_search_match = re.compile(r"^(@?[\w\.\+\-\_]{2,},?)+$")
 __file_search_match = re.compile(r"^[\w\/\.\+\- $#%:=@\{\}]{3,}$")
 # vulnerabilities
 __cve_id_match = re.compile(r"^CVE-\d{4}-\d{4,}$")
+__cve_id_list_match = re.compile(r"^(CVE-\d{4}-\d{4,},?)+$")
 __bdu_id_match = re.compile(r"^BDU:\d{4}-\d{5}$")
 __errata_id_match = re.compile(r"^ALT-[A-Z]+-2\d{3}-\d{4,}-\d{1,}$")
 
@@ -566,6 +567,18 @@ def cve_id_type(value: Any) -> str:
 
 
 cve_id_type.__schema__ = {"type": "string", "pattern": __cve_id_match.pattern}
+
+
+def cve_id_list_type(value: Any) -> str:
+    """CVE id list validator."""
+
+    value = __get_string(value)
+    if not __cve_id_list_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+cve_id_list_type.__schema__ = {"type": "string", "pattern": __cve_id_list_match.pattern}
 
 
 def bdu_id_type(value: Any) -> str:

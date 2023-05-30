@@ -100,7 +100,8 @@ class VulnerabilityInfo:
     modified: datetime
     published: datetime
     json: dict[str, Any]
-    refs: list[str]
+    refs_type: list[str]
+    refs_link: list[str]
 
     def __post_init__(self):
         parsed = None
@@ -116,6 +117,11 @@ class VulnerabilityInfo:
 
     def asdict(self, strip_json: bool = True) -> dict[str, Any]:
         res = asdict(self)
+
+        del res["refs_type"]
+        del res["refs_link"]
+        res["refs"] = [r for r in self.refs_link]
+
         if strip_json:
             del res["json"]
         return res

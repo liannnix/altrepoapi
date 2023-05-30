@@ -14,6 +14,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from typing import Iterable, Union
+
 from altrepo_api.api.base import APIWorker
 from altrepo_api.utils import make_tmp_table_name
 
@@ -40,6 +42,12 @@ class VulnerablePackageByCve(APIWorker):
         self.args = kwargs
         self.sql = sql
         super().__init__()
+        self.branch: Union[str, None] = None
+        self.cve_info: dict[str, VulnerabilityInfo] = {}
+        self.cve_cpems: dict[str, list[CpeMatch]] = {}
+        self.packages_cpes: dict[str, list[CPE]] = {}
+        self.packages_versions: list[PackageVersion] = []
+        self.packages_vulnerabilities: list[PackageVulnerability] = []
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
@@ -55,82 +63,113 @@ class VulnerablePackageByCve(APIWorker):
         else:
             return True
 
-    def get(self):
-        branch = self.args["branch"]  # XXX: is optional!
-        vuln_id = self.args["vuln_id"]
-
+    def _get_cve_info(self, cve_ids: Iterable[str]) -> None:
+        self.status = False
         # 1. check if CVE info in DB
+        tmp_table = make_tmp_table_name("vuiln_ids")
+
         response = self.send_sql_request(
-            self.sql.get_vuln_info_by_id.format(vuln_id=vuln_id)
+            self.sql.get_vuln_info_by_ids.format(tmp_table=tmp_table),
+            external_tables=[
+                {
+                    "name": tmp_table,
+                    "structure": [("vuln_id", "String")],
+                    "data": [{"vuln_id": cve_id} for cve_id in cve_ids],
+                }
+            ],
         )
         if not self.sql_status:
-            return self.error
+            return None
         if not response:
-            return self.store_error(
-                {"message": f"No data info found in DB for {vuln_id}"}
-            )
+            _ = self.store_error({"message": f"No data info found in DB for {cve_ids}"})
+            return None
 
-        vuln_hash, vuln = response[0][0], VulnerabilityInfo(*response[0][1:])
+        cve_hashes: set[int] = set()
+        for el in response:
+            cve_hashes.add(el[0])
+            self.cve_info[el[1]] = VulnerabilityInfo(*el[1:])
 
         # 2. check if CPE matching is there
+        tmp_table = make_tmp_table_name("vuiln_hashes")
+
         response = self.send_sql_request(
-            self.sql.get_cve_cpe_matching.format(vuln_hash=vuln_hash)
+            self.sql.get_cves_cpe_matching.format(tmp_table=tmp_table),
+            external_tables=[
+                {
+                    "name": tmp_table,
+                    "structure": [("vuln_hash", "UInt64")],
+                    "data": [{"vuln_hash": h} for h in cve_hashes],
+                }
+            ],
         )
         if not self.sql_status:
-            return self.error
+            return None
         if not response:
-            return self.store_error(
-                {"message": f"No CPE matches data info found in DB for {vuln_id}"}
+            _ = self.store_error(
+                {"message": f"No CPE matches data info found in DB for {cve_ids}"}
             )
+            return None
 
-        cpems = [CpeMatch(*el) for el in response[0][0]]
+        self.cve_cpems: dict[str, list[CpeMatch]] = {
+            el[0]: [CpeMatch(*x) for x in el[1]] for el in response
+        }
 
-        # 3. Check if any packages has CPE matches
-        if branch is not None:
-            # map key consistency is guaranteed by validation
-            cpe_branches = (self.sql.CPE_BRANCH_MAP[branch],)
-        else:
-            cpe_branches = tuple({v for v in self.sql.CPE_BRANCH_MAP.values()})
+        self.status = True
 
-        # 3.1 collect all packages CPEs
+    def _get_packages_cpes(self) -> None:
+        self.status = False
+
+        cpe_branches = tuple({v for v in self.sql.CPE_BRANCH_MAP.values()})
+        if self.branch is not None:
+            cpe_branch = self.sql.CPE_BRANCH_MAP.get(self.branch, None)
+            if cpe_branch is None:
+                _ = self.store_error(
+                    {"message": f"No CPE branch mapping found for branch {self.branch}"}
+                )
+                return None
+            cpe_branches = (cpe_branch,)
+
         response = self.send_sql_request(
             self.sql.get_packages_and_cpes.format(cpe_branches=cpe_branches)
         )
         if not self.sql_status:
-            return self.error
+            return None
         if not response:
-            return self.store_error(
-                {
-                    "message": f"No CPE matches data info found in DB for {vuln_id} in {cpe_branches}"
-                }
+            _ = self.store_error(
+                {"message": f"No CPE matches data info found in DB for {cpe_branches}"}
             )
+            return None
 
-        packages_cpes: dict[str, list[CPE]] = {}
         for pkg_name, cpe in response:
-            if pkg_name not in packages_cpes:
-                packages_cpes[pkg_name] = []
+            if pkg_name not in self.packages_cpes:
+                self.packages_cpes[pkg_name] = []
             try:
-                packages_cpes[pkg_name].append(CPE(cpe))
+                self.packages_cpes[pkg_name].append(CPE(cpe))
             except ValueError:
                 self.logger.warning(f"Failed to parse CPE {cpe} for {pkg_name}")
 
-        # 3.2 find packages that mathces by CPE
+        self.status = True
+
+    def _get_last_matched_packages_versions(self) -> None:
+        self.status = False
         matched_packages: list[tuple[str, CPE]] = []
 
         cve_cpe_triplets = {
-            (cpem.cpe.vendor, cpem.cpe.product, cpem.cpe.target_sw) for cpem in cpems
+            (cpem.cpe.vendor, cpem.cpe.product, cpem.cpe.target_sw)
+            for cpems in self.cve_cpems.values()
+            for cpem in cpems
         }
 
         for pkg, cpe in (
-            (pkg, cpe) for pkg, cpes in packages_cpes.items() for cpe in cpes
+            (pkg, cpe) for pkg, cpes in self.packages_cpes.items() for cpe in cpes
         ):
             if (cpe.vendor, cpe.product, cpe.target_sw) in cve_cpe_triplets:
                 matched_packages.append((pkg, cpe))
 
         # 4. check if last branch (all branches if `branch` not specified) packages are vulnerable
         branches = tuple(self.sql.CPE_BRANCH_MAP.keys())
-        if branch is not None:
-            branches = (branch,)
+        if self.branch is not None:
+            branches = (self.branch,)
 
         tmp_table = make_tmp_table_name("pkg_names")
 
@@ -147,44 +186,63 @@ class VulnerablePackageByCve(APIWorker):
             ],
         )
         if not self.sql_status:
-            return self.error
+            return None
         if not response:
-            return self.store_error({"message": "No packages data found in DB"})
+            _ = self.store_error({"message": "No packages data found in DB"})
+            return None
 
-        pkg_versions = [PackageVersion(*el) for el in response]
+        self.packages_versions = [PackageVersion(*el) for el in response]
+        self.status = True
 
-        # 4.1 compare package and CVE versions
-        packages: list[PackageVulnerability] = []
-        for pkg in pkg_versions:
-            pkg_cpe_triplets = {
-                (cpe.vendor, cpe.product, cpe.target_sw)
-                for cpe in packages_cpes[pkg.name]
+    def _get_packages_vulnerabilities(self) -> None:
+        self.status = False
+
+        for vuln_id, cpems in self.cve_cpems.items():
+            cve_cpe_triplets = {
+                (cpem.cpe.vendor, cpem.cpe.product, cpem.cpe.target_sw)
+                for cpem in cpems
             }
 
-            packages.append(
-                PackageVulnerability(**pkg._asdict(), vuln_id=vuln_id).match_by_version(
-                    (
-                        cpem
-                        for cpem in cpems
-                        if (cpem.cpe.vendor, cpem.cpe.product, cpem.cpe.target_sw)
-                        in pkg_cpe_triplets
+            for pkg in self.packages_versions:
+                pkg_cpe_triplets = {
+                    (cpe.vendor, cpe.product, cpe.target_sw)
+                    for cpe in self.packages_cpes[pkg.name]
+                }
+
+                if not cve_cpe_triplets.intersection(pkg_cpe_triplets):
+                    continue
+
+                self.packages_vulnerabilities.append(
+                    PackageVulnerability(
+                        **pkg._asdict(), vuln_id=vuln_id
+                    ).match_by_version(
+                        (
+                            cpem
+                            for cpem in cpems
+                            if (cpem.cpe.vendor, cpem.cpe.product, cpem.cpe.target_sw)
+                            in pkg_cpe_triplets
+                        )
                     )
                 )
-            )
 
-            packages = sorted(
-                packages, key=lambda x: (x.branch, x.vulnerable, x.name, x.version)
-            )
+        self.packages_vulnerabilities = sorted(
+            self.packages_vulnerabilities,
+            key=lambda x: (x.vuln_id, x.branch, x.vulnerable, x.name, x.version),
+        )
 
-        # 4.2 check if there any buld tasks that fixes vulnerable packages
-        vulnearble_packages = [p for p in packages if p.vulnerable]
+        self.status = True
+
+    def _get_vulnerability_fix_errata(self) -> None:
+        self.status = False
+
+        vulnearble_packages = [p for p in self.packages_vulnerabilities if p.vulnerable]
 
         if vulnearble_packages and (
-            (branch is not None and branch in self.sql.ERRATA_LOOKUP_BRANCHES)
-            or branch is None
+            (self.branch is not None and self.branch in self.sql.ERRATA_LOOKUP_BRANCHES)
+            or self.branch is None
         ):
-            branches = (branch,)
-            if branch is None:
+            branches = (self.branch,)
+            if self.branch is None:
                 branches = tuple(self.sql.ERRATA_LOOKUP_BRANCHES)
 
             # get Errata where CVE is closed for vulnerable packages and not commited
@@ -204,7 +262,7 @@ class VulnerablePackageByCve(APIWorker):
                 ],
             )
             if not self.sql_status:
-                return self.error
+                return None
             if response:
                 erratas = [Errata(*el[1]) for el in response]
 
@@ -224,7 +282,7 @@ class VulnerablePackageByCve(APIWorker):
                     ],
                 )
                 if not self.sql_status:
-                    return self.error
+                    return None
                 if response:
                     task_states = {el[0]: el[1] for el in response}
 
@@ -247,7 +305,6 @@ class VulnerablePackageByCve(APIWorker):
                     for idx, errata in enumerate(pkg.fixed_in[:]):
                         # delete duplicate errata by task id using that erratas are sorted by timestamp in descending order
                         if errata.task_id in uniq_task_ids:
-                            print("should delete", idx, errata.id, errata.task_id)
                             del pkg.fixed_in[idx]
                             continue
                         uniq_task_ids.add(errata.task_id)
@@ -257,8 +314,89 @@ class VulnerablePackageByCve(APIWorker):
                             errata.task_state = "DONE"
                             pkg.fixed = True
 
+        self.status = True
+
+    def _get_vulnerable_packages(self, cve_ids: list[str]) -> None:
+        # 1. get CVE information
+        self._get_cve_info(tuple(cve_ids))
+        if not self.status:
+            return
+
+        # 2. check if all CVE info found in database
+        not_found = [cve_id for cve_id in cve_ids if cve_id not in self.cve_info]
+        if not_found:
+            _ = self.store_error(
+                {"message": f"No CVE data info found in DB for {not_found}"}
+            )
+            self.status = False
+            return
+
+        # 3. Check if any packages has CPE matches
+        self._get_packages_cpes()
+        if not self.status:
+            return
+
+        # 4. find packages that mathces by CPE
+        self._get_last_matched_packages_versions()
+        if not self.status:
+            return
+
+        # 5. compare package and CVE versions
+        self._get_packages_vulnerabilities()
+        if not self.status:
+            return
+
+        # 6. check if there any buld tasks that fixes vulnerable packages
+        self._get_vulnerability_fix_errata()
+        if not self.status:
+            return
+
+    def get(self):
+        self.branch = self.args["branch"]
+        cve_ids = self.args["vuln_id"]
+
+        self._get_vulnerable_packages(cve_ids)
+        if not self.status:
+            return self.error
+
         return {
             "request_args": self.args,
-            "vuln_info": vuln.asdict(),
-            "packages": [p.asdict() for p in packages],
+            "vuln_info": [vuln.asdict() for vuln in self.cve_info.values()],
+            "packages": [p.asdict() for p in self.packages_vulnerabilities],
+        }, 200
+
+    def get_by_bdu(self):
+        self.branch = self.args["branch"]
+        bdu_id = self.args["vuln_id"]
+
+        # get CVE id's from BDU
+        response = self.send_sql_request(
+            self.sql.get_vuln_info_by_ids.format(tmp_table=(bdu_id,))
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error(
+                {"message": f"No data info found in DB for {bdu_id}"}
+            )
+
+        bdu = VulnerabilityInfo(*response[0][1:])
+        print(bdu)
+
+        cve_ids = []
+        for idx, ref_type in enumerate(bdu.refs_type):
+            if ref_type == "CVE":
+                cve_ids.append(bdu.refs_link[idx])
+
+        if not cve_ids:
+            return self.store_error({"message": f"No related CVEs found in {bdu_id}"})
+
+        self._get_vulnerable_packages(cve_ids)
+        if not self.status:
+            return self.error
+
+        return {
+            "request_args": self.args,
+            "vuln_info": [bdu] + [vuln.asdict() for vuln in self.cve_info.values()],
+            "packages": [p.asdict() for p in self.packages_vulnerabilities],
         }, 200

@@ -38,7 +38,7 @@ class VulnInfo(APIWorker):
         vuln_id = self.args["vuln_id"]
 
         response = self.send_sql_request(
-            self.sql.get_vuln_info_by_id.format(vuln_id=vuln_id)
+            self.sql.get_vuln_info_by_ids.format(tmp_table=(vuln_id,))
         )
         if not self.sql_status:
             return self.error
