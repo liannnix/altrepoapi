@@ -78,7 +78,11 @@ SELECT
     )
 FROM CpeMatch
 WHERE vuln_hash IN {tmp_table}
-    AND cpm_cpe LIKE 'cpe:2.3:a:%'
+    AND (
+        cpm_cpe LIKE 'cpe:2.3:a:%'
+        OR cpm_cpe LIKE 'cpe:2.3:o:linux:linux_kernel:%'
+        OR cpm_cpe LIKE 'cpe:2.3:o:linux:kernel:%'
+    )
 GROUP BY vuln_id
 """
 
