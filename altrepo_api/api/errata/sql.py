@@ -118,5 +118,98 @@ WHERE (vuln_id, vuln_hash) IN (
 )
 """
 
+    get_errata_history_by_id = """
+SELECT
+    eh_hash,
+    eh_type,
+    eh_source,
+    arrayZip(eh_references.type, eh_references.link),
+    errata_id,
+    pkg_hash,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkgset_name,
+    pkgset_date,
+    task_id,
+    subtask_id,
+    task_state,
+    task_changed
+FROM ErrataHistory
+WHERE errata_id = '{errata_id}'
+"""
+
+    get_errata_history_by_ids = """
+SELECT
+    eh_hash,
+    eh_type,
+    eh_source,
+    arrayZip(eh_references.type, eh_references.link),
+    errata_id,
+    pkg_hash,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkgset_name,
+    pkgset_date,
+    task_id,
+    subtask_id,
+    task_state,
+    task_changed
+FROM ErrataHistory
+WHERE errata_id IN (
+    SELECT errata_id FROM {tmp_table}
+)
+"""
+
+    get_vulns_by_ids = """
+SELECT
+    vuln_id,
+    vuln_hash,
+    vuln_type,
+    vuln_summary,
+    vuln_score,
+    vuln_severity,
+    vuln_url,
+    arrayZip(vuln_references.type, vuln_references.link),
+    vuln_modified_date,
+    vuln_published_date,
+    vuln_json
+FROM Vulnerabilities
+WHERE vuln_id IN (
+    SELECT vuln_id FROM {tmp_table}
+)
+"""
+
+    get_bugs_by_ids = """
+SELECT *
+FROM Bugzilla
+WHERE bz_id IN (
+    SELECT bz_id FROM {tmp_table}
+)
+"""
+
+    search_errata = """
+SELECT
+    eh_hash,
+    eh_type,
+    eh_source,
+    arrayZip(eh_references.type, eh_references.link),
+    errata_id,
+    pkg_hash,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkgset_name,
+    pkgset_date,
+    task_id,
+    subtask_id,
+    task_state,
+    task_changed
+FROM ErrataHistory
+{cond}
+ORDER BY ts DESC
+"""
+
 
 sql = SQL()

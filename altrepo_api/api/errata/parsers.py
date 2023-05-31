@@ -16,7 +16,7 @@
 
 from flask_restx import inputs
 
-from altrepo_api.api.parser import parser, pkg_name_type
+from altrepo_api.api.parser import parser, pkg_name_type, errataid_type, branch_name_type
 
 package_name_opt = parser.register_item(
     "package_name",
@@ -33,5 +33,29 @@ one_file_opt = parser.register_item(
     help="return OVAL definitions as one XML file",
     location="args",
 )
+errataid = parser.register_item(
+    "errata_id",
+    type=errataid_type,
+    required=True,
+    help="errata ID",
+    location="args",
+)
+errataid_opt = parser.register_item(
+    "errata_id",
+    type=errataid_type,
+    required=False,
+    help="errata ID",
+    location="args",
+)
+branch_name_opt = parser.register_item(
+    "branch",
+    type=branch_name_type,
+    required=False,
+    default="p10",
+    help="branch name",
+    location="args"
+)
 
 oval_export_args = parser.build_parser(package_name_opt, one_file_opt)
+errata_branch_args = parser.build_parser(errataid)
+errata_search_args = parser.build_parser(branch_name_opt, package_name_opt, errataid_opt)
