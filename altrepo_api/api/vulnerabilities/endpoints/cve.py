@@ -235,84 +235,81 @@ class VulnerablePackageByCve(APIWorker):
     def _get_vulnerability_fix_errata(self) -> None:
         self.status = False
 
-        vulnearble_packages = [p for p in self.packages_vulnerabilities if p.vulnerable]
+        branch_clause = ""
+        if self.branch is not None:
+            branch_clause = f"AND pkgset_name = '{self.branch}'"
 
-        if vulnearble_packages and (
-            (self.branch is not None and self.branch in self.sql.ERRATA_LOOKUP_BRANCHES)
-            or self.branch is None
-        ):
-            branches = (self.branch,)
-            if self.branch is None:
-                branches = tuple(self.sql.ERRATA_LOOKUP_BRANCHES)
+        # get Errata where CVE is closed for vulnerable packages and not commited
+        # to repository yet if any
+        tmp_table = make_tmp_table_name("packages")
 
-            # get Errata where CVE is closed for vulnerable packages and not commited
-            # to repository yet if any
-            tmp_table = make_tmp_table_name("packages")
+        response = self.send_sql_request(
+            self.sql.get_errata_by_packages.format(
+                branch_clause=branch_clause, tmp_table=tmp_table
+            ),
+            external_tables=[
+                {
+                    "name": tmp_table,
+                    "structure": [("pkg_name", "String")],
+                    "data": [
+                        {"pkg_name": pkg_name}
+                        for pkg_name in {p.name for p in self.packages_vulnerabilities}
+                    ],
+                }
+            ],
+        )
+        if not self.sql_status:
+            return None
+        if response:
+            erratas = [Errata(*el[1]) for el in response]
+
+            # get last state for tasks in erratas
+            task_states: dict[int, str] = {}
+
+            tmp_table = make_tmp_table_name("task_ids")
 
             response = self.send_sql_request(
-                self.sql.get_errata_by_packages.format(
-                    branches=branches, tmp_table=tmp_table
-                ),
+                self.sql.get_last_tasks_state.format(tmp_table=tmp_table),
                 external_tables=[
                     {
                         "name": tmp_table,
-                        "structure": [("pkg_name", "String")],
-                        "data": [{"pkg_name": p.name} for p in vulnearble_packages],
+                        "structure": [("task_id", "UInt32")],
+                        "data": [{"task_id": e.task_id} for e in erratas],
                     }
                 ],
             )
             if not self.sql_status:
                 return None
             if response:
-                erratas = [Errata(*el[1]) for el in response]
+                task_states = {el[0]: el[1] for el in response}
 
-                # get last state for tasks in erratas
-                task_states: dict[int, str] = {}
+            # check found erratas for vulnerability fixes
+            for pkg in self.packages_vulnerabilities:
+                for errata in erratas:
+                    if (pkg.name, pkg.branch) == (
+                        errata.pkg_name,
+                        errata.branch,
+                    ) and pkg.vuln_id in errata.ref_ids(ref_type="vuln"):
+                        # no need to check version due to branch, package name and vulnerability id is equal already
+                        pkg.fixed_in.append(errata)
 
-                tmp_table = make_tmp_table_name("task_ids")
+                # if package in taskless branch and found any errata mark it as `fixed` and continue
+                if pkg.fixed_in and pkg.branch in lut.taskless_branches:
+                    pkg.fixed = True
+                    continue
 
-                response = self.send_sql_request(
-                    self.sql.get_last_tasks_state.format(tmp_table=tmp_table),
-                    external_tables=[
-                        {
-                            "name": tmp_table,
-                            "structure": [("task_id", "UInt32")],
-                            "data": [{"task_id": e.task_id} for e in erratas],
-                        }
-                    ],
-                )
-                if not self.sql_status:
-                    return None
-                if response:
-                    task_states = {el[0]: el[1] for el in response}
-
-                # check found erratas for vulnerability fixes
-                for pkg in vulnearble_packages:
-                    for errata in erratas:
-                        if (pkg.name, pkg.branch) == (
-                            errata.pkg_name,
-                            errata.branch,
-                        ) and pkg.vuln_id in errata.ref_ids(ref_type="vuln"):
-                            # no need to check version due to branch, package name and vulnerability id is equal already
-                            pkg.fixed_in.append(errata)
-
-                    # if package in taskless branch and found any errata mark it as `fixed` and continue
-                    if pkg.fixed_in and pkg.branch in lut.taskless_branches:
-                        pkg.fixed = True
+                uniq_task_ids: set[int] = set()
+                for idx, errata in enumerate(pkg.fixed_in[:]):
+                    # delete duplicate errata by task id using that erratas are sorted by timestamp in descending order
+                    if errata.task_id in uniq_task_ids:
+                        del pkg.fixed_in[idx]
                         continue
+                    uniq_task_ids.add(errata.task_id)
 
-                    uniq_task_ids: set[int] = set()
-                    for idx, errata in enumerate(pkg.fixed_in[:]):
-                        # delete duplicate errata by task id using that erratas are sorted by timestamp in descending order
-                        if errata.task_id in uniq_task_ids:
-                            del pkg.fixed_in[idx]
-                            continue
-                        uniq_task_ids.add(errata.task_id)
-
-                        # set `fixed` flag if task is `DONE` and update task state of errata
-                        if task_states.get(errata.task_id) == "DONE":
-                            errata.task_state = "DONE"
-                            pkg.fixed = True
+                    # set `fixed` flag if task is `DONE` and update task state of errata
+                    if task_states.get(errata.task_id) == "DONE":
+                        errata.task_state = "DONE"
+                        pkg.fixed = True
 
         self.status = True
 

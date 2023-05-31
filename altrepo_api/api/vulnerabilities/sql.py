@@ -38,8 +38,6 @@ class SQL:
         "sisyphus_riscv64": "altsisyphus",
     }
 
-    ERRATA_LOOKUP_BRANCHES = {"p9", "p10", "p11", "sisyphus", "c9f2", "c10f1"}
-
     get_vuln_info_by_ids = """
 SELECT
     vuln_hash,
@@ -160,26 +158,27 @@ SELECT
 FROM ErrataHistory
 WHERE (
     eh_type = 'branch' OR (
-        eh_type = 'task' AND (task_id, subtask_id) IN (
+        eh_type = 'task'
+            AND (task_id, subtask_id) IN (
                 SELECT DISTINCT
                     task_id,
                     subtask_id
                 FROM Tasks
-                WHERE task_repo IN {branches}
-                    AND (task_id, task_changed) IN (
-                        SELECT task_id, changed FROM (
-                            SELECT
-                                task_id,
-                                max(task_changed) AS changed,
-                                argMax(task_state, task_changed) AS state
-                            FROM TaskStates
-                            GROUP BY task_id
-                        )  WHERE state IN ('EPERM', 'TESTED', 'DONE')
-                    )
+                WHERE (task_id, task_changed) IN (
+                    SELECT task_id, changed FROM (
+                        SELECT
+                            task_id,
+                            max(task_changed) AS changed,
+                            argMax(task_state, task_changed) AS state
+                        FROM TaskStates
+                        GROUP BY task_id
+                    )  WHERE state IN ('EPERM', 'TESTED', 'DONE')
+                )
                     AND subtask_deleted = 0
             )
         )
     )
+    {branch_clause}
     AND pkg_name IN (SELECT pkg_name FROM {tmp_table})
     AND has(eh_references.type, 'vuln')
 GROUP BY errata_id
