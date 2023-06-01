@@ -247,6 +247,7 @@ SELECT DISTINCT
     pkg_hash
 FROM Packages
 WHERE pkg_srcrpm_hash = {pkghash}
+AND pkg_name NOT LIKE '%-debuginfo'
 )
 SELECT DISTINCT
     pkg_name,
@@ -804,6 +805,88 @@ FROM (
 WHERE (version, release) != ('{ver}', '{rel}')
     AND (version, release) != ('{cur_ver}', '{cur_rel}')
     AND task_id != 0
+"""
+
+    get_conflicts_pkg_hshs = """
+SELECT DISTINCT
+    sel.pkg_hash AS input_hash,
+    TT.pkg_name AS conf_name,
+    TT.pkg_version AS version, 
+    TT.pkg_release AS release,
+    TT.pkg_epoch AS epoch,
+    sel.dp_name AS dp_name,
+    sel.dp_version AS dp_version,
+    sel.dp_flag AS dp_flag,
+    groupUniqArray(TT.pkg_hash) AS conf_hash,
+    groupUniqArray(TT.pkg_arch) AS conf_arch
+FROM (
+    SELECT DISTINCT
+        pkg_hash,
+        dp_name,
+        dp_version,
+        dp_flag
+    FROM Depends
+    WHERE pkg_hash IN (SELECT pkg_hash FROM {tmp_table})
+    AND dp_type = 'conflict'
+) AS sel
+INNER JOIN (
+    SELECT 
+        pkg_hash, 
+        pkg_name,
+        pkg_arch, 
+        pkg_epoch, 
+        pkg_version, 
+        pkg_release
+    FROM last_packages
+    WHERE pkgset_name = '{branch}'
+) AS TT ON TT.pkg_name = sel.dp_name
+GROUP BY input_hash, conf_name, epoch, version, release, dp_version, dp_flag, dp_name
+"""
+
+    get_conflict_files = """
+WITH
+pkg_files AS
+(
+    SELECT
+        pkg_hash AS input_hash,
+        TT.pkg_hash AS conf_hash,
+        file_hashname
+    FROM (
+        SELECT DISTINCT
+            pkg_hash,
+            file_hashname
+        FROM Files
+        WHERE pkg_hash IN (SELECT input_hash FROM {tmp_table})
+        AND file_class != 'directory'
+    ) AS inpt_files
+    INNER JOIN (
+        SELECT DISTINCT
+            pkg_hash,
+            file_hashname
+        FROM Files
+        WHERE pkg_hash IN (SELECT conf_hash FROM {tmp_table})
+        AND file_class != 'directory'
+    ) AS TT ON TT.file_hashname = inpt_files.file_hashname
+)
+SELECT input_hash, groupUniqArray(filename) AS filenames
+FROM (
+SELECT
+    PF.input_hash AS input_hash,
+    FN.fn_name AS filename
+FROM
+(SELECT * FROM pkg_files WHERE conf_hash != input_hash) AS PF
+LEFT JOIN
+(
+    SELECT DISTINCT
+        fn_hash,
+        fn_name
+    FROM FileNames
+    WHERE fn_hash IN
+    (SELECT file_hashname FROM pkg_files)
+) AS FN ON FN.fn_hash = PF.file_hashname
+ORDER BY filename
+)
+GROUP BY input_hash
 """
 
 
