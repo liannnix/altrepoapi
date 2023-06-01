@@ -6,6 +6,16 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.12.1] - 2023-06-01
+
+Regular API code updates and fixes.
+
+### Added
+- `api/vuln` routes namespace
+### Changed
+- enabled `c10f1` branch for OVAL export
+### Fixed
+
 ## [1.11.3] - 2023-05-26
 
 Regular API code updates and fixes.
