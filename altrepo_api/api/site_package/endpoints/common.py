@@ -59,7 +59,7 @@ class _pAPIWorker(Protocol):
 
     def store_error(
         self, message: dict[str, Any], severity: int = ..., http_code: int = ...
-    ):
+    ) -> tuple[Any, int]:
         ...
 
     def send_sql_request(
