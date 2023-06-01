@@ -20,10 +20,13 @@ import logging
 
 from dataclasses import dataclass, asdict, field
 from datetime import datetime
-from typing import Any, Iterable, Literal, NamedTuple
+from typing import Any, Iterable, Literal, NamedTuple, Protocol, Union
 
+from altrepo_api.api.misc import lut
+from altrepo_api.utils import make_tmp_table_name
 from altrepo_api.libs.librpm_functions import compare_versions, version_less_or_equal
 
+from ..sql import SQL
 
 logger = logging.getLogger(__name__)
 
@@ -278,3 +281,344 @@ def vulnerability_closed_in_errata(
         )
         < 1
     )
+
+
+# Protocols
+class _pAPIWorker(Protocol):
+    sql: SQL
+    status: bool
+    sql_status: bool
+    logger: logging.Logger
+
+    def store_error(
+        self, message: dict[str, Any], severity: int = ..., http_code: int = ...
+    ) -> tuple[Any, int]:
+        ...
+
+    def send_sql_request(
+        self, request_line: Any, http_code: int = ..., **kwargs
+    ) -> Any:
+        ...
+
+
+class _pHasBranch(Protocol):
+    branch: str
+
+
+class _pHasBranchOptional(Protocol):
+    branch: Union[str, None]
+
+
+class _pHasPkgNameList(Protocol):
+    pkg_name: list[str]
+
+
+class _pHasCveInfo(Protocol):
+    cve_info: dict[str, VulnerabilityInfo]
+
+
+class _pHasCveCpems(Protocol):
+    cve_cpems: dict[str, list[CpeMatch]]
+
+
+class _pHasPackagesCpes(Protocol):
+    packages_cpes: dict[str, list[CPE]]
+
+
+class _pHasPackagesVersions(Protocol):
+    packages_versions: list[PackageVersion]
+
+
+class _pHasPackagesVulnerabilities(Protocol):
+    packages_vulnerabilities: list[PackageVulnerability]
+
+
+class _pGetPackagesCpesCompatible(
+    _pHasPackagesCpes, _pHasBranchOptional, _pAPIWorker, Protocol
+):
+    ...
+
+
+class _pGetCveInfoCompatible(
+    _pHasCveInfo, _pHasCveCpems, _pHasBranchOptional, _pAPIWorker, Protocol
+):
+    ...
+
+
+class _pGetLastMatchedPackagesVersionsCompatible(
+    _pHasCveCpems,
+    _pHasPackagesCpes,
+    _pHasPackagesVersions,
+    _pHasBranchOptional,
+    _pAPIWorker,
+    Protocol,
+):
+    ...
+
+
+class _pGetPackagesVulnerabilitiesCompatible(
+    _pHasCveCpems,
+    _pHasPackagesCpes,
+    _pHasPackagesVersions,
+    _pHasPackagesVulnerabilities,
+    _pAPIWorker,
+    Protocol,
+):
+    ...
+
+
+class _pGetVulnerabilityFixErrataCompatible(
+    _pHasPackagesVulnerabilities, _pHasBranchOptional, _pAPIWorker, Protocol
+):
+    ...
+
+
+# Mixin
+def get_cve_info(cls: _pGetCveInfoCompatible, cve_ids: Iterable[str]) -> None:
+    cls.status = False
+    # 1. check if CVE info in DB
+    tmp_table = make_tmp_table_name("vuiln_ids")
+
+    response = cls.send_sql_request(
+        cls.sql.get_vuln_info_by_ids.format(tmp_table=tmp_table),
+        external_tables=[
+            {
+                "name": tmp_table,
+                "structure": [("vuln_id", "String")],
+                "data": [{"vuln_id": cve_id} for cve_id in cve_ids],
+            }
+        ],
+    )
+    if not cls.sql_status:
+        return None
+    if not response:
+        _ = cls.store_error({"message": f"No data info found in DB for {cve_ids}"})
+        return None
+
+    cve_hashes: set[int] = set()
+    for el in response:
+        cve_hashes.add(el[0])
+        cls.cve_info[el[1]] = VulnerabilityInfo(*el[1:])
+
+    # 2. check if CPE matching is there
+    tmp_table = make_tmp_table_name("vuiln_hashes")
+
+    response = cls.send_sql_request(
+        cls.sql.get_cves_cpe_matching.format(tmp_table=tmp_table),
+        external_tables=[
+            {
+                "name": tmp_table,
+                "structure": [("vuln_hash", "UInt64")],
+                "data": [{"vuln_hash": h} for h in cve_hashes],
+            }
+        ],
+    )
+    if not cls.sql_status:
+        return None
+    if not response:
+        _ = cls.store_error(
+            {"message": f"No CPE matches data info found in DB for {cve_ids}"}
+        )
+        return None
+
+    cls.cve_cpems = {el[0]: [CpeMatch(*x) for x in el[1]] for el in response}
+
+    cls.status = True
+
+
+def get_packages_cpes(cls: _pGetPackagesCpesCompatible) -> None:
+    cls.status = False
+
+    cpe_branches = tuple({v for v in cls.sql.CPE_BRANCH_MAP.values()})
+    if cls.branch is not None:
+        cpe_branch = cls.sql.CPE_BRANCH_MAP.get(cls.branch, None)
+        if cpe_branch is None:
+            _ = cls.store_error(
+                {"message": f"No CPE branch mapping found for branch {cls.branch}"}
+            )
+            return None
+        cpe_branches = (cpe_branch,)
+
+    response = cls.send_sql_request(
+        cls.sql.get_packages_and_cpes.format(cpe_branches=cpe_branches)
+    )
+    if not cls.sql_status:
+        return None
+    if not response:
+        _ = cls.store_error(
+            {"message": f"No CPE matches data info found in DB for {cpe_branches}"}
+        )
+        return None
+
+    for pkg_name, cpe in response:
+        if pkg_name not in cls.packages_cpes:
+            cls.packages_cpes[pkg_name] = []
+        try:
+            cls.packages_cpes[pkg_name].append(CPE(cpe))
+        except ValueError:
+            cls.logger.warning(f"Failed to parse CPE {cpe} for {pkg_name}")
+
+    cls.status = True
+
+
+def get_last_matched_packages_versions(
+    cls: _pGetLastMatchedPackagesVersionsCompatible,
+) -> None:
+    cls.status = False
+    matched_packages: list[tuple[str, CPE]] = []
+
+    cve_cpe_triplets = {
+        (cpem.cpe.vendor, cpem.cpe.product, cpem.cpe.target_sw)
+        for cpems in cls.cve_cpems.values()
+        for cpem in cpems
+    }
+
+    for pkg, cpe in (
+        (pkg, cpe) for pkg, cpes in cls.packages_cpes.items() for cpe in cpes
+    ):
+        if (cpe.vendor, cpe.product, cpe.target_sw) in cve_cpe_triplets:
+            matched_packages.append((pkg, cpe))
+
+    # 4. check if last branch (all branches if `branch` not specified) packages are vulnerable
+    branches = tuple(cls.sql.CPE_BRANCH_MAP.keys())
+    if cls.branch is not None:
+        branches = (cls.branch,)
+
+    tmp_table = make_tmp_table_name("pkg_names")
+
+    response = cls.send_sql_request(
+        cls.sql.get_packages_versions.format(branches=branches, tmp_table=tmp_table),
+        external_tables=[
+            {
+                "name": tmp_table,
+                "structure": [("pkg_name", "String")],
+                "data": [{"pkg_name": p[0]} for p in matched_packages],
+            }
+        ],
+    )
+    if not cls.sql_status:
+        return None
+    if not response:
+        _ = cls.store_error({"message": "No packages data found in DB"})
+        return None
+
+    cls.packages_versions = [PackageVersion(*el) for el in response]
+    cls.status = True
+
+
+def get_packages_vulnerabilities(cls: _pGetPackagesVulnerabilitiesCompatible) -> None:
+    cls.status = False
+
+    for vuln_id, cpems in cls.cve_cpems.items():
+        cve_cpe_triplets = {
+            (cpem.cpe.vendor, cpem.cpe.product, cpem.cpe.target_sw) for cpem in cpems
+        }
+
+        for pkg in cls.packages_versions:
+            pkg_cpe_triplets = {
+                (cpe.vendor, cpe.product, cpe.target_sw)
+                for cpe in cls.packages_cpes[pkg.name]
+            }
+
+            if not cve_cpe_triplets.intersection(pkg_cpe_triplets):
+                continue
+
+            cls.packages_vulnerabilities.append(
+                PackageVulnerability(**pkg._asdict(), vuln_id=vuln_id).match_by_version(
+                    (
+                        cpem
+                        for cpem in cpems
+                        if (cpem.cpe.vendor, cpem.cpe.product, cpem.cpe.target_sw)
+                        in pkg_cpe_triplets
+                    )
+                )
+            )
+
+    cls.packages_vulnerabilities = sorted(
+        cls.packages_vulnerabilities,
+        key=lambda x: (x.vuln_id, x.branch, x.vulnerable, x.name, x.version),
+    )
+
+    cls.status = True
+
+
+def get_vulnerability_fix_errata(cls: _pGetVulnerabilityFixErrataCompatible) -> None:
+    cls.status = False
+
+    branch_clause = ""
+    if cls.branch is not None:
+        branch_clause = f"AND pkgset_name = '{cls.branch}'"
+
+    # get Errata where CVE is closed for vulnerable packages and not commited
+    # to repository yet if any
+    tmp_table = make_tmp_table_name("packages")
+
+    response = cls.send_sql_request(
+        cls.sql.get_errata_by_packages.format(
+            branch_clause=branch_clause, tmp_table=tmp_table
+        ),
+        external_tables=[
+            {
+                "name": tmp_table,
+                "structure": [("pkg_name", "String")],
+                "data": [
+                    {"pkg_name": pkg_name}
+                    for pkg_name in {p.name for p in cls.packages_vulnerabilities}
+                ],
+            }
+        ],
+    )
+    if not cls.sql_status:
+        return None
+    if response:
+        erratas = [Errata(*el[1]) for el in response]
+
+        # get last state for tasks in erratas
+        task_states: dict[int, str] = {}
+
+        tmp_table = make_tmp_table_name("task_ids")
+
+        response = cls.send_sql_request(
+            cls.sql.get_last_tasks_state.format(tmp_table=tmp_table),
+            external_tables=[
+                {
+                    "name": tmp_table,
+                    "structure": [("task_id", "UInt32")],
+                    "data": [{"task_id": e.task_id} for e in erratas],
+                }
+            ],
+        )
+        if not cls.sql_status:
+            return None
+        if response:
+            task_states = {el[0]: el[1] for el in response}
+
+        # check found erratas for vulnerability fixes
+        for pkg in cls.packages_vulnerabilities:
+            for errata in erratas:
+                if (pkg.name, pkg.branch) == (
+                    errata.pkg_name,
+                    errata.branch,
+                ) and pkg.vuln_id in errata.ref_ids(ref_type="vuln"):
+                    # no need to check version due to branch, package name and vulnerability id is equal already
+                    pkg.fixed_in.append(errata)
+
+            # if package in taskless branch and found any errata mark it as `fixed` and continue
+            if pkg.fixed_in and pkg.branch in lut.taskless_branches:
+                pkg.fixed = True
+                continue
+
+            uniq_task_ids: set[int] = set()
+            for idx, errata in enumerate(pkg.fixed_in[:]):
+                # delete duplicate errata by task id using that erratas are sorted by timestamp in descending order
+                if errata.task_id in uniq_task_ids:
+                    del pkg.fixed_in[idx]
+                    continue
+                uniq_task_ids.add(errata.task_id)
+
+                # set `fixed` flag if task is `DONE` and update task state of errata
+                if task_states.get(errata.task_id) == "DONE":
+                    errata.task_state = "DONE"
+                    pkg.fixed = True
+
+    cls.status = True
