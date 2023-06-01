@@ -185,6 +185,34 @@ GROUP BY errata_id
 ORDER BY max_ts DESC
 """
 
+    get_errata_by_cves = """
+SELECT
+    errata_id,
+    argMax(
+        tuple(
+            errata_id,
+            eh_references.type,
+            eh_references.link,
+            pkgset_name,
+            task_id,
+            subtask_id,
+            task_state,
+            toString(pkg_hash),
+            pkg_name,
+            pkg_version,
+            pkg_release
+        ),
+        ts
+    ),
+    max(ts) AS max_ts
+FROM ErrataHistory
+WHERE eh_type IN ('branch', 'task')
+    {branch_clause}
+    AND hasAny(eh_references.link, {cve_ids})
+GROUP BY errata_id
+ORDER BY max_ts DESC
+"""
+
     get_last_tasks_state = """
 SELECT
     task_id,

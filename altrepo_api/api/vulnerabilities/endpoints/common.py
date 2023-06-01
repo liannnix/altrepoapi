@@ -622,3 +622,68 @@ def get_vulnerability_fix_errata(cls: _pGetVulnerabilityFixErrataCompatible) -> 
                     pkg.fixed = True
 
     cls.status = True
+
+
+def get_vulnerablities_from_errata(
+    cls: _pGetVulnerabilityFixErrataCompatible, cve_ids: list[str]
+) -> None:
+    cls.status = False
+
+    # XXX: ignore branch if provided
+    branch_clause = ""
+    # if cls.branch is not None:
+    #     branch_clause = f"AND pkgset_name = '{cls.branch}'"
+
+    # find errata by branch (if set) and CVE ids
+    response = cls.send_sql_request(
+        cls.sql.get_errata_by_cves.format(branch_clause=branch_clause, cve_ids=cve_ids)
+    )
+    if not cls.sql_status:
+        return None
+    if response:
+        erratas = [Errata(*el[1]) for el in response]
+        print(erratas)
+
+        # get last task states
+        # get last state for tasks in erratas
+        task_states: dict[int, str] = {}
+
+        tmp_table = make_tmp_table_name("task_ids")
+
+        response = cls.send_sql_request(
+            cls.sql.get_last_tasks_state.format(tmp_table=tmp_table),
+            external_tables=[
+                {
+                    "name": tmp_table,
+                    "structure": [("task_id", "UInt32")],
+                    "data": [{"task_id": e.task_id} for e in erratas],
+                }
+            ],
+        )
+        if not cls.sql_status:
+            return None
+        if response:
+            task_states = {el[0]: el[1] for el in response}
+
+        # build vulnerable packages list from erratas
+        for errata in erratas:
+            # update task state
+            errata.task_state = task_states.get(errata.task_id, errata.task_state)
+            # add PackageVulnerability record
+            cls.packages_vulnerabilities.append(
+                PackageVulnerability(
+                    hash=errata.pkg_hash,
+                    name=errata.pkg_name,
+                    version=errata.pkg_version,
+                    release=errata.pkg_release,
+                    branch=errata.branch,
+                    vuln_id=errata.id,
+                    fixed=True,
+                    fixed_in=[errata],
+                )
+            )
+
+        if cls.packages_vulnerabilities:
+            cls.status = True
+    else:
+        _ = cls.store_error({"message": f"No errata records found for {cve_ids}"})

@@ -117,6 +117,7 @@ cve_packages_model = ns.model(
     "CveVulnerablePackagesModel",
     {
         "request_args": fields.Raw(description="request arguments"),
+        "result": fields.List(fields.String, description="Data collection details"),
         "vuln_info": fields.Nested(
             vulnerability_model, description="vulnerabilty information", as_list=True
         ),

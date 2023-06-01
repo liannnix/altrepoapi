@@ -17,7 +17,6 @@
 from typing import Union
 
 from altrepo_api.api.base import APIWorker
-# from altrepo_api.api.misc import lut
 
 from .common import (
     CPE,
@@ -31,6 +30,7 @@ from .common import (
     get_last_matched_packages_versions,
     get_packages_vulnerabilities,
     get_vulnerability_fix_errata,
+    get_vulnerablities_from_errata,
 )
 from ..sql import sql
 
@@ -51,6 +51,7 @@ class VulnerablePackageByCve(APIWorker):
         self.packages_cpes: dict[str, list[CPE]] = {}
         self.packages_versions: list[PackageVersion] = []
         self.packages_vulnerabilities: list[PackageVulnerability] = []
+        self._result_message: list[str] = []
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
@@ -69,16 +70,36 @@ class VulnerablePackageByCve(APIWorker):
     def _find_vulnerable_packages(self, cve_ids: list[str]) -> None:
         # 1. get CVE information
         get_cve_info(self, tuple(cve_ids))
-        if not self.status:
+        if not self.sql_status:
             return
 
         # 2. check if all CVE info found in database
-        not_found = [cve_id for cve_id in cve_ids if cve_id not in self.cve_info]
-        if not_found:
-            _ = self.store_error(
-                {"message": f"No CVE data info found in DB for {not_found}"}
+        # add messages for not found CVE ids
+        self._result_message.extend(
+            [
+                f"No data found in DB for {cve_id}"
+                for cve_id in {
+                    cve_id for cve_id in cve_ids if cve_id not in self.cve_info
+                }
+            ]
+        )
+
+        # add messages for CVEs without CPE matches
+        self._result_message.extend(
+            [
+                f"No CPE matching data found in DB for {cve_id}"
+                for cve_id in {
+                    cve_id for cve_id in cve_ids if cve_id not in self.cve_cpems
+                }
+            ]
+        )
+
+        # # if there is no data about CVE(s) found in DB at all
+        if not self.cve_info or not self.cve_cpems:
+            self._result_message.append(
+                f"Use errata history as a data source for {cve_ids}"
             )
-            self.status = False
+            get_vulnerablities_from_errata(self, cve_ids)
             return
 
         # 3. Check if any packages has CPE matches
@@ -113,6 +134,7 @@ class VulnerablePackageByCve(APIWorker):
             "request_args": self.args,
             "vuln_info": [vuln.asdict() for vuln in self.cve_info.values()],
             "packages": [p.asdict() for p in self.packages_vulnerabilities],
+            "result": self._result_message,
         }, 200
 
     def get_by_bdu(self):
@@ -148,4 +170,5 @@ class VulnerablePackageByCve(APIWorker):
             "request_args": self.args,
             "vuln_info": [bdu] + [vuln.asdict() for vuln in self.cve_info.values()],
             "packages": [p.asdict() for p in self.packages_vulnerabilities],
+            "result": self._result_message,
         }, 200
