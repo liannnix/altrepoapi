@@ -173,6 +173,6 @@ class routeSearch(Resource):
     @ns.marshal_with(errata_batch_model)
     def get(self):
         url_logging(logger, g.url)
-        args = {}
+        args = errata_search_args.parse_args(strict=False)
         w = Search(g.connection, **args)
         return run_worker(worker=w, args=args)

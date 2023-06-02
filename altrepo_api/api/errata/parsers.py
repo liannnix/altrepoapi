@@ -42,7 +42,6 @@ errataid = parser.register_item(
 )
 errataid_opt = parser.register_item(
     "errata_id",
-    type=errataid_type,
     required=False,
     help="errata ID",
     location="args",
