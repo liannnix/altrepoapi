@@ -62,7 +62,6 @@ class OvalExport(APIWorker):
     def get(self):
         package_name = self.args["package_name"]
         one_file = self.args["one_file"]
-        print(f"DBG: {one_file}")
         pkg_name_clause = ""
 
         if package_name:
