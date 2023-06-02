@@ -208,6 +208,7 @@ SELECT
 FROM ErrataHistory
 WHERE eh_type IN ('branch', 'task')
     {branch_clause}
+    {errata_clause}
     AND hasAny(eh_references.link, {cve_ids})
 GROUP BY errata_id
 ORDER BY max_ts DESC

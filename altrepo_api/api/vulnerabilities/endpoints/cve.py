@@ -99,7 +99,7 @@ class VulnerablePackageByCve(APIWorker):
             self.result_message.append(
                 f"Use errata history as a data source for {cve_ids}"
             )
-            get_vulnerablities_from_errata(self, cve_ids)
+            get_vulnerablities_from_errata(self, cve_ids, None)
             return
 
         # 3. Check if any packages has CPE matches
@@ -121,6 +121,13 @@ class VulnerablePackageByCve(APIWorker):
         get_vulnerability_fix_errata(self)
         if not self.status:
             return
+
+        # 7. update with packages found by CVE to Errata matching
+        get_vulnerablities_from_errata(
+            self,
+            cve_ids,
+            [e.id for v in self.packages_vulnerabilities for e in v.fixed_in],
+        )
 
     def get(self):
         self.branch = self.args["branch"]

@@ -642,24 +642,33 @@ def get_vulnerability_fix_errata(cls: _pGetVulnerabilityFixErrataCompatible) -> 
 
 
 def get_vulnerablities_from_errata(
-    cls: _pGetVulnerabilityFixErrataCompatible, cve_ids: list[str]
+    cls: _pGetVulnerabilityFixErrataCompatible,
+    cve_ids: list[str],
+    exclude_erratas: Union[list[str], None],
 ) -> None:
     cls.status = False
 
     # XXX: ignore branch if provided
     branch_clause = ""
-    # if cls.branch is not None:
-    #     branch_clause = f"AND pkgset_name = '{cls.branch}'"
 
     # find errata by branch (if set) and CVE ids
+    errata_clause = ""
+    if exclude_erratas is not None:
+        # XXX: apply branch clause here
+        if cls.branch is not None:
+            branch_clause = f"AND pkgset_name = '{cls.branch}'"
+        # exclude erratas
+        errata_clause = f"AND errata_id NOT IN {exclude_erratas}"
+
     response = cls.send_sql_request(
-        cls.sql.get_errata_by_cves.format(branch_clause=branch_clause, cve_ids=cve_ids)
+        cls.sql.get_errata_by_cves.format(
+            branch_clause=branch_clause, errata_clause=errata_clause, cve_ids=cve_ids
+        )
     )
     if not cls.sql_status:
         return None
     if response:
         erratas = [Errata(*el[1]) for el in response]
-        print(erratas)
 
         # get last task states
         # get last state for tasks in erratas
@@ -683,7 +692,27 @@ def get_vulnerablities_from_errata(
             task_states = {el[0]: el[1] for el in response}
 
         # build vulnerable packages list from erratas
+        def first_value_from(it: Iterable):
+            return next(iter(it))
+
+        cve_ids_set = set(cve_ids)
+        # collect previously found erratas if any
+        known_erratas = {
+            (e.branch, e.task_id, e.pkg_name, e.pkg_version)
+            for v in cls.packages_vulnerabilities
+            for e in v.fixed_in
+        }
+
         for errata in erratas:
+            # skip known erratas if any
+            if (
+                errata.branch,
+                errata.task_id,
+                errata.pkg_name,
+                errata.pkg_version,
+            ) in known_erratas:
+                continue
+
             # update task state
             errata.task_state = task_states.get(errata.task_id, errata.task_state)
             # add PackageVulnerability record
@@ -694,7 +723,9 @@ def get_vulnerablities_from_errata(
                     version=errata.pkg_version,
                     release=errata.pkg_release,
                     branch=errata.branch,
-                    vuln_id=errata.id,
+                    vuln_id=first_value_from(
+                        cve_ids_set.intersection(set(errata.ref_ids("vuln")))
+                    ),
                     fixed=True,
                     fixed_in=[errata],
                 )
