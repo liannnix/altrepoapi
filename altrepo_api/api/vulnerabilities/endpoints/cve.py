@@ -51,7 +51,7 @@ class VulnerablePackageByCve(APIWorker):
         self.packages_cpes: dict[str, list[CPE]] = {}
         self.packages_versions: list[PackageVersion] = []
         self.packages_vulnerabilities: list[PackageVulnerability] = []
-        self._result_message: list[str] = []
+        self.result_message: list[str] = []
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
@@ -75,7 +75,7 @@ class VulnerablePackageByCve(APIWorker):
 
         # 2. check if all CVE info found in database
         # add messages for not found CVE ids
-        self._result_message.extend(
+        self.result_message.extend(
             [
                 f"No data found in DB for {cve_id}"
                 for cve_id in {
@@ -85,7 +85,7 @@ class VulnerablePackageByCve(APIWorker):
         )
 
         # add messages for CVEs without CPE matches
-        self._result_message.extend(
+        self.result_message.extend(
             [
                 f"No CPE matching data found in DB for {cve_id}"
                 for cve_id in {
@@ -96,7 +96,7 @@ class VulnerablePackageByCve(APIWorker):
 
         # # if there is no data about CVE(s) found in DB at all
         if not self.cve_info or not self.cve_cpems:
-            self._result_message.append(
+            self.result_message.append(
                 f"Use errata history as a data source for {cve_ids}"
             )
             get_vulnerablities_from_errata(self, cve_ids)
@@ -134,7 +134,7 @@ class VulnerablePackageByCve(APIWorker):
             "request_args": self.args,
             "vuln_info": [vuln.asdict() for vuln in self.cve_info.values()],
             "packages": [p.asdict() for p in self.packages_vulnerabilities],
-            "result": self._result_message,
+            "result": self.result_message,
         }, 200
 
     def get_by_bdu(self):
@@ -170,5 +170,5 @@ class VulnerablePackageByCve(APIWorker):
             "request_args": self.args,
             "vuln_info": [bdu] + [vuln.asdict() for vuln in self.cve_info.values()],
             "packages": [p.asdict() for p in self.packages_vulnerabilities],
-            "result": self._result_message,
+            "result": self.result_message,
         }, 200

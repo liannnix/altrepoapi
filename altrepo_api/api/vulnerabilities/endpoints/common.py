@@ -345,6 +345,15 @@ class _pGetCveInfoCompatible(
     ...
 
 
+class _pGetLastPackageVersionsCompatible(
+    _pHasPackagesVersions,
+    _pHasBranchOptional,
+    _pAPIWorker,
+    Protocol,
+):
+    ...
+
+
 class _pGetLastMatchedPackagesVersionsCompatible(
     _pHasCveCpems,
     _pHasPackagesCpes,
@@ -461,6 +470,37 @@ def get_packages_cpes(cls: _pGetPackagesCpesCompatible) -> None:
     cls.status = True
 
 
+def get_last_packages_versions(
+    cls: _pGetLastPackageVersionsCompatible, pkg_names: Iterable[tuple[str, Any]]
+) -> None:
+    cls.status = False
+
+    branches = tuple(cls.sql.CPE_BRANCH_MAP.keys())
+    if cls.branch is not None:
+        branches = (cls.branch,)
+
+    tmp_table = make_tmp_table_name("pkg_names")
+
+    response = cls.send_sql_request(
+        cls.sql.get_packages_versions.format(branches=branches, tmp_table=tmp_table),
+        external_tables=[
+            {
+                "name": tmp_table,
+                "structure": [("pkg_name", "String")],
+                "data": [{"pkg_name": p[0]} for p in pkg_names],
+            }
+        ],
+    )
+    if not cls.sql_status:
+        return None
+    if not response:
+        _ = cls.store_error({"message": "No packages data found in DB"})
+        return None
+
+    cls.packages_versions = [PackageVersion(*el) for el in response]
+    cls.status = True
+
+
 def get_last_matched_packages_versions(
     cls: _pGetLastMatchedPackagesVersionsCompatible,
 ) -> None:
@@ -480,30 +520,7 @@ def get_last_matched_packages_versions(
             matched_packages.append((pkg, cpe))
 
     # 4. check if last branch (all branches if `branch` not specified) packages are vulnerable
-    branches = tuple(cls.sql.CPE_BRANCH_MAP.keys())
-    if cls.branch is not None:
-        branches = (cls.branch,)
-
-    tmp_table = make_tmp_table_name("pkg_names")
-
-    response = cls.send_sql_request(
-        cls.sql.get_packages_versions.format(branches=branches, tmp_table=tmp_table),
-        external_tables=[
-            {
-                "name": tmp_table,
-                "structure": [("pkg_name", "String")],
-                "data": [{"pkg_name": p[0]} for p in matched_packages],
-            }
-        ],
-    )
-    if not cls.sql_status:
-        return None
-    if not response:
-        _ = cls.store_error({"message": "No packages data found in DB"})
-        return None
-
-    cls.packages_versions = [PackageVersion(*el) for el in response]
-    cls.status = True
+    get_last_packages_versions(cls, matched_packages)
 
 
 def get_packages_vulnerabilities(cls: _pGetPackagesVulnerabilitiesCompatible) -> None:
