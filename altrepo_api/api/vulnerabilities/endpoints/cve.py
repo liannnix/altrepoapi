@@ -21,16 +21,17 @@ from altrepo_api.api.base import APIWorker
 from .common import (
     CPE,
     CpeMatch,
-    # Errata,
+    Errata,
     PackageVersion,
     PackageVulnerability,
     VulnerabilityInfo,
     get_cve_info,
     get_packages_cpes,
-    get_last_matched_packages_versions,
+    get_last_packages_versions,
+    get_matched_packages_names,
     get_packages_vulnerabilities,
     get_vulnerability_fix_errata,
-    get_vulnerablities_from_errata,
+    get_errata_by_cve_ids,
 )
 from ..sql import sql
 
@@ -48,6 +49,7 @@ class VulnerablePackageByCve(APIWorker):
         self.branch: Union[str, None] = None
         self.cve_info: dict[str, VulnerabilityInfo] = {}
         self.cve_cpems: dict[str, list[CpeMatch]] = {}
+        self.erratas: list[Errata] = []
         self.packages_cpes: dict[str, list[CPE]] = {}
         self.packages_versions: list[PackageVersion] = []
         self.packages_vulnerabilities: list[PackageVulnerability] = []
@@ -68,12 +70,15 @@ class VulnerablePackageByCve(APIWorker):
             return True
 
     def _find_vulnerable_packages(self, cve_ids: list[str]) -> None:
-        # 1. get CVE information
-        get_cve_info(self, tuple(cve_ids))
+        # 1. get list of errata by CVE to Errata references matching
+        get_errata_by_cve_ids(self, cve_ids)
+
+        # 2. get CVE information
+        get_cve_info(self, cve_ids)
         if not self.sql_status:
             return
 
-        # 2. check if all CVE info found in database
+        # 3. check if all CVE info found in database
         # add messages for not found CVE ids
         self.result_message.extend(
             [
@@ -94,40 +99,35 @@ class VulnerablePackageByCve(APIWorker):
             ]
         )
 
-        # # if there is no data about CVE(s) found in DB at all
+        # # if there is no data about CVE(s) found in DB at all use Errata as a source
+        package_names: set[str] = {e.pkg_name for e in self.erratas}
+
         if not self.cve_info or not self.cve_cpems:
             self.result_message.append(
-                f"Use errata history as a data source for {cve_ids}"
+                f"Using errata history as a data source for {cve_ids}"
             )
-            get_vulnerablities_from_errata(self, cve_ids, None)
-            return
+        else:
+            # 4. Check if any packages has CPE matches
+            get_packages_cpes(self)
+            if not self.sql_status:
+                return
+            if not self.status:
+                self.result_message.extend(["Failed to get packages CPE from DB"])
 
-        # 3. Check if any packages has CPE matches
-        get_packages_cpes(self)
+            package_names.update(get_matched_packages_names(self))
+
+        # 5. get last packages versions
+        get_last_packages_versions(self, package_names)
         if not self.status:
             return
 
-        # 4. find packages that mathces by CPE
-        get_last_matched_packages_versions(self)
-        if not self.status:
-            return
-
-        # 5. compare package and CVE versions
+        # 6. compare package and CVE versions
         get_packages_vulnerabilities(self)
         if not self.status:
             return
 
-        # 6. check if there any buld tasks that fixes vulnerable packages
-        get_vulnerability_fix_errata(self)
-        if not self.status:
-            return
-
-        # 7. update with packages found by CVE to Errata matching
-        get_vulnerablities_from_errata(
-            self,
-            cve_ids,
-            [e.id for v in self.packages_vulnerabilities for e in v.fixed_in],
-        )
+        # 7. check if there any buld tasks that fixes vulnerable packages
+        get_vulnerability_fix_errata(self, cve_ids)
 
     def get(self):
         self.branch = self.args["branch"]

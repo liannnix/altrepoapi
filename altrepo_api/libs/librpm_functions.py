@@ -16,6 +16,7 @@
 
 import ctypes
 
+from enum import IntEnum
 from typing import NamedTuple, Union
 
 LIBRPM_SO = "librpm.so.7"
@@ -71,6 +72,12 @@ class struct_Dependency(NamedTuple):
     name: bytes
     version: bytes
     flags: int
+
+
+class VersionCompareResult(IntEnum):
+    LESS_THAN = -1
+    EQUAL = 0
+    GREATER_THAN = 1
 
 
 def _make_dependency_tuple(name: str, version: str, flags: int) -> struct_Dependency:
@@ -156,6 +163,6 @@ def version_less_or_equal(
     """Simple version comparison without additional field (epoch, release, disttag,...)."""
     eq = compare_versions(version1=version1, version2=version2)
     if strictly_less:
-        return eq < 0
+        return eq < VersionCompareResult.EQUAL
     else:
-        return eq < 1
+        return eq < VersionCompareResult.GREATER_THAN

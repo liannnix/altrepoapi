@@ -24,7 +24,11 @@ from typing import Any, Iterable, Literal, NamedTuple, Protocol, Union
 
 from altrepo_api.api.misc import lut
 from altrepo_api.utils import make_tmp_table_name
-from altrepo_api.libs.librpm_functions import compare_versions, version_less_or_equal
+from altrepo_api.libs.librpm_functions import (
+    compare_versions,
+    version_less_or_equal,
+    VersionCompareResult,
+)
 
 from ..sql import SQL
 
@@ -321,6 +325,14 @@ class _pHasCveCpems(Protocol):
     cve_cpems: dict[str, list[CpeMatch]]
 
 
+class _pHasErratas(Protocol):
+    erratas: list[Errata]
+
+
+class _pGetErratasByCveIds(_pHasErratas, _pHasBranchOptional, _pAPIWorker, Protocol):
+    ...
+
+
 class _pHasPackagesCpes(Protocol):
     packages_cpes: dict[str, list[CPE]]
 
@@ -354,11 +366,9 @@ class _pGetLastPackageVersionsCompatible(
     ...
 
 
-class _pGetLastMatchedPackagesVersionsCompatible(
+class _pGetMatchedPackagesNamesCompatible(
     _pHasCveCpems,
     _pHasPackagesCpes,
-    _pHasPackagesVersions,
-    _pHasBranchOptional,
     _pAPIWorker,
     Protocol,
 ):
@@ -377,12 +387,72 @@ class _pGetPackagesVulnerabilitiesCompatible(
 
 
 class _pGetVulnerabilityFixErrataCompatible(
-    _pHasPackagesVulnerabilities, _pHasBranchOptional, _pAPIWorker, Protocol
+    _pHasPackagesVulnerabilities,
+    _pHasPackagesVersions,
+    _pHasErratas,
+    _pHasBranchOptional,
+    _pAPIWorker,
+    Protocol,
 ):
     ...
 
 
 # Mixin
+def get_errata_by_cve_ids(cls: _pGetErratasByCveIds, cve_ids: Iterable[str]) -> None:
+    cls.status = False
+
+    branch_clause = ""
+    if cls.branch is not None:
+        branch_clause = f"AND pkgset_name = '{cls.branch}'"
+
+    # find errata by branch (if set) and CVE ids
+    response = cls.send_sql_request(
+        cls.sql.get_errata_by_cves.format(branch_clause=branch_clause, cve_ids=cve_ids)
+    )
+    if not cls.sql_status:
+        return None
+    if response:
+        erratas = [Errata(*el[1]) for el in response]
+
+        # get last task states
+        # get last state for tasks in erratas
+        task_states: dict[int, str] = {}
+
+        tmp_table = make_tmp_table_name("task_ids")
+
+        response = cls.send_sql_request(
+            cls.sql.get_last_tasks_state.format(tmp_table=tmp_table),
+            external_tables=[
+                {
+                    "name": tmp_table,
+                    "structure": [("task_id", "UInt32")],
+                    "data": [{"task_id": e.task_id} for e in erratas],
+                }
+            ],
+        )
+        if not cls.sql_status:
+            return None
+        if response:
+            task_states = {el[0]: el[1] for el in response}
+
+        for errata in erratas:
+            # skip erratas from deleted tasks
+            if errata.task_id != 0 and task_states.get(errata.task_id, "") not in (
+                "DONE",
+                "EPERM",
+                "TESTED",
+            ):
+                continue
+            # use actual task state
+            errata.task_state = task_states.get(errata.task_id, errata.task_state)
+
+            cls.erratas.append(errata)
+
+        cls.status = True
+    else:
+        _ = cls.store_error({"message": f"No errata records found for {cve_ids}"})
+
+
 def get_cve_info(cls: _pGetCveInfoCompatible, cve_ids: Iterable[str]) -> None:
     cls.status = False
     # 1. check if CVE info in DB
@@ -471,7 +541,7 @@ def get_packages_cpes(cls: _pGetPackagesCpesCompatible) -> None:
 
 
 def get_last_packages_versions(
-    cls: _pGetLastPackageVersionsCompatible, pkg_names: Iterable[tuple[str, Any]]
+    cls: _pGetLastPackageVersionsCompatible, pkg_names: Iterable[str]
 ) -> None:
     cls.status = False
 
@@ -487,7 +557,7 @@ def get_last_packages_versions(
             {
                 "name": tmp_table,
                 "structure": [("pkg_name", "String")],
-                "data": [{"pkg_name": p[0]} for p in pkg_names],
+                "data": [{"pkg_name": p} for p in pkg_names],
             }
         ],
     )
@@ -501,26 +571,21 @@ def get_last_packages_versions(
     cls.status = True
 
 
-def get_last_matched_packages_versions(
-    cls: _pGetLastMatchedPackagesVersionsCompatible,
-) -> None:
-    cls.status = False
-    matched_packages: list[tuple[str, CPE]] = []
-
+def get_matched_packages_names(cls: _pGetMatchedPackagesNamesCompatible) -> list[str]:
     cve_cpe_triplets = {
         (cpem.cpe.vendor, cpem.cpe.product, cpem.cpe.target_sw)
         for cpems in cls.cve_cpems.values()
         for cpem in cpems
     }
 
-    for pkg, cpe in (
-        (pkg, cpe) for pkg, cpes in cls.packages_cpes.items() for cpe in cpes
-    ):
-        if (cpe.vendor, cpe.product, cpe.target_sw) in cve_cpe_triplets:
-            matched_packages.append((pkg, cpe))
-
-    # 4. check if last branch (all branches if `branch` not specified) packages are vulnerable
-    get_last_packages_versions(cls, matched_packages)
+    return list(
+        {
+            pkg
+            for pkg, cpes in cls.packages_cpes.items()
+            for cpe in cpes
+            if (cpe.vendor, cpe.product, cpe.target_sw) in cve_cpe_triplets
+        }
+    )
 
 
 def get_packages_vulnerabilities(cls: _pGetPackagesVulnerabilitiesCompatible) -> None:
@@ -534,7 +599,7 @@ def get_packages_vulnerabilities(cls: _pGetPackagesVulnerabilitiesCompatible) ->
         for pkg in cls.packages_versions:
             pkg_cpe_triplets = {
                 (cpe.vendor, cpe.product, cpe.target_sw)
-                for cpe in cls.packages_cpes[pkg.name]
+                for cpe in cls.packages_cpes.get(pkg.name, [])
             }
 
             if not cve_cpe_triplets.intersection(pkg_cpe_triplets):
@@ -559,60 +624,16 @@ def get_packages_vulnerabilities(cls: _pGetPackagesVulnerabilitiesCompatible) ->
     cls.status = True
 
 
-def get_vulnerability_fix_errata(cls: _pGetVulnerabilityFixErrataCompatible) -> None:
+def get_vulnerability_fix_errata(
+    cls: _pGetVulnerabilityFixErrataCompatible, cve_ids: Iterable[str]
+) -> None:
     cls.status = False
 
-    branch_clause = ""
-    if cls.branch is not None:
-        branch_clause = f"AND pkgset_name = '{cls.branch}'"
-
-    # get Errata where CVE is closed for vulnerable packages and not commited
-    # to repository yet if any
-    tmp_table = make_tmp_table_name("packages")
-
-    response = cls.send_sql_request(
-        cls.sql.get_errata_by_packages.format(
-            branch_clause=branch_clause, tmp_table=tmp_table
-        ),
-        external_tables=[
-            {
-                "name": tmp_table,
-                "structure": [("pkg_name", "String")],
-                "data": [
-                    {"pkg_name": pkg_name}
-                    for pkg_name in {p.name for p in cls.packages_vulnerabilities}
-                ],
-            }
-        ],
-    )
-    if not cls.sql_status:
-        return None
-    if response:
-        erratas = [Errata(*el[1]) for el in response]
-
-        # get last state for tasks in erratas
-        task_states: dict[int, str] = {}
-
-        tmp_table = make_tmp_table_name("task_ids")
-
-        response = cls.send_sql_request(
-            cls.sql.get_last_tasks_state.format(tmp_table=tmp_table),
-            external_tables=[
-                {
-                    "name": tmp_table,
-                    "structure": [("task_id", "UInt32")],
-                    "data": [{"task_id": e.task_id} for e in erratas],
-                }
-            ],
-        )
-        if not cls.sql_status:
-            return None
-        if response:
-            task_states = {el[0]: el[1] for el in response}
-
+    # process packages vulnerabilities found by CPE and version matching
+    if cls.packages_vulnerabilities:
         # check found erratas for vulnerability fixes
         for pkg in cls.packages_vulnerabilities:
-            for errata in erratas:
+            for errata in cls.erratas:
                 if (pkg.name, pkg.branch) == (
                     errata.pkg_name,
                     errata.branch,
@@ -623,6 +644,7 @@ def get_vulnerability_fix_errata(cls: _pGetVulnerabilityFixErrataCompatible) -> 
             # if package in taskless branch and found any errata mark it as `fixed` and continue
             if pkg.fixed_in and pkg.branch in lut.taskless_branches:
                 pkg.fixed = True
+                pkg.vulnerable = False
                 continue
 
             uniq_task_ids: set[int] = set()
@@ -634,104 +656,69 @@ def get_vulnerability_fix_errata(cls: _pGetVulnerabilityFixErrataCompatible) -> 
                 uniq_task_ids.add(errata.task_id)
 
                 # set `fixed` flag if task is `DONE` and update task state of errata
-                if task_states.get(errata.task_id) == "DONE":
-                    errata.task_state = "DONE"
+                if errata.task_state == "DONE":
                     pkg.fixed = True
+                    pkg.vulnerable = False
 
-    cls.status = True
+    # update results with packages found by errata history matching
+    def first_value_from(it: Iterable):
+        return next(iter(it))
 
+    cve_ids_set = set(cve_ids)
 
-def get_vulnerablities_from_errata(
-    cls: _pGetVulnerabilityFixErrataCompatible,
-    cve_ids: list[str],
-    exclude_erratas: Union[list[str], None],
-) -> None:
-    cls.status = False
+    known_erratas = {
+        (e.branch, e.task_id, e.pkg_name, e.pkg_version)
+        for v in cls.packages_vulnerabilities
+        for e in v.fixed_in
+    }
 
-    # XXX: ignore branch if provided
-    branch_clause = ""
+    pv_list: list[PackageVulnerability] = []
 
-    # find errata by branch (if set) and CVE ids
-    errata_clause = ""
-    if exclude_erratas is not None:
-        # XXX: apply branch clause here
-        if cls.branch is not None:
-            branch_clause = f"AND pkgset_name = '{cls.branch}'"
-        # exclude erratas
-        errata_clause = f"AND errata_id NOT IN {exclude_erratas}"
+    for errata in cls.erratas:
+        # skip known erratas if any
+        if (
+            errata.branch,
+            errata.task_id,
+            errata.pkg_name,
+            errata.pkg_version,
+        ) in known_erratas:
+            continue
 
-    response = cls.send_sql_request(
-        cls.sql.get_errata_by_cves.format(
-            branch_clause=branch_clause, errata_clause=errata_clause, cve_ids=cve_ids
-        )
-    )
-    if not cls.sql_status:
-        return None
-    if response:
-        erratas = [Errata(*el[1]) for el in response]
-
-        # get last task states
-        # get last state for tasks in erratas
-        task_states: dict[int, str] = {}
-
-        tmp_table = make_tmp_table_name("task_ids")
-
-        response = cls.send_sql_request(
-            cls.sql.get_last_tasks_state.format(tmp_table=tmp_table),
-            external_tables=[
-                {
-                    "name": tmp_table,
-                    "structure": [("task_id", "UInt32")],
-                    "data": [{"task_id": e.task_id} for e in erratas],
-                }
-            ],
-        )
-        if not cls.sql_status:
-            return None
-        if response:
-            task_states = {el[0]: el[1] for el in response}
-
-        # build vulnerable packages list from erratas
-        def first_value_from(it: Iterable):
-            return next(iter(it))
-
-        cve_ids_set = set(cve_ids)
-        # collect previously found erratas if any
-        known_erratas = {
-            (e.branch, e.task_id, e.pkg_name, e.pkg_version)
-            for v in cls.packages_vulnerabilities
-            for e in v.fixed_in
-        }
-
-        for errata in erratas:
-            # skip known erratas if any
-            if (
-                errata.branch,
-                errata.task_id,
-                errata.pkg_name,
-                errata.pkg_version,
-            ) in known_erratas:
-                continue
-
-            # update task state
-            errata.task_state = task_states.get(errata.task_id, errata.task_state)
-            # add PackageVulnerability record
-            cls.packages_vulnerabilities.append(
-                PackageVulnerability(
-                    hash=errata.pkg_hash,
-                    name=errata.pkg_name,
-                    version=errata.pkg_version,
-                    release=errata.pkg_release,
-                    branch=errata.branch,
+        # build package vulnerability from errata and last package version
+        for pkg in cls.packages_versions:
+            if (pkg.branch, pkg.name) == (errata.branch, errata.pkg_name):
+                pv = PackageVulnerability(
+                    **pkg._asdict(),
                     vuln_id=first_value_from(
                         cve_ids_set.intersection(set(errata.ref_ids("vuln")))
                     ),
-                    fixed=True,
+                    vulnerable=True,
+                    fixed=False,
                     fixed_in=[errata],
                 )
-            )
+                if (
+                    compare_versions(
+                        version1=pkg.version,
+                        release1=pkg.release,
+                        version2=errata.pkg_version,
+                        release2=errata.pkg_release,
+                    )
+                    >= VersionCompareResult.EQUAL
+                ):
+                    pv.vulnerable = False
+                    if errata.task_state == "DONE":
+                        pv.fixed = True
 
-        if cls.packages_vulnerabilities:
-            cls.status = True
-    else:
-        _ = cls.store_error({"message": f"No errata records found for {cve_ids}"})
+                # add PackageVulnerability record
+                pv_list.append(pv)
+                break
+
+    # update found packages vulnerabilities
+    cls.packages_vulnerabilities.extend(
+        sorted(
+            pv_list,
+            key=lambda x: (x.branch, x.name, x.version, x.vulnerable, x.vuln_id),
+        )
+    )
+
+    cls.status = True
