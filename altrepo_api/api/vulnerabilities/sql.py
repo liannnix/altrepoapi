@@ -84,6 +84,30 @@ WHERE vuln_hash IN {tmp_table}
 GROUP BY vuln_id
 """
 
+    get_cves_cpems_by_cpe = """
+SELECT
+    vuln_id,
+    groupUniqArray(
+        tuple(
+            cpm_cpe,
+            cpm_version_start,
+            cpm_version_end,
+            cpm_version_start_excluded,
+            cpm_version_end_excluded
+        )
+    )
+FROM CpeMatch
+WHERE cpm_cpe IN {tmp_table}
+    AND (vuln_id, vuln_hash) IN (
+        SELECT
+            vuln_id,
+            argMax(vuln_hash, ts)
+        FROM Vulnerabilities
+        GROUP BY vuln_id
+    )
+GROUP BY vuln_id
+"""
+
     get_packages_and_cpes = """
 WITH
 repology_names AS (
@@ -118,6 +142,7 @@ FROM (
     ) WHERE state = 'active'
 ) AS CPE
 INNER JOIN repology_names AS EN ON EN.repology_name = cpe_pkg_name
+{pkg_names_clause}
 """
 
     get_packages_versions = """
@@ -208,7 +233,7 @@ SELECT
 FROM ErrataHistory
 WHERE eh_type IN ('branch', 'task')
     {branch_clause}
-    AND hasAny(eh_references.link, {cve_ids})
+    {where_clause}
 GROUP BY errata_id
 ORDER BY max_ts DESC
 """

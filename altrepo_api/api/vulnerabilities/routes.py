@@ -26,10 +26,12 @@ from .parsers import (
     bdu_info_args,
     cve_vulnerable_packages_args,
     bdu_vulnerable_packages_args,
+    package_vulnerabilities_args,
 )
 from .serializers import vulnerability_info_model, cve_packages_model
 from .endpoints.vuln import VulnInfo
 from .endpoints.cve import VulnerablePackageByCve
+from .endpoints.packages import PackageOpenVulnerabilities
 
 ns = get_namespace()
 
@@ -101,4 +103,21 @@ class routeBduInfo(Resource):
         url_logging(logger, g.url)
         args = bdu_info_args.parse_args(strict=True)
         w = VulnInfo(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/package",
+    doc={
+        "description": "Get package open vulnerabilities information",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routePackageVulnerabilities(Resource):
+    @ns.expect(package_vulnerabilities_args)
+    @ns.marshal_with(cve_packages_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = package_vulnerabilities_args.parse_args(strict=True)
+        w = PackageOpenVulnerabilities(g.connection, **args)
         return run_worker(worker=w, args=args)

@@ -20,6 +20,7 @@ from altrepo_api.api.parser import (
     cve_id_list_type,
     bdu_id_type,
     branch_name_type,
+    pkg_name_type,
 )
 
 cve_id = parser.register_item(
@@ -51,9 +52,16 @@ branch_opt = parser.register_item(
     help="branch",
     location="args",
 )
-
+pkg_name = parser.register_item(
+    "name",
+    type=pkg_name_type,
+    required=True,
+    help="package name",
+    location="args",
+)
 
 cve_info_args = parser.build_parser(cve_id)
 bdu_info_args = parser.build_parser(bdu_id)
 cve_vulnerable_packages_args = parser.build_parser(cve_id_list, branch_opt)
 bdu_vulnerable_packages_args = parser.build_parser(bdu_id, branch_opt)
+package_vulnerabilities_args = parser.build_parser(pkg_name, branch_opt)

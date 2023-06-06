@@ -313,10 +313,6 @@ class _pHasBranchOptional(Protocol):
     branch: Union[str, None]
 
 
-class _pHasPkgNameList(Protocol):
-    pkg_name: list[str]
-
-
 class _pHasCveInfo(Protocol):
     cve_info: dict[str, VulnerabilityInfo]
 
@@ -327,10 +323,6 @@ class _pHasCveCpems(Protocol):
 
 class _pHasErratas(Protocol):
     erratas: list[Errata]
-
-
-class _pGetErratasByCveIds(_pHasErratas, _pHasBranchOptional, _pAPIWorker, Protocol):
-    ...
 
 
 class _pHasPackagesCpes(Protocol):
@@ -345,6 +337,10 @@ class _pHasPackagesVulnerabilities(Protocol):
     packages_vulnerabilities: list[PackageVulnerability]
 
 
+class _pGetErratas(_pHasErratas, _pHasBranchOptional, _pAPIWorker, Protocol):
+    ...
+
+
 class _pGetPackagesCpesCompatible(
     _pHasPackagesCpes, _pHasBranchOptional, _pAPIWorker, Protocol
 ):
@@ -354,6 +350,19 @@ class _pGetPackagesCpesCompatible(
 class _pGetCveInfoCompatible(
     _pHasCveInfo, _pHasCveCpems, _pHasBranchOptional, _pAPIWorker, Protocol
 ):
+    ...
+
+
+class _pGetCveMatchingByPaclageCpesCompatible(
+    _pHasCveCpems,
+    _pHasPackagesCpes,
+    _pAPIWorker,
+    Protocol,
+):
+    ...
+
+
+class _pGetCveInfoByIdsCompatible(_pHasCveInfo, _pAPIWorker, Protocol):
     ...
 
 
@@ -398,7 +407,7 @@ class _pGetVulnerabilityFixErrataCompatible(
 
 
 # Mixin
-def get_errata_by_cve_ids(cls: _pGetErratasByCveIds, cve_ids: Iterable[str]) -> None:
+def get_erratas(cls: _pGetErratas, where_clause: str) -> None:
     cls.status = False
 
     branch_clause = ""
@@ -407,7 +416,9 @@ def get_errata_by_cve_ids(cls: _pGetErratasByCveIds, cve_ids: Iterable[str]) -> 
 
     # find errata by branch (if set) and CVE ids
     response = cls.send_sql_request(
-        cls.sql.get_errata_by_cves.format(branch_clause=branch_clause, cve_ids=cve_ids)
+        cls.sql.get_errata_by_cves.format(
+            branch_clause=branch_clause, where_clause=where_clause
+        )
     )
     if not cls.sql_status:
         return None
@@ -450,7 +461,15 @@ def get_errata_by_cve_ids(cls: _pGetErratasByCveIds, cve_ids: Iterable[str]) -> 
 
         cls.status = True
     else:
-        _ = cls.store_error({"message": f"No errata records found for {cve_ids}"})
+        _ = cls.store_error({"message": "No errata records found in DB"})
+
+
+def get_errata_by_cve_ids(cls: _pGetErratas, cve_ids: Iterable[str]) -> None:
+    return get_erratas(cls, f"AND hasAny(eh_references.link, {cve_ids})")
+
+
+def get_errata_by_pkg_names(cls: _pGetErratas, pkg_names: Iterable[str]) -> None:
+    return get_erratas(cls, f"AND pkg_name IN {tuple(pkg_names)}")
 
 
 def get_cve_info(cls: _pGetCveInfoCompatible, cve_ids: Iterable[str]) -> None:
@@ -471,7 +490,7 @@ def get_cve_info(cls: _pGetCveInfoCompatible, cve_ids: Iterable[str]) -> None:
     if not cls.sql_status:
         return None
     if not response:
-        _ = cls.store_error({"message": f"No data info found in DB for {cve_ids}"})
+        _ = cls.store_error({"message": f"No CVE info found in DB for {cve_ids}"})
         return None
 
     cve_hashes: set[int] = set()
@@ -495,9 +514,7 @@ def get_cve_info(cls: _pGetCveInfoCompatible, cve_ids: Iterable[str]) -> None:
     if not cls.sql_status:
         return None
     if not response:
-        _ = cls.store_error(
-            {"message": f"No CPE matches data info found in DB for {cve_ids}"}
-        )
+        _ = cls.store_error({"message": f"No CPE matches found in DB for {cve_ids}"})
         return None
 
     cls.cve_cpems = {el[0]: [CpeMatch(*x) for x in el[1]] for el in response}
@@ -505,7 +522,9 @@ def get_cve_info(cls: _pGetCveInfoCompatible, cve_ids: Iterable[str]) -> None:
     cls.status = True
 
 
-def get_packages_cpes(cls: _pGetPackagesCpesCompatible) -> None:
+def get_packages_cpes(
+    cls: _pGetPackagesCpesCompatible, pkg_names: Iterable[str] = []
+) -> None:
     cls.status = False
 
     cpe_branches = tuple({v for v in cls.sql.CPE_BRANCH_MAP.values()})
@@ -518,8 +537,14 @@ def get_packages_cpes(cls: _pGetPackagesCpesCompatible) -> None:
             return None
         cpe_branches = (cpe_branch,)
 
+    pkg_names_clause = ""
+    if pkg_names:
+        pkg_names_clause = f"WHERE pkg_name in {tuple(pkg_names)}"
+
     response = cls.send_sql_request(
-        cls.sql.get_packages_and_cpes.format(cpe_branches=cpe_branches)
+        cls.sql.get_packages_and_cpes.format(
+            cpe_branches=cpe_branches, pkg_names_clause=pkg_names_clause
+        )
     )
     if not cls.sql_status:
         return None
@@ -618,7 +643,7 @@ def get_packages_vulnerabilities(cls: _pGetPackagesVulnerabilitiesCompatible) ->
 
     cls.packages_vulnerabilities = sorted(
         cls.packages_vulnerabilities,
-        key=lambda x: (x.vuln_id, x.branch, x.vulnerable, x.name, x.version),
+        key=lambda x: (x.branch, x.vuln_id, x.vulnerable, x.name, x.version),
     )
 
     cls.status = True
@@ -633,6 +658,10 @@ def get_vulnerability_fix_errata(
     if cls.packages_vulnerabilities:
         # check found erratas for vulnerability fixes
         for pkg in cls.packages_vulnerabilities:
+            # skip packages that not vulnerable by CPE match version comparison
+            if not pkg.vulnerable:
+                continue
+
             for errata in cls.erratas:
                 if (pkg.name, pkg.branch) == (
                     errata.pkg_name,
@@ -661,9 +690,6 @@ def get_vulnerability_fix_errata(
                     pkg.vulnerable = False
 
     # update results with packages found by errata history matching
-    def first_value_from(it: Iterable):
-        return next(iter(it))
-
     cve_ids_set = set(cve_ids)
 
     known_erratas = {
@@ -687,11 +713,14 @@ def get_vulnerability_fix_errata(
         # build package vulnerability from errata and last package version
         for pkg in cls.packages_versions:
             if (pkg.branch, pkg.name) == (errata.branch, errata.pkg_name):
+                # get any vuln_id if it is linked with errata
+                vuln_ids = cve_ids_set.intersection(set(errata.ref_ids("vuln")))
+                if not vuln_ids:
+                    continue
+
                 pv = PackageVulnerability(
                     **pkg._asdict(),
-                    vuln_id=first_value_from(
-                        cve_ids_set.intersection(set(errata.ref_ids("vuln")))
-                    ),
+                    vuln_id="",
                     vulnerable=True,
                     fixed=False,
                     fixed_in=[errata],
@@ -706,19 +735,84 @@ def get_vulnerability_fix_errata(
                     >= VersionCompareResult.EQUAL
                 ):
                     pv.vulnerable = False
-                    if errata.task_state == "DONE":
+                    if (
+                        errata.task_state == "DONE"
+                        or errata.branch in lut.taskless_branches
+                    ):
                         pv.fixed = True
 
-                # add PackageVulnerability record
-                pv_list.append(pv)
+                # add PackageVulnerability record for every CVE id mentioned in errata
+                for vuln_id in vuln_ids:
+                    pv.vuln_id = vuln_id
+                    pv_list.append(pv)
                 break
 
     # update found packages vulnerabilities
     cls.packages_vulnerabilities.extend(
         sorted(
             pv_list,
-            key=lambda x: (x.branch, x.name, x.version, x.vulnerable, x.vuln_id),
+            key=lambda x: (x.branch, x.vuln_id, x.vulnerable, x.name, x.version),
         )
     )
+
+    cls.status = True
+
+
+def get_cve_matching_by_cpes(cls: _pGetCveMatchingByPaclageCpesCompatible) -> None:
+    cls.status = False
+
+    # get CVE CPE matching by packages CPEs
+    tmp_table = make_tmp_table_name("cpm_cpes")
+
+    response = cls.send_sql_request(
+        cls.sql.get_cves_cpems_by_cpe.format(tmp_table=tmp_table),
+        external_tables=[
+            {
+                "name": tmp_table,
+                "structure": [("cpe_cpm", "String")],
+                "data": [
+                    {"cpe_cpm": str(cpe)}
+                    for cpes in cls.packages_cpes.values()
+                    for cpe in cpes
+                ],
+            }
+        ],
+    )
+    if not cls.sql_status:
+        return None
+    if not response:
+        _ = cls.store_error({"message": "No CPE matches data info found in DB"})
+        return None
+
+    cls.cve_cpems = {el[0]: [CpeMatch(*x) for x in el[1]] for el in response}
+
+    cls.status = True
+
+
+def get_cve_info_by_ids(
+    cls: _pGetCveInfoByIdsCompatible, cve_ids: Iterable[str]
+) -> None:
+    cls.status = False
+
+    tmp_table = make_tmp_table_name("vuiln_ids")
+
+    response = cls.send_sql_request(
+        cls.sql.get_vuln_info_by_ids.format(tmp_table=tmp_table),
+        external_tables=[
+            {
+                "name": tmp_table,
+                "structure": [("vuln_id", "String")],
+                "data": [{"vuln_id": cve_id} for cve_id in cve_ids],
+            }
+        ],
+    )
+    if not cls.sql_status:
+        return None
+    if not response:
+        _ = cls.store_error({"message": f"No CVE data info found in DB for {cve_ids}"})
+        return None
+
+    for el in response:
+        cls.cve_info[el[1]] = VulnerabilityInfo(*el[1:])
 
     cls.status = True
