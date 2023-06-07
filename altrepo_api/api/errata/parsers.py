@@ -50,7 +50,6 @@ branch_name_opt = parser.register_item(
     "branch",
     type=branch_name_type,
     required=False,
-    default="p10",
     help="branch name",
     location="args"
 )
