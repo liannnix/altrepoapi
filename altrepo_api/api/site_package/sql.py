@@ -247,7 +247,7 @@ SELECT DISTINCT
     pkg_hash
 FROM Packages
 WHERE pkg_srcrpm_hash = {pkghash}
-AND pkg_name NOT LIKE '%-debuginfo'
+{bin_pkg_clause}
 )
 SELECT DISTINCT
     pkg_name,

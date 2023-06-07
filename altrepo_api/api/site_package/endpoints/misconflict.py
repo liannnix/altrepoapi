@@ -39,10 +39,11 @@ class PackageMisconflict(APIWorker):
     def get(self):
         branch = self.args["branch"]
 
+        bin_pkg_clause = "AND pkg_name NOT LIKE '%-debuginfo'"
         # get hashes of binary packages
         response = self.send_sql_request(
             self.sql.get_binary_pkgs_from_last_pkgs.format(
-                pkghash=self.pkghash, branch=branch
+                pkghash=self.pkghash, branch=branch, bin_pkg_clause=bin_pkg_clause
             )
         )
         if not self.sql_status:
