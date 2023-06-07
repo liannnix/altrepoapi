@@ -310,7 +310,7 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
             if self.is_src:
                 response = self.send_sql_request(
                     self.sql.get_binary_pkgs_from_last_pkgs.format(
-                        pkghash=self.pkghash, branch=self.branch
+                        pkghash=self.pkghash, branch=self.branch, bin_pkg_clause=""
                     )
                 )
                 if not response:

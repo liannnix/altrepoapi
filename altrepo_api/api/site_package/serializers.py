@@ -369,3 +369,30 @@ pkg_nvr_by_hash_model = ns.model(
         "is_source": fields.Boolean(description="is source package"),
     },
 )
+
+misconflict_pkg_by_src_el_model = ns.model(
+    "PackageMisconflictBySrcElementModel",
+    {
+        "input_package": fields.String(description="package name"),
+        "input_archs": fields.List(fields.String, description="input package archs"),
+        "conflict_package": fields.String(description="package name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "epoch": fields.Integer(description="package epoch"),
+        "archs": fields.List(fields.String, description="package archs"),
+        "files_with_conflict": fields.List(
+            fields.String, description="conflict files", default=[]
+        ),
+        "explicit": fields.Boolean(default=False),
+    },
+)
+misconflict_pkgs_by_src_model = ns.model(
+    "PackageMisconflictBySrcModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "conflicts": fields.Nested(
+            misconflict_pkg_by_src_el_model, description="conflicts", as_list=True
+        ),
+    },
+)

@@ -1,7 +1,6 @@
 import pytest
 from flask import url_for
 
-
 ARCH_IN_DB = "x86_64"
 ARCH_NOT_IN_DB = "fakearch"
 BRANCH_IN_DB = "sisyphus"
@@ -551,3 +550,46 @@ def test_package_nvr_by_hash(client, kwargs):
         assert data["hash"] != ""
         assert data["name"] != ""
         assert data["is_source"] in (True, False)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "branch": BRANCH_IN_DB,
+            "pkghash": 2707249772638381233,
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "pkghash": 2645830229248771878,
+            "status_code": 404,
+        },
+        {
+            "branch": BRANCH_NOT_IN_DB,
+            "pkghash": 2645830229248771878,
+            "status_code": 400,
+        },
+        {
+            "pkghash": 2645830229248771878,
+            "status_code": 400,
+        },
+    ],
+)
+def test_misconflict_packages(client, kwargs):
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("pkghash", "status_code"):
+            continue
+        if v is not None:
+            params[k] = v
+    url = url_for(
+        "api.site_route_package_misconflict", **{"pkghash": kwargs["pkghash"]}
+    )
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["length"] != 0
+        assert data["conflicts"] != []

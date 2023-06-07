@@ -19,6 +19,7 @@ from flask_restx import Resource
 
 from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
+from .endpoints.misconflict import PackageMisconflict
 
 from .namespace import get_namespace
 from .endpoints.package_info import (
@@ -44,6 +45,7 @@ from .parsers import (
     src_pkgs_versions_args,
     pkgs_versions_args,
     pkg_nvr_by_hash_args,
+    pkg_misconflict_args,
 )
 from .serializers import (
     package_chlog_model,
@@ -56,6 +58,7 @@ from .serializers import (
     src_pkgs_versions_model,
     bin_package_log_el_model,
     pkg_nvr_by_hash_model,
+    misconflict_pkgs_by_src_model,
 )
 
 ns = get_namespace()
@@ -279,4 +282,24 @@ class routePackageNVRByHash(Resource):
         url_logging(logger, g.url)
         args = pkg_nvr_by_hash_args.parse_args(strict=True)
         w = PackageNVRByHash(g.connection, pkghash, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/package_misconflict/<int:pkghash>",
+    doc={
+        "params": {"pkghash": "source package hash"},
+        "description": (
+            "Get binary packages file conflicts by source package."
+        ),
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routePackageMisconflict(Resource):
+    @ns.expect(pkg_misconflict_args)
+    @ns.marshal_with(misconflict_pkgs_by_src_model)
+    def get(self, pkghash):
+        url_logging(logger, g.url)
+        args = pkg_misconflict_args.parse_args(strict=True)
+        w = PackageMisconflict(g.connection, pkghash, **args)
         return run_worker(worker=w, args=args)
