@@ -319,14 +319,18 @@ class Search(APIWorker):
         vuln_id = self.args.get("errata_id")
         package_name = self.args.get("package_name")
 
-        cond = "WHERE " if branch or vuln_id or package_name else ""
+        conds = []
 
         if branch:
-            cond += f"pkgset_name = '{branch}' "
+            conds.append(f"pkgset_name = '{branch}'")
         if vuln_id:
-            cond += f"AND arrayExists(x -> (x ILIKE '%{vuln_id}%'), eh_references.link) "
+            conds.append(f"arrayExists(x -> (x ILIKE '%{vuln_id}%'), eh_references.link)")
         if package_name:
-            cond += f"AND pkg_name LIKE '%{package_name}%'"
+            conds.append(f"pkg_name LIKE '%{package_name}%'")
+
+        cond = ""
+        if conds:
+            cond = "WHERE " + " AND ".join(conds)
 
         response = self.send_sql_request(self.sql.search_errata.format(cond=cond))
         if not self.sql_status:
