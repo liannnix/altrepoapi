@@ -810,6 +810,7 @@ WHERE (version, release) != ('{ver}', '{rel}')
     get_conflicts_pkg_hshs = """
 SELECT DISTINCT
     sel.pkg_hash AS input_hash,
+    sel.arch AS input_arch,
     TT.pkg_name AS conf_name,
     TT.pkg_version AS version, 
     TT.pkg_release AS release,
@@ -817,15 +818,19 @@ SELECT DISTINCT
     sel.dp_name AS dp_name,
     sel.dp_version AS dp_version,
     sel.dp_flag AS dp_flag,
-    groupUniqArray(TT.pkg_hash) AS conf_hash,
-    groupUniqArray(TT.pkg_arch) AS conf_arch
+    TT.pkg_hash AS conf_hash,
+    TT.pkg_arch AS conf_arch
 FROM (
     SELECT DISTINCT
         pkg_hash,
+        TMP.arch AS arch,
         dp_name,
         dp_version,
         dp_flag
     FROM Depends
+    LEFT JOIN (
+        SELECT pkg_hash, arch FROM {tmp_table}
+    ) AS TMP ON TMP.pkg_hash = Depends.pkg_hash
     WHERE pkg_hash IN (SELECT pkg_hash FROM {tmp_table})
     AND dp_type = 'conflict'
 ) AS sel
@@ -839,23 +844,27 @@ INNER JOIN (
         pkg_release
     FROM last_packages
     WHERE pkgset_name = '{branch}'
-) AS TT ON TT.pkg_name = sel.dp_name
-GROUP BY input_hash, conf_name, epoch, version, release, dp_version, dp_flag, dp_name
+) AS TT ON (TT.pkg_name = sel.dp_name AND TT.pkg_arch = sel.arch) 
+    OR (TT.pkg_name = sel.dp_name AND TT.pkg_arch = 'noarch')
 """
 
     get_conflict_files = """
-WITH
-pkg_files AS
-(
+WITH 
+pkg_files AS (
     SELECT
         pkg_hash AS input_hash,
+        arch,
         TT.pkg_hash AS conf_hash,
         file_hashname
     FROM (
         SELECT DISTINCT
             pkg_hash,
+            TT.arch AS arch,
             file_hashname
         FROM Files
+        LEFT JOIN (
+            SELECT input_hash, arch FROM {tmp_table}
+        ) AS TT ON TT.input_hash = pkg_hash
         WHERE pkg_hash IN (SELECT input_hash FROM {tmp_table})
         AND file_class != 'directory'
     ) AS inpt_files
@@ -868,25 +877,26 @@ pkg_files AS
         AND file_class != 'directory'
     ) AS TT ON TT.file_hashname = inpt_files.file_hashname
 )
-SELECT input_hash, groupUniqArray(filename) AS filenames
+SELECT input_hash, arch, groupUniqArray(filename) AS filenames
 FROM (
-SELECT
-    PF.input_hash AS input_hash,
-    FN.fn_name AS filename
-FROM
-(SELECT * FROM pkg_files WHERE conf_hash != input_hash) AS PF
-LEFT JOIN
-(
-    SELECT DISTINCT
-        fn_hash,
-        fn_name
-    FROM FileNames
-    WHERE fn_hash IN
-    (SELECT file_hashname FROM pkg_files)
-) AS FN ON FN.fn_hash = PF.file_hashname
-ORDER BY filename
+    SELECT
+        PF.input_hash AS input_hash,
+        PF.arch AS arch,
+        FN.fn_name AS filename
+    FROM
+    (SELECT * FROM pkg_files WHERE conf_hash != input_hash) AS PF
+    LEFT JOIN
+    (
+        SELECT DISTINCT
+            fn_hash,
+            fn_name
+        FROM FileNames
+        WHERE fn_hash IN
+        (SELECT file_hashname FROM pkg_files)
+    ) AS FN ON FN.fn_hash = PF.file_hashname
+    ORDER BY filename
 )
-GROUP BY input_hash
+GROUP BY input_hash, arch
 """
 
 
