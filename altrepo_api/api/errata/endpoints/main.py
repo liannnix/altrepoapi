@@ -72,6 +72,7 @@ class Bug:
     last_changed: datetime
     assignee_full: str
     reporter_full: str
+    url: str
 
 
 @dataclass
@@ -254,7 +255,7 @@ class Packages(APIWorker):
             ],
         )
         for row in response:
-            bugs[row[0]] = Bug(*row)
+            bugs[row[0]] = Bug(*row, errata_link(row[0], "bug"))
 
         result = []
         for errata in erratas:

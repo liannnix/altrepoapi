@@ -88,7 +88,8 @@ errata_bug_model = ns.model(
         "summary": fields.String(description="bug summary"),
         "last_changed": fields.String(description="bug last changed date"),
         "assignee_full": fields.String(description="bug assignee (full)"),
-        "reporter_full": fields.String(description="bug reporter (full)")
+        "reporter_full": fields.String(description="bug reporter (full)"),
+        "url": fields.String(description="url to bug-tracker"),
     }
 )
 errata_vuln_model = ns.model(
