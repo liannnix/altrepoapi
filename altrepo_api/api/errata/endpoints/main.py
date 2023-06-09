@@ -272,7 +272,6 @@ class Branch(APIWorker):
 
     def check_params(self):
         self.validation_results = []
-        self.logger.debug(self.args)
         errata_id = self.args["errata_id"]
 
         try:
