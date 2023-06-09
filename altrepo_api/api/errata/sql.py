@@ -118,27 +118,6 @@ WHERE (vuln_id, vuln_hash) IN (
 )
 """
 
-    get_errata_history_by_id = """
-SELECT
-    eh_hash,
-    eh_type,
-    eh_source,
-    arrayZip(eh_references.type, eh_references.link),
-    errata_id,
-    pkg_hash,
-    pkg_name,
-    pkg_version,
-    pkg_release,
-    pkgset_name,
-    pkgset_date,
-    task_id,
-    subtask_id,
-    task_state,
-    task_changed
-FROM ErrataHistory
-WHERE errata_id = '{errata_id}'
-"""
-
     get_errata_history_by_ids = """
 SELECT
     eh_hash,

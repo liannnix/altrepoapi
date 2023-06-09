@@ -25,18 +25,17 @@ from altrepo_api.utils import (
     url_logging,
 )
 
-from .endpoints.main import BatchInfo, Branch, Packages, Search
+from .endpoints.main import Branches, Packages, Search
 from .endpoints.oval import OvalBranches, OvalExport
 from .namespace import get_namespace
 from .parsers import (
     errata_search_args,
-    errata_branch_args,
     oval_export_args,
 )
 from .serializers import (
     errata_json_list_model,
-    errata_batch_model,
-    errata_branch_model,
+    errata_search_model,
+    errata_branches_model,
     errata_packages_model,
     oval_branches_model,
 )
@@ -99,29 +98,6 @@ class routeOvalExport(Resource):
 
 
 @ns.route(
-    "",
-    doc={
-        "description": "Get information about erratas",
-        "responses": POST_RESPONSES_400_404,
-    },
-)
-class routeBatchInfo(Resource):
-    @ns.expect(errata_json_list_model)
-    @ns.marshal_with(errata_batch_model)
-    def post(self):
-        url_logging(logger, g.url)
-        args = {}
-        w = BatchInfo(g.connection, json_data=ns.payload)
-        return run_worker(
-            worker=w,
-            run_method=w.post,
-            check_method=w.check_params_post,
-            args=args,
-            ok_code=200
-        )
-
-
-@ns.route(
     "/packages",
     doc={
         "description": "Get information about packages updates",
@@ -145,20 +121,26 @@ class routePackages(Resource):
 
 
 @ns.route(
-    "/branch",
+    "/branches",
     doc={
         "description": "Get information about branch updates",
         "responses": GET_RESPONSES_400_404,
     },
 )
-class routeBranch(Resource):
-    @ns.expect(errata_branch_args)
-    @ns.marshal_with(errata_branch_model)
-    def get(self):
+class routeBranches(Resource):
+    @ns.expect(errata_json_list_model)
+    @ns.marshal_with(errata_branches_model)
+    def post(self):
         url_logging(logger, g.url)
-        args = errata_branch_args.parse_args(strict=False)
-        w = Branch(g.connection, **args)
-        return run_worker(worker=w, args=args)
+        args = {}
+        w = Branches(g.connection, json_data=ns.payload)
+        return run_worker(
+            worker=w,
+            run_method=w.post,
+            check_method=w.check_params_post,
+            args=args,
+            ok_code=200
+        )
 
 
 @ns.route(
@@ -170,7 +152,7 @@ class routeBranch(Resource):
 )
 class routeSearch(Resource):
     @ns.expect(errata_search_args)
-    @ns.marshal_with(errata_batch_model)
+    @ns.marshal_with(errata_search_model)
     def get(self):
         url_logging(logger, g.url)
         args = errata_search_args.parse_args(strict=False)

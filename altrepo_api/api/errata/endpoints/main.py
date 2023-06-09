@@ -28,17 +28,11 @@ def errata_link(eid: str, etype: str) -> str:
         return f"https://bugzilla.altlinux.org/{eid}"
     elif etype == "vuln":
         if eid.startswith("BDU"):
-            return (
-                f"https://bdu.fstec.ru/vul/{eid.removeprefix('BDU:')}"
-            )
+            return f"https://bdu.fstec.ru/vul/{eid.removeprefix('BDU:')}"
         elif eid.startswith("CVE"):
-            return (
-                f"https://nvd.nist.gov/vuln/detail/{eid.lower()}"
-            )
+            return f"https://nvd.nist.gov/vuln/detail/{eid.lower()}"
         elif eid.startswith("MFSA"):
-            return (
-                f"https://www.mozilla.org/en-US/security/advisories/mfsa{eid.removeprefix('MFSA ')}"
-            )
+            return f"https://www.mozilla.org/en-US/security/advisories/mfsa{eid.removeprefix('MFSA ')}"
     return f"https://errata.altlinux.org/{eid}"
 
 
@@ -150,7 +144,9 @@ class BatchInfo(APIWorker):
                 {
                     "name": _tmp_table,
                     "structure": [("errata_id", "String")],
-                    "data": [{"errata_id": errata_id} for errata_id in errata_ids],
+                    "data": [
+                        {"errata_id": errata_id} for errata_id in errata_ids
+                    ],
                 },
             ],
         )
@@ -159,7 +155,9 @@ class BatchInfo(APIWorker):
             "erratas": [
                 asdict(
                     Errata(
-                        *row[:3], [asdict(Reference(*el)) for el in row[3]], *row[4:]
+                        *row[:3],
+                        [asdict(Reference(*el)) for el in row[3]],
+                        *row[4:],
                     )
                 )
                 for row in response
@@ -203,7 +201,9 @@ class Packages(APIWorker):
                 {
                     "name": _tmp_table,
                     "structure": [("errata_id", "String")],
-                    "data": [{"errata_id": errata_id} for errata_id in errata_ids],
+                    "data": [
+                        {"errata_id": errata_id} for errata_id in errata_ids
+                    ],
                 },
             ],
         )
@@ -236,7 +236,9 @@ class Packages(APIWorker):
         )
         for row in response:
             vulns[row[0]] = Vuln(*row)
-            vulns[row[0]].references = [link[1] for link in vulns[row[0]].references]
+            vulns[row[0]].references = [
+                link[1] for link in vulns[row[0]].references
+            ]
 
         _tmp_table = "tmp_bz_ids"
         response = self.send_sql_request(
@@ -256,54 +258,98 @@ class Packages(APIWorker):
 
         result = []
         for errata in erratas:
-            pu_bugs = [bugs[int(eid)] for etype, eid in errata.references if etype == "bug"]
-            pu_vulns = [vulns[eid] for etype, eid in errata.references if etype == "vuln"]
-            result.append(asdict(PackageUpdate(*asdict(errata).values(), pu_bugs, pu_vulns)))
+            pu_bugs = [
+                bugs[int(eid)]
+                for etype, eid in errata.references
+                if etype == "bug"
+            ]
+            pu_vulns = [
+                vulns[eid]
+                for etype, eid in errata.references
+                if etype == "vuln"
+            ]
+            result.append(
+                asdict(
+                    PackageUpdate(*asdict(errata).values(), pu_bugs, pu_vulns)
+                )
+            )
 
         return {"pkg_updates": result}, 200
 
 
-class Branch(APIWorker):
+class Branches(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
         self.sql = sql
         super().__init__()
 
-    def check_params(self):
+    def check_params_post(self):
         self.validation_results = []
-        errata_id = self.args["errata_id"]
+        self.input_arguments = []
 
-        try:
-            errata_id = errataid_type(errata_id)
-        except ValueError:
-            self.validation_results.append(f"invalid errata id: {errata_id}")
-        if not errata_id.startswith("ALT-BU-"):
-            self.validation_results.append(f"not a branch update: {errata_id}")
+        for elem in self.args["json_data"]["errata_ids"]:
+            try:
+                self.input_arguments.append(errataid_type(elem))
+            except ValueError:
+                self.validation_results.append(f"invalid errata id: {elem}")
+            if not elem.startswith("ALT-BU-"):
+                self.validation_results.append(f"not a branch update: {elem}")
 
         if self.validation_results != []:
             return False
         else:
             return True
 
-    def get(self):
-        errata_id = self.args["errata_id"]
+    def post(self):
+        errata_ids = self.args["json_data"]["errata_ids"]
 
+        _tmp_table = "tmp_vuln_ids"
         response = self.send_sql_request(
-            self.sql.get_errata_history_by_id.format(
-                errata_id=errata_id,
-            )
+            self.sql.get_errata_history_by_ids.format(
+                tmp_table=_tmp_table,
+            ),
+            external_tables=[
+                {
+                    "name": _tmp_table,
+                    "structure": [("errata_id", "String")],
+                    "data": [
+                        {"errata_id": errata_id} for errata_id in errata_ids
+                    ],
+                },
+            ],
         )
         if not response:
             return self.store_error({"message": "No data found in database"})
 
-        erratas = {"errata_ids": [link[1] for link in response[0][3]]}
+        erratas = set()
+        for row in response:
+            for _, eid in row[3]:
+                erratas.add(eid)
 
-        subquery = Packages(self.conn, json_data=erratas).post()
+        request = {"errata_ids": list(erratas)}
+        subquery = Packages(self.conn, json_data=request).post()
         if subquery[1] != 200:
             return self.store_error({"message": "No data found in database"})
 
-        return asdict(BranchUpdate(*response[0], subquery[0]["pkg_updates"])), 200
+        erratas = {
+            el["id"]: PackageUpdate(**el) for el in subquery[0]["pkg_updates"]
+        }
+
+        result = []
+        for bu in response:
+            pus_ids = {eid for _, eid in bu[3]}
+            pus = []
+            for pu_id, val in erratas.items():
+                if pu_id in pus_ids:
+                    pus.append(val)
+            result.append(
+                asdict(
+                    BranchUpdate(**(asdict(Errata(*bu)) | {"pkg_updates": pus}))
+                )
+            )
+
+        return {"branch_updates": result}, 200
 
 
 class Search(APIWorker):
@@ -323,7 +369,9 @@ class Search(APIWorker):
         if branch:
             conds.append(f"pkgset_name = '{branch}'")
         if vuln_id:
-            conds.append(f"arrayExists(x -> (x ILIKE '%{vuln_id}%'), eh_references.link)")
+            conds.append(
+                f"arrayExists(x -> (x ILIKE '%{vuln_id}%'), eh_references.link)"
+            )
         if package_name:
             conds.append(f"pkg_name LIKE '%{package_name}%'")
 
@@ -331,7 +379,9 @@ class Search(APIWorker):
         if conds:
             cond = "WHERE " + " AND ".join(conds)
 
-        response = self.send_sql_request(self.sql.search_errata.format(cond=cond))
+        response = self.send_sql_request(
+            self.sql.search_errata.format(cond=cond)
+        )
         if not self.sql_status:
             return self.error
         if not response:
@@ -343,7 +393,9 @@ class Search(APIWorker):
             "erratas": [
                 asdict(
                     Errata(
-                        *row[:3], [asdict(Reference(*el)) for el in row[3]], *row[4:]
+                        *row[:3],
+                        [asdict(Reference(*el)) for el in row[3]],
+                        *row[4:],
                     )
                 )
                 for row in response

@@ -64,8 +64,8 @@ errata_model = ns.model(
         ),
     }
 )
-errata_batch_model = ns.model(
-    "ErrataBatchModel",
+errata_search_model = ns.model(
+    "ErrataSearchModel",
     {
         "erratas": fields.Nested(errata_model, description="list of erratas", as_list=True)
     },
@@ -153,6 +153,16 @@ errata_branch_model = ns.model(
         "pkg_updates": fields.Nested(
             errata_package_model,
             description="list of packages updates",
+            as_list=True
+        ),
+    },
+)
+errata_branches_model = ns.model(
+    "ErrataBranchesModel",
+    {
+        "branch_updates": fields.Nested(
+            errata_branch_model,
+            description="list of branch updates",
             as_list=True
         ),
     },
