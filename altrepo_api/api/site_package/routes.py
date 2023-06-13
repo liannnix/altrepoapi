@@ -27,6 +27,7 @@ from .endpoints.package_info import (
     DeletedPackageInfo,
     PackagesBinaryListInfo,
     PackageNVRByHash,
+    PackageNameFromRepology,
 )
 from .endpoints.logs import BinaryPackageLog
 from .endpoints.changelog import PackageChangelog
@@ -46,6 +47,7 @@ from .parsers import (
     pkgs_versions_args,
     pkg_nvr_by_hash_args,
     pkg_misconflict_args,
+    pkg_name_conv_args,
 )
 from .serializers import (
     package_chlog_model,
@@ -59,6 +61,7 @@ from .serializers import (
     bin_package_log_el_model,
     pkg_nvr_by_hash_model,
     misconflict_pkgs_by_src_model,
+    package_name_from_repology_model,
 )
 
 ns = get_namespace()
@@ -302,4 +305,21 @@ class routePackageMisconflict(Resource):
         url_logging(logger, g.url)
         args = pkg_misconflict_args.parse_args(strict=True)
         w = PackageMisconflict(g.connection, pkghash, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/package_name_from_repology",
+    doc={
+        "description": "Get source package name from repology.",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routePackageNameFromRepology(Resource):
+    @ns.expect(pkg_name_conv_args)
+    @ns.marshal_with(package_name_from_repology_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = pkg_name_conv_args.parse_args(strict=True)
+        w = PackageNameFromRepology(g.connection, **args)
         return run_worker(worker=w, args=args)

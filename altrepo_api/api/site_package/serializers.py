@@ -396,3 +396,12 @@ misconflict_pkgs_by_src_model = ns.model(
         ),
     },
 )
+
+package_name_from_repology_model = ns.model(
+    "PackageNameFromRepologyModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "name": fields.String(description="package name from repology"),
+        "repo": fields.String(description="repository name from repology"),
+    },
+)
