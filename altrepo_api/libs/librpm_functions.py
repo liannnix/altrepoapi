@@ -149,11 +149,13 @@ def compare_versions(
     release2: str = "",
     disttag2: str = "",
     buildtime2: Union[int, None] = None
-) -> int:
+) -> VersionCompareResult:
     """Compare package versions using librpm `rpmEVRDTCompare` function."""
-    return _compare_versions(
-        _make_rpm_evrdt_struct(epoch1, version1, release1, disttag1, buildtime1),
-        _make_rpm_evrdt_struct(epoch2, version2, release2, disttag2, buildtime2),
+    return VersionCompareResult(
+        _compare_versions(
+            _make_rpm_evrdt_struct(epoch1, version1, release1, disttag1, buildtime1),
+            _make_rpm_evrdt_struct(epoch2, version2, release2, disttag2, buildtime2),
+        )
     )
 
 

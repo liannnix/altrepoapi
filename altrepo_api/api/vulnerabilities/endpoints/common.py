@@ -283,7 +283,7 @@ def vulnerability_closed_in_errata(
             version2=package.version,
             release2=package.release,
         )
-        < 1
+        < VersionCompareResult.GREATER_THAN
     )
 
 
