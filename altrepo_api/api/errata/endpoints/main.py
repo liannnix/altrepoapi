@@ -262,12 +262,12 @@ class Packages(APIWorker):
             pu_bugs = [
                 bugs[int(eid)]
                 for etype, eid in errata.references
-                if etype == "bug"
+                if etype == "bug" and bugs[int(eid)]
             ]
             pu_vulns = [
                 vulns[eid]
                 for etype, eid in errata.references
-                if etype == "vuln"
+                if etype == "vuln" and vulns[eid]
             ]
             result.append(
                 asdict(
