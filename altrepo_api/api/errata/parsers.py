@@ -16,7 +16,7 @@
 
 from flask_restx import inputs
 
-from altrepo_api.api.parser import parser, pkg_name_type, errataid_type, branch_name_type
+from altrepo_api.api.parser import parser, pkg_name_type, branch_name_type
 
 package_name_opt = parser.register_item(
     "package_name",

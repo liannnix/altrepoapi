@@ -17,7 +17,12 @@
 from flask import g
 from flask_restx import Resource, abort
 
-from altrepo_api.api.base import GET_RESPONSES_400_404, GET_RESPONSES_404, POST_RESPONSES_400_404, run_worker
+from altrepo_api.api.base import (
+    GET_RESPONSES_400_404,
+    GET_RESPONSES_404,
+    POST_RESPONSES_400_404,
+    run_worker,
+)
 from altrepo_api.utils import (
     get_logger,
     response_error_parser,
@@ -25,7 +30,7 @@ from altrepo_api.utils import (
     url_logging,
 )
 
-from .endpoints.main import Branches, Packages, Search
+from .endpoints.main import BranchesUpdates, PackagesUpdates, Search
 from .endpoints.oval import OvalBranches, OvalExport
 from .namespace import get_namespace
 from .parsers import (
@@ -33,10 +38,10 @@ from .parsers import (
     oval_export_args,
 )
 from .serializers import (
-    errata_json_list_model,
-    errata_search_model,
-    errata_branches_model,
-    errata_packages_model,
+    erratas_ids_json_list_model,
+    erratas_model,
+    errata_branches_updates_model,
+    errata_packages_updates_model,
     oval_branches_model,
 )
 
@@ -98,49 +103,37 @@ class routeOvalExport(Resource):
 
 
 @ns.route(
-    "/packages",
+    "/packages_updates",
     doc={
         "description": "Get information about packages updates",
         "responses": POST_RESPONSES_400_404,
     },
 )
-class routePackages(Resource):
-    @ns.expect(errata_json_list_model)
-    @ns.marshal_with(errata_packages_model)
+class routePackagesUpdates(Resource):
+    @ns.expect(erratas_ids_json_list_model)
+    @ns.marshal_with(errata_packages_updates_model)
     def post(self):
         url_logging(logger, g.url)
         args = {}
-        w = Packages(g.connection, json_data=ns.payload)
-        return run_worker(
-            worker=w,
-            run_method=w.post,
-            check_method=w.check_params_post,
-            args=args,
-            ok_code=200
-        )
+        w = PackagesUpdates(g.connection, json_data=ns.payload)
+        return run_worker(worker=w, args=args, run_method=w.post, ok_code=200)
 
 
 @ns.route(
-    "/branches",
+    "/branches_updates",
     doc={
-        "description": "Get information about branch updates",
+        "description": "Get information about branches updates",
         "responses": GET_RESPONSES_400_404,
     },
 )
-class routeBranches(Resource):
-    @ns.expect(errata_json_list_model)
-    @ns.marshal_with(errata_branches_model)
+class routeBranchesUpdates(Resource):
+    @ns.expect(erratas_ids_json_list_model)
+    @ns.marshal_with(errata_branches_updates_model)
     def post(self):
         url_logging(logger, g.url)
         args = {}
-        w = Branches(g.connection, json_data=ns.payload)
-        return run_worker(
-            worker=w,
-            run_method=w.post,
-            check_method=w.check_params_post,
-            args=args,
-            ok_code=200
-        )
+        w = BranchesUpdates(g.connection, json_data=ns.payload)
+        return run_worker(worker=w, args=args, run_method=w.post, ok_code=200)
 
 
 @ns.route(
@@ -152,7 +145,7 @@ class routeBranches(Resource):
 )
 class routeSearch(Resource):
     @ns.expect(errata_search_args)
-    @ns.marshal_with(errata_search_model)
+    @ns.marshal_with(erratas_model)
     def get(self):
         url_logging(logger, g.url)
         args = errata_search_args.parse_args(strict=False)

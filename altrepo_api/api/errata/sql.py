@@ -161,7 +161,9 @@ WHERE vuln_id IN (
 """
 
     get_bugs_by_ids = """
-SELECT *
+SELECT
+    bz_id,
+    bz_summary
 FROM Bugzilla
 WHERE bz_id IN (
     SELECT bz_id FROM {tmp_table}
