@@ -42,7 +42,7 @@ errata_reference_model = ns.model(
     },
 )
 erratas_model = ns.model(
-    "ErrataSearchModel",
+    "ErratasModel",
     {
         "erratas": fields.Nested(
             ns.model(
@@ -135,7 +135,7 @@ errata_package_update_model = ns.model(
 errata_packages_updates_model = ns.model(
     "ErrataPackagesUpdatesModel",
     {
-        "pkg_updates": fields.Nested(
+        "packages_updates": fields.Nested(
             errata_package_update_model,
             description="list of packages updates",
             as_list=True,
@@ -149,7 +149,7 @@ errata_branch_update_model = ns.model(
         "type": fields.String(description="errata type"),
         "pkgset_name": fields.String(description="packageset name"),
         "pkgset_date": fields.DateTime(description="packageset date"),
-        "pkg_updates": fields.Nested(
+        "packages_updates": fields.Nested(
             errata_package_update_model,
             description="list of packages updates",
             as_list=True,
@@ -159,7 +159,7 @@ errata_branch_update_model = ns.model(
 errata_branches_updates_model = ns.model(
     "ErrataBranchesUpdatesModel",
     {
-        "branch_updates": fields.Nested(
+        "branches_updates": fields.Nested(
             errata_branch_update_model,
             description="list of branch updates",
             as_list=True,

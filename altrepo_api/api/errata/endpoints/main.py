@@ -92,7 +92,7 @@ class PackageUpdate(Errata):
 
 @dataclass
 class BranchUpdate(Errata):
-    pkg_updates: list[PackageUpdate]
+    packages_updates: list[PackageUpdate]
 
 
 class Erratas(APIWorker):
@@ -277,7 +277,7 @@ class PackagesUpdates(APIWorker):
                 {"message": f"No errata data found for {errata_ids}"}
             )
 
-        return {"pkg_updates": [asdict(p) for p in packages_updates]}, 200
+        return {"packages_updates": [asdict(p) for p in packages_updates]}, 200
 
 
 class BranchesUpdates(APIWorker):
@@ -341,26 +341,25 @@ class BranchesUpdates(APIWorker):
                 {"message": f"No errata data found for {packages_updates_ids}"}
             )
 
-        return {
-            "branch_updates": [
-                asdict(
-                    BranchUpdate(
-                        **(
-                            asdict(Errata(*branch_update))
-                            | {
-                                "pkg_updates": [
-                                    asdict(package_update)
-                                    for package_update in packages_updates
-                                    if package_update.id
-                                    in {eid for _, eid in branch_update[3]}
-                                ]
-                            }
-                        )
-                    )
-                )
-                for branch_update in response
-            ]
-        }, 200
+        packages_updates_index = {
+            package_update.id: package_update
+            for package_update in packages_updates
+        }
+
+        branches_updates = []
+        for row in response:
+            packages_updates_ids = {errata_id for _, errata_id in row[3]}
+            errata = asdict(Errata(*row))
+            branch_update = BranchUpdate(
+                **errata,
+                packages_updates=[
+                    asdict(packages_updates_index[package_update_id])
+                    for package_update_id in packages_updates_ids
+                ],
+            )
+            branches_updates.append(branch_update)
+
+        return {"branches_updates": branches_updates}, 200
 
 
 class Search(APIWorker):
