@@ -6,6 +6,20 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.13.0] - 2023-06-16
+
+Regular API code updates and fixes.
+
+### Added
+- `vuln/cve/packages` route
+- `vuln/bdu/packages` route
+- `vuln/package` route
+- `site_package/package_misconflict` route
+- `site_package/package_name_from_repology` route
+### Changed
+### Fixed
+- delete debug printout
+
 ## [1.12.1] - 2023-06-01
 
 Regular API code updates and fixes.
