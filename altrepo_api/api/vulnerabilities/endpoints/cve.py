@@ -146,28 +146,29 @@ class VulnerablePackageByCve(APIWorker):
 
     def get_by_bdu(self):
         self.branch = self.args["branch"]
-        bdu_id = self.args["vuln_id"]
+        bdu_ids = self.args["vuln_id"]
 
         # get CVE id's from BDU
         response = self.send_sql_request(
-            self.sql.get_vuln_info_by_ids.format(tmp_table=(bdu_id,))
+            self.sql.get_vuln_info_by_ids.format(tmp_table=tuple(bdu_ids))
         )
         if not self.sql_status:
             return self.error
         if not response:
             return self.store_error(
-                {"message": f"No data info found in DB for {bdu_id}"}
+                {"message": f"No data info found in DB for {bdu_ids}"}
             )
 
-        bdu = VulnerabilityInfo(*response[0][1:])
+        bdus = [VulnerabilityInfo(*el[1:]) for el in response]
 
         cve_ids = []
-        for idx, ref_type in enumerate(bdu.refs_type):
-            if ref_type == "CVE":
-                cve_ids.append(bdu.refs_link[idx])
+        for bdu in bdus:
+            for idx, ref_type in enumerate(bdu.refs_type):
+                if ref_type == "CVE":
+                    cve_ids.append(bdu.refs_link[idx])
 
         if not cve_ids:
-            return self.store_error({"message": f"No related CVEs found in {bdu_id}"})
+            return self.store_error({"message": f"No related CVEs found in {bdu_ids}"})
 
         self._find_vulnerable_packages(cve_ids)
         if not self.status:
@@ -176,6 +177,7 @@ class VulnerablePackageByCve(APIWorker):
         return {
             "request_args": self.args,
             "result": self.result_message,
-            "vuln_info": [bdu.asdict()] + [vuln.asdict() for vuln in self.cve_info.values()],
+            "vuln_info": [bdu.asdict() for bdu in bdus]
+            + [vuln.asdict() for vuln in self.cve_info.values()],
             "packages": [p.asdict() for p in self.packages_vulnerabilities],
         }, 200
