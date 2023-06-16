@@ -751,3 +751,58 @@ class PackageNVRByHash(APIWorker):
         }
 
         return res, 200
+
+
+class PackageNameFromRepology(APIWorker):
+    """Retrieves source package name from repology."""
+
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        self.validation_results = []
+
+        if (
+            self.args["branch"] == ""
+            or self.args["branch"] not in lut.repology_export_branches
+        ):
+            self.validation_results.append(
+                f"unknown package set name : {self.args['branch']}"
+            )
+            self.validation_results.append(
+                f"allowed package set names are : {lut.repology_export_branches}"
+            )
+
+        if self.validation_results != []:
+            return False
+        else:
+            return True
+
+    def get(self):
+        branch = lut.repology_cpe_branch_map[self.args["branch"]]
+        pkg_name = self.args["name"]
+
+        response = self.send_sql_request(
+            self.sql.get_converted_pkg_name.format(branch=branch, pkg_name=pkg_name)
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error(
+                {
+                    "message": f"No packages found in DB with name {pkg_name}",
+                    "args": self.args,
+                }
+            )
+
+        PkgNameRepology = namedtuple(
+            "PkgNameRepology", ["name", "repo"]
+        )
+
+        res = {"request_args": self.args, **PkgNameRepology(*response[0])._asdict()}
+
+        return res, 200

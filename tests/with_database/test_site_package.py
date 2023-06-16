@@ -4,6 +4,7 @@ from flask import url_for
 ARCH_IN_DB = "x86_64"
 ARCH_NOT_IN_DB = "fakearch"
 BRANCH_IN_DB = "sisyphus"
+BRANCH_NOT_IN_REPOLOGY_EXPORT = "p8"
 BRANCH_NOT_IN_DB = "fakebranch"
 SRC_PACKAGE_IN_DB = "curl"
 BIN_PACKAGE_IN_DB = "libcurl"
@@ -593,3 +594,45 @@ def test_misconflict_packages(client, kwargs):
         assert data != {}
         assert data["length"] != 0
         assert data["conflicts"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "branch": BRANCH_IN_DB,
+            "name": SRC_PACKAGE_IN_DB,
+            "status_code": 200
+        },
+        {
+            "branch": BRANCH_NOT_IN_REPOLOGY_EXPORT,
+            "name": SRC_PACKAGE_IN_DB,
+            "status_code": 400
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "name": BIN_PACKAGE_IN_DB,
+            "status_code": 404
+        },
+        {
+            "branch": BRANCH_NOT_IN_DB,
+            "name": BIN_PACKAGE_IN_DB,
+            "status_code": 400
+        },
+    ],
+)
+def test_package_name_from_repology(client, kwargs):
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("status_code", ):
+            continue
+        if v is not None:
+            params[k] = v
+    url = url_for("api.site_route_package_name_from_repology")
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["name"] != ""
+        assert data["repo"] != ""

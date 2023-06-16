@@ -899,5 +899,16 @@ FROM (
 GROUP BY input_hash, arch
 """
 
+    get_converted_pkg_name = """
+SELECT DISTINCT 
+    pnc_result,
+    pnc_type
+FROM PackagesNameConversion
+WHERE pkg_name = '{pkg_name}'
+AND pnc_type = '{branch}'
+AND pnc_source = 'repology'    
+AND pnc_state = 'active'    
+"""
+
 
 sql = SQL()

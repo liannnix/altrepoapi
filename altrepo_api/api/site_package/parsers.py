@@ -90,7 +90,7 @@ pkg_name_opt = parser.register_item(
     location="args",
 )
 
-# build parsesr
+# build parsers
 src_downloads_args = parser.build_parser(branch)
 bin_downloads_args = parser.build_parser(branch, arch)
 package_chlog_args = parser.build_parser(changelog)
@@ -102,3 +102,4 @@ package_info_args = parser.build_parser(branch, changelog, pkg_type)
 deleted_package_args = parser.build_parser(branch, pkg_name, pkg_type, arch_opt)
 pkg_nvr_by_hash_args = parser.build_parser(pkg_name_opt)
 pkg_misconflict_args = parser.build_parser(branch)
+pkg_name_conv_args = parser.build_parser(branch, src_pkg_name)
