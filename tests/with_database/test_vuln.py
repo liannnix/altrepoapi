@@ -8,11 +8,16 @@ BRANCH_NOT_IN_DB = "fakebranch"
 BAD_CVE_ID = "CVE-1234-123"
 CVE_IN_DB = "CVE-2023-0466"
 CVE_NOT_IN_DB = "CVE-2000-99999"
-LIST_CVES_IN_DB = ["CVE-2023-0466", "CVE-2023-0467", "CVE-2023-0468"]
+LIST_CVE_IN_DB = ["CVE-2023-0466", "CVE-2023-0467", "CVE-2023-0468"]
 
 BAD_BDU_ID = "BDU:1234-123"
 BDU_IN_DB = "BDU:2019-01845"
+LIST_BDU_IN_DB = ["BDU:2023-01241", "BDU:2023-01242", "BDU:2023-01243"]
 BDU_NOT_IN_DB = "BDU:2000-00001"
+
+PAKCAGE_IN_DB = "chromium"
+PAKCAGE_NOT_IN_DB = "fakepackage"
+BAD_PACKAGE_NAME = "xxx*yyy"
 
 
 @pytest.mark.parametrize(
@@ -43,6 +48,7 @@ def test_vuln_bdu_info(client, kwargs):
     "kwargs",
     [
         {"vuln_id": BDU_IN_DB, "status_code": 200},
+        {"vuln_id": ",".join(LIST_BDU_IN_DB), "status_code": 200},
         {"vuln_id": BDU_IN_DB, "branch": BRANCH_IN_DB, "status_code": 200},
         {"vuln_id": BDU_IN_DB, "branch": BRANCH_IN_DB2, "status_code": 200},
         {"vuln_id": BDU_IN_DB, "branch": BRANCH_NOT_IN_DB, "status_code": 400},
@@ -64,7 +70,7 @@ def test_vuln_bdu_packages(client, kwargs):
     assert response.status_code == kwargs["status_code"]
     if response.status_code == 200:
         assert data != {}
-        assert data["vuln_info"][0]["id"] == kwargs["vuln_id"]
+        assert data["vuln_info"][0]["id"] == kwargs["vuln_id"].split(",")[0]
         assert data["packages"] != []
 
 
@@ -96,7 +102,7 @@ def test_vuln_cve_info(client, kwargs):
     "kwargs",
     [
         {"vuln_id": CVE_IN_DB, "status_code": 200},
-        {"vuln_id": ",".join(LIST_CVES_IN_DB), "status_code": 200},
+        {"vuln_id": ",".join(LIST_CVE_IN_DB), "status_code": 200},
         {"vuln_id": CVE_IN_DB, "branch": BRANCH_IN_DB, "status_code": 200},
         {"vuln_id": CVE_IN_DB, "branch": BRANCH_IN_DB2, "status_code": 200},
         {"vuln_id": CVE_IN_DB, "branch": BRANCH_NOT_IN_DB, "status_code": 400},
@@ -119,4 +125,32 @@ def test_vuln_cve_packages(client, kwargs):
     if response.status_code == 200:
         assert data != {}
         assert data["vuln_info"][0]["id"] == kwargs["vuln_id"].split(",")[0]
+        assert data["packages"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"name": PAKCAGE_IN_DB, "status_code": 200},
+        {"name": PAKCAGE_IN_DB, "branch": BRANCH_IN_DB, "status_code": 200},
+        {"name": BAD_PACKAGE_NAME, "status_code": 400},
+        {"name": PAKCAGE_IN_DB, "branch": BRANCH_NOT_IN_DB, "status_code": 400},
+        {"name": PAKCAGE_NOT_IN_DB, "status_code": 404},
+        {"name": PAKCAGE_NOT_IN_DB, "branch": BRANCH_IN_DB, "status_code": 404},
+    ],
+)
+def test_vuln_packages(client, kwargs):
+    url = url_for("api.vuln_route_package_vulnerabilities")
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("status_code",):
+            continue
+        if v is not None:
+            params[k] = v
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["vuln_info"] != []
         assert data["packages"] != []
