@@ -176,6 +176,6 @@ class VulnerablePackageByCve(APIWorker):
         return {
             "request_args": self.args,
             "result": self.result_message,
-            "vuln_info": [bdu] + [vuln.asdict() for vuln in self.cve_info.values()],
+            "vuln_info": [bdu.asdict()] + [vuln.asdict() for vuln in self.cve_info.values()],
             "packages": [p.asdict() for p in self.packages_vulnerabilities],
         }, 200
