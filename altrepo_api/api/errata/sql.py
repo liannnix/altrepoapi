@@ -144,8 +144,8 @@ WHERE errata_id IN (
     get_vulns_by_ids = """
 SELECT
     vuln_id,
-    vuln_hash,
     vuln_type,
+    vuln_hash,
     vuln_summary,
     vuln_score,
     vuln_severity,
