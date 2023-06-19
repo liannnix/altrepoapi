@@ -6,6 +6,15 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.13.1] - 2023-06-19
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `errata/export/oval`: BDU collecting by CVE ids is now disabled by default due to changes in Errata generation in ALTRepo DB version 2.9.0+
+### Fixed
+
 ## [1.13.0] - 2023-06-16
 
 Regular API code updates and fixes.
