@@ -353,7 +353,7 @@ class _pGetCveInfoCompatible(
     ...
 
 
-class _pGetCveMatchingByPaclageCpesCompatible(
+class _pGetCveMatchingByPackageCpesCompatible(
     _pHasCveCpems,
     _pHasPackagesCpes,
     _pAPIWorker,
@@ -758,7 +758,7 @@ def get_vulnerability_fix_errata(
     cls.status = True
 
 
-def get_cve_matching_by_cpes(cls: _pGetCveMatchingByPaclageCpesCompatible) -> None:
+def get_cve_matching_by_cpes(cls: _pGetCveMatchingByPackageCpesCompatible) -> None:
     cls.status = False
 
     # get CVE CPE matching by packages CPEs
