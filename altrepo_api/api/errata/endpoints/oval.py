@@ -28,6 +28,7 @@ from .xml_builder import (
     ErrataHistoryRecord,
     PackageInfo,
     VulnerabilityInfo,
+    LINK_BDU_BY_CVE,
 )
 
 
@@ -167,25 +168,26 @@ class OvalExport(APIWorker):
                 vuln.id: vuln for vuln in (VulnerabilityInfo(*el) for el in response)
             }
             # collect BDUs by CVE id's references
-            response = self.send_sql_request(
-                self.sql.get_bdus_info_by_cve_ids.format(tmp_table=tmp_table),
-                external_tables=[
-                    {
-                        "name": tmp_table,
-                        "structure": [("vuln_id", "String")],
-                        "data": [{"vuln_id": vuln_id} for vuln_id in vuln_ids],
-                    },
-                ],
-            )
-            if not self.sql_status:
-                return self.error
-            if not response:
-                return self.store_error(
-                    {"message": "No vulnerabilities info found in DB"}
+            if LINK_BDU_BY_CVE:
+                response = self.send_sql_request(
+                    self.sql.get_bdus_info_by_cve_ids.format(tmp_table=tmp_table),
+                    external_tables=[
+                        {
+                            "name": tmp_table,
+                            "structure": [("vuln_id", "String")],
+                            "data": [{"vuln_id": vuln_id} for vuln_id in vuln_ids],
+                        },
+                    ],
                 )
-            bdus_by_cves = {
-                vuln.id: vuln for vuln in (VulnerabilityInfo(*el) for el in response)
-            }
+                if not self.sql_status:
+                    return self.error
+                if not response:
+                    return self.store_error(
+                        {"message": "No vulnerabilities info found in DB"}
+                    )
+                bdus_by_cves = {
+                    vuln.id: vuln for vuln in (VulnerabilityInfo(*el) for el in response)
+                }
 
         xml_bulder = OVALBuilder(erratas, binaries, bugz, vulns, bdus_by_cves)
 

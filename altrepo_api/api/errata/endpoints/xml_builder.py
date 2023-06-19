@@ -84,6 +84,8 @@ from altrepo_api.libs.oval.independent_definitions import (
 )
 
 
+LINK_BDU_BY_CVE = False
+
 GENERATOR_PRODUCT_NAME = "ALT Linux Errata System"
 ALT_LINUX_OVAL_ID_PREFIX = "org.altlinux.errata"
 XML_VERSION = 1
@@ -493,7 +495,7 @@ class OVALBuilder:
         ]
 
     def _errata_vuln_links(
-        self, errata: ErrataHistoryRecord, link_dbus_by_cves: bool = True
+        self, errata: ErrataHistoryRecord, link_bdu_by_cve: bool = LINK_BDU_BY_CVE
     ) -> list[str]:
         # collect vulnerabilities descriptions and references
         errata_linked_vulns = {
@@ -502,7 +504,7 @@ class OVALBuilder:
             if t == "vuln"
         }
 
-        if link_dbus_by_cves:
+        if link_bdu_by_cve:
             # extend vulnerabilities list by BDUs mapped by CVEs
             linked_bdus: set[str] = set()
             for bdu_id, linked_cves in self.bdu_to_cve_map.items():

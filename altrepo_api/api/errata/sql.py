@@ -33,7 +33,6 @@ WHERE pkg_srcrpm_hash IN
     SELECT pkg_hash FROM {tmp_table}
 )
     AND pkg_sourcepackage = 0
-    -- AND pkg_name NOT LIKE '%%-devel'
     AND pkg_name NOT LIKE '%%-debuginfo'
 """
 
