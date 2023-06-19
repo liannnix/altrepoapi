@@ -20,7 +20,7 @@ from typing import Union
 
 from altrepo_api.api.base import APIWorker
 
-from altrepo_api.api.parser import errataid_type
+from altrepo_api.api.parser import errata_id_type
 from ..sql import sql
 
 
@@ -148,7 +148,7 @@ class PackagesUpdates(APIWorker):
 
         for elem in self.args["json_data"]["errata_ids"]:
             try:
-                self.input_arguments.append(errataid_type(elem))
+                self.input_arguments.append(errata_id_type(elem))
             except ValueError:
                 self.validation_results.append(f"invalid errata id: {elem}")
                 break
@@ -293,7 +293,7 @@ class BranchesUpdates(APIWorker):
 
         for elem in self.args["json_data"]["errata_ids"]:
             try:
-                self.input_arguments.append(errataid_type(elem))
+                self.input_arguments.append(errata_id_type(elem))
             except ValueError:
                 self.validation_results.append(f"invalid errata id: {elem}")
                 break
