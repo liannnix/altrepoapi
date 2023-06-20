@@ -607,7 +607,7 @@ bdu_id_list_type.__schema__ = {"type": "string", "pattern": __bdu_id_list_match.
 
 
 def errata_id_type(value: Any) -> str:
-    """BDU id validator."""
+    """Errata id validator."""
 
     value = __get_string(value)
     if not __errata_id_match.search(value):
