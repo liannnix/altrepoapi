@@ -603,7 +603,7 @@ def bdu_id_list_type(value: Any) -> str:
     return value
 
 
-cve_id_list_type.__schema__ = {"type": "string", "pattern": __bdu_id_list_match.pattern}
+bdu_id_list_type.__schema__ = {"type": "string", "pattern": __bdu_id_list_match.pattern}
 
 
 def errata_id_type(value: Any) -> str:
