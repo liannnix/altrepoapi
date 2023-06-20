@@ -276,15 +276,12 @@ def vulnerability_closed_in_errata(
     package: PackageVulnerability, errata: Errata
 ) -> bool:
     """Returns `true` if version in errata is less or equal to package's one."""
-    return (
-        compare_versions(
-            version1=errata.pkg_version,
-            release1=errata.pkg_release,
-            version2=package.version,
-            release2=package.release,
-        )
-        < VersionCompareResult.GREATER_THAN
-    )
+    return compare_versions(
+        version1=errata.pkg_version,
+        release1=errata.pkg_release,
+        version2=package.version,
+        release2=package.release,
+    ) in (VersionCompareResult.LESS_THAN, VersionCompareResult.EQUAL)
 
 
 # Protocols
@@ -725,15 +722,12 @@ def get_vulnerability_fix_errata(
                     fixed=False,
                     fixed_in=[errata],
                 )
-                if (
-                    compare_versions(
-                        version1=pkg.version,
-                        release1=pkg.release,
-                        version2=errata.pkg_version,
-                        release2=errata.pkg_release,
-                    )
-                    >= VersionCompareResult.EQUAL
-                ):
+                if compare_versions(
+                    version1=pkg.version,
+                    release1=pkg.release,
+                    version2=errata.pkg_version,
+                    release2=errata.pkg_release,
+                ) in (VersionCompareResult.EQUAL, VersionCompareResult.GREATER_THAN):
                     pv.vulnerable = False
                     if (
                         errata.task_state == "DONE"
@@ -748,13 +742,26 @@ def get_vulnerability_fix_errata(
                 break
 
     # update found packages vulnerabilities
-    cls.packages_vulnerabilities.extend(
-        sorted(
-            pv_list,
-            key=lambda x: (x.branch, x.vuln_id, x.vulnerable, x.name, x.version),
-        )
-    )
+    # 1. sort pv_list
+    pv_list.sort(key=lambda x: (x.branch, x.vuln_id, x.vulnerable, x.name, x.version))
 
+    # 2. remove duplicated elements from results
+    def pv2cmp_tuple(pv: PackageVulnerability) -> tuple[Any, ...]:
+        return (pv.hash, pv.name, pv.version, pv.release, pv.branch, pv.vuln_id)
+
+    for pv in [
+        pv
+        for pv in cls.packages_vulnerabilities
+        if (pv.vulnerable is False and pv.fixed is False)
+    ]:
+        for errata_pv in pv_list:
+            if pv2cmp_tuple(pv) == pv2cmp_tuple(errata_pv):
+                try:
+                    cls.packages_vulnerabilities.remove(pv)
+                except ValueError:
+                    pass
+
+    cls.packages_vulnerabilities.extend(pv_list)
     cls.status = True
 
 
