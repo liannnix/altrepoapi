@@ -33,7 +33,7 @@ one_file_opt = parser.register_item(
     help="return OVAL definitions as one XML file",
     location="args",
 )
-errataid_opt = parser.register_item(
+errata_id_opt = parser.register_item(
     "errata_id",
     required=False,
     help="errata ID",
@@ -46,6 +46,13 @@ branch_name_opt = parser.register_item(
     help="branch name",
     location="args"
 )
+errata_pkg_name_opt = parser.register_item(
+    "name",
+    type=pkg_name_type,
+    required=False,
+    help="source package name",
+    location="args",
+)
 
 oval_export_args = parser.build_parser(package_name_opt, one_file_opt)
-errata_search_args = parser.build_parser(branch_name_opt, package_name_opt, errataid_opt)
+errata_search_args = parser.build_parser(branch_name_opt, errata_pkg_name_opt, errata_id_opt)

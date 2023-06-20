@@ -170,26 +170,45 @@ WHERE bz_id IN (
 )
 """
 
-    search_errata = """
+    search_valid_errata = """
 SELECT
-    eh_hash,
-    eh_type,
-    eh_source,
-    arrayZip(eh_references.type, eh_references.link),
     errata_id,
-    pkg_hash,
-    pkg_name,
-    pkg_version,
-    pkg_release,
-    pkgset_name,
-    pkgset_date,
-    task_id,
-    subtask_id,
-    task_state,
-    task_changed
+    argMax(
+        tuple(
+            eh_type,
+            eh_source,
+            pkg_hash,
+            pkg_name,
+            pkg_version,
+            pkg_release,
+            pkgset_name,
+            pkgset_date,
+            task_id,
+            subtask_id,
+            task_state,
+            task_changed,
+            eh_references.type,
+            eh_references.link
+        ),
+        ts
+    ),
+    max(ts) AS max_ts
 FROM ErrataHistory
-{cond}
-ORDER BY ts DESC
+WHERE (task_id, subtask_id) IN (
+    SELECT DISTINCT
+        task_id,
+        subtask_id
+    FROM Tasks
+    WHERE task_id IN (
+            SELECT task_id FROM TaskStates WHERE task_state = 'DONE'
+        )
+        AND subtask_deleted = 0
+    UNION ALL
+    SELECT 0 AS task_id, 0 AS subtask_id
+)
+{where_clause}
+GROUP BY errata_id
+ORDER BY max_ts DESC
 """
 
 
