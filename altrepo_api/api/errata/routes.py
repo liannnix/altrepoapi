@@ -30,8 +30,11 @@ from altrepo_api.utils import (
     url_logging,
 )
 
-from .endpoints.main import BranchesUpdates, PackagesUpdates, Search
+# from .endpoints.main import BranchesUpdates, PackagesUpdates, Search
 from .endpoints.oval import OvalBranches, OvalExport
+from .endpoints.search import Search, ErrataIds
+from .endpoints.package import PackagesUpdates
+from .endpoints.branch import BranchesUpdates
 from .namespace import get_namespace
 from .parsers import (
     errata_search_args,
@@ -40,6 +43,7 @@ from .parsers import (
 from .serializers import (
     erratas_ids_json_list_model,
     erratas_model,
+    errata_ids_model,
     errata_branches_updates_model,
     errata_packages_updates_model,
     oval_branches_model,
@@ -139,7 +143,7 @@ class routeBranchesUpdates(Resource):
 @ns.route(
     "/search",
     doc={
-        "description": "Find corresponding erratas",
+        "description": "Find erratas by given arguments",
         "responses": GET_RESPONSES_404,
     },
 )
@@ -150,4 +154,21 @@ class routeSearch(Resource):
         url_logging(logger, g.url)
         args = errata_search_args.parse_args(strict=False)
         w = Search(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/ids",
+    doc={
+        "description": "Get list of valid Errata identifiers",
+        "responses": GET_RESPONSES_404,
+    },
+)
+class routeErrataIds(Resource):
+    # @ns.expect()
+    @ns.marshal_with(errata_ids_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = {}
+        w = ErrataIds(g.connection, **args)
         return run_worker(worker=w, args=args)

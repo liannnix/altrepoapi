@@ -34,6 +34,7 @@ erratas_ids_json_list_model = ns.model(
     "ErrataJsonPostListModel",
     {"errata_ids": fields.List(fields.String, description="errata ids list")},
 )
+
 errata_reference_model = ns.model(
     "ErrataReferenceModel",
     {
@@ -54,9 +55,7 @@ erratas_model = ns.model(
                     "pkgset_date": fields.Date(description="packageset date"),
                     "task_id": fields.Integer(description="task id"),
                     "task_state": fields.String(description="task state"),
-                    "task_changed": fields.String(
-                        description="task changed date"
-                    ),
+                    "task_changed": fields.String(description="task changed date"),
                     "subtask_id": fields.Integer(description="subtask id"),
                     "pkg_hash": fields.String(description="package hash"),
                     "pkg_name": fields.String(description="package name"),
@@ -93,16 +92,10 @@ errata_vuln_model = ns.model(
         "score": fields.Float(description="vulnerability score"),
         "severity": fields.String(description="vulnerability severity"),
         "url": fields.String(description="vulnerability url"),
-        "modified_date": fields.DateTime(
-            description="vulnerability modified date"
-        ),
-        "published_date": fields.DateTime(
-            description="vulnerability published date"
-        ),
+        "modified_date": fields.DateTime(description="vulnerability modified date"),
+        "published_date": fields.DateTime(description="vulnerability published date"),
         "body": fields.String(description="vulnerability body in JSON format"),
-        "is_valid": fields.Boolean(
-            description="vulnerability information is valid"
-        ),
+        "is_valid": fields.Boolean(description="vulnerability information is valid"),
     },
 )
 errata_package_update_model = ns.model(
@@ -165,4 +158,10 @@ errata_branches_updates_model = ns.model(
             as_list=True,
         ),
     },
+)
+
+
+errata_ids_model = ns.model(
+    "ErrataIdsListModel",
+    {"errata_ids": fields.List(fields.String, description="errata ids list")},
 )

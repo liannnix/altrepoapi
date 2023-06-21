@@ -48,23 +48,22 @@ GROUP BY bz_id
 """
 
     get_errata_history_by_branch_tasks = """
-WITH
-done_subtasks AS (
-    SELECT DISTINCT
-        task_id,
-        subtask_id
-    FROM Tasks
-    WHERE task_repo = '{branch}'
-        AND task_id IN (
-            SELECT task_id FROM TaskStates WHERE task_state = 'DONE'
-        )
-        AND subtask_deleted = 0
-)
 SELECT DISTINCT *
 FROM ErrataHistory
 WHERE eh_type = 'task'
-    AND (task_id, subtask_id) IN done_subtasks
-    AND task_state = 'DONE'
+    AND (task_id, subtask_id) IN (
+        SELECT DISTINCT
+            task_id,
+            subtask_id
+        FROM Tasks
+        WHERE task_repo = '{branch}'
+            AND task_id IN (
+                SELECT task_id
+                FROM TaskStates
+                WHERE task_state = 'DONE'
+            )
+            AND subtask_deleted = 0
+    )
     {pkg_name_clause}
 ORDER BY task_changed
 """
@@ -118,29 +117,6 @@ WHERE (vuln_id, vuln_hash) IN (
 )
 """
 
-    get_errata_history_by_ids = """
-SELECT
-    eh_hash,
-    eh_type,
-    eh_source,
-    arrayZip(eh_references.type, eh_references.link),
-    errata_id,
-    pkg_hash,
-    pkg_name,
-    pkg_version,
-    pkg_release,
-    pkgset_name,
-    pkgset_date,
-    task_id,
-    subtask_id,
-    task_state,
-    task_changed
-FROM ErrataHistory
-WHERE errata_id IN (
-    SELECT errata_id FROM {tmp_table}
-)
-"""
-
     get_vulns_by_ids = """
 SELECT
     vuln_id,
@@ -170,6 +146,27 @@ WHERE bz_id IN (
 )
 """
 
+    search_errata_where_clause = """
+WHERE (task_id, subtask_id) IN (
+    SELECT DISTINCT
+        task_id,
+        subtask_id
+    FROM Tasks
+    WHERE task_id IN (
+            SELECT task_id FROM TaskStates WHERE task_state = 'DONE'
+        )
+        AND subtask_deleted = 0
+    UNION ALL
+    SELECT 0 AS task_id, 0 AS subtask_id
+)
+"""
+
+    errata_by_ids_where_clause = """
+WHERE errata_id IN (
+    SELECT errata_id FROM {tmp_table}
+)
+"""
+
     search_valid_errata = """
 SELECT
     errata_id,
@@ -187,12 +184,21 @@ SELECT
             subtask_id,
             task_state,
             task_changed,
-            eh_references.type,
-            eh_references.link
+            arrayZip(eh_references.type, eh_references.link)
         ),
         ts
     ),
-    max(ts) AS max_ts
+    max(task_changed) AS max_ts
+FROM ErrataHistory
+{where_clause}
+GROUP BY errata_id
+ORDER BY max_ts DESC
+"""
+
+    get_valid_errata_ids = """
+SELECT DISTINCT
+    errata_id,
+    task_changed
 FROM ErrataHistory
 WHERE (task_id, subtask_id) IN (
     SELECT DISTINCT
@@ -206,9 +212,7 @@ WHERE (task_id, subtask_id) IN (
     UNION ALL
     SELECT 0 AS task_id, 0 AS subtask_id
 )
-{where_clause}
-GROUP BY errata_id
-ORDER BY max_ts DESC
+ORDER BY task_changed DESC
 """
 
 
