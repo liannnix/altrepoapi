@@ -16,9 +16,9 @@
 
 import logging
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Any, Iterable, Protocol, Union
+from typing import Any, Iterable, NamedTuple, Protocol, Union
 
 from altrepo_api.utils import make_tmp_table_name
 
@@ -30,17 +30,17 @@ ERRATA_PACKAGE_UPDATE_PREFIX = "ALT-PU-"
 ERRATA_BRANCH_BULLETIN_PREFIX = "ALT-BU-"
 
 
-@dataclass
-class Reference:
+# @dataclass
+class Reference(NamedTuple):
     type: str
     id: str
 
     def asdict(self) -> dict[str, Any]:
-        return asdict(self)
+        return self._asdict()
 
 
-@dataclass
-class Errata:
+# @dataclass
+class Errata(NamedTuple):
     id: str
     type: str
     source: str
@@ -57,13 +57,12 @@ class Errata:
     references: list[Reference]
 
     def asdict(self) -> dict[str, Any]:
-        res = asdict(self)
+        res = self._asdict()
         res["references"] = [r.asdict() for r in self.references]
         return res
 
 
-@dataclass
-class Vulnerability:
+class Vulnerability(NamedTuple):
     id: str
     type: str
     hash: str = ""
@@ -71,42 +70,43 @@ class Vulnerability:
     score: float = 0.0
     severity: str = ""
     url: str = ""
-    references: list[str] = field(default_factory=list)
+    references: list[str] = list()
     modified_date: datetime = DATETIME_NEVER
     published_date: datetime = DATETIME_NEVER
     body: str = ""
     is_valid: bool = False
 
 
-@dataclass
-class Bug:
+class Bug(NamedTuple):
     id: int
     summary: str = ""
     is_valid: bool = False
 
 
 @dataclass
-class PackageUpdate(Errata):
+class PackageUpdate:
+    errata: Errata
     bugs: list[Bug]
     vulns: list[Vulnerability]
 
     def asdict(self) -> dict[str, Any]:
-        res = asdict(self)
+        res = self.errata.asdict()
 
-        res["bugs"] = [asdict(bug) for bug in self.bugs]
-        res["vulns"] = [asdict(vuln) for vuln in self.vulns]
+        res["bugs"] = [bug._asdict() for bug in self.bugs]
+        res["vulns"] = [vuln._asdict() for vuln in self.vulns]
 
         return res
 
 
 @dataclass
-class BranchUpdate(Errata):
+class BranchUpdate:
+    errata: Errata
     packages_updates: list[PackageUpdate]
 
     def asdict(self) -> dict[str, Any]:
-        res = asdict(self)
+        res = self.errata.asdict()
 
-        res["packages_updates"] = [asdict(pu) for pu in self.packages_updates]
+        res["packages_updates"] = [pu.asdict() for pu in self.packages_updates]
 
         return res
 
@@ -297,7 +297,7 @@ def get_packges_updates_erratas(
         pu_bugs = [bugs[int(ref.id)] for ref in errata.references if ref.type == "bug"]
         pu_vulns = [vulns[ref.id] for ref in errata.references if ref.type == "vuln"]
         packages_updates.append(
-            PackageUpdate(**errata.asdict(), bugs=pu_bugs, vulns=pu_vulns)
+            PackageUpdate(errata=errata, bugs=pu_bugs, vulns=pu_vulns)
         )
 
     cls.status = True

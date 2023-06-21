@@ -30,7 +30,6 @@ from altrepo_api.utils import (
     url_logging,
 )
 
-# from .endpoints.main import BranchesUpdates, PackagesUpdates, Search
 from .endpoints.oval import OvalBranches, OvalExport
 from .endpoints.search import Search, ErrataIds
 from .endpoints.package import PackagesUpdates
@@ -165,7 +164,7 @@ class routeSearch(Resource):
     },
 )
 class routeErrataIds(Resource):
-    # @ns.expect()
+    # @ns.expect(xxx_args)
     @ns.marshal_with(errata_ids_model)
     def get(self):
         url_logging(logger, g.url)

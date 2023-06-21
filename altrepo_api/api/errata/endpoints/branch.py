@@ -79,13 +79,14 @@ class BranchesUpdates(APIWorker):
             )
 
         pu_map = {
-            package_update.id: package_update for package_update in packages_updates
+            package_update.errata.id: package_update
+            for package_update in packages_updates
         }
 
         # build branch updates
         branches_updates = [
             BranchUpdate(
-                **errata.asdict(),
+                errata=errata,
                 packages_updates=[
                     pu_map[pu_id] for pu_id in (ref.id for ref in errata.references)
                 ],
