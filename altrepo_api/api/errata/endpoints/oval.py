@@ -82,8 +82,7 @@ class OvalExport(APIWorker):
         if not response:
             return self.store_error(
                 {
-                    "message": "No data found in DB",
-                    "args": self.args,
+                    "message": f"No data found in DB for {self.args}",
                 }
             )
         # FIXME: handle duplicated errata records for tasks state transitions from TESTED|EPERM to DONE
@@ -186,7 +185,8 @@ class OvalExport(APIWorker):
                         {"message": "No vulnerabilities info found in DB"}
                     )
                 bdus_by_cves = {
-                    vuln.id: vuln for vuln in (VulnerabilityInfo(*el) for el in response)
+                    vuln.id: vuln
+                    for vuln in (VulnerabilityInfo(*el) for el in response)
                 }
 
         xml_bulder = OVALBuilder(erratas, binaries, bugz, vulns, bdus_by_cves)
