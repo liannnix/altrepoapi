@@ -18,7 +18,11 @@ from altrepo_api.api.base import APIWorker
 
 from altrepo_api.api.parser import errata_id_type
 
-from .common import get_packges_updates_erratas, ERRATA_PACKAGE_UPDATE_PREFIX
+from .common import (
+    get_packges_updates_erratas,
+    ERRATA_PACKAGE_UPDATE_PREFIX,
+    PACKAGE_UPDATE_MAX_BATCH,
+)
 from ..sql import sql
 
 
@@ -48,6 +52,12 @@ class PackagesUpdates(APIWorker):
                     f"not a package update errata: {errata_id}"
                 )
                 break
+
+        if len(self.errata_ids) > PACKAGE_UPDATE_MAX_BATCH:
+            self.validation_results.append(
+                "Request payload size is too big. "
+                f"Max errata_ids list size is {PACKAGE_UPDATE_MAX_BATCH}"
+            )
 
         if self.validation_results != []:
             return False

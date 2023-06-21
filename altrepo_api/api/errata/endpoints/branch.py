@@ -22,6 +22,7 @@ from .common import (
     get_erratas_by_ids,
     get_packges_updates_erratas,
     ERRATA_BRANCH_BULLETIN_PREFIX,
+    BRANCH_UPDATE_MAX_BATCH,
 )
 from ..sql import sql
 
@@ -52,6 +53,12 @@ class BranchesUpdates(APIWorker):
                     f"not a branch update errata: {errata_id}"
                 )
                 break
+
+        if len(self.errata_ids) > BRANCH_UPDATE_MAX_BATCH:
+            self.validation_results.append(
+                "Request payload size is too big. "
+                f"Max errata_ids list size is {BRANCH_UPDATE_MAX_BATCH}"
+            )
 
         if self.validation_results != []:
             return False
