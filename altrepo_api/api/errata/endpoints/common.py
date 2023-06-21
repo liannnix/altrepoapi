@@ -18,12 +18,16 @@ import logging
 
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime
-from typing import Any, Protocol
+from typing import Any, Iterable, Protocol, Union
+
+from altrepo_api.utils import make_tmp_table_name
 
 from ..sql import SQL
 
 
 DATETIME_NEVER = datetime.fromtimestamp(0)
+ERRATA_PACKAGE_UPDATE_PREFIX = "ALT-PU-"
+ERRATA_BRANCH_BULLETIN_PREFIX = "ALT-BU-"
 
 
 @dataclass
@@ -86,10 +90,25 @@ class PackageUpdate(Errata):
     bugs: list[Bug]
     vulns: list[Vulnerability]
 
+    def asdict(self) -> dict[str, Any]:
+        res = asdict(self)
+
+        res["bugs"] = [asdict(bug) for bug in self.bugs]
+        res["vulns"] = [asdict(vuln) for vuln in self.vulns]
+
+        return res
+
 
 @dataclass
 class BranchUpdate(Errata):
     packages_updates: list[PackageUpdate]
+
+    def asdict(self) -> dict[str, Any]:
+        res = asdict(self)
+
+        res["packages_updates"] = [asdict(pu) for pu in self.packages_updates]
+
+        return res
 
 
 def empty_vuln(vuln_id: str) -> Vulnerability:
@@ -120,9 +139,166 @@ class _pAPIWorker(Protocol):
 
 
 # Mixin
-def get_erratas(cls: _pAPIWorker, where_clause: str) -> None:
+def _get_erratas(
+    cls: _pAPIWorker,
+    where_clause: str,
+    external_tables: Union[Iterable[Any], None],
+) -> Union[list[Errata], None]:
     cls.status = False
 
-    pass
+    response = cls.send_sql_request(
+        cls.sql.search_valid_errata.format(where_clause=where_clause),
+        external_tables=external_tables,
+    )
+    if not cls.sql_status:
+        return None
+    if not response:
+        _ = cls.store_error({"message": "No errata data found in DB"})
+        return None
 
     cls.status = True
+    return [
+        Errata(
+            row[0],  # errata_id
+            *row[1][:-1],  # errata details
+            [Reference(*el) for el in row[1][-1]],  # type: ignore
+        )
+        for row in response
+    ]
+
+
+def get_erratas_by_ids(cls: _pAPIWorker, errata_ids: list[str]):
+    tmp_table = make_tmp_table_name("erraia_ids")
+
+    where_clause = cls.sql.errata_by_ids_where_clause.format(
+        tmp_table=tmp_table,
+    )
+
+    external_tables = [
+        {
+            "name": tmp_table,
+            "structure": [("errata_id", "String")],
+            "data": [{"errata_id": errata_id} for errata_id in errata_ids],
+        },
+    ]
+
+    return _get_erratas(cls, where_clause, external_tables)
+
+
+def get_erratas_by_search_conditions(cls: _pAPIWorker, where_clause: str):
+    return _get_erratas(cls, where_clause, None)
+
+
+def get_vulns_by_ids(
+    cls: _pAPIWorker, vuln_ids: Iterable[str]
+) -> Union[list[Vulnerability], None]:
+    cls.status = False
+
+    tmp_table = make_tmp_table_name("vuln_ids")
+
+    response = cls.send_sql_request(
+        cls.sql.get_vulns_by_ids.format(tmp_table=tmp_table),
+        external_tables=[
+            {
+                "name": tmp_table,
+                "structure": [("vuln_id", "String")],
+                "data": [{"vuln_id": vuln_id} for vuln_id in vuln_ids],
+            },
+        ],
+    )
+    if not cls.sql_status:
+        return None
+    if response is None:
+        _ = cls.store_error({"message": "No vulnerabilities data found in DB"})
+        return None
+
+    cls.status = True
+    return [Vulnerability(*row, is_valid=True) for row in response]
+
+
+def get_bugs_by_ids(cls: _pAPIWorker, bug_ids: Iterable[int]) -> Union[list[Bug], None]:
+    cls.status = False
+
+    tmp_table = make_tmp_table_name("bz_ids")
+
+    response = cls.send_sql_request(
+        cls.sql.get_bugs_by_ids.format(tmp_table=tmp_table),
+        external_tables=[
+            {
+                "name": tmp_table,
+                "structure": [("bz_id", "UInt32")],
+                "data": [{"bz_id": bz_id} for bz_id in bug_ids],
+            },
+        ],
+    )
+    if not cls.sql_status:
+        return None
+    if response is None:
+        _ = cls.store_error({"message": "No bugs data found in DB"})
+        return None
+
+    cls.status = True
+    return [Bug(*row, is_valid=True) for row in response]
+
+
+def get_packges_updates_erratas(
+    cls: _pAPIWorker, errata_ids: list[str]
+) -> Union[list[PackageUpdate], None]:
+    vulns: dict[str, Vulnerability] = {}
+    bugs: dict[int, Bug] = {}
+
+    cls.status = False
+
+    # get erratas by ids
+    erratas = get_erratas_by_ids(cls, errata_ids)
+    if not cls.status or erratas is None:
+        return None
+
+    # collect bugs and vulnerabilities from erratas
+    for errata in erratas:
+        vulns.update(
+            {
+                v.id: v
+                for v in (
+                    empty_vuln(ref.id)
+                    for ref in errata.references
+                    if ref.type == "vuln"
+                )
+            }
+        )
+        bugs.update(
+            {
+                b.id: b
+                for b in (
+                    Bug(id=int(ref.id))
+                    for ref in errata.references
+                    if ref.type == "bug"
+                )
+            }
+        )
+
+    # get vulnerabilities info
+    vulns_data = get_vulns_by_ids(cls, (vuln_id for vuln_id in vulns))
+    if not cls.status or vulns_data is None:
+        return None
+
+    vulns.update({vuln.id: vuln for vuln in vulns_data})
+
+    # get bugs info
+    bugs_data = get_bugs_by_ids(cls, (bug_id for bug_id in bugs))
+    if not cls.status or bugs_data is None:
+        return None
+
+    bugs.update({bug.id: bug for bug in bugs_data})
+
+    # build package update erratas result
+    packages_updates: list[PackageUpdate] = []
+    for errata in erratas:
+        pu_bugs = [bugs[int(ref.id)] for ref in errata.references if ref.type == "bug"]
+        pu_vulns = [vulns[ref.id] for ref in errata.references if ref.type == "vuln"]
+        packages_updates.append(
+            PackageUpdate(**errata.asdict(), bugs=pu_bugs, vulns=pu_vulns)
+        )
+
+    cls.status = True
+    return packages_updates
