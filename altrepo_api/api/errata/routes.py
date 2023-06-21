@@ -60,7 +60,7 @@ logger = get_logger(__name__)
         "responses": GET_RESPONSES_404,
     },
 )
-class routePackageSetBinaries(Resource):
+class routeOvalExportBranches(Resource):
     # @ns.expect(xxx_args)
     @ns.marshal_with(oval_branches_model)
     def get(self):
