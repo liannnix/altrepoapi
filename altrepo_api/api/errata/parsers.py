@@ -16,7 +16,12 @@
 
 from flask_restx import inputs
 
-from altrepo_api.api.parser import parser, pkg_name_type, branch_name_type
+from altrepo_api.api.parser import (
+    parser,
+    errata_id_type,
+    pkg_name_type,
+    branch_name_type,
+)
 
 package_name_opt = parser.register_item(
     "package_name",
@@ -35,16 +40,13 @@ one_file_opt = parser.register_item(
 )
 errata_id_opt = parser.register_item(
     "errata_id",
+    type=errata_id_type,
     required=False,
     help="errata ID",
     location="args",
 )
 branch_name_opt = parser.register_item(
-    "branch",
-    type=branch_name_type,
-    required=False,
-    help="branch name",
-    location="args"
+    "branch", type=branch_name_type, required=False, help="branch name", location="args"
 )
 errata_pkg_name_opt = parser.register_item(
     "name",
@@ -55,4 +57,6 @@ errata_pkg_name_opt = parser.register_item(
 )
 
 oval_export_args = parser.build_parser(package_name_opt, one_file_opt)
-errata_search_args = parser.build_parser(branch_name_opt, errata_pkg_name_opt, errata_id_opt)
+errata_search_args = parser.build_parser(
+    branch_name_opt, errata_pkg_name_opt, errata_id_opt
+)
