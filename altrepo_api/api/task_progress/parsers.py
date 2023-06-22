@@ -77,7 +77,7 @@ by_package_opt = parser.register_item(
     required=False,
     help="find tasks by source package name",
     location="args",
-    default=False
+    default=False,
 )
 
 

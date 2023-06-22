@@ -19,7 +19,6 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class SQL:
-
     find_files = """
 SELECT
     fn_name, any(lead) AS pkg_hash

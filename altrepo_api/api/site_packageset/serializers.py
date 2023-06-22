@@ -89,7 +89,7 @@ fing_pkgs_by_name_pkg_model = ns.model(
             as_list=True,
             description="all package versions",
         ),
-        "by_binary": fields.Boolean(description="found by binary package name")
+        "by_binary": fields.Boolean(description="found by binary package name"),
     },
 )
 fing_pkgs_by_name_model = ns.model(

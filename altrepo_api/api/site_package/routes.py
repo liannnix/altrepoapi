@@ -292,9 +292,7 @@ class routePackageNVRByHash(Resource):
     "/package_misconflict/<int:pkghash>",
     doc={
         "params": {"pkghash": "source package hash"},
-        "description": (
-            "Get binary packages file conflicts by source package."
-        ),
+        "description": ("Get binary packages file conflicts by source package."),
         "responses": GET_RESPONSES_400_404,
     },
 )

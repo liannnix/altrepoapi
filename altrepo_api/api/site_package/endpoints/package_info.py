@@ -799,9 +799,7 @@ class PackageNameFromRepology(APIWorker):
                 }
             )
 
-        PkgNameRepology = namedtuple(
-            "PkgNameRepology", ["name", "repo"]
-        )
+        PkgNameRepology = namedtuple("PkgNameRepology", ["name", "repo"])
 
         res = {"request_args": self.args, **PkgNameRepology(*response[0])._asdict()}
 

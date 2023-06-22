@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from altrepo_api.api.base import APIWorker
+
 # from altrepo_api.api.misc import lut
 
 from ..sql import sql
@@ -43,8 +44,13 @@ class VulnInfo(APIWorker):
         if not self.sql_status:
             return self.error
         if not response:
-            return self.store_error({"message": f"No data info found in DB for {vuln_id}"})
+            return self.store_error(
+                {"message": f"No data info found in DB for {vuln_id}"}
+            )
 
         vuln = VulnerabilityInfo(*response[0][1:])
 
-        return {"request_args": self.args, "vuln_info": vuln.asdict(strip_json=False)}, 200
+        return {
+            "request_args": self.args,
+            "vuln_info": vuln.asdict(strip_json=False),
+        }, 200

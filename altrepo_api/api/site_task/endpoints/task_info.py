@@ -82,7 +82,7 @@ def _build_gear_link(
 
         return subtask._replace(
             srpm_name=pkg_name.replace(f"-{version}-{release}", ""),
-            srpm_evr=f"{delete_epoch(version)}-{release}"
+            srpm_evr=f"{delete_epoch(version)}-{release}",
         )
 
     type_ = ""

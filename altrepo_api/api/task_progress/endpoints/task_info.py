@@ -153,14 +153,15 @@ class TaskInfo(APIWorker):
                 if task.task_state in ("DONE", "TESTED", "EPERM"):
                     response = self.send_sql_request(
                         self.sql.get_pkg_hashes.format(
-                            task_id=self.task_id,
-                            task_changed=task.task_changed
+                            task_id=self.task_id, task_changed=task.task_changed
                         )
                     )
 
                     if response:
                         for el in response:
-                            sort_pkg_hashes = sorted(el[1], key=lambda k: arch_sort_index(k[1]), reverse=True)
+                            sort_pkg_hashes = sorted(
+                                el[1], key=lambda k: arch_sort_index(k[1]), reverse=True
+                            )
                             subtasks[el[0]].src_pkg_name = sort_pkg_hashes[0][2]
                             subtasks[el[0]].src_pkg_hash = sort_pkg_hashes[0][0]
 

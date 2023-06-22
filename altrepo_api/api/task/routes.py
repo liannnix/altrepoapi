@@ -49,7 +49,7 @@ from .serializers import (
     task_find_pkgset_model,
     task_history_model,
     find_images_by_task_model,
-    task_packages_model
+    task_packages_model,
 )
 
 ns = get_namespace()
@@ -251,9 +251,7 @@ class routeFindImages(Resource):
     "/packages/<int:id>",
     doc={
         "params": {"id": "task ID"},
-        "description": (
-            "Get information about packages from task "
-        ),
+        "description": ("Get information about packages from task "),
         "responses": GET_RESPONSES_400_404,
     },
 )

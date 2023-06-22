@@ -147,9 +147,9 @@ backport_helper_depth_el_model = ns.model(
         "packages": fields.Nested(
             backport_helper_el_model,
             description="packages dependencies list",
-            as_list=True
-        )
-    }
+            as_list=True,
+        ),
+    },
 )
 backport_helper_model = ns.model(
     "BackportHelperModel",
@@ -160,7 +160,7 @@ backport_helper_model = ns.model(
         "dependencies": fields.Nested(
             backport_helper_depth_el_model,
             description="packages dependencies list by depth",
-            as_list=True
+            as_list=True,
         ),
-    }
+    },
 )

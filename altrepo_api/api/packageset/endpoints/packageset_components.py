@@ -52,19 +52,13 @@ class PackagesByUuid(APIWorker):
 
         Component = namedtuple(
             "Component",
-            [
-                "arch",
-                "component",
-                "count",
-                "size",
-                "uuid"
-            ],
+            ["arch", "component", "count", "size", "uuid"],
         )
 
         for cmp in (Component(*el) for el in response[0][2]):
             if (arch, component) == (
-                    cmp.component if cmp.component == "srpm" else cmp.arch,
-                    cmp.component,
+                cmp.component if cmp.component == "srpm" else cmp.arch,
+                cmp.component,
             ):
                 self.args["uuid"] = cmp.uuid
                 break

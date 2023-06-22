@@ -36,9 +36,7 @@ class PackagesByFile(APIWorker):
         branch = self.args["branch"]
 
         pkg_hshs = self.send_sql_request(
-            self.sql.find_pkg_hshs_by_file.format(
-                branch=branch, file_name=file_name,
-            )
+            self.sql.find_pkg_hshs_by_file.format(branch=branch, file_name=file_name)
         )
         if not self.sql_status:
             return self.error
@@ -68,22 +66,9 @@ class PackagesByFile(APIWorker):
                 {"message": "No data not found in database"},
             )
 
-        PkgMeta = namedtuple(
-            "PkgMeta",
-            [
-                "hash",
-                "name",
-                "version",
-                "release",
-                "arch"
-            ],
-        )
+        PkgMeta = namedtuple("PkgMeta", ["hash", "name", "version", "release", "arch"])
 
         packages = [PkgMeta(*el)._asdict() for el in response]
 
-        res = {
-            "request_args": self.args,
-            "length": len(packages),
-            "packages": packages
-        }
+        res = {"request_args": self.args, "length": len(packages), "packages": packages}
         return res, 200

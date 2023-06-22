@@ -32,7 +32,7 @@ from .serializers import (
     package_dependencies_model,
     depends_packages_model,
     package_build_deps_model,
-    backport_helper_model
+    backport_helper_model,
 )
 
 ns = get_namespace()

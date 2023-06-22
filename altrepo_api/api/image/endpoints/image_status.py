@@ -344,9 +344,7 @@ class ImagePackageSet(APIWorker):
         return True
 
     def get(self):
-        response = self.send_sql_request(
-            self.sql.get_img_pkgset
-        )
+        response = self.send_sql_request(self.sql.get_img_pkgset)
         if not self.sql_status:
             return self.error
         if not response:

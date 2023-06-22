@@ -20,7 +20,7 @@ from altrepo_api.api.parser import (
     arch_name_type,
     uuid_type,
     arch_component_name_type,
-    repo_component_type
+    repo_component_type,
 )
 
 # register parser items
@@ -81,14 +81,14 @@ arch = parser.register_item(
     type=arch_component_name_type,
     required=True,
     help="architecture name",
-    location="args"
+    location="args",
 )
 component = parser.register_item(
     "component",
     type=repo_component_type,
     required=True,
     help="component name",
-    location="args"
+    location="args",
 )
 
 # build parsers

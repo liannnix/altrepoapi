@@ -230,15 +230,17 @@ class FindTasks(APIWorker):
             # escape '_' symbol as it matches any symbol in SQL
             v = v.replace("_", r"\_")
             if by_pkg is True:
-                where_clause2 += "AND task_id IN (" \
-                                 "SELECT DISTINCT task_id " \
-                                 "FROM TaskIterations " \
-                                 "WHERE titer_srcrpm_hash IN (" \
-                                 "SELECT pkg_hash " \
-                                 "FROM Packages " \
-                                 f"WHERE (pkg_name = '{v}') " \
-                                 "AND (pkg_sourcepackage = 1)" \
-                                 "))"
+                where_clause2 += (
+                    "AND task_id IN ("
+                    "SELECT DISTINCT task_id "
+                    "FROM TaskIterations "
+                    "WHERE titer_srcrpm_hash IN ("
+                    "SELECT pkg_hash "
+                    "FROM Packages "
+                    f"WHERE (pkg_name = '{v}') "
+                    "AND (pkg_sourcepackage = 1)"
+                    "))"
+                )
             else:
                 # XXX: use case insensitive 'ILIKE' here
                 where_clause2 += f"AND search ILIKE '%{v}%' "

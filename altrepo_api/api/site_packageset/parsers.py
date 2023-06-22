@@ -22,7 +22,8 @@ from altrepo_api.api.parser import (
     pkg_groups_type,
     pkg_version_type,
     pkg_release_type,
-    packager_nick_type, pkg_name_list_type,
+    packager_nick_type,
+    pkg_name_list_type,
 )
 
 

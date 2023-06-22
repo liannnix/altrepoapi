@@ -36,7 +36,8 @@ from .parsers import (
     pkgset_compare_args,
     pkgset_packages_args,
     repository_statistics_args,
-    packages_by_uuid_args, packages_by_component_args,
+    packages_by_uuid_args,
+    packages_by_component_args,
 )
 from .serializers import (
     pkgset_compare_model,

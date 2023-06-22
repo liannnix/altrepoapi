@@ -26,7 +26,12 @@ from altrepo_api.api.base import (
     POST_RESPONSES_400_404,
 )
 from .endpoints.find_image_by_package import FindImagesByPackageName
-from .endpoints.image_status import ImageStatus, ImageTagStatus, ActiveImages, ImagePackageSet
+from .endpoints.image_status import (
+    ImageStatus,
+    ImageTagStatus,
+    ActiveImages,
+    ImagePackageSet,
+)
 
 from .namespace import get_namespace
 from .endpoints.image_info import (
@@ -335,9 +340,7 @@ class routeFindImagesByPackage(Resource):
 @ns.route(
     "/image_packageset",
     doc={
-        "description": (
-            "Get a list of package sets which has an active images."
-        ),
+        "description": ("Get a list of package sets which has an active images."),
         "responses": GET_RESPONSES_404,
     },
 )
