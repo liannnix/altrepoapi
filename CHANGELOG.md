@@ -6,6 +6,20 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.13.2] - 2023-06-23
+
+Regular API code updates and fixes.
+
+### Added
+- `errata/ids` route
+- `errata/search` route
+- `errata/branches_updates` route
+- `errata/packages_updates` route
+### Changed
+### Fixed
+- code formatting using black
+- minor code errors and typos
+
 ## [1.13.1] - 2023-06-19
 
 Regular API code updates and fixes.
