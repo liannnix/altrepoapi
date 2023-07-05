@@ -812,7 +812,7 @@ SELECT DISTINCT
     sel.pkg_hash AS input_hash,
     sel.arch AS input_arch,
     TT.pkg_name AS conf_name,
-    TT.pkg_version AS version, 
+    TT.pkg_version AS version,
     TT.pkg_release AS release,
     TT.pkg_epoch AS epoch,
     sel.dp_name AS dp_name,
@@ -835,21 +835,21 @@ FROM (
     AND dp_type = 'conflict'
 ) AS sel
 INNER JOIN (
-    SELECT 
-        pkg_hash, 
+    SELECT
+        pkg_hash,
         pkg_name,
-        pkg_arch, 
-        pkg_epoch, 
-        pkg_version, 
+        pkg_arch,
+        pkg_epoch,
+        pkg_version,
         pkg_release
     FROM last_packages
     WHERE pkgset_name = '{branch}'
-) AS TT ON (TT.pkg_name = sel.dp_name AND TT.pkg_arch = sel.arch) 
+) AS TT ON (TT.pkg_name = sel.dp_name AND TT.pkg_arch = sel.arch)
     OR (TT.pkg_name = sel.dp_name AND TT.pkg_arch = 'noarch')
 """
 
     get_conflict_files = """
-WITH 
+WITH
 pkg_files AS (
     SELECT
         pkg_hash AS input_hash,
@@ -900,14 +900,14 @@ GROUP BY input_hash, arch
 """
 
     get_converted_pkg_name = """
-SELECT DISTINCT 
+SELECT DISTINCT
     pnc_result,
     pnc_type
 FROM PackagesNameConversion
 WHERE pkg_name = '{pkg_name}'
 AND pnc_type = '{branch}'
-AND pnc_source = 'repology'    
-AND pnc_state = 'active'    
+AND pnc_source = 'repology'
+AND pnc_state = 'active'
 """
 
 
