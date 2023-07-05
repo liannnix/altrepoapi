@@ -257,7 +257,7 @@ WHERE pkgset_nodename = '{branch}'
 
     get_tasks_by_maintainer = """
 WITH tasks as (
-SELECT 
+SELECT
     task_id,
     arraySlice(
         splitByChar('|', search),
