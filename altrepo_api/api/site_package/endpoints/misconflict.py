@@ -43,7 +43,7 @@ class BinaryPackage:
     name: str
     archs: list[BinaryPackageArchs]  # list of binary packages (arch, hash) tuples
 
-    def __init__(self, pkg_info: tuple[str, list[str, int]]):
+    def __init__(self, pkg_info: tuple[str, list[tuple[str, int]]]):
         self.name = pkg_info[0]
         self.archs = [BinaryPackageArchs(*el) for el in pkg_info[1]]
 
@@ -138,14 +138,14 @@ class PackageMisconflict(APIWorker):
                     require_dep_version=cp.dp_version,
                     require_dep_flags=cp.dp_flag,
                 ):
-                    map_key = BinaryPackageArchs(arch=cp.input_arch, pkghash=el[0])
+                    map_key = BinaryPackageArchs(arch=cp.input_arch, pkghash=input_hash)
                     binary_packages_map[map_key] = cp._replace(
                         input_package=binary_packages_map[map_key].input_package
                     )
 
         conflict_hashes = set()
         for input_arch_hash, value in binary_packages_map.items():
-            if getattr(value, "conf_hash"):
+            if value.conf_hash:
                 conflict_hashes.add(
                     (input_arch_hash.pkghash, value.conf_hash, input_arch_hash.arch)
                 )
