@@ -86,7 +86,7 @@ class BranchesUpdates(APIWorker):
             )
 
         pu_map = {
-            package_update.errata.id: package_update
+            package_update.errata.id.id: package_update
             for package_update in packages_updates
         }
 

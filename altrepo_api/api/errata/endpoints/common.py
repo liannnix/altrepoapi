@@ -17,7 +17,7 @@
 import logging
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import datetime
 from typing import Any, Iterable, NamedTuple, Protocol, Union
 
 from altrepo_api.utils import make_tmp_table_name
@@ -41,21 +41,85 @@ class Reference(NamedTuple):
         return self._asdict()
 
 
-# @dataclass
-class Errata(NamedTuple):
+class ErrataID(NamedTuple):
+    """ErrataID object class"""
+
     id: str
+    prefix: str
+    year: int
+    number: int
+    version: int
+
+    @staticmethod
+    def from_id(id: str) -> "ErrataID":
+        """Creates an ErrataID object from string representation."""
+
+        # TODO: we assume that `errata id` string representation is always validated
+        # before used to build `ErrataID` instance here
+        # if not re_errata_id.fullmatch(id):
+        #     raise ErrataIDInvalidError(f"Not a valid Errata ID: {id}")
+
+        _parts = id.split("-")
+
+        return ErrataID(
+            id=id,
+            prefix="-".join(_parts[:2]),
+            year=int(_parts[2]),
+            number=int(_parts[3]),
+            version=int(_parts[4]),
+        )
+
+    def __str__(self):
+        return self.id
+
+    @property
+    def _compare_key(self):
+        """ErrataID object comparison key that excludes prefix."""
+        return (self.year, self.number, self.version)
+
+    def _compare(self, other: "ErrataID", method) -> bool:
+        if not isinstance(other, ErrataID):
+            return NotImplemented
+
+        return method(self._compare_key, other._compare_key)
+
+    def __eq__(self, other: "ErrataID") -> bool:
+        return self._compare(other, lambda s, o: s == o)
+
+    def __ne__(self, other: "ErrataID") -> bool:
+        return self._compare(other, lambda s, o: s != o)
+
+    def __lt__(self, other: "ErrataID") -> bool:
+        return self._compare(other, lambda s, o: s < o)
+
+    def __le__(self, other: "ErrataID") -> bool:
+        return self._compare(other, lambda s, o: s <= o)
+
+    def __gt__(self, other: "ErrataID") -> bool:
+        return self._compare(other, lambda s, o: s > o)
+
+    def __ge__(self, other: "ErrataID") -> bool:
+        return self._compare(other, lambda s, o: s >= o)
+
+    @property
+    def no_version(self) -> str:
+        return f"{self.prefix}-{self.year}-{self.number}"
+
+
+class Errata(NamedTuple):
+    id: ErrataID
     type: str
     source: str
+    created: datetime
+    updated: datetime
     pkg_hash: str
     pkg_name: str
     pkg_version: str
     pkg_release: str
     pkgset_name: str
-    pkgset_date: date
     task_id: int
     subtask_id: int
     task_state: str
-    task_changed: date
     references: list[Reference]
 
     def asdict(self) -> dict[str, Any]:
@@ -160,12 +224,21 @@ def _get_erratas(
 
     cls.status = True
     return [
-        Errata(
-            row[0],  # errata_id
-            *row[1][:-1],  # errata details
-            [Reference(*el) for el in row[1][-1]],  # type: ignore
+        errata
+        for errata in sorted(
+            (
+                Errata(
+                    # row[0],  # errata_id_noversion
+                    ErrataID.from_id(row[1][0]),
+                    *row[1][1:-1],  # errata details
+                    [Reference(*el) for el in row[1][-1]],  # type: ignore
+                    # row[2],  # eh_updated
+                )
+                for row in response
+            ),
+            key=lambda x: x.id,
+            reverse=True,
         )
-        for row in response
     ]
 
 
