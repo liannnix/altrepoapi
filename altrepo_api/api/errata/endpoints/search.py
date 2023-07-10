@@ -14,10 +14,15 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import re
+
 from altrepo_api.api.base import APIWorker
 
-from .common import get_erratas_by_search_conditions
+from .common import ErrataID, get_erratas_by_search_conditions
 from ..sql import sql
+
+
+_vuln_id_match = re.compile(r"(^CVE-\d{4}-\d{4,}$)|(^BDU:\d{4}-\d{5}$)|(^\d{4,}$)")
 
 
 class Search(APIWorker):
@@ -34,28 +39,43 @@ class Search(APIWorker):
             (
                 self.args.get("name"),
                 self.args.get("branch"),
+                self.args.get("vuln_id"),
                 self.args.get("errata_id"),
             )
         ):
             self.validation_results.append(
-                "At least one of `branch`, `name` or `errata_id` argument should be specified"
+                "At least one of `branch`, `name`, `vuln_id` or `errata_id` argument should be specified"
             )
+
+        # validate `vuln_id`
+        vuln_id = self.args.get("vuln_id")
+        if vuln_id and _vuln_id_match.match(vuln_id) is None:
+            self.validation_results.append(f"Not a valid CVE, BDU or Bug id: {vuln_id}")
+
+        if self.validation_results != []:
             return False
+
         return True
 
     def get(self):
         branch = self.args.get("branch")
-        vuln_id = self.args.get("errata_id")
+        errata_id = self.args.get("errata_id")
         package_name = self.args.get("name")
+        vuln_id = self.args.get("vuln_id")
 
         search_conditions = []
 
         if branch is not None:
             search_conditions.append(f"pkgset_name = '{branch}'")
 
+        if errata_id is not None:
+            search_conditions.append(
+                f"arrayExists(x -> (x ILIKE '%{errata_id}%'), eh_references.link)"
+            )
+
         if vuln_id is not None:
             search_conditions.append(
-                f"arrayExists(x -> (x ILIKE '%{vuln_id}%'), eh_references.link)"
+                f"arrayExists(x -> (x = '{vuln_id}'), eh_references.link)"
             )
 
         if package_name is not None:
@@ -84,12 +104,15 @@ class ErrataIds(APIWorker):
         super().__init__()
 
     def get(self):
-        errata_ids: list[str] = []
-
         response = self.send_sql_request(self.sql.get_valid_errata_ids)
         if not self.sql_status:
             return self.error
+        if not response:
+            return self.store_error({"message": "No data found in DB"})
 
-        errata_ids = [errata_id for errata_id, _ in (el for el in response)]
+        errata_ids = [
+            e.id
+            for e in sorted((ErrataID.from_id(el[0]) for el in response), reverse=True)
+        ]
 
         return {"errata_ids": errata_ids}, 200

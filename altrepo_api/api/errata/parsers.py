@@ -55,8 +55,11 @@ errata_pkg_name_opt = parser.register_item(
     help="source package name",
     location="args",
 )
+vuln_id_opt = parser.register_item(
+    "vuln_id", type=str, required=False, help="CVE, BDU or Bug ID", location="args"
+)
 
 oval_export_args = parser.build_parser(package_name_opt, one_file_opt)
 errata_search_args = parser.build_parser(
-    branch_name_opt, errata_pkg_name_opt, errata_id_opt
+    branch_name_opt, errata_pkg_name_opt, vuln_id_opt, errata_id_opt
 )
