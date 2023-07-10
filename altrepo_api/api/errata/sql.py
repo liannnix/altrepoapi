@@ -48,24 +48,21 @@ GROUP BY bz_id
 """
 
     get_errata_history_by_branch_tasks = """
-SELECT DISTINCT *
+SELECT DISTINCT * EXCEPT ts
 FROM ErrataHistory
-WHERE eh_type = 'task'
-    AND (task_id, subtask_id) IN (
-        SELECT DISTINCT
-            task_id,
-            subtask_id
-        FROM Tasks
-        WHERE task_repo = '{branch}'
-            AND task_id IN (
-                SELECT task_id
-                FROM TaskStates
-                WHERE task_state = 'DONE'
-            )
-            AND subtask_deleted = 0
+WHERE eh_type = 'task' AND errata_id IN (
+    SELECT eid
+    FROM (
+        SELECT
+            errata_id_noversion,
+            argMax(errata_id, eh_updated) AS eid
+        FROM ErrataHistory
+        WHERE task_state = 'DONE' AND pkgset_name = '{branch}'
+        GROUP BY errata_id_noversion
     )
-    {pkg_name_clause}
-ORDER BY task_changed
+)
+{pkg_name_clause}
+ORDER BY eh_updated
 """
 
     get_vulns_info_by_ids = """
@@ -169,50 +166,45 @@ WHERE errata_id IN (
 
     search_valid_errata = """
 SELECT
-    errata_id,
+    errata_id_noversion,
     argMax(
         tuple(
+            errata_id,
             eh_type,
             eh_source,
+            eh_created,
+            eh_updated,
             pkg_hash,
             pkg_name,
             pkg_version,
             pkg_release,
             pkgset_name,
-            pkgset_date,
             task_id,
             subtask_id,
             task_state,
-            task_changed,
             arrayZip(eh_references.type, eh_references.link)
         ),
-        ts
+        eh_updated
     ),
-    max(task_changed) AS max_ts
+    max(eh_updated) AS max_ts
 FROM ErrataHistory
 {where_clause}
-GROUP BY errata_id
+GROUP BY errata_id_noversion
 ORDER BY max_ts DESC
 """
 
     get_valid_errata_ids = """
-SELECT DISTINCT
-    errata_id,
-    task_changed
-FROM ErrataHistory
-WHERE (task_id, subtask_id) IN (
-    SELECT DISTINCT
-        task_id,
-        subtask_id
-    FROM Tasks
-    WHERE task_id IN (
-            SELECT task_id FROM TaskStates WHERE task_state = 'DONE'
-        )
-        AND subtask_deleted = 0
-    UNION ALL
-    SELECT 0 AS task_id, 0 AS subtask_id
+SELECT DISTINCT eid
+FROM (
+    SELECT
+        errata_id_noversion,
+        argMax(errata_id, eh_updated) AS eid,
+        max(eh_updated) AS updated
+    FROM ErrataHistory
+    WHERE task_state = 'DONE' OR (task_id = 0 AND subtask_id = 0)
+    GROUP BY errata_id_noversion
+    ORDER BY updated DESC
 )
-ORDER BY task_changed DESC
 """
 
 
