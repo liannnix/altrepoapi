@@ -160,82 +160,37 @@ WHERE pkg_sourcepackage = 1
     AND pkgset_name IN {branches}
 """
 
-    get_errata_by_packages = """
+    get_erratas = """
 SELECT
     errata_id,
-    argMax(
-        tuple(
-            errata_id,
-            eh_references.type,
-            eh_references.link,
-            pkgset_name,
-            task_id,
-            subtask_id,
-            task_state,
-            toString(pkg_hash),
-            pkg_name,
-            pkg_version,
-            pkg_release
-        ),
-        ts
-    ),
-    max(ts) AS max_ts
+    eh_references.type,
+    eh_references.link,
+    pkgset_name,
+    task_id,
+    subtask_id,
+    task_state,
+    toString(pkg_hash),
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    eh_updated
 FROM ErrataHistory
-WHERE (
-    eh_type = 'branch' OR (
-        eh_type = 'task'
-            AND (task_id, subtask_id) IN (
-                SELECT DISTINCT
-                    task_id,
-                    subtask_id
-                FROM Tasks
-                WHERE (task_id, task_changed) IN (
-                    SELECT task_id, changed FROM (
-                        SELECT
-                            task_id,
-                            max(task_changed) AS changed,
-                            argMax(task_state, task_changed) AS state
-                        FROM TaskStates
-                        GROUP BY task_id
-                    )  WHERE state IN ('EPERM', 'TESTED', 'DONE')
-                )
-                    AND subtask_deleted = 0
-            )
-        )
+WHERE (errata_id, eh_updated) IN (
+    SELECT
+        eid, updated
+    FROM (
+        SELECT
+            errata_id_noversion,
+            argMax(errata_id, eh_updated) AS eid,
+            max(eh_updated) AS updated
+        FROM ErrataHistory
+        WHERE eh_type IN ('branch', 'task')
+        {branch_clause}
+        {where_clause}
+        GROUP BY errata_id_noversion
     )
-    {branch_clause}
-    AND pkg_name IN (SELECT pkg_name FROM {tmp_table})
-    AND has(eh_references.type, 'vuln')
-GROUP BY errata_id
-ORDER BY max_ts DESC
-"""
-
-    get_errata_by_cves = """
-SELECT
-    errata_id,
-    argMax(
-        tuple(
-            errata_id,
-            eh_references.type,
-            eh_references.link,
-            pkgset_name,
-            task_id,
-            subtask_id,
-            task_state,
-            toString(pkg_hash),
-            pkg_name,
-            pkg_version,
-            pkg_release
-        ),
-        ts
-    ),
-    max(ts) AS max_ts
-FROM ErrataHistory
-WHERE eh_type IN ('branch', 'task')
-    {branch_clause}
-    {where_clause}
-GROUP BY errata_id
-ORDER BY max_ts DESC
+)
+ORDER BY eh_updated DESC
 """
 
     get_last_tasks_state = """

@@ -413,14 +413,14 @@ def get_erratas(cls: _pGetErratas, where_clause: str) -> None:
 
     # find errata by branch (if set) and CVE ids
     response = cls.send_sql_request(
-        cls.sql.get_errata_by_cves.format(
+        cls.sql.get_erratas.format(
             branch_clause=branch_clause, where_clause=where_clause
         )
     )
     if not cls.sql_status:
         return None
     if response:
-        erratas = [Errata(*el[1]) for el in response]
+        erratas = [Errata(*el[:-1]) for el in response]
 
         # get last task states
         # get last state for tasks in erratas
@@ -451,8 +451,6 @@ def get_erratas(cls: _pGetErratas, where_clause: str) -> None:
                 "TESTED",
             ):
                 continue
-            # use actual task state
-            errata.task_state = task_states.get(errata.task_id, errata.task_state)
 
             cls.erratas.append(errata)
 

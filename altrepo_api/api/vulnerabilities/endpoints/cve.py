@@ -139,7 +139,10 @@ class VulnerablePackageByCve(APIWorker):
 
         return {
             "request_args": self.args,
-            "vuln_info": [vuln.asdict() for vuln in self.cve_info.values()],
+            "vuln_info": [
+                vuln.asdict()
+                for vuln in sorted(self.cve_info.values(), key=lambda x: x.id)
+            ],
             "packages": [p.asdict() for p in self.packages_vulnerabilities],
             "result": self.result_message,
         }, 200
@@ -177,7 +180,10 @@ class VulnerablePackageByCve(APIWorker):
         return {
             "request_args": self.args,
             "result": self.result_message,
-            "vuln_info": [bdu.asdict() for bdu in bdus]
-            + [vuln.asdict() for vuln in self.cve_info.values()],
+            "vuln_info": [bdu.asdict() for bdu in sorted(bdus, key=lambda x: x.id)]
+            + [
+                vuln.asdict()
+                for vuln in sorted(self.cve_info.values(), key=lambda x: x.id)
+            ],
             "packages": [p.asdict() for p in self.packages_vulnerabilities],
         }, 200
