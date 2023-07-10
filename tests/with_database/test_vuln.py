@@ -70,7 +70,9 @@ def test_vuln_bdu_packages(client, kwargs):
     assert response.status_code == kwargs["status_code"]
     if response.status_code == 200:
         assert data != {}
-        assert data["vuln_info"][0]["id"] == kwargs["vuln_id"].split(",")[0]
+        assert set(e for e in kwargs["vuln_id"].split(",")) & set(
+            e["id"] for e in data["vuln_info"]
+        )
         assert data["packages"] != []
 
 
@@ -124,7 +126,9 @@ def test_vuln_cve_packages(client, kwargs):
     assert response.status_code == kwargs["status_code"]
     if response.status_code == 200:
         assert data != {}
-        assert data["vuln_info"][0]["id"] == kwargs["vuln_id"].split(",")[0]
+        assert tuple(e["id"] for e in data["vuln_info"]) == tuple(
+            e for e in kwargs["vuln_id"].split(",")
+        )
         assert data["packages"] != []
 
 
