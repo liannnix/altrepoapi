@@ -22,6 +22,11 @@ BU_ERRATA_ID_NOT_IN_DB = "ALT-BU-2999-1000-1"
 BU_ERRATA_ID_NOT_VALID_1 = "ALT-BU-123-1000-1"
 BU_ERRATA_ID_NOT_VALID_2 = "ALT-XX-2000-9999-9"
 
+VUILN_ID_CVE_IN_DB = "CVE-2022-22576"
+VUILN_ID_BDU_IN_DB = "BDU:2022-03036"
+VUILN_ID_BUG_IN_DB = "45281"
+VULN_ID_BAD = "ABC-123"
+
 
 def test_errata_ids(client):
     url = url_for("api.errata_route_errata_ids")
@@ -100,36 +105,77 @@ def test_errata_export_oval(client, kwargs):
         {
             "branch": BRANCH_IN_DB,
             "name": PKG_NAME_IN_DB,
+            "vuln_id": None,
             "errata_id": None,
             "status_code": 200,
         },
         {
             "branch": None,
             "name": None,
+            "vuln_id": None,
             "errata_id": PU_ERRATA_ID_IN_DB_1,
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "name": None,
+            "vuln_id": VUILN_ID_CVE_IN_DB,
+            "errata_id": None,
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "name": None,
+            "vuln_id": VUILN_ID_BDU_IN_DB,
+            "errata_id": None,
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "name": None,
+            "vuln_id": VUILN_ID_BUG_IN_DB,
+            "errata_id": None,
             "status_code": 200,
         },
         {
             "branch": None,
             "name": None,
+            "vuln_id": None,
             "errata_id": None,
             "status_code": 400,
         },
         {
             "branch": BRANCH_NOT_IN_DB,
             "name": None,
+            "vuln_id": None,
             "errata_id": None,
+            "status_code": 400,
+        },
+        {
+            "branch": None,
+            "name": None,
+            "vuln_id": VULN_ID_BAD,
+            "errata_id": None,
+            "status_code": 400,
+        },
+        {
+            "branch": None,
+            "name": None,
+            "vuln_id": None,
+            "errata_id": PU_ERRATA_ID_NOT_VALID_1,
             "status_code": 400,
         },
         {
             "branch": BRANCH_IN_DB,
             "name": PKG_NAME_NOT_IN_DB,
+            "vuln_id": None,
             "errata_id": None,
             "status_code": 404,
         },
         {
             "branch": None,
             "name": None,
+            "vuln_id": None,
             "errata_id": PU_ERRATA_ID_NOT_IN_DB,
             "status_code": 404,
         },
