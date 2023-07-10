@@ -85,7 +85,6 @@ class OvalExport(APIWorker):
                     "message": f"No data found in DB for {self.args}",
                 }
             )
-        # FIXME: handle duplicated errata records for tasks state transitions from TESTED|EPERM to DONE
         erratas = [ErrataHistoryRecord(*el) for el in response]
         # collect bugzilla and vulnerability ids from errata
         bz_ids: list[int] = []

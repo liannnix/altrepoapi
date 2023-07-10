@@ -177,22 +177,22 @@ logger = logging.getLogger(__name__)
 
 
 class ErrataHistoryRecord(NamedTuple):
+    errata_id: str
+    eh_created: datetime
+    eh_updated: datetime
     eh_hash: int
     eh_type: Literal["task", "branch", "bulletin"]
     eh_source: Literal["branch", "changelog"]
     eh_references_type: list[str]
     eh_references_link: list[str]
-    errata_id: str
     pkg_hash: int
     pkg_name: str
     pkg_version: str
     pkg_release: str
     pkgset_name: str
-    pkgset_date: datetime
     task_id: int
     subtask_id: int
     task_state: str
-    task_changed: datetime
 
 
 class PackageInfo(NamedTuple):
@@ -560,8 +560,8 @@ class OVALBuilder:
         cpes = PRODUCT_CPE.get(errata.pkgset_name, [])
 
         # set advisory dates
-        errata_created = errata.task_changed
-        errata_updated = errata.task_changed
+        errata_created = errata.eh_created
+        errata_updated = errata.eh_updated
 
         # build vendor advisory
         return ALTLinuxAdvisory(
@@ -811,7 +811,7 @@ class OVALBuilder:
                 xml_file_name = make_xml_file_name(errata.errata_id)
                 definition, objects, states, tests = self._build_definition(errata)
                 yield xml_file_name, self.build_one_xml(
-                    timestamp=errata.task_changed,
+                    timestamp=errata.eh_updated,
                     definitions=[definition],
                     objects=objects,
                     states=states,
