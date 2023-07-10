@@ -22,6 +22,7 @@ from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
 from ..sql import sql
 
+from .common import ErrataID
 from .xml_builder import (
     OVALBuilder,
     BugzillaInfo,
@@ -85,7 +86,9 @@ class OvalExport(APIWorker):
                     "message": f"No data found in DB for {self.args}",
                 }
             )
-        erratas = [ErrataHistoryRecord(*el) for el in response]
+        erratas = [
+            ErrataHistoryRecord(ErrataID.from_id(el[0]), *el[1:]) for el in response
+        ]
         # collect bugzilla and vulnerability ids from errata
         bz_ids: list[int] = []
         vuln_ids: list[str] = []

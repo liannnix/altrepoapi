@@ -82,6 +82,7 @@ from altrepo_api.libs.oval.independent_definitions import (
     Textfilecontent54State,
     Textfilecontent54Test,
 )
+from .common import ErrataID
 
 
 LINK_BDU_BY_CVE = False
@@ -177,7 +178,7 @@ logger = logging.getLogger(__name__)
 
 
 class ErrataHistoryRecord(NamedTuple):
-    errata_id: str
+    errata_id: ErrataID
     eh_created: datetime
     eh_updated: datetime
     eh_hash: int
@@ -245,9 +246,8 @@ class CriteriaStruct:
     tests: list[TestType]
 
 
-def make_xml_file_name(errata_id: str) -> str:
-    parts = errata_id.split("-")
-    return f"{parts[0]}{parts[1]}-{parts[2]}{parts[3]}.xml"
+def make_xml_file_name(errata_id: ErrataID) -> str:
+    return f"{errata_id.no_version}.xml"
 
 
 def num_to_severity_enum(num: int) -> Severity:
@@ -263,8 +263,8 @@ def num_to_severity_enum(num: int) -> Severity:
         return Severity.CRITICAL
 
 
-def serial_from_errata_id(errata_id: str) -> str:
-    return "".join(errata_id.split("-")[2:-1])
+def serial_from_errata_id(errata_id: ErrataID) -> str:
+    return "".join([str(errata_id.year), str(errata_id.number)])
 
 
 def vuln_id_to_sort_key(vuln: str) -> Union[tuple[int, int], str]:
@@ -582,9 +582,9 @@ class OVALBuilder:
 
         references.append(
             ReferenceType(
-                source="".join(errata.errata_id.split("-")[0:2]),
-                ref_id=errata.errata_id,
-                ref_url=f"{ERRATA_BASE_URL}/{errata.errata_id}",
+                source="".join(errata.errata_id.id.split("-")[0:2]),
+                ref_id=errata.errata_id.no_version,
+                ref_url=f"{ERRATA_BASE_URL}/{errata.errata_id.no_version}",
             )
         )
 
@@ -646,7 +646,7 @@ class OVALBuilder:
 
         return MetadataType(
             title=(
-                f"{errata.errata_id}: package `{errata.pkg_name}` update "
+                f"{errata.errata_id.no_version}: package `{errata.pkg_name}` update "
                 f"to version {errata.pkg_version}-{errata.pkg_release}"
             ),
             description=description,
