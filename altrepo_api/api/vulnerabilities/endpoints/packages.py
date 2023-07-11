@@ -114,14 +114,14 @@ class PackageOpenVulnerabilities(APIWorker):
         )
 
         get_packages_vulnerabilities(self)
-        # filter only vulnerable packages founf by CPE matching version compare
+        # filter only vulnerable packages found by CPE matching version compare
         self.packages_vulnerabilities = [
             pv for pv in self.packages_vulnerabilities if pv.vulnerable
         ]
 
         # update packagex vulnerabilities with erratas data
         get_vulnerability_fix_errata(self, cve_ids)
-        # filter only vulnerable packages founf by CPE matching version compare
+        # filter only vulnerable packages found by CPE matching version compare
         self.packages_vulnerabilities = [
             pv for pv in self.packages_vulnerabilities if pv.vulnerable
         ]

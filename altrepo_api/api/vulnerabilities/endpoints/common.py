@@ -18,7 +18,7 @@ import re
 import json
 import logging
 
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict, field, replace
 from datetime import datetime
 from typing import Any, Iterable, Literal, NamedTuple, Protocol, Union
 
@@ -671,14 +671,7 @@ def get_vulnerability_fix_errata(
                 pkg.vulnerable = False
                 continue
 
-            uniq_task_ids: set[int] = set()
-            for idx, errata in enumerate(pkg.fixed_in[:]):
-                # delete duplicate errata by task id using that erratas are sorted by timestamp in descending order
-                if errata.task_id in uniq_task_ids:
-                    del pkg.fixed_in[idx]
-                    continue
-                uniq_task_ids.add(errata.task_id)
-
+            for errata in pkg.fixed_in:
                 # set `fixed` flag if task is `DONE` and update task state of errata
                 if errata.task_state == "DONE":
                     pkg.fixed = True
@@ -688,7 +681,7 @@ def get_vulnerability_fix_errata(
     cve_ids_set = set(cve_ids)
 
     known_erratas = {
-        (e.branch, e.task_id, e.pkg_name, e.pkg_version)
+        (e.branch, e.task_id, e.pkg_name, e.pkg_version, e.pkg_release)
         for v in cls.packages_vulnerabilities
         for e in v.fixed_in
     }
@@ -702,6 +695,7 @@ def get_vulnerability_fix_errata(
             errata.task_id,
             errata.pkg_name,
             errata.pkg_version,
+            errata.pkg_release,
         ) in known_erratas:
             continue
 
@@ -735,8 +729,9 @@ def get_vulnerability_fix_errata(
 
                 # add PackageVulnerability record for every CVE id mentioned in errata
                 for vuln_id in vuln_ids:
-                    pv.vuln_id = vuln_id
-                    pv_list.append(pv)
+                    # XXX: make a copy of dataclass object instance here!
+                    pv_ = replace(pv, vuln_id=vuln_id)
+                    pv_list.append(pv_)
                 break
 
     # update found packages vulnerabilities
