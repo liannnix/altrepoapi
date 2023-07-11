@@ -141,7 +141,7 @@ errata_branch_update_model = ns.model(
         "id": fields.String(description="errata id"),
         "type": fields.String(description="errata type"),
         "pkgset_name": fields.String(description="packageset name"),
-        "pkgset_date": fields.DateTime(description="packageset date"),
+        "pkgset_date": fields.Date(description="packageset date", attribute="created"),
         "packages_updates": fields.Nested(
             errata_package_update_model,
             description="list of packages updates",
