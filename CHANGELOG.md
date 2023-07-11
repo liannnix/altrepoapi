@@ -6,6 +6,15 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.14.0] - 2023-07-11
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- **Breaking change**: refactored `api/vuln` and `api/errata` code to use new `ErrataHistory` table structure form ALTRepo DB version 2.10.0+
+### Fixed
+
 ## [1.13.2] - 2023-06-23
 
 Regular API code updates and fixes.
