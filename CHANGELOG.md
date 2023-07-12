@@ -6,6 +6,15 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.14.1] - 2023-07-12
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `errata/branches_updates` fix serializer error
+
 ## [1.14.0] - 2023-07-11
 
 Regular API code updates and fixes.
