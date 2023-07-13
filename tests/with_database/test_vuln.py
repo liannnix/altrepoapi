@@ -5,6 +5,9 @@ BRANCH_IN_DB = "sisyphus"
 BRANCH_IN_DB2 = "p10"
 BRANCH_NOT_IN_DB = "fakebranch"
 
+MAINTAINER_IN_DB = "rider"
+MAINTAINER_NOT_IN_DB = "fakemaintainer"
+
 BAD_CVE_ID = "CVE-1234-123"
 CVE_IN_DB = "CVE-2023-0466"
 CVE_NOT_IN_DB = "CVE-2000-99999"
@@ -145,6 +148,108 @@ def test_vuln_cve_packages(client, kwargs):
 )
 def test_vuln_packages(client, kwargs):
     url = url_for("api.vuln_route_package_vulnerabilities")
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("status_code",):
+            continue
+        if v is not None:
+            params[k] = v
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["vuln_info"] != []
+        assert data["packages"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        # TODO: disabled due to each positive test takes more than 100 seconds
+        # {"branch": BRANCH_IN_DB, "status_code": 200},
+        # {"branch": BRANCH_IN_DB2, "status_code": 200},
+        {"branch": BRANCH_NOT_IN_DB, "status_code": 400},
+    ],
+)
+def test_vuln_branch(client, kwargs):
+    url = url_for("api.vuln_route_branch_open_vulnerabilities")
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("status_code",):
+            continue
+        if v is not None:
+            params[k] = v
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["vuln_info"] != []
+        assert data["packages"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": None,
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB2,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "none",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "by_nick",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB2,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "by_nick_leader",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "by_nick_or_group",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB2,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "by_nick_leader_and_group",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_NOT_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": None,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_IN_DB,
+            "by_acl": "abc",
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "maintainer_nickname": MAINTAINER_NOT_IN_DB,
+            "by_acl": None,
+            "status_code": 404,
+        },
+    ],
+)
+def test_vuln_maintainer(client, kwargs):
+    url = url_for("api.vuln_route_maintainer_open_vulnerabilities")
     params = {}
     for k, v in kwargs.items():
         if k in ("status_code",):
