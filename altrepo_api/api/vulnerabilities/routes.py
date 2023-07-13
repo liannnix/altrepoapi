@@ -28,12 +28,14 @@ from .parsers import (
     bdu_vulnerable_packages_args,
     package_vulnerabilities_args,
     branch_vulnerabilities_args,
+    maintainer_vulnerabilities_args,
 )
 from .serializers import vulnerability_info_model, cve_packages_model
 from .endpoints.vuln import VulnInfo
 from .endpoints.cve import VulnerablePackageByCve
 from .endpoints.packages import PackageOpenVulnerabilities
 from .endpoints.branch import BranchOpenVulnerabilities
+from .endpoints.maintainer import MaintainerOpenVulnerabilities
 
 ns = get_namespace()
 
@@ -140,4 +142,21 @@ class routeBranchVulnerabilities(Resource):
         url_logging(logger, g.url)
         args = branch_vulnerabilities_args.parse_args(strict=True)
         w = BranchOpenVulnerabilities(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/maintainer",
+    doc={
+        "description": "Get maintainer's packages open vulnerabilities information",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeMaintainerOpenVulnerabilities(Resource):
+    @ns.expect(maintainer_vulnerabilities_args)
+    @ns.marshal_with(cve_packages_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = maintainer_vulnerabilities_args.parse_args(strict=True)
+        w = MaintainerOpenVulnerabilities(g.connection, **args)
         return run_worker(worker=w, args=args)
