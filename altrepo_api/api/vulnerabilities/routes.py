@@ -135,7 +135,7 @@ class routePackageVulnerabilities(Resource):
     #     "responses": GET_RESPONSES_400_404,
     # },
 )
-class routeBranchVulnerabilities(Resource):
+class routeBranchOpenVulnerabilities(Resource):
     @ns.expect(branch_vulnerabilities_args)
     @ns.marshal_with(cve_packages_model)
     def get(self):
