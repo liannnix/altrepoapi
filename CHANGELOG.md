@@ -6,6 +6,15 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.14.2] - 2023-07-13
+
+### Added
+- `vuln/branch` route
+- `vuln/maintainer` route
+### Changed
+- `api/vuln`: hide unstable endpoints
+### Fixed
+
 ## [1.14.1] - 2023-07-12
 
 Regular API code updates and fixes.
