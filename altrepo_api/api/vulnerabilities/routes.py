@@ -27,11 +27,13 @@ from .parsers import (
     cve_vulnerable_packages_args,
     bdu_vulnerable_packages_args,
     package_vulnerabilities_args,
+    branch_vulnerabilities_args,
 )
 from .serializers import vulnerability_info_model, cve_packages_model
 from .endpoints.vuln import VulnInfo
 from .endpoints.cve import VulnerablePackageByCve
 from .endpoints.packages import PackageOpenVulnerabilities
+from .endpoints.branch import BranchOpenVulnerabilities
 
 ns = get_namespace()
 
@@ -120,4 +122,22 @@ class routePackageVulnerabilities(Resource):
         url_logging(logger, g.url)
         args = package_vulnerabilities_args.parse_args(strict=True)
         w = PackageOpenVulnerabilities(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/branch",
+    doc=False,  # XXX: hide from Swagger UI
+    # doc={
+    #     "description": "Get branch open vulnerabilities information",
+    #     "responses": GET_RESPONSES_400_404,
+    # },
+)
+class routeBranchVulnerabilities(Resource):
+    @ns.expect(branch_vulnerabilities_args)
+    @ns.marshal_with(cve_packages_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = branch_vulnerabilities_args.parse_args(strict=True)
+        w = BranchOpenVulnerabilities(g.connection, **args)
         return run_worker(worker=w, args=args)
