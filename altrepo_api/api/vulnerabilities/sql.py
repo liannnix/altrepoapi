@@ -48,7 +48,7 @@ SELECT
     vuln_url,
     vuln_modified_date,
     vuln_published_date,
-    vuln_json,
+    {json_field},
     vuln_references.type,
     vuln_references.link
 FROM Vulnerabilities
@@ -143,6 +143,13 @@ FROM (
 ) AS CPE
 INNER JOIN repology_names AS EN ON EN.repology_name = cpe_pkg_name
 {pkg_names_clause}
+"""
+
+    get_branch_src_packages = """
+SELECT DISTINCT pkg_name
+FROM static_last_packages
+WHERE pkg_sourcepackage = 1
+    AND pkgset_name = '{branch}'
 """
 
     get_packages_versions = """

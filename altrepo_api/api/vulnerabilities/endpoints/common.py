@@ -122,15 +122,13 @@ class VulnerabilityInfo:
         if parsed is not None:
             self.json = parsed
 
-    def asdict(self, strip_json: bool = True) -> dict[str, Any]:
+    def asdict(self) -> dict[str, Any]:
         res = asdict(self)
 
         del res["refs_type"]
         del res["refs_link"]
         res["refs"] = [r for r in self.refs_link]
 
-        if strip_json:
-            del res["json"]
         return res
 
 
@@ -404,7 +402,9 @@ class _pGetVulnerabilityFixErrataCompatible(
 
 
 # Mixin
-def get_erratas(cls: _pGetErratas, where_clause: str) -> None:
+def get_erratas(
+    cls: _pGetErratas, where_clause: str, external_tables: list[dict[str, Any]] = []
+) -> None:
     cls.status = False
 
     branch_clause = ""
@@ -415,7 +415,8 @@ def get_erratas(cls: _pGetErratas, where_clause: str) -> None:
     response = cls.send_sql_request(
         cls.sql.get_erratas.format(
             branch_clause=branch_clause, where_clause=where_clause
-        )
+        ),
+        external_tables=external_tables,
     )
     if not cls.sql_status:
         return None
@@ -464,7 +465,17 @@ def get_errata_by_cve_ids(cls: _pGetErratas, cve_ids: Iterable[str]) -> None:
 
 
 def get_errata_by_pkg_names(cls: _pGetErratas, pkg_names: Iterable[str]) -> None:
-    return get_erratas(cls, f"AND pkg_name IN {tuple(pkg_names)}")
+    tmp_table = make_tmp_table_name("pkg_names")
+    pkg_names_clause = f"AND pkg_name in {tmp_table}"
+    external_tables = [
+        {
+            "name": tmp_table,
+            "structure": [("pkg_name", "String")],
+            "data": [{"pkg_name": n} for n in pkg_names],
+        }
+    ]
+
+    return get_erratas(cls, pkg_names_clause, external_tables)
 
 
 def get_cve_info(cls: _pGetCveInfoCompatible, cve_ids: Iterable[str]) -> None:
@@ -473,7 +484,9 @@ def get_cve_info(cls: _pGetCveInfoCompatible, cve_ids: Iterable[str]) -> None:
     tmp_table = make_tmp_table_name("vuiln_ids")
 
     response = cls.send_sql_request(
-        cls.sql.get_vuln_info_by_ids.format(tmp_table=tmp_table),
+        cls.sql.get_vuln_info_by_ids.format(
+            tmp_table=tmp_table, json_field="'{}' AS vuln_json"
+        ),
         external_tables=[
             {
                 "name": tmp_table,
@@ -533,13 +546,23 @@ def get_packages_cpes(
         cpe_branches = (cpe_branch,)
 
     pkg_names_clause = ""
+    external_tables = []
     if pkg_names:
-        pkg_names_clause = f"WHERE pkg_name in {tuple(pkg_names)}"
+        tmp_table = make_tmp_table_name("pkg_names")
+        pkg_names_clause = f"WHERE pkg_name in {tmp_table}"
+        external_tables = [
+            {
+                "name": tmp_table,
+                "structure": [("pkg_name", "String")],
+                "data": [{"pkg_name": n} for n in pkg_names],
+            }
+        ]
 
     response = cls.send_sql_request(
         cls.sql.get_packages_and_cpes.format(
             cpe_branches=cpe_branches, pkg_names_clause=pkg_names_clause
-        )
+        ),
+        external_tables=external_tables,
     )
     if not cls.sql_status:
         return None
@@ -797,7 +820,9 @@ def get_cve_info_by_ids(
     tmp_table = make_tmp_table_name("vuiln_ids")
 
     response = cls.send_sql_request(
-        cls.sql.get_vuln_info_by_ids.format(tmp_table=tmp_table),
+        cls.sql.get_vuln_info_by_ids.format(
+            tmp_table=tmp_table, json_field="'{}' AS vuln_json"
+        ),
         external_tables=[
             {
                 "name": tmp_table,

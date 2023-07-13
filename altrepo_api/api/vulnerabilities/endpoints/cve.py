@@ -153,7 +153,9 @@ class VulnerablePackageByCve(APIWorker):
 
         # get CVE id's from BDU
         response = self.send_sql_request(
-            self.sql.get_vuln_info_by_ids.format(tmp_table=tuple(bdu_ids))
+            self.sql.get_vuln_info_by_ids.format(
+                tmp_table=tuple(bdu_ids), json_field="'{}' AS vuln_json"
+            )
         )
         if not self.sql_status:
             return self.error

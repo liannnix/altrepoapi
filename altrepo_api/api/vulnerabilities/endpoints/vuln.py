@@ -39,7 +39,9 @@ class VulnInfo(APIWorker):
         vuln_id = self.args["vuln_id"]
 
         response = self.send_sql_request(
-            self.sql.get_vuln_info_by_ids.format(tmp_table=(vuln_id,))
+            self.sql.get_vuln_info_by_ids.format(
+                tmp_table=(vuln_id,), json_field="vuln_json"
+            )
         )
         if not self.sql_status:
             return self.error
@@ -52,5 +54,5 @@ class VulnInfo(APIWorker):
 
         return {
             "request_args": self.args,
-            "vuln_info": vuln.asdict(strip_json=False),
+            "vuln_info": vuln.asdict(),
         }, 200
