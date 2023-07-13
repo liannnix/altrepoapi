@@ -61,10 +61,11 @@ class routeCveInfo(Resource):
 
 @ns.route(
     "/cve/packages",
-    doc={
-        "description": "Get CVE vulnerabilty information for packages in latest branch state",
-        "responses": GET_RESPONSES_400_404,
-    },
+    doc=False,  # XXX: hide from Swagger UI
+    # doc={
+    #     "description": "Get CVE vulnerabilty information for packages in latest branch state",
+    #     "responses": GET_RESPONSES_400_404,
+    # },
 )
 class routeVulnerablePackageByCve(Resource):
     @ns.expect(cve_vulnerable_packages_args)
@@ -78,10 +79,11 @@ class routeVulnerablePackageByCve(Resource):
 
 @ns.route(
     "/bdu/packages",
-    doc={
-        "description": "Get BDU vulnerabilty information for packages in latest branch state",
-        "responses": GET_RESPONSES_400_404,
-    },
+    doc=False,  # XXX: hide from Swagger UI
+    # doc={
+    #     "description": "Get BDU vulnerabilty information for packages in latest branch state",
+    #     "responses": GET_RESPONSES_400_404,
+    # },
 )
 class routeVulnerablePackageByBdu(Resource):
     @ns.expect(bdu_vulnerable_packages_args)
@@ -112,10 +114,11 @@ class routeBduInfo(Resource):
 
 @ns.route(
     "/package",
-    doc={
-        "description": "Get package open vulnerabilities information",
-        "responses": GET_RESPONSES_400_404,
-    },
+    doc=False,  # XXX: hide from Swagger UI
+    # doc={
+    #     "description": "Get package open vulnerabilities information",
+    #     "responses": GET_RESPONSES_400_404,
+    # },
 )
 class routePackageVulnerabilities(Resource):
     @ns.expect(package_vulnerabilities_args)
@@ -147,10 +150,11 @@ class routeBranchOpenVulnerabilities(Resource):
 
 @ns.route(
     "/maintainer",
-    doc={
-        "description": "Get maintainer's packages open vulnerabilities information",
-        "responses": GET_RESPONSES_400_404,
-    },
+    doc=False,  # XXX: hide from Swagger UI
+    # doc={
+    #     "description": "Get maintainer's packages open vulnerabilities information",
+    #     "responses": GET_RESPONSES_400_404,
+    # },
 )
 class routeMaintainerOpenVulnerabilities(Resource):
     @ns.expect(maintainer_vulnerabilities_args)
