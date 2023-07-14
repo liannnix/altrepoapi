@@ -478,15 +478,20 @@ def get_errata_by_pkg_names(cls: _pGetErratas, pkg_names: Iterable[str]) -> None
     return get_erratas(cls, pkg_names_clause, external_tables)
 
 
-def get_cve_info(cls: _pGetCveInfoCompatible, cve_ids: Iterable[str]) -> None:
+def get_cve_info(
+    cls: _pGetCveInfoCompatible, cve_ids: Iterable[str], exclude_json: bool
+) -> None:
     cls.status = False
     # 1. check if CVE info in DB
     tmp_table = make_tmp_table_name("vuiln_ids")
 
+    if exclude_json:
+        json_field = "'{}' AS vuln_json"
+    else:
+        json_field = "vuln_json"
+
     response = cls.send_sql_request(
-        cls.sql.get_vuln_info_by_ids.format(
-            tmp_table=tmp_table, json_field="'{}' AS vuln_json"
-        ),
+        cls.sql.get_vuln_info_by_ids.format(tmp_table=tmp_table, json_field=json_field),
         external_tables=[
             {
                 "name": tmp_table,
@@ -813,16 +818,19 @@ def get_cve_matching_by_cpes(cls: _pGetCveMatchingByPackageCpesCompatible) -> No
 
 
 def get_cve_info_by_ids(
-    cls: _pGetCveInfoByIdsCompatible, cve_ids: Iterable[str]
+    cls: _pGetCveInfoByIdsCompatible, cve_ids: Iterable[str], exclude_json: bool
 ) -> None:
     cls.status = False
 
     tmp_table = make_tmp_table_name("vuiln_ids")
 
+    if exclude_json:
+        json_field = "'{}' AS vuln_json"
+    else:
+        json_field = "vuln_json"
+
     response = cls.send_sql_request(
-        cls.sql.get_vuln_info_by_ids.format(
-            tmp_table=tmp_table, json_field="'{}' AS vuln_json"
-        ),
+        cls.sql.get_vuln_info_by_ids.format(tmp_table=tmp_table, json_field=json_field),
         external_tables=[
             {
                 "name": tmp_table,

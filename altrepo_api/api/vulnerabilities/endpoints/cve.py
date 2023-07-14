@@ -74,7 +74,7 @@ class VulnerablePackageByCve(APIWorker):
         get_errata_by_cve_ids(self, cve_ids)
 
         # 2. get CVE information
-        get_cve_info(self, cve_ids)
+        get_cve_info(self, cve_ids, False)
         if not self.sql_status:
             return
 

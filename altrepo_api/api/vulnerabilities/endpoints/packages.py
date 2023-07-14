@@ -100,7 +100,7 @@ class PackageOpenVulnerabilities(APIWorker):
         cve_ids.update(
             {vuln_id for errata in self.erratas for vuln_id in errata.ref_ids("vuln")}
         )
-        get_cve_info_by_ids(self, cve_ids)
+        get_cve_info_by_ids(self, cve_ids, False)
         if not self.sql_status:
             return self.error
 
