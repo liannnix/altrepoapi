@@ -6,7 +6,18 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.14.3] - 2023-07-14
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `api/vuln`: do not strip vulnerabilities JSON representation objects from results
+### Fixed
+
 ## [1.14.2] - 2023-07-13
+
+Regular API code updates and fixes.
 
 ### Added
 - `vuln/branch` route
