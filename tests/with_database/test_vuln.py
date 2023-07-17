@@ -5,6 +5,12 @@ BRANCH_IN_DB = "sisyphus"
 BRANCH_IN_DB2 = "p10"
 BRANCH_NOT_IN_DB = "fakebranch"
 
+TASK_IN_DB = "310692"
+DELETED_TASK_IN_DB = "307229"
+TASK_NOT_IN_DB = "123456789"
+TASK_NOT_FIX_CVE = "322690"
+TASK_FIX_CVE = "234665"
+
 MAINTAINER_IN_DB = "rider"
 MAINTAINER_NOT_IN_DB = "fakemaintainer"
 
@@ -263,3 +269,31 @@ def test_vuln_maintainer(client, kwargs):
         assert data != {}
         assert data["vuln_info"] != []
         assert data["packages"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"id": TASK_IN_DB, "status_code": 200},
+        {"id": TASK_NOT_FIX_CVE, "status_code": 200},
+        {"id": DELETED_TASK_IN_DB, "status_code": 404},
+        {"id": TASK_NOT_IN_DB, "status_code": 404},
+    ],
+)
+def test_vuln_task(client, kwargs):
+    url = url_for("api.vuln_route_task_vulnerabilities", **{"id": kwargs["id"]})
+    response = client.get(url)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data["task_id"] != 0
+        assert data["task_repo"] != ""
+        assert data["task_state"] != ""
+        assert data["task_owner"] != ""
+        assert data["task_changed"] != ""
+        if kwargs["id"] == TASK_NOT_FIX_CVE:
+            assert data["packages"] == []
+        elif kwargs["id"] == TASK_FIX_CVE:
+            assert data["packages"] != []
+            for pkg in data["packages"]:
+                assert pkg["vulnerabilities"] != []
