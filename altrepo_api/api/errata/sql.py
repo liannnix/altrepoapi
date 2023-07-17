@@ -254,5 +254,22 @@ ORDER BY changed DESC
 {limit}
 """
 
+    get_errata_branches = """
+SELECT DISTINCT pkgset_name
+FROM ErrataHistory
+WHERE pkgset_name != 'icarus'
+AND pkgset_name IN (
+    SELECT pkgset_name
+    FROM (
+        SELECT
+            pkgset_name,
+            argMax(rs_show, ts) AS show
+        FROM RepositoryStatus
+        GROUP BY pkgset_name
+    )
+    WHERE show = 1
+)
+"""
+
 
 sql = SQL()

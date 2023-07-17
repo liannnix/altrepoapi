@@ -34,7 +34,7 @@ from .endpoints.last_changed import ErrataLastChanged
 from .endpoints.oval import OvalBranches, OvalExport
 from .endpoints.search import Search, ErrataIds
 from .endpoints.package import PackagesUpdates
-from .endpoints.branch import BranchesUpdates
+from .endpoints.branch import BranchesUpdates, ErrataBranches
 from .namespace import get_namespace
 from .parsers import (
     errata_search_args,
@@ -49,6 +49,7 @@ from .serializers import (
     errata_packages_updates_model,
     oval_branches_model,
     errata_last_changed_model,
+    errata_branches_model,
 )
 
 ns = get_namespace()
@@ -191,3 +192,20 @@ class routeErrataLastChanged(Resource):
         args = errata_last_chngs_args.parse_args(strict=True)
         w = ErrataLastChanged(g.connection, **args)
         return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/errata_branches",
+    doc={
+        "description": "Get errata branches.",
+        "responses": GET_RESPONSES_404,
+    },
+)
+class routeErrataBranches(Resource):
+    @ns.marshal_with(errata_branches_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = {}
+        w = ErrataBranches(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
