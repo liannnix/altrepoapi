@@ -58,8 +58,27 @@ errata_pkg_name_opt = parser.register_item(
 vuln_id_opt = parser.register_item(
     "vuln_id", type=str, required=False, help="CVE, BDU or Bug ID", location="args"
 )
+errata_type = parser.register_item(
+    "type",
+    type=str,
+    choices=("task", "branch", "bulletin"),
+    required=False,
+    help="errata type [task|branch|bulletin]",
+    location="args",
+)
+last_chngs_limit_opt = parser.register_item(
+    "limit",
+    type=int,
+    required=False,
+    default=1000,
+    help="number of last errata to get",
+    location="args",
+)
 
 oval_export_args = parser.build_parser(package_name_opt, one_file_opt)
 errata_search_args = parser.build_parser(
     branch_name_opt, errata_pkg_name_opt, vuln_id_opt, errata_id_opt
+)
+errata_last_chngs_args = parser.build_parser(
+    branch_name_opt, last_chngs_limit_opt, errata_type
 )

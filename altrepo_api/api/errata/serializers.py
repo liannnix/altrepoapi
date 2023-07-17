@@ -165,3 +165,39 @@ errata_ids_model = ns.model(
     "ErrataIdsListModel",
     {"errata_ids": fields.List(fields.String, description="errata ids list")},
 )
+
+
+vulns_el_model = ns.model(
+    "VulnerabilitiesElementModel",
+    {
+        "number": fields.String(description="vulnerability number"),
+        "type": fields.String(description="vulnerability type"),
+    },
+)
+errata_last_changed_el_model = ns.model(
+    "ErrataLastChangedElementModel",
+    {
+        "errata_id": fields.String(description="errata ID"),
+        "eh_type": fields.String(description=""),
+        "task_id": fields.Integer(description="task ID"),
+        "changed": fields.DateTime(description="changed"),
+        "branch": fields.String(description="package set name"),
+        "vulnerabilities": fields.Nested(
+            vulns_el_model,
+            description="fixed vulnerabilities list",
+            as_list=True,
+        ),
+    },
+)
+errata_last_changed_model = ns.model(
+    "ErrataLastChangedModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of erratas"),
+        "erratas": fields.Nested(
+            errata_last_changed_el_model,
+            description="erratas last changed",
+            as_list=True,
+        ),
+    },
+)

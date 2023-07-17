@@ -207,5 +207,52 @@ FROM (
 )
 """
 
+    get_last_changed_errata = """
+WITH errata_tasks AS (
+    SELECT
+        errata_id,
+        argMax(eh_type, ts)  AS type,
+        argMax(task_id, ts) AS tsk_id,
+        argMax(pkgset_name, ts) AS branch,
+        argMax(eh_references.link, ts) AS refs_links,
+        argMax(eh_references.type, ts) AS refs_types,
+        max(eh_updated) AS changed
+    FROM ErrataHistory
+    WHERE eh_type = 'task'
+    {branch}
+    AND (task_id, subtask_id) IN (
+            SELECT task_id, subtask_id
+            FROM Tasks
+            WHERE task_id IN (
+                SELECT task_id FROM TaskStates WHERE task_state = 'DONE'
+            )
+            AND subtask_deleted = 0
+        )
+    GROUP BY errata_id
+),
+errata_branches AS (
+    SELECT
+        errata_id,
+        argMax(eh_type, ts)  AS type,
+        argMax(task_id, ts) AS tsk_id,
+        argMax(pkgset_name, ts) AS branch,
+        argMax(eh_references.link, ts) AS refs_links,
+        argMax(eh_references.type, ts) AS refs_types,
+        max(eh_updated) AS changed
+    FROM ErrataHistory
+    WHERE eh_type != 'task'
+    {branch}
+    GROUP BY errata_id
+)
+SELECT * FROM (
+    SELECT * FROM errata_tasks
+    UNION ALL
+    SELECT * FROM errata_branches
+)
+{eh_type}
+ORDER BY changed DESC
+{limit}
+"""
+
 
 sql = SQL()

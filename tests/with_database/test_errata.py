@@ -5,7 +5,11 @@ from flask import url_for
 
 BRANCH_IN_DB = "sisyphus"
 BRANCH_IN_DB2 = "p10"
+BRANCH_IN_DB3 = "sisyphus_e2k"
 BRANCH_NOT_IN_DB = "fakebranch"
+BRANCH_IN_DB_NO_ERRATA = "4.0"
+
+ERRATA_TYPES_IN_DB = ["task", "branch", "bulletin"]
 
 PKG_NAME_IN_DB = "curl"
 PKG_NAME_NOT_IN_DB = "fakepackage"
@@ -267,3 +271,43 @@ def test_errata_branches_updates(client, kwargs):
         assert data["branches_updates"] != []
         for bu in data["branches_updates"]:
             assert bu["packages_updates"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"status_code": 200},
+        {"branch": BRANCH_IN_DB, "status_code": 200},
+        {"branch": BRANCH_IN_DB, "type": ERRATA_TYPES_IN_DB[0], "status_code": 200},
+        {"branch": BRANCH_IN_DB, "type": ERRATA_TYPES_IN_DB[2], "status_code": 200},
+        {"branch": BRANCH_IN_DB3, "type": ERRATA_TYPES_IN_DB[1], "status_code": 200},
+        {"branch": BRANCH_IN_DB, "type": ERRATA_TYPES_IN_DB[1], "status_code": 404},
+        {"branch": BRANCH_IN_DB, "limit": 10, "status_code": 200},
+        {"branch": BRANCH_IN_DB_NO_ERRATA, "status_code": 404},
+        {"branch": BRANCH_NOT_IN_DB, "limit": 10, "status_code": 400},
+    ],
+)
+def test_errata_last_changed(client, kwargs):
+    url = url_for("api.errata_route_errata_last_changed")
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("status_code",):
+            continue
+        if v is not None:
+            params[k] = v
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data["erratas"] != []
+        if kwargs.get("limit"):
+            assert data["length"] == kwargs["limit"]
+        else:
+            assert data["length"] <= 1000
+        for elem in data["erratas"]:
+            if kwargs.get("branch"):
+                assert elem["branch"] == kwargs["branch"]
+            if kwargs.get("type"):
+                assert elem["eh_type"] == kwargs["type"]
+            assert elem["vulnerabilities"] != []
+
