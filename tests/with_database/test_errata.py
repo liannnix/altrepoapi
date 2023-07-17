@@ -22,6 +22,7 @@ PU_ERRATA_ID_NOT_VALID_2 = "ALT-XX-2000-9999-9"
 
 BU_ERRATA_ID_IN_DB_1 = "ALT-BU-2023-3800-1"
 BU_ERRATA_ID_IN_DB_2 = "ALT-BU-2013-1350-1"
+BU_ERRATA_ID_IN_DB_3 = "ALT-BU-2023-4441-1"
 BU_ERRATA_ID_NOT_IN_DB = "ALT-BU-2999-1000-1"
 BU_ERRATA_ID_NOT_VALID_1 = "ALT-BU-123-1000-1"
 BU_ERRATA_ID_NOT_VALID_2 = "ALT-XX-2000-9999-9"
@@ -30,6 +31,9 @@ VUILN_ID_CVE_IN_DB = "CVE-2022-22576"
 VUILN_ID_BDU_IN_DB = "BDU:2022-03036"
 VUILN_ID_BUG_IN_DB = "45281"
 VULN_ID_BAD = "ABC-123"
+
+BUG_IN_ERRATA = "46487"
+BUG_NOT_IN_ERRATA = "11111"
 
 
 def test_errata_ids(client):
@@ -311,3 +315,56 @@ def test_errata_last_changed(client, kwargs):
                 assert elem["eh_type"] == kwargs["type"]
             assert elem["vulnerabilities"] != []
 
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"input": BU_ERRATA_ID_IN_DB_3, "status_code": 200},
+        {"input": BU_ERRATA_ID_IN_DB_3, "branch": BRANCH_IN_DB, "status_code": 200},
+        {
+            "input": BU_ERRATA_ID_IN_DB_3,
+            "branch": BRANCH_IN_DB,
+            "type": ERRATA_TYPES_IN_DB[2],
+            "status_code": 200,
+        },
+        {"input": PU_ERRATA_ID_IN_DB_1, "status_code": 200},
+        {"input": BUG_IN_ERRATA, "status_code": 200},
+        {"input": VUILN_ID_BDU_IN_DB, "status_code": 200},
+        {
+            "input": VUILN_ID_BDU_IN_DB,
+            "branch": BRANCH_IN_DB_NO_ERRATA,
+            "status_code": 404
+        },
+        {
+            "input": BUG_NOT_IN_ERRATA,
+            "branch": BRANCH_IN_DB_NO_ERRATA,
+            "status_code": 404
+        },
+        {"input": BU_ERRATA_ID_NOT_IN_DB, "status_code": 404},
+        {"input": PU_ERRATA_ID_NOT_IN_DB, "status_code": 404},
+    ],
+)
+def test_find_erratas(client, kwargs):
+    url = url_for("api.errata_route_find_erratas")
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("status_code",):
+            continue
+        if v is not None:
+            params[k] = v
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data["erratas"] != []
+
+        for elem in data["erratas"]:
+            assert kwargs["input"].lower() in [elem["errata_id"].lower()] + [
+                vuln["number"].lower() for vuln in elem["vulnerabilities"]
+            ]
+
+            if kwargs.get("branch"):
+                assert kwargs["branch"] == elem["branch"]
+
+            if kwargs.get("type"):
+                assert kwargs["type"] == elem["eh_type"]

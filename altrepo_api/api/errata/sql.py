@@ -271,5 +271,61 @@ AND pkgset_name IN (
 )
 """
 
+    find_erratas = """
+WITH errata_tasks AS (
+    SELECT
+        errata_id,
+        argMax(eh_type, ts)  AS type,
+        argMax(task_id, ts) AS tsk_id,
+        argMax(pkg_name, ts) AS pkg_name,
+        argMax(pkgset_name, ts) AS branch,
+        argMax(eh_references.link, ts) AS refs_links,
+        argMax(eh_references.type, ts) AS refs_types,
+        max(eh_updated) AS changed
+    FROM ErrataHistory
+    WHERE eh_type = 'task'
+    {branch}
+    AND (task_id, subtask_id) IN (
+            SELECT task_id, subtask_id
+            FROM Tasks
+            WHERE task_id IN (
+                SELECT task_id FROM TaskStates WHERE task_state = 'DONE'
+            )
+            AND subtask_deleted = 0
+        )
+    GROUP BY errata_id
+),
+errata_branches AS (
+    SELECT
+        errata_id,
+        argMax(eh_type, ts)  AS type,
+        argMax(task_id, ts) AS tsk_id,
+        argMax(pkg_name, ts) AS pkg_name,
+        argMax(pkgset_name, ts) AS branch,
+        argMax(eh_references.link, ts) AS refs_links,
+        argMax(eh_references.type, ts) AS refs_types,
+        max(eh_updated) AS changed
+    FROM ErrataHistory
+    WHERE eh_type != 'task'
+    {branch}
+    GROUP BY errata_id
+)
+SELECT
+    errata_id,
+    type,
+    tsk_id,
+    branch,
+    refs_links,
+    refs_types,
+    changed
+FROM (
+    SELECT * FROM errata_tasks
+    UNION ALL
+    SELECT * FROM errata_branches
+)
+{where}
+ORDER BY changed DESC
+"""
+
 
 sql = SQL()

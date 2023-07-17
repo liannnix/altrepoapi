@@ -100,6 +100,7 @@ __cve_id_list_match = re.compile(r"^(CVE-\d{4}-\d{4,},?)+$")
 __bdu_id_match = re.compile(r"^BDU:\d{4}-\d{5}$")
 __bdu_id_list_match = re.compile(r"^(BDU:\d{4}-\d{5},?)+$")
 __errata_id_match = re.compile(r"^ALT-[A-Z]+-2\d{3}-\d{4,}-\d{1,}$")
+__errata_search_match = re.compile(r"^([\w\.\+\-\_:]{2,},?)+$")
 
 
 # custom validators
@@ -616,3 +617,18 @@ def errata_id_type(value: Any) -> str:
 
 
 errata_id_type.__schema__ = {"type": "string", "pattern": __errata_id_match.pattern}
+
+
+def errata_search_type(value: Any) -> str:
+    """Errata search validator."""
+
+    value = __get_string(value)
+    if not __errata_search_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+errata_search_type.__schema__ = {
+    "type": "string",
+    "pattern": __errata_search_match.pattern
+}

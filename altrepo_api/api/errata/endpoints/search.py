@@ -16,6 +16,8 @@
 
 import re
 
+from typing import NamedTuple
+
 from altrepo_api.api.base import APIWorker
 
 from .common import ErrataID, get_erratas_by_search_conditions
@@ -23,6 +25,22 @@ from ..sql import sql
 
 
 _vuln_id_match = re.compile(r"(^CVE-\d{4}-\d{4,}$)|(^BDU:\d{4}-\d{5}$)|(^\d{4,}$)")
+
+
+class ErrataInfo(NamedTuple):
+    errata_id: str
+    eh_type: str
+    task_id: int
+    branch: str
+    vuln_numbers: list
+    vuln_types: list
+    changed: str
+    vulnerabilities: list[dict[str, str]] = []
+
+
+class Vulns(NamedTuple):
+    number: str
+    type: str
 
 
 class Search(APIWorker):
@@ -116,3 +134,69 @@ class ErrataIds(APIWorker):
         ]
 
         return {"errata_ids": errata_ids}, 200
+
+
+class FindErratas(APIWorker):
+    """
+    Erratas search lookup by id, vulnerability id or package name.
+    """
+
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def check_params(self) -> bool:
+        if self.args["input"] and len(self.args["input"]) > 3:
+            self.validation_results.append(
+                "input values list should contain no more than 3 elements"
+            )
+
+        if self.validation_results != []:
+            return False
+        return True
+
+    def get(self):
+        input_val: list[str] = self.args["input"][:] if self.args["input"] else []
+        branch = self.args["branch"]
+        eh_type = self.args["type"]
+
+        branch_clause = f"AND pkgset_name = '{branch}'" if branch else ""
+        eh_type_clause = f" (type = '{eh_type}') AND " if eh_type else ""
+
+        conditions = [
+            " OR ".join(
+                (
+                    f"(errata_id ILIKE '%{v}%')",
+                    f"(pkg_name ILIKE '%{v}%')",
+                    f"arrayExists(x -> x ILIKE '%{v}%', refs_links)",
+                )
+            )
+            for v in input_val[:]
+        ]
+
+        where_clause = "WHERE " + eh_type_clause + f"({' OR '.join(conditions)})"
+
+        response = self.send_sql_request(
+            self.sql.find_erratas.format(branch=branch_clause, where=where_clause)
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error(
+                {"message": "No data not found in database"},
+            )
+
+        erratas = []
+        for el in response:
+            errata_inf = ErrataInfo(*el)
+            vulns = [
+                Vulns(vuln, errata_inf.vuln_types[i])._asdict()
+                for i, vuln in enumerate(errata_inf.vuln_numbers)
+            ]
+            erratas.append(errata_inf._replace(vulnerabilities=vulns)._asdict())
+
+        res = {"request_args": self.args, "length": len(erratas), "erratas": erratas}
+
+        return res, 200
