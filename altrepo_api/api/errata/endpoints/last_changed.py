@@ -25,15 +25,24 @@ class ErrataInfo(NamedTuple):
     eh_type: str
     task_id: int
     branch: str
+    pkgs: list
     vuln_numbers: list
     vuln_types: list
     changed: str
     vulnerabilities: list[dict[str, str]] = []
+    packages: list[dict[str, str]] = []
 
 
 class Vulns(NamedTuple):
     number: str
     type: str
+
+
+class PackageInfo(NamedTuple):
+    pkghash: int
+    pkg_name: str
+    pkg_version: str
+    pkg_release: str
 
 
 class ErrataLastChanged(APIWorker):
@@ -66,12 +75,38 @@ class ErrataLastChanged(APIWorker):
             )
         erratas = []
         for el in response:
+            pkgs = []
             errata_inf = ErrataInfo(*el)
             vulns = [
                 Vulns(vuln, errata_inf.vuln_types[i])._asdict()
                 for i, vuln in enumerate(errata_inf.vuln_numbers)
             ]
-            erratas.append(errata_inf._replace(vulnerabilities=vulns)._asdict())
+
+            if errata_inf.eh_type == "bulletin":
+                # get package info for erratas ID
+                _tmp_table = "tmp_errata_ids"
+                pkg_response = self.send_sql_request(
+                    self.sql.get_errata_packages.format(tmp_table=_tmp_table),
+                    external_tables=[
+                        {
+                            "name": _tmp_table,
+                            "structure": [
+                                ("errata_id", "String"),
+                            ],
+                            "data": [
+                                {"errata_id": el} for el in errata_inf.vuln_numbers
+                            ],
+                        }
+                    ],
+                )
+                if pkg_response:
+                    pkgs = [PackageInfo(*el[1:])._asdict() for el in pkg_response]
+            else:
+                pkgs = [PackageInfo(*el)._asdict() for el in errata_inf.pkgs]
+
+            erratas.append(
+                errata_inf._replace(vulnerabilities=vulns, packages=pkgs)._asdict()
+            )
 
         res = {"request_args": self.args, "length": len(erratas), "erratas": erratas}
 

@@ -166,6 +166,15 @@ errata_ids_model = ns.model(
     {"errata_ids": fields.List(fields.String, description="errata ids list")},
 )
 
+pkgs_el_model = ns.model(
+    "PackagesElementModel",
+    {
+        "pkghash": fields.String(description="package hash UInt64 as string"),
+        "pkg_name": fields.String(description="package name"),
+        "pkg_version": fields.String(description="package version"),
+        "pkg_release": fields.String(description="package release"),
+    },
+)
 
 vulns_el_model = ns.model(
     "VulnerabilitiesElementModel",
@@ -182,6 +191,11 @@ errata_last_changed_el_model = ns.model(
         "task_id": fields.Integer(description="task ID"),
         "changed": fields.DateTime(description="changed"),
         "branch": fields.String(description="package set name"),
+        "packages": fields.Nested(
+            pkgs_el_model,
+            description="affected packages",
+            as_list=True,
+        ),
         "vulnerabilities": fields.Nested(
             vulns_el_model,
             description="fixed vulnerabilities list",

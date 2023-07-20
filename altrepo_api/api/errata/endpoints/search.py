@@ -32,15 +32,24 @@ class ErrataInfo(NamedTuple):
     eh_type: str
     task_id: int
     branch: str
+    pkgs: list
     vuln_numbers: list
     vuln_types: list
     changed: str
     vulnerabilities: list[dict[str, str]] = []
+    packages: list[dict[str, str]] = []
 
 
 class Vulns(NamedTuple):
     number: str
     type: str
+
+
+class PackageInfo(NamedTuple):
+    pkghash: int
+    pkg_name: str
+    pkg_version: str
+    pkg_release: str
 
 
 class Search(APIWorker):
@@ -169,7 +178,7 @@ class FindErratas(APIWorker):
             " OR ".join(
                 (
                     f"(errata_id ILIKE '%{v}%')",
-                    f"(pkg_name ILIKE '%{v}%')",
+                    f"arrayExists(x -> x.2 ILIKE '%{v}%', packages)",
                     f"arrayExists(x -> x ILIKE '%{v}%', refs_links)",
                 )
             )
@@ -195,7 +204,10 @@ class FindErratas(APIWorker):
                 Vulns(vuln, errata_inf.vuln_types[i])._asdict()
                 for i, vuln in enumerate(errata_inf.vuln_numbers)
             ]
-            erratas.append(errata_inf._replace(vulnerabilities=vulns)._asdict())
+            pkgs = [PackageInfo(*el)._asdict() for el in errata_inf.pkgs]
+            erratas.append(
+                errata_inf._replace(vulnerabilities=vulns, packages=pkgs)._asdict()
+            )
 
         res = {"request_args": self.args, "length": len(erratas), "erratas": erratas}
 
