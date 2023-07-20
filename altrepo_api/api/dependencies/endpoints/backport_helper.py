@@ -150,6 +150,15 @@ class BackportHelper(APIWorker):
         packages_names = self.args["packages_names"]
         dp_type = self.args["dp_type"]
 
+        # create temporary dependecies table to speed up the query
+        self.send_sql_request(
+            self.sql.create_tmp_deps_table.format(
+                branches=(from_branch, into_branch)
+            )
+        )
+        if not self.sql_status:
+            return self.error
+
         # Use virtual "src" architecture to resolve "source" dependency type.
         self.archs = ["noarch", "src"]
         if self.args["archs"]:

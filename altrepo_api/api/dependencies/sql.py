@@ -163,6 +163,17 @@ WHERE dp_name = '{dp_name}'
 group by pkgset_name
 """
 
+    create_tmp_deps_table = """
+CREATE TEMPORARY TABLE IF NOT EXISTS tempDeps AS
+SELECT *
+FROM Depends
+WHERE pkg_hash IN (
+    SELECT pkg_hash
+    FROM static_last_packages
+    WHERE pkgset_name IN {branches}
+)
+"""
+
     get_dependencies = """
 SELECT
     pkg_sourcerpm,
@@ -201,7 +212,7 @@ INNER JOIN
             dp_name,
             dp_flag,
             dp_version
-        FROM Depends
+        FROM tempDeps
         WHERE (pkg_hash IN (
             SELECT pkg_hash
             FROM hashes
