@@ -199,7 +199,12 @@ class BackportHelper(APIWorker):
 
             dependencies_names = {d.dp_name for d in unmet_dependencies}
 
-            backport_list.append((depth, {Package(*d[:6]) for d in unmet_dependencies}))
+            backport_list.append(
+                (
+                    depth,
+                    {Package(*d[:6]) for d in unmet_dependencies | requires},
+                )
+            )
 
             depth += 1
 
