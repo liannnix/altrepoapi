@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from collections import defaultdict
 from re import match
 from typing import NamedTuple, Iterable, Literal
 
@@ -126,11 +127,13 @@ class BackportHelper(APIWorker):
 
     def get(self):
         def find_unmet_dependencies(
-            requirements: set[Dependency], providements: set[Dependency]
+            requirements: set[Dependency],
+            providements_index: dict[str, list[Dependency]],
         ) -> set[Dependency]:
             resolved = set()
             for req in requirements:
-                for prov in providements:
+                provs = providements_index.get(req.dp_name, [])
+                for prov in provs:
                     if req.arch in ("src", "noarch", prov.arch):
                         if check_dependency_overlap(
                             prov.dp_name,
@@ -185,11 +188,16 @@ class BackportHelper(APIWorker):
             requires = self._get_dependencies(
                 from_branch, dependencies_names, "require"
             )
-            provides = self._get_dependencies(
-                into_branch, {d.dp_name for d in requires}, "provide"
-            )
 
-            unmet_dependencies = find_unmet_dependencies(requires, provides)
+            provides_index = defaultdict(list)
+            for prov in self._get_dependencies(
+                into_branch, {req.dp_name for req in requires}, "provide"
+            ):
+                provides_index[prov.dp_name].append(prov)
+
+            unmet_dependencies = find_unmet_dependencies(
+                requires, provides_index
+            )
 
             if dp_type == "binary":
                 unmet_dependencies = set(
