@@ -77,7 +77,10 @@ class BackportHelper(APIWorker):
         super().__init__()
 
     def _get_dependencies(
-        self, branch: str, dpnames: Iterable[str], dptype: Literal["provide", "require"]
+        self,
+        branch: str,
+        dpnames: Iterable[str],
+        dptype: Literal["provide", "require"],
     ) -> set[Dependency]:
         _tmp_table = "tmp_names"
         response = self.send_sql_request(
@@ -101,7 +104,9 @@ class BackportHelper(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if not backport_possible(self.args["from_branch"], self.args["into_branch"]):
+        if not backport_possible(
+            self.args["from_branch"], self.args["into_branch"]
+        ):
             self.validation_results.append(
                 f'Branch {self.args["from_branch"]} not inherited from  {self.args["into_branch"]}'
             )
@@ -165,8 +170,8 @@ class BackportHelper(APIWorker):
             self.archs += self.args["archs"]
 
         # if there are 'noarch' and 'src' only then add default arch ('x86_64')
-        if set(self.archs) == {'noarch', 'src'}:
-            self.archs += ['x86_64']
+        if set(self.archs) == {"noarch", "src"}:
+            self.archs += ["x86_64"]
 
         depth = 0
         dependencies_names = set(packages_names)
