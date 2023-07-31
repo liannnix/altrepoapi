@@ -75,34 +75,12 @@ class ErrataLastChanged(APIWorker):
             )
         erratas = []
         for el in response:
-            pkgs = []
             errata_inf = ErrataInfo(*el)
             vulns = [
                 Vulns(vuln, errata_inf.vuln_types[i])._asdict()
                 for i, vuln in enumerate(errata_inf.vuln_numbers)
             ]
-
-            if errata_inf.eh_type == "bulletin":
-                # get package info for erratas ID
-                _tmp_table = "tmp_errata_ids"
-                pkg_response = self.send_sql_request(
-                    self.sql.get_errata_packages.format(tmp_table=_tmp_table),
-                    external_tables=[
-                        {
-                            "name": _tmp_table,
-                            "structure": [
-                                ("errata_id", "String"),
-                            ],
-                            "data": [
-                                {"errata_id": el} for el in errata_inf.vuln_numbers
-                            ],
-                        }
-                    ],
-                )
-                if pkg_response:
-                    pkgs = [PackageInfo(*el[1:])._asdict() for el in pkg_response]
-            else:
-                pkgs = [PackageInfo(*el)._asdict() for el in errata_inf.pkgs]
+            pkgs = [PackageInfo(*el)._asdict() for el in errata_inf.pkgs]
 
             erratas.append(
                 errata_inf._replace(vulnerabilities=vulns, packages=pkgs)._asdict()
