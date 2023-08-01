@@ -19,6 +19,7 @@ import json
 import jwt
 import redis
 from flask import request
+from jwt import DecodeError
 
 from altrepo_api.api.auth.constants import REFRESH_TOKEN_KEY
 from altrepo_api.api.auth.endpoints.blacklisted_token import BlacklistedAccessToken
@@ -37,20 +38,28 @@ class RefreshToken(APIWorker):
         self.conn_redis = redis.from_url(namespace.REDIS_URL, db=0)
         self.refresh_token = request.cookies.get("refresh_token")
         self.access_token = self.args["access_token"]
-        self.access_token_payload = jwt.decode(
-            self.access_token,
-            namespace.ADMIN_PASSWORD,
-            algorithms=["HS256"],
-            options={"verify_signature": False},
-        )
-        self.blacklisted = BlacklistedAccessToken(
-            self.access_token, self.access_token_payload["exp"]
-        )
+        self.access_token_payload = {}
         super().__init__()
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
+
+        # check access token and decode it.
+        try:
+            self.access_token_payload = jwt.decode(
+                self.access_token,
+                namespace.ADMIN_PASSWORD,
+                algorithms=["HS256"],
+                options={"verify_signature": False},
+            )
+        except DecodeError:
+            self.validation_results.append("Invalid access token")
+            return False
+
+        self.blacklisted = BlacklistedAccessToken(
+            self.access_token, self.access_token_payload["exp"]
+        )
 
         if self.blacklisted.get_token_from_blacklist():
             self.validation_results.append("Token to blacklisted")
@@ -87,6 +96,7 @@ class RefreshToken(APIWorker):
             )
             raise ApiUnauthorized(description="Session expired")
 
+        # add the old access token to the blacklist if it hasn't expired yet.
         self.blacklisted.write_to_blacklist()
         new_access_token = self.new_access_token(self.access_token_payload)
 
