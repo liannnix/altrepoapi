@@ -286,7 +286,6 @@ class BackportHelper(APIWorker):
         for package, depth in uniq_packages.items():
             levels[depth].append(package._asdict())
 
-        # back to levels
         dependencies = [
             {
                 "depth": depth,
