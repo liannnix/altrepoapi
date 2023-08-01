@@ -282,29 +282,27 @@ class BackportHelper(APIWorker):
                 max_depth = depth
 
         # back to levels
+        levels = defaultdict(list)
+        for package, depth in uniq_packages.items():
+            levels[depth].append(package._asdict())
+
+        # back to levels
         dependencies = [
             {
                 "depth": depth,
-                "packages": [
-                    package._asdict()
-                    for package in sorted(
-                        (
-                            p
-                            for p, _ in filter(
-                                lambda x: x[1] == depth, uniq_packages.items()
-                            )
-                        ),
-                        key=lambda p: (p.srpm, p.name),
-                    )
-                ],
+                "packages": sorted(
+                    packages, key=lambda p: (p["srpm"], p["name"])
+                ),
             }
-            for depth in range(max_depth, 0, -1)
+            for depth, packages in enumerate(levels.values(), start=1)
         ]
 
         res = {
             "request_args": self.args,
-            "count": len(dependencies),
-            "maxdepth": max_depth,
-            "dependencies": dependencies,
+            "count": sum(len(p["packages"]) for p in dependencies),
+            "maxdepth": len(dependencies),
+            "dependencies": sorted(
+                dependencies, key=lambda l: l["depth"], reverse=True
+            ),
         }
         return res, 200
