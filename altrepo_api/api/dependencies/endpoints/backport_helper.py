@@ -79,14 +79,14 @@ class BackportHelper(APIWorker):
 
     def _get_dependencies(
         self,
-        branch: str,
+        branch_deps_table_name: str,
         dpnames: Iterable[str],
         dptype: Literal["provide", "require"],
     ) -> set[Dependency]:
         _tmp_table = "tmp_names"
         response = self.send_sql_request(
             self.sql.get_dependencies.format(
-                branch=branch,
+                branch_deps_table_name=branch_deps_table_name,
                 archs=tuple(self.archs),
                 dptype=dptype,
                 tmp_table=_tmp_table,
@@ -158,10 +158,20 @@ class BackportHelper(APIWorker):
         packages_names = self.args["packages_names"]
         dp_type = self.args["dp_type"]
 
-        # create temporary dependecies table to speed up the query
+        # create temporary dependecies tables to speed up the query
+        from_branch_tmp_table = "DepsFromBranch"
         self.send_sql_request(
             self.sql.create_tmp_deps_table.format(
-                branches=(from_branch, into_branch)
+                table_name=from_branch_tmp_table, branch=from_branch
+            )
+        )
+        if not self.sql_status:
+            return self.error
+
+        into_branch_tmp_table = "DepsIntoBranch"
+        self.send_sql_request(
+            self.sql.create_tmp_deps_table.format(
+                table_name=into_branch_tmp_table, branch=into_branch
             )
         )
         if not self.sql_status:
@@ -186,12 +196,14 @@ class BackportHelper(APIWorker):
             dependencies_names = dependencies_names.difference(memory)
 
             requires = self._get_dependencies(
-                from_branch, dependencies_names, "require"
+                from_branch_tmp_table, dependencies_names, "require"
             )
 
             provides_index = defaultdict(list)
             for prov in self._get_dependencies(
-                into_branch, {req.dp_name for req in requires}, "provide"
+                into_branch_tmp_table,
+                {req.dp_name for req in requires},
+                "provide",
             ):
                 provides_index[prov.dp_name].append(prov)
 
