@@ -215,9 +215,8 @@ class BackportHelper(APIWorker):
         self.archs = ["noarch", "src"]
         if self.args["archs"]:
             self.archs += self.args["archs"]
-
-        # if there are 'noarch' and 'src' only then add default arch ('x86_64')
-        if set(self.archs) == {"noarch", "src"}:
+        else:
+            # if there are 'noarch' and 'src' only then add default arch ('x86_64')
             self.archs += ["x86_64"]
 
         depth = 0
