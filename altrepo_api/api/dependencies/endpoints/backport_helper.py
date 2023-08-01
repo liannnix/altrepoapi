@@ -20,6 +20,7 @@ from typing import NamedTuple, Iterable, Literal
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
+from altrepo_api.api.task.endpoints.task_repo import LastRepoStateFromTask
 from altrepo_api.libs.librpm_functions import check_dependency_overlap
 
 from ..sql import sql
@@ -158,24 +159,57 @@ class BackportHelper(APIWorker):
         packages_names = self.args["packages_names"]
         dp_type = self.args["dp_type"]
 
-        # create temporary dependecies tables to speed up the query
-        from_branch_tmp_table = "DepsFromBranch"
-        self.send_sql_request(
-            self.sql.create_tmp_deps_table.format(
-                table_name=from_branch_tmp_table, branch=from_branch
-            )
-        )
-        if not self.sql_status:
-            return self.error
+        FROM_BRANCH_TABLE = "DepsFromBranch"
+        INTO_BRANCH_TABLE = "DepsIntoBranch"
 
-        into_branch_tmp_table = "DepsIntoBranch"
-        self.send_sql_request(
-            self.sql.create_tmp_deps_table.format(
-                table_name=into_branch_tmp_table, branch=into_branch
+        def fill_tmp_table(
+            table_name: str, branch: str, template: str, **kwargs
+        ):
+            self.send_sql_request(
+                self.sql.create_tmp_table.format(
+                    tmp_table=table_name,
+                    columns=template.format(branch=branch),
+                ),
+                **kwargs,
             )
-        )
-        if not self.sql_status:
-            return self.error
+
+        for branch, table in (
+            (from_branch, FROM_BRANCH_TABLE),
+            (into_branch, INTO_BRANCH_TABLE),
+        ):
+            if branch in lut.taskless_branches:
+                fill_tmp_table(table, branch, self.sql.taskless_template)
+                if not self.sql_status:
+                    return self.error
+                continue
+
+            ls = LastRepoStateFromTask(self.conn, branch)
+            ls.build_repo_state()
+            if not ls.status:
+                return ls.error
+
+            kwargs = {}
+            hashes = ls.task_repo_pkgs
+            if not hashes:
+                _template = self.sql.taskless_template
+            else:
+                _ext_table = "ext_hashes"
+                _template = self.sql.task_template.format(ext_table=_ext_table)
+                kwargs = {
+                    "external_tables": [
+                        {
+                            "name": _ext_table,
+                            "structure": [("pkg_hash", "UInt64")],
+                            "data": [
+                                {"pkg_hash": pkg_hash} for pkg_hash in hashes
+                            ],
+                        },
+                    ]
+                }
+
+            fill_tmp_table(table, branch, _template, **kwargs)
+            if not self.sql_status:
+                return self.error
 
         # Use virtual "src" architecture to resolve "source" dependency type.
         self.archs = ["noarch", "src"]
@@ -196,12 +230,12 @@ class BackportHelper(APIWorker):
             dependencies_names = dependencies_names.difference(memory)
 
             requires = self._get_dependencies(
-                from_branch_tmp_table, dependencies_names, "require"
+                FROM_BRANCH_TABLE, dependencies_names, "require"
             )
 
             provides_index = defaultdict(list)
             for prov in self._get_dependencies(
-                into_branch_tmp_table,
+                INTO_BRANCH_TABLE,
                 {req.dp_name for req in requires},
                 "provide",
             ):

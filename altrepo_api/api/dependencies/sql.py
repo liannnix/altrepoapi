@@ -163,14 +163,22 @@ WHERE dp_name = '{dp_name}'
 group by pkgset_name
 """
 
-    create_tmp_deps_table = """
-CREATE TEMPORARY TABLE {table_name} AS
-SELECT *
-FROM Depends
+    taskless_template = """
+AS
+SELECT * FROM Depends
 WHERE pkg_hash IN (
     SELECT pkg_hash
     FROM static_last_packages
     WHERE pkgset_name = '{branch}'
+)
+"""
+
+    task_template = """
+AS
+SELECT * FROM Depends
+WHERE pkg_hash IN (
+    SELECT pkg_hash
+    FROM {ext_table}
 )
 """
 
