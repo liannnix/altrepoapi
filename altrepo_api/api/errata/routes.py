@@ -30,7 +30,6 @@ from altrepo_api.utils import (
     url_logging,
 )
 
-from .endpoints.last_changed import ErrataLastChanged
 from .endpoints.oval import OvalBranches, OvalExport
 from .endpoints.search import Search, ErrataIds, FindErratas
 from .endpoints.package import PackagesUpdates
@@ -39,7 +38,7 @@ from .namespace import get_namespace
 from .parsers import (
     errata_search_args,
     oval_export_args,
-    errata_last_chngs_args, find_erratas_args,
+    find_erratas_args,
 )
 from .serializers import (
     erratas_ids_json_list_model,
@@ -174,23 +173,6 @@ class routeErrataIds(Resource):
         url_logging(logger, g.url)
         args = {}
         w = ErrataIds(g.connection, **args)
-        return run_worker(worker=w, args=args)
-
-
-@ns.route(
-    "/last_changed",
-    doc={
-        "description": "Get list of last changed errata.",
-        "responses": GET_RESPONSES_400_404,
-    },
-)
-class routeErrataLastChanged(Resource):
-    @ns.expect(errata_last_chngs_args)
-    @ns.marshal_with(errata_last_changed_model)
-    def get(self):
-        url_logging(logger, g.url)
-        args = errata_last_chngs_args.parse_args(strict=True)
-        w = ErrataLastChanged(g.connection, **args)
         return run_worker(worker=w, args=args)
 
 

@@ -280,45 +280,6 @@ def test_errata_branches_updates(client, kwargs):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"status_code": 200},
-        {"branch": BRANCH_IN_DB, "status_code": 200},
-        {"branch": BRANCH_IN_DB, "type": ERRATA_TYPES_IN_DB[0], "status_code": 200},
-        {"branch": BRANCH_IN_DB, "type": ERRATA_TYPES_IN_DB[2], "status_code": 200},
-        {"branch": BRANCH_IN_DB3, "type": ERRATA_TYPES_IN_DB[1], "status_code": 200},
-        {"branch": BRANCH_IN_DB, "type": ERRATA_TYPES_IN_DB[1], "status_code": 404},
-        {"branch": BRANCH_IN_DB, "limit": 10, "status_code": 200},
-        {"branch": BRANCH_IN_DB_NO_ERRATA, "status_code": 404},
-        {"branch": BRANCH_NOT_IN_DB, "limit": 10, "status_code": 400},
-    ],
-)
-def test_errata_last_changed(client, kwargs):
-    url = url_for("api.errata_route_errata_last_changed")
-    params = {}
-    for k, v in kwargs.items():
-        if k in ("status_code",):
-            continue
-        if v is not None:
-            params[k] = v
-    response = client.get(url, query_string=params)
-    data = response.json
-    assert response.status_code == kwargs["status_code"]
-    if response.status_code == 200:
-        assert data["erratas"] != []
-        if kwargs.get("limit"):
-            assert data["length"] == kwargs["limit"]
-        else:
-            assert data["length"] <= 1000
-        for elem in data["erratas"]:
-            if kwargs.get("branch"):
-                assert elem["branch"] == kwargs["branch"]
-            if kwargs.get("type"):
-                assert elem["eh_type"] == kwargs["type"]
-            assert elem["vulnerabilities"] != []
-
-
-@pytest.mark.parametrize(
-    "kwargs",
-    [
         {"input": BU_ERRATA_ID_IN_DB_3, "status_code": 200},
         {"input": BU_ERRATA_ID_IN_DB_3, "branch": BRANCH_IN_DB, "status_code": 200},
         {
