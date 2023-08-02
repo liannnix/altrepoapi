@@ -365,5 +365,13 @@ class LookupTables:
         "FAILURE",
     ]
 
+    known_approvers = {
+        "p10": ["@maint", "@tester"],
+        "p9": ["@maint", "@tester"],
+        "p8": ["snowmix", "amakeenk", "jenya"],
+        "c10f1": ["@maint", "@tester"],
+        "c9f2": ["@maint", "@tester"],
+    }
+
 
 lut = LookupTables()

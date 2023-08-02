@@ -30,6 +30,7 @@ from .endpoints.build_dependency_set import TaskBuildDependencySet
 from .endpoints.task_build_dependency import TaskBuildDependency
 from .endpoints.find_images import FindImages
 from .endpoints.task_packages import TaskPackages
+from .endpoints.needs_approval import NeedsApproval
 from .parsers import (
     task_info_args,
     task_repo_args,
@@ -38,6 +39,7 @@ from .parsers import (
     task_find_pkgset_args,
     task_buid_dep_set_args,
     task_history_args,
+    needs_approval_args,
 )
 from .serializers import (
     task_info_model,
@@ -50,6 +52,7 @@ from .serializers import (
     task_history_model,
     find_images_by_task_model,
     task_packages_model,
+    needs_approval_model,
 )
 
 ns = get_namespace()
@@ -264,4 +267,21 @@ class routeTaskPackages(Resource):
         w = TaskPackages(g.connection, id, **args)
         if not w.check_task_id():
             ns.abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/needs_approval",
+    doc={
+        "description": "Get EPERM tasks which require approval",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeNeedsApproval(Resource):
+    @ns.expect(needs_approval_args)
+    @ns.marshal_with(needs_approval_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = needs_approval_args.parse_args(strict=True)
+        w = NeedsApproval(g.connection, **args)
         return run_worker(worker=w, args=args)
