@@ -106,9 +106,7 @@ class BackportHelper(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if not backport_possible(
-            self.args["from_branch"], self.args["into_branch"]
-        ):
+        if not backport_possible(self.args["from_branch"], self.args["into_branch"]):
             self.validation_results.append(
                 f'Branch {self.args["from_branch"]} not inherited from  {self.args["into_branch"]}'
             )
@@ -162,9 +160,7 @@ class BackportHelper(APIWorker):
         FROM_BRANCH_TABLE = "DepsFromBranch"
         INTO_BRANCH_TABLE = "DepsIntoBranch"
 
-        def fill_tmp_table(
-            table_name: str, branch: str, template: str, **kwargs
-        ):
+        def fill_tmp_table(table_name: str, branch: str, template: str, **kwargs):
             self.send_sql_request(
                 self.sql.create_tmp_table.format(
                     tmp_table=table_name,
@@ -200,9 +196,7 @@ class BackportHelper(APIWorker):
                         {
                             "name": _ext_table,
                             "structure": [("pkg_hash", "UInt64")],
-                            "data": [
-                                {"pkg_hash": pkg_hash} for pkg_hash in hashes
-                            ],
+                            "data": [{"pkg_hash": pkg_hash} for pkg_hash in hashes],
                         },
                     ]
                 }
@@ -240,9 +234,7 @@ class BackportHelper(APIWorker):
             ):
                 provides_index[prov.dp_name].append(prov)
 
-            unmet_dependencies = find_unmet_dependencies(
-                requires, provides_index
-            )
+            unmet_dependencies = find_unmet_dependencies(requires, provides_index)
 
             if dp_type == "binary":
                 unmet_dependencies = set(
@@ -288,9 +280,7 @@ class BackportHelper(APIWorker):
         dependencies = [
             {
                 "depth": depth,
-                "packages": sorted(
-                    packages, key=lambda p: (p["srpm"], p["name"])
-                ),
+                "packages": sorted(packages, key=lambda p: (p["srpm"], p["name"])),
             }
             for depth, packages in enumerate(levels.values(), start=1)
         ]
@@ -300,7 +290,7 @@ class BackportHelper(APIWorker):
             "count": sum(len(p["packages"]) for p in dependencies),
             "maxdepth": len(dependencies),
             "dependencies": sorted(
-                dependencies, key=lambda l: l["depth"], reverse=True
+                dependencies, key=lambda level: level["depth"], reverse=True
             ),
         }
         return res, 200
