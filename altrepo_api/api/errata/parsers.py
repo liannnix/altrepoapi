@@ -22,6 +22,7 @@ from altrepo_api.api.parser import (
     pkg_name_type,
     branch_name_type,
     errata_search_type,
+    positive_integer_type,
 )
 
 package_name_opt = parser.register_item(
@@ -75,12 +76,26 @@ last_chngs_limit_opt = parser.register_item(
     help="number of last errata to get",
     location="args",
 )
-input_val = parser.register_item(
+input_val_opt = parser.register_item(
     "input",
     type=errata_search_type,
     action="split",
-    required=True,
+    required=False,
     help="errata search arguments",
+    location="args",
+)
+limit_opt = parser.register_item(
+    "limit",
+    type=positive_integer_type,
+    required=False,
+    help="number of records",
+    location="args",
+)
+page_opt = parser.register_item(
+    "page",
+    type=positive_integer_type,
+    required=False,
+    help="number page",
     location="args",
 )
 
@@ -88,7 +103,6 @@ oval_export_args = parser.build_parser(package_name_opt, one_file_opt)
 errata_search_args = parser.build_parser(
     branch_name_opt, errata_pkg_name_opt, vuln_id_opt, errata_id_opt
 )
-errata_last_chngs_args = parser.build_parser(
-    branch_name_opt, last_chngs_limit_opt, errata_type_opt
+find_erratas_args = parser.build_parser(
+    input_val_opt, branch_name_opt, errata_type_opt, page_opt, limit_opt
 )
-find_erratas_args = parser.build_parser(input_val, branch_name_opt, errata_type_opt)

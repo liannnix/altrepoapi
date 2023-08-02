@@ -280,16 +280,7 @@ errata_bulletin AS (
     {branch}
     GROUP BY errata_id, eh_type, ref_link
 )
-SELECT
-    errata_id,
-    type,
-    tsk_id,
-    branch,
-    packages,
-    refs_links,
-    refs_types,
-    changed
-FROM (
+SELECT * FROM (
     SELECT * FROM errata_tasks
     UNION ALL
     SELECT * FROM errata_branches
@@ -320,7 +311,7 @@ FROM (
                   refs_types,
                   changed
 )
-{where}
+{where_clause}
 ORDER BY changed DESC
 """
 

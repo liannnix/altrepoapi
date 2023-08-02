@@ -16,9 +16,10 @@
 
 import re
 
-from typing import NamedTuple
+from typing import NamedTuple, Any
 
 from altrepo_api.api.base import APIWorker
+from altrepo_api.libs.pagination import Paginator
 
 from .common import ErrataID, get_erratas_by_search_conditions
 from ..sql import sql
@@ -170,9 +171,11 @@ class FindErratas(APIWorker):
         input_val: list[str] = self.args["input"][:] if self.args["input"] else []
         branch = self.args["branch"]
         eh_type = self.args["type"]
+        limit = self.args["limit"]
+        page = self.args["page"]
 
         branch_clause = f"AND pkgset_name = '{branch}'" if branch else ""
-        eh_type_clause = f" (type = '{eh_type}') AND " if eh_type else ""
+        where = [f"type = '{eh_type}'"] if eh_type else []
 
         conditions = [
             " OR ".join(
@@ -185,10 +188,18 @@ class FindErratas(APIWorker):
             for v in input_val[:]
         ]
 
-        where_clause = "WHERE " + eh_type_clause + f"({' OR '.join(conditions)})"
+        if conditions:
+            where.append(f"({' OR '.join(conditions)})")
+
+        if where:
+            where_clause = "WHERE " + " AND ".join(where)
+        else:
+            where_clause = ""
 
         response = self.send_sql_request(
-            self.sql.find_erratas.format(branch=branch_clause, where=where_clause)
+            self.sql.find_erratas.format(
+                branch=branch_clause, where_clause=where_clause
+            )
         )
         if not self.sql_status:
             return self.error
@@ -205,10 +216,25 @@ class FindErratas(APIWorker):
                 for i, vuln in enumerate(errata_inf.vuln_numbers)
             ]
             pkgs = [PackageInfo(*el)._asdict() for el in errata_inf.pkgs]
+
             erratas.append(
                 errata_inf._replace(vulnerabilities=vulns, packages=pkgs)._asdict()
             )
 
-        res = {"request_args": self.args, "length": len(erratas), "erratas": erratas}
+        paginator = Paginator(erratas, limit)
+        page_obj = paginator.get_page(page)
 
-        return res, 200
+        res: dict[str, Any] = {
+            "request_args": self.args,
+            "erratas": page_obj,
+            "length": len(page_obj),
+        }
+
+        return (
+            res,
+            200,
+            {
+                "Access-Control-Expose-Headers": "X-Total-Count",
+                "X-Total-Count": int(paginator.count),
+            },
+        )
