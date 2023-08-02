@@ -27,9 +27,8 @@ from ..exceptions import ApiUnauthorized
 class AuthLogout(APIWorker):
     """Authenticate an existing user and return an access token."""
 
-    def __init__(self, connection, payload, **kwargs):
+    def __init__(self, connection, **kwargs):
         self.conn = connection
-        self.payload = payload
         self.args = kwargs
         self.conn_redis = redis.from_url(namespace.REDIS_URL, db=0)
         self.refresh_token = request.cookies.get("refresh_token")

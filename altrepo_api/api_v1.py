@@ -41,6 +41,7 @@ from altrepo_api.api.site_maintainer import ns as site_maintainer_ns
 from altrepo_api.api.site_packageset import ns as site_packageset_ns
 from altrepo_api.api.errata import ns as errata_ns
 from altrepo_api.api.vulnerabilities import ns as vuln_ns
+from altrepo_api.api.auth import ns as auth_ns
 
 
 authorizations = {
@@ -62,6 +63,7 @@ api = Api(
 )
 
 # XXX: order is important here
+api.add_namespace(auth_ns)
 api.add_namespace(task_ns)
 api.add_namespace(task_progress_ns)
 api.add_namespace(package_ns)

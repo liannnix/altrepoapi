@@ -44,7 +44,7 @@ class routeAuthLogin(Resource):
     def post(self):
         url_logging(logger, g.url)
         args = login_args.parse_args(strict=True)
-        w = AuthLogin(g.connection, payload=ns.payload, **args)
+        w = AuthLogin(g.connection, **args)
         return run_worker(
             worker=w,
             args=args,
@@ -66,7 +66,7 @@ class routeAuthLogout(Resource):
     def post(self):
         url_logging(logger, g.url)
         args = {"token": self.post.token, "exp": self.post.exp}
-        w = AuthLogout(g.connection, payload=ns.payload, **args)
+        w = AuthLogout(g.connection, **args)
         return run_worker(
             worker=w,
             args=args,
@@ -87,7 +87,7 @@ class routeRefreshToken(Resource):
     def post(self):
         url_logging(logger, g.url)
         args = refresh_token_args.parse_args(strict=True)
-        w = RefreshToken(g.connection, payload=ns.payload, **args)
+        w = RefreshToken(g.connection, **args)
         return run_worker(
             worker=w,
             args=args,

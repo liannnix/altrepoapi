@@ -36,10 +36,9 @@ logger = get_logger(__name__)
 class AuthLogin(APIWorker):
     """Authenticate an existing user and return an access token."""
 
-    def __init__(self, connection, payload, **kwargs):
+    def __init__(self, connection, **kwargs):
         self.conn = connection
         self.conn_redis = redis.from_url(namespace.REDIS_URL, db=0)
-        self.payload = payload
         self.args = kwargs
         self.sql = sql
         super().__init__()
