@@ -14,11 +14,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from collections import defaultdict
 from re import match
 from typing import NamedTuple, Iterable, Literal
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
+from altrepo_api.api.task.endpoints.task_repo import LastRepoStateFromTask
 from altrepo_api.libs.librpm_functions import check_dependency_overlap
 
 from ..sql import sql
@@ -77,12 +79,15 @@ class BackportHelper(APIWorker):
         super().__init__()
 
     def _get_dependencies(
-        self, branch: str, dpnames: Iterable[str], dptype: Literal["provide", "require"]
+        self,
+        branch_deps_table_name: str,
+        dpnames: Iterable[str],
+        dptype: Literal["provide", "require"],
     ) -> set[Dependency]:
         _tmp_table = "tmp_names"
         response = self.send_sql_request(
             self.sql.get_dependencies.format(
-                branch=branch,
+                branch_deps_table_name=branch_deps_table_name,
                 archs=tuple(self.archs),
                 dptype=dptype,
                 tmp_table=_tmp_table,
@@ -101,7 +106,9 @@ class BackportHelper(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if not backport_possible(self.args["from_branch"], self.args["into_branch"]):
+        if not backport_possible(
+            self.args["from_branch"], self.args["into_branch"]
+        ):
             self.validation_results.append(
                 f'Branch {self.args["from_branch"]} not inherited from  {self.args["into_branch"]}'
             )
@@ -121,11 +128,13 @@ class BackportHelper(APIWorker):
 
     def get(self):
         def find_unmet_dependencies(
-            requirements: set[Dependency], providements: set[Dependency]
+            requirements: set[Dependency],
+            providements_index: dict[str, list[Dependency]],
         ) -> set[Dependency]:
             resolved = set()
             for req in requirements:
-                for prov in providements:
+                provs = providements_index.get(req.dp_name, [])
+                for prov in provs:
                     if req.arch in ("src", "noarch", prov.arch):
                         if check_dependency_overlap(
                             prov.dp_name,
@@ -150,10 +159,65 @@ class BackportHelper(APIWorker):
         packages_names = self.args["packages_names"]
         dp_type = self.args["dp_type"]
 
+        FROM_BRANCH_TABLE = "DepsFromBranch"
+        INTO_BRANCH_TABLE = "DepsIntoBranch"
+
+        def fill_tmp_table(
+            table_name: str, branch: str, template: str, **kwargs
+        ):
+            self.send_sql_request(
+                self.sql.create_tmp_table.format(
+                    tmp_table=table_name,
+                    columns=template.format(branch=branch),
+                ),
+                **kwargs,
+            )
+
+        for branch, table in (
+            (from_branch, FROM_BRANCH_TABLE),
+            (into_branch, INTO_BRANCH_TABLE),
+        ):
+            if branch in lut.taskless_branches:
+                fill_tmp_table(table, branch, self.sql.taskless_template)
+                if not self.sql_status:
+                    return self.error
+                continue
+
+            ls = LastRepoStateFromTask(self.conn, branch)
+            ls.build_repo_state()
+            if not ls.status:
+                return ls.error
+
+            kwargs = {}
+            hashes = ls.task_repo_pkgs
+            if not hashes:
+                _template = self.sql.taskless_template
+            else:
+                _ext_table = "ext_hashes"
+                _template = self.sql.task_template.format(ext_table=_ext_table)
+                kwargs = {
+                    "external_tables": [
+                        {
+                            "name": _ext_table,
+                            "structure": [("pkg_hash", "UInt64")],
+                            "data": [
+                                {"pkg_hash": pkg_hash} for pkg_hash in hashes
+                            ],
+                        },
+                    ]
+                }
+
+            fill_tmp_table(table, branch, _template, **kwargs)
+            if not self.sql_status:
+                return self.error
+
         # Use virtual "src" architecture to resolve "source" dependency type.
         self.archs = ["noarch", "src"]
         if self.args["archs"]:
             self.archs += self.args["archs"]
+        else:
+            # if there are 'noarch' and 'src' only then add default arch ('x86_64')
+            self.archs += ["x86_64"]
 
         depth = 0
         dependencies_names = set(packages_names)
@@ -165,13 +229,20 @@ class BackportHelper(APIWorker):
             dependencies_names = dependencies_names.difference(memory)
 
             requires = self._get_dependencies(
-                from_branch, dependencies_names, "require"
-            )
-            provides = self._get_dependencies(
-                into_branch, {d.dp_name for d in requires}, "provide"
+                FROM_BRANCH_TABLE, dependencies_names, "require"
             )
 
-            unmet_dependencies = find_unmet_dependencies(requires, provides)
+            provides_index = defaultdict(list)
+            for prov in self._get_dependencies(
+                INTO_BRANCH_TABLE,
+                {req.dp_name for req in requires},
+                "provide",
+            ):
+                provides_index[prov.dp_name].append(prov)
+
+            unmet_dependencies = find_unmet_dependencies(
+                requires, provides_index
+            )
 
             if dp_type == "binary":
                 unmet_dependencies = set(
@@ -186,7 +257,12 @@ class BackportHelper(APIWorker):
 
             dependencies_names = {d.dp_name for d in unmet_dependencies}
 
-            backport_list.append((depth, {Package(*d[:6]) for d in unmet_dependencies}))
+            backport_list.append(
+                (
+                    depth,
+                    {Package(*d[:6]) for d in unmet_dependencies | requires},
+                )
+            )
 
             depth += 1
 
@@ -205,29 +281,26 @@ class BackportHelper(APIWorker):
                 max_depth = depth
 
         # back to levels
+        levels = defaultdict(list)
+        for package, depth in uniq_packages.items():
+            levels[depth].append(package._asdict())
+
         dependencies = [
             {
                 "depth": depth,
-                "packages": [
-                    package._asdict()
-                    for package in sorted(
-                        (
-                            p
-                            for p, _ in filter(
-                                lambda x: x[1] == depth, uniq_packages.items()
-                            )
-                        ),
-                        key=lambda p: (p.srpm, p.name),
-                    )
-                ],
+                "packages": sorted(
+                    packages, key=lambda p: (p["srpm"], p["name"])
+                ),
             }
-            for depth in range(max_depth, 0, -1)
+            for depth, packages in enumerate(levels.values(), start=1)
         ]
 
         res = {
             "request_args": self.args,
-            "count": len(dependencies),
-            "maxdepth": max_depth,
-            "dependencies": dependencies,
+            "count": sum(len(p["packages"]) for p in dependencies),
+            "maxdepth": len(dependencies),
+            "dependencies": sorted(
+                dependencies, key=lambda l: l["depth"], reverse=True
+            ),
         }
         return res, 200
