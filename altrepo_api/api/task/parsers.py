@@ -23,6 +23,7 @@ from altrepo_api.api.parser import (
     pkg_name_type,
     date_string_type,
     pkg_name_list_type,
+    acl_group_type,
 )
 
 # register parser items
@@ -158,6 +159,14 @@ end_date_opt = parser.register_item(
     help="task history end date (YYYY-MM-DD)",
     location="args",
 )
+acl_group = parser.register_item(
+    "acl_group",
+    type=acl_group_type,
+    required=True,
+    choices=("maint", "tester"),
+    help="ACL-group from which approval is required",
+    location="args",
+)
 
 # build parsers
 task_info_args = parser.build_parser(try_opt, iteration_opt)
@@ -178,3 +187,4 @@ task_buid_dep_set_args = parser.build_parser(arch_opt)
 task_history_args = parser.build_parser(
     branch, start_task_opt, end_task_opt, start_date_opt, end_date_opt
 )
+needs_approval_args = parser.build_parser(acl_group, branch_list_opt)

@@ -923,5 +923,168 @@ GROUP BY
     pkg_arch
 """
 
+    get_groups_memberships = """
+SELECT
+    acl_for,
+    acl_branch,
+    argMax(acl_list, acl_date),
+    max(acl_date)
+FROM Acl
+WHERE acl_branch IN {branches}
+    AND acl_for IN {groups}
+GROUP BY acl_for, acl_branch
+"""
+
+    get_all_eperm_tasks_with_subtasks = """
+SELECT
+    task_id,
+    task_repo,
+    task_owner,
+    any(task_changed),
+    groupArray(subtask_id)
+FROM (
+    SELECT
+        task_id,
+        task_repo,
+        task_owner,
+        subtask_id,
+        task_changed
+    FROM Tasks
+    WHERE (task_id, task_changed) IN (
+        SELECT task_id, last_changed FROM (
+            SELECT
+                task_id,
+                argMax(task_state, task_changed) AS last_state,
+                argMax(task_testonly, task_changed) AS last_testonly,
+                max(task_changed) AS last_changed
+            FROM TaskStates
+            GROUP BY task_id
+            HAVING last_state='EPERM' AND last_testonly=0
+        )
+    )
+        AND task_repo IN {branches}
+        AND subtask_deleted=0
+)
+GROUP BY
+    task_id,
+    task_repo,
+    task_owner
+"""
+
+    get_all_approvals_for_tasks = """
+SELECT
+    task_id,
+    groupArray((subtask_id, max_tapp_type, tapp_name))
+FROM (
+    SELECT
+        task_id,
+        subtask_id,
+        argMax(tapp_type, ts) AS max_tapp_type,
+        argMax(tapp_revoked, ts) AS max_tapp_revoked,
+        tapp_name
+    FROM TaskApprovals
+    WHERE task_id IN (
+        SELECT task_id FROM {tmp_table}
+    )
+    GROUP BY
+        task_id,
+        subtask_id,
+        tapp_name
+    HAVING max_tapp_revoked=0
+)
+GROUP BY task_id
+"""
+
+    get_tasks_short_info = """
+SELECT DISTINCT
+    task_id,
+    task_state,
+    task_runby,
+    task_try,
+    task_iter,
+    task_failearly,
+    task_shared,
+    task_depends,
+    task_testonly,
+    task_message,
+    task_version,
+    task_prev,
+    task_changed
+FROM TaskStates
+INNER JOIN
+(
+    SELECT
+        task_id,
+        task_try,
+        task_iter,
+        task_changed
+    FROM TaskIterations
+    WHERE (task_id, task_changed) IN (
+        SELECT task_id, task_changed FROM {tmp_table}
+    )
+) AS IT USING (task_id, task_changed)
+"""
+
+    get_subtasks_short_info = """
+SELECT
+    task_id,
+    groupArray(
+        (
+            pkg_name,
+            pkg_version,
+            pkg_release,
+            pkg_filename,
+            subtask_id,
+            subtask_type,
+            subtask_package,
+            subtask_userid,
+            subtask_dir,
+            subtask_sid,
+            subtask_pkg_from,
+            subtask_tag_author,
+            subtask_tag_id,
+            subtask_tag_name,
+            subtask_srpm,
+            subtask_srpm_name,
+            subtask_srpm_evr,
+            subtask_changed
+        )
+    )
+FROM
+(
+    SELECT DISTINCT *
+    FROM Tasks
+    WHERE (task_id, task_changed) IN (
+        SELECT task_id, task_changed FROM {tmp_table}
+    ) AND subtask_deleted = 0
+) AS TS
+LEFT JOIN
+(
+    SELECT
+        task_id,
+        subtask_id,
+        pkg_name,
+        pkg_version,
+        pkg_release,
+        pkg_filename
+    FROM Packages
+    INNER JOIN
+    (
+        SELECT DISTINCT
+            task_id,
+            subtask_id,
+            argMax(titer_srcrpm_hash, task_changed) AS pkg_hash
+        FROM TaskIterations
+        WHERE (task_id, task_changed) IN (
+            SELECT task_id, task_changed FROM {tmp_table}
+        )
+        GROUP BY
+            task_id,
+            subtask_id
+    ) AS TI USING (pkg_hash)
+) AS TP USING (task_id, subtask_id)
+GROUP BY task_id
+"""
+
 
 sql = SQL()
