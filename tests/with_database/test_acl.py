@@ -149,4 +149,4 @@ def test_acl_find_groups(client, kwargs):
         assert len(branches) == len(kwargs["branches"])
         for res, test in zip(branches, kwargs["branches"]):
             assert res["name"] == test["name"]
-            assert res["groups"] == test["groups"]
+            assert set(res["groups"]) == set(test["groups"])

@@ -70,7 +70,7 @@ GROUP BY
 SELECT DISTINCT
     acl_branch,
     groupArray(acl_for) AS acl_groups
-FROM mv_last_acl
+FROM last_acl
 ARRAY JOIN acl_list
 WHERE (acl_for LIKE '@%')
     AND (acl_list = '{nickname}')
