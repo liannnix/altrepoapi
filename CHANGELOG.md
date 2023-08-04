@@ -6,6 +6,18 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.14.4] - 2023-08-04
+
+Regular API code updates and fixes.
+
+### Added
+- `task/needs_approval` route
+### Changed
+### Fixed
+- `dependencies/backport_helper`: implementation logic
+- `acl/maintainer_groups`: fix SQL request and tests
+- using MVs in SQL requests
+
 ## [1.14.3] - 2023-07-14
 
 Regular API code updates and fixes.
