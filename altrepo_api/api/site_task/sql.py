@@ -229,7 +229,7 @@ LEFT JOIN
         chlog_name,
         chlog_date,
         chlog_text
-    FROM mv_src_packages_last_changelog
+    FROM SrcPackagesLastChangelog
     WHERE pkg_hash IN (
         SELECT pkg_hash
         FROM {tmp_table}
