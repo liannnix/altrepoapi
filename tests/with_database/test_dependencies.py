@@ -144,6 +144,14 @@ def test_source_package_dependencies(client, kwargs):
         {
             "from_branch": "p10",
             "into_branch": "c9f2",
+            "packages_names": ["python3"],
+            "dp_type": "binary",
+            "archs": [],
+            "status_code": 200,
+        },
+        {
+            "from_branch": "p10",
+            "into_branch": "c9f2",
             "packages_names": ["this-package-doesn't-exist"],
             "dp_type": "binary",
             "archs": ["x86_64"],
@@ -192,4 +200,7 @@ def test_backport_helper(client, kwargs):
                     assert package["epoch"] >= 0
                     assert package["version"] != ""
                     assert package["release"] != ""
-                    assert package["arch"] != "" and package["arch"] in kwargs["archs"]
+                    assert package["arch"] != "" and package["arch"] in (
+                        (kwargs["archs"] if kwargs["archs"] else ["x86_64"])
+                        + ["noarch"]
+                    )
