@@ -230,7 +230,7 @@ class routePackageRepocop(Resource):
     )
     @ns.expect(repocop_json_list_model)
     @ns.doc(security="BasicAuth")
-    @auth_required
+    @auth_required(admin_only=True)
     def post(self):
         url_logging(logger, g.url)
         args = {}

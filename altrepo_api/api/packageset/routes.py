@@ -99,7 +99,7 @@ class routeRepositoryStatus(Resource):
     )
     @ns.expect(pkgset_status_post_model)
     @ns.doc(security="BasicAuth")
-    @auth_required
+    @auth_required(admin_only=True)
     def post(self):
         url_logging(logger, g.url)
         args = {}

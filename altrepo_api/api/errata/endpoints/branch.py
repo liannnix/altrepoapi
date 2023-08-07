@@ -14,6 +14,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from altrepo_api.utils import sort_branches
+
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.parser import errata_id_type
 
@@ -102,3 +104,26 @@ class BranchesUpdates(APIWorker):
         ]
 
         return {"branches_updates": [bu.asdict() for bu in branches_updates]}, 200
+
+
+class ErrataBranches(APIWorker):
+    """Get errata branches."""
+
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def get(self):
+        response = self.send_sql_request(self.sql.get_errata_branches)
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error(
+                {"message": "No data not found in database"},
+            )
+        branches = [branch for branch in sort_branches([el[0] for el in response])]
+        res = {"length": len(branches), "branches": branches}
+        return res, 200
+

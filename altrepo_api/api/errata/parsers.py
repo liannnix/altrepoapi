@@ -21,6 +21,8 @@ from altrepo_api.api.parser import (
     errata_id_type,
     pkg_name_type,
     branch_name_type,
+    errata_search_type,
+    positive_integer_type,
 )
 
 package_name_opt = parser.register_item(
@@ -58,8 +60,49 @@ errata_pkg_name_opt = parser.register_item(
 vuln_id_opt = parser.register_item(
     "vuln_id", type=str, required=False, help="CVE, BDU or Bug ID", location="args"
 )
+errata_type_opt = parser.register_item(
+    "type",
+    type=str,
+    choices=("task", "branch", "bulletin"),
+    required=False,
+    help="errata type [task|branch|bulletin]",
+    location="args",
+)
+last_chngs_limit_opt = parser.register_item(
+    "limit",
+    type=int,
+    required=False,
+    default=1000,
+    help="number of last errata to get",
+    location="args",
+)
+input_val_opt = parser.register_item(
+    "input",
+    type=errata_search_type,
+    action="split",
+    required=False,
+    help="errata search arguments",
+    location="args",
+)
+limit_opt = parser.register_item(
+    "limit",
+    type=positive_integer_type,
+    required=False,
+    help="number of records",
+    location="args",
+)
+page_opt = parser.register_item(
+    "page",
+    type=positive_integer_type,
+    required=False,
+    help="number page",
+    location="args",
+)
 
 oval_export_args = parser.build_parser(package_name_opt, one_file_opt)
 errata_search_args = parser.build_parser(
     branch_name_opt, errata_pkg_name_opt, vuln_id_opt, errata_id_opt
+)
+find_erratas_args = parser.build_parser(
+    input_val_opt, branch_name_opt, errata_type_opt, page_opt, limit_opt
 )

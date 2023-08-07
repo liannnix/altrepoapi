@@ -153,7 +153,7 @@ class routeImageStatus(Resource):
     )
     @ns.expect(img_json_model)
     @ns.doc(security="BasicAuth")
-    @auth_required
+    @auth_required(admin_only=True)
     def post(self):
         url_logging(logger, g.url)
         args = {}
@@ -186,7 +186,7 @@ class routeImageTagStatus(Resource):
     )
     @ns.expect(img_tag_json_model)
     @ns.doc(security="BasicAuth")
-    @auth_required
+    @auth_required(admin_only=True)
     def post(self):
         url_logging(logger, g.url)
         args = {}

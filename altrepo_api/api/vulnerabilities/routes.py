@@ -19,6 +19,7 @@ from flask_restx import Resource
 
 from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
+from .endpoints.tasks import TaskVulnerabilities
 
 from .namespace import get_namespace
 from .parsers import (
@@ -30,7 +31,7 @@ from .parsers import (
     branch_vulnerabilities_args,
     maintainer_vulnerabilities_args,
 )
-from .serializers import vulnerability_info_model, cve_packages_model
+from .serializers import vulnerability_info_model, cve_packages_model, cve_task_model
 from .endpoints.vuln import VulnInfo
 from .endpoints.cve import VulnerablePackageByCve
 from .endpoints.packages import PackageOpenVulnerabilities
@@ -163,4 +164,28 @@ class routeMaintainerOpenVulnerabilities(Resource):
         url_logging(logger, g.url)
         args = maintainer_vulnerabilities_args.parse_args(strict=True)
         w = MaintainerOpenVulnerabilities(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/task/<int:id>",
+    doc={
+        "params": {"id": "task ID"},
+        "description": (
+            "Get a list of fixed CVEs from an task "
+            "with one of the following states: "
+            "EPERM, TESTED, or DONE."
+        ),
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeTaskVulnerabilities(Resource):
+    # @ns.expect()
+    @ns.marshal_with(cve_task_model)
+    def get(self, id):
+        url_logging(logger, g.url)
+        args = {}
+        w = TaskVulnerabilities(g.connection, id, **args)
+        if not w.check_task_id():
+            ns.abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
         return run_worker(worker=w, args=args)

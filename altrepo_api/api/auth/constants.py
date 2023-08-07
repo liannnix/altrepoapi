@@ -14,7 +14,5 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from .namespace import get_namespace
-from . import routes
-
-ns = get_namespace()
+REFRESH_TOKEN_KEY = "refresh-token:{user}"
+BLACKLISTED_ACCESS_TOKEN_KEY = "blacklisted:access-token:{token}"

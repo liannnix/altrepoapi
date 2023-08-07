@@ -128,3 +128,51 @@ cve_packages_model = ns.model(
         ),
     },
 )
+
+
+cve_task_package_vulns_el_model = ns.model(
+    "CveTaskPackageVulnerableElementModel",
+    {
+        "number": fields.String(description="vulnerability number"),
+        "type": fields.String(description="vulnerability type"),
+        "link": fields.String(description="vulnerability link")
+    }
+)
+cve_task_packages_el_model = ns.model(
+    "CveTaskPackagesElementModel",
+    {
+        "subtask": fields.Integer(description="subtasks id"),
+        "pkghash": fields.String(description="package hash UInt64 as string"),
+        "pkg_name": fields.String(description="source package name"),
+        "pkg_version": fields.String(description="package version"),
+        "pkg_release": fields.String(description="package release"),
+        "branch": fields.String(description="package set name"),
+        "errata_id": fields.String(description="errata id"),
+        "errata_link": fields.String(description="errata link to errata.altlinux.org"),
+        "vulnerabilities": fields.Nested(
+            cve_task_package_vulns_el_model,
+            description="fixed vulnerabilities list",
+            as_list=True,
+        )
+    }
+)
+cve_task_model = ns.model(
+    "CveVulnerableTaskModel",
+    {
+        "task_id": fields.Integer(description="task id"),
+        "task_repo": fields.String(description="repository name"),
+        "task_state": fields.String(description="task state"),
+        "task_owner": fields.String(description="task owner"),
+        "task_try": fields.Integer(description="task try number"),
+        "task_iter": fields.Integer(description="task iteration number"),
+        "task_testonly": fields.Integer(description="task test only"),
+        "task_changed": fields.DateTime(description="task changed"),
+        "task_message": fields.String(description="task message"),
+        "dependencies": fields.List(fields.Integer, description="task dependencies"),
+        "packages": fields.Nested(
+            cve_task_packages_el_model,
+            description="vulnerable packages information",
+            as_list=True,
+        )
+    }
+)

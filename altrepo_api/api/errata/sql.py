@@ -207,5 +207,113 @@ FROM (
 )
 """
 
+    get_errata_branches = """
+SELECT DISTINCT pkgset_name
+FROM ErrataHistory
+WHERE pkgset_name != 'icarus'
+AND pkgset_name IN (
+    SELECT pkgset_name
+    FROM (
+        SELECT
+            pkgset_name,
+            argMax(rs_show, ts) AS show
+        FROM RepositoryStatus
+        GROUP BY pkgset_name
+    )
+    WHERE show = 1
+)
+"""
+
+    find_erratas = """
+WITH errata_tasks AS (
+    SELECT
+        errata_id,
+        argMax(eh_type, ts)  AS type,
+        argMax(task_id, ts) AS tsk_id,
+        argMax(pkgset_name, ts) AS branch,
+        groupUniqArray((pkg_hash, pkg_name, pkg_version, pkg_release)) as packages,
+        argMax(eh_references.link, ts) AS refs_links,
+        argMax(eh_references.type, ts) AS refs_types,
+        max(eh_updated) AS changed
+    FROM ErrataHistory
+    WHERE eh_type = 'task' AND errata_id IN (
+        SELECT eid
+        FROM (
+            SELECT
+                errata_id_noversion,
+                argMax(errata_id, eh_updated) AS eid
+            FROM ErrataHistory
+            WHERE task_state = 'DONE'
+            {branch}
+            GROUP BY errata_id_noversion
+        )
+    )
+    GROUP BY errata_id
+),
+errata_branches AS (
+    SELECT
+        errata_id,
+        argMax(eh_type, ts)  AS type,
+        argMax(task_id, ts) AS tsk_id,
+        argMax(pkgset_name, ts) AS branch,
+        groupUniqArray((pkg_hash, pkg_name, pkg_version, pkg_release)) as packages,
+        argMax(eh_references.link, ts) AS refs_links,
+        argMax(eh_references.type, ts) AS refs_types,
+        max(eh_updated) AS changed
+    FROM ErrataHistory
+    WHERE eh_type = 'branch'
+    {branch}
+    GROUP BY errata_id
+),
+errata_bulletin AS (
+    SELECT
+        errata_id,
+        argMax(eh_type, ts)  AS type,
+        argMax(task_id, ts) AS tsk_id,
+        argMax(pkgset_name, ts) AS branch,
+        groupUniqArray((pkg_hash, pkg_name, pkg_version, pkg_release)) as packages,
+        arrayJoin(eh_references.link) AS ref_link,
+        argMax(eh_references.type, ts) AS refs_types,
+        max(eh_updated) AS changed
+    FROM ErrataHistory
+    WHERE eh_type == 'bulletin'
+    {branch}
+    GROUP BY errata_id, eh_type, ref_link
+)
+SELECT * FROM (
+    SELECT * FROM errata_tasks
+    UNION ALL
+    SELECT * FROM errata_branches
+    UNION ALL
+    SELECT errata_id,
+           type,
+           tsk_id,
+           branch,
+           if(type='bulletin', groupUniqArray((PKGS.pkghash, PKGS.pkg_name, PKGS.pkg_version, PKGS.pkg_release)), packages) AS pkgs,
+           groupUniqArray(ref_link) AS ref_links,
+           refs_types,
+           changed
+           FROM errata_bulletin
+           LEFT JOIN (
+                SELECT errata_id,
+                       argMax(pkg_hash, ts) AS pkghash,
+                       argMax(pkg_name, ts) AS pkg_name,
+                       argMax(pkg_version, ts) AS pkg_version,
+                       argMax(pkg_release, ts) AS pkg_release
+                FROM ErrataHistory
+                GROUP BY errata_id
+           ) AS PKGS ON PKGS.errata_id = ref_link
+           GROUP BY errata_id,
+                  type,
+                  tsk_id,
+                  branch,
+                  packages,
+                  refs_types,
+                  changed
+)
+{where_clause}
+ORDER BY changed DESC
+"""
+
 
 sql = SQL()

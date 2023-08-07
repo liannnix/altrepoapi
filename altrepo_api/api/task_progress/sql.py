@@ -178,9 +178,9 @@ FROM
 (
     SELECT task_id,
            subtask_id,
-           tapp_type,
+           argMax(tapp_type, ts) as tapp_type,
            tapp_name,
-           tapp_message,
+           argMax(tapp_message, ts) as tapp_message,
            argMax(tapp_revoked, ts) AS revoked
     FROM TaskApprovals
     WHERE task_id NOT IN (
@@ -200,7 +200,7 @@ FROM
             GROUP BY task_id, subtask_id
         ) WHERE sub_del = 1
     )
-    GROUP BY task_id, subtask_id, tapp_type, tapp_name, tapp_message
+    GROUP BY task_id, subtask_id, tapp_name
 )
 WHERE task_id IN (SELECT task_id FROM {tmp_table})
     AND revoked = 0

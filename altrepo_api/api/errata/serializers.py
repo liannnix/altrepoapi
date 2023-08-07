@@ -165,3 +165,62 @@ errata_ids_model = ns.model(
     "ErrataIdsListModel",
     {"errata_ids": fields.List(fields.String, description="errata ids list")},
 )
+
+pkgs_el_model = ns.model(
+    "PackagesElementModel",
+    {
+        "pkghash": fields.String(description="package hash UInt64 as string"),
+        "pkg_name": fields.String(description="package name"),
+        "pkg_version": fields.String(description="package version"),
+        "pkg_release": fields.String(description="package release"),
+    },
+)
+
+vulns_el_model = ns.model(
+    "VulnerabilitiesElementModel",
+    {
+        "number": fields.String(description="vulnerability number"),
+        "type": fields.String(description="vulnerability type"),
+    },
+)
+errata_last_changed_el_model = ns.model(
+    "ErrataLastChangedElementModel",
+    {
+        "errata_id": fields.String(description="errata ID"),
+        "eh_type": fields.String(description=""),
+        "task_id": fields.Integer(description="task ID"),
+        "changed": fields.DateTime(description="changed"),
+        "branch": fields.String(description="package set name"),
+        "packages": fields.Nested(
+            pkgs_el_model,
+            description="affected packages",
+            as_list=True,
+        ),
+        "vulnerabilities": fields.Nested(
+            vulns_el_model,
+            description="fixed vulnerabilities list",
+            as_list=True,
+        ),
+    },
+)
+errata_last_changed_model = ns.model(
+    "ErrataLastChangedModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of erratas"),
+        "erratas": fields.Nested(
+            errata_last_changed_el_model,
+            description="erratas last changed",
+            as_list=True,
+        ),
+    },
+)
+
+
+errata_branches_model = ns.model(
+    "ErrataBranchesModel",
+    {
+        "length": fields.Integer(description="number of branches"),
+        "branches": fields.List(fields.String, description="list of branches")
+    }
+)

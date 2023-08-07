@@ -14,7 +14,10 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from .namespace import get_namespace
-from . import routes
+from flask_restx import Namespace
 
-ns = get_namespace()
+namespace = Namespace("auth", description="Authentication")
+
+
+def get_namespace():
+    return namespace

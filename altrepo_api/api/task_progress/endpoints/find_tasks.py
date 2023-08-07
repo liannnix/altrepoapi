@@ -355,8 +355,6 @@ class FindTasks(APIWorker):
                         "data": [
                             {"task_id": el[0], "subtask_id": el[1]}
                             for el in subtasks.keys()
-                            if tasks[el[0]].task_state
-                            in ("BUILDING", "FAILED", "FAILING")
                         ],
                     }
                 ],
