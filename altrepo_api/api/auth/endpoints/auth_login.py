@@ -27,7 +27,6 @@ from altrepo_api.settings import namespace
 from altrepo_api.utils import get_fingerprint_to_md5, get_logger
 from ..constants import REFRESH_TOKEN_KEY
 from ..exceptions import ApiUnauthorized
-from ..sql import sql
 from ...auth.auth import check_auth_ldap
 
 logger = get_logger(__name__)
@@ -40,7 +39,6 @@ class AuthLogin(APIWorker):
         self.conn = connection
         self.conn_redis = redis.from_url(namespace.REDIS_URL, db=0)
         self.args = kwargs
-        self.sql = sql
         super().__init__()
 
     def check_params(self):
