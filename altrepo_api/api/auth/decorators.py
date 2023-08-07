@@ -17,7 +17,7 @@ import jwt
 
 from functools import wraps
 from flask import request
-from typing import Any, Union
+from typing import Any
 
 from .endpoints.blacklisted_token import BlacklistedAccessToken
 from .exceptions import ApiUnauthorized, ApiForbidden
@@ -27,14 +27,14 @@ from altrepo_api.settings import namespace, AccessGroups
 
 
 def auth_required(
-    _func=None, *, ldap_group: Union[AccessGroups, None] = None, admin_only=False
+    _func=None, *, ldap_groups: list[AccessGroups] = [], admin_only=False
 ):
     def _auth_required(func):
         """Execute function if request contains valid access token."""
 
         @wraps(func)
         def decorated(*args, **kwargs):
-            _ = _check_access_auth(admin_only=admin_only, ldap_group=ldap_group)
+            _ = _check_access_auth(admin_only=admin_only, ldap_groups=ldap_groups)
 
             return func(*args, **kwargs)
 
@@ -46,39 +46,27 @@ def auth_required(
         return _auth_required(_func)
 
 
-def token_required(f):
-    """Execute function if request contains valid access token."""
-
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token_payload = _check_access_token()
-        for name, val in token_payload.items():
-            setattr(decorated, name, val)
-        return f(*args, **kwargs)
-
-    return decorated
-
-
 def _check_access_auth(
-    admin_only: bool = False, ldap_group: Union[AccessGroups, None] = None
+    admin_only: bool = False, ldap_groups: list[AccessGroups] = []
 ) -> dict[str, Any]:
     token = request.headers.get("Authorization")
 
     if not token:
         raise ApiUnauthorized(description="Unauthorized", admin_only=admin_only)
 
-    ldap_group_str = None
-    if ldap_group is not None:
-        ldap_group_str = namespace.ACCESS_GROUPS[ldap_group]
+    ldap_groups_values = []
+    for group in ldap_groups:
+        ldap_group_str = namespace.ACCESS_GROUPS[group]
         if not ldap_group_str:
             raise ApiUnauthorized(
                 description="Unauthorized",
                 admin_only=admin_only,
                 error="Configuration error",
-                error_description=f"{ldap_group.name} not set in configuration",
+                error_description=f"{group.name} not set in configuration",
             )
+        ldap_groups_values.append(ldap_group_str)
 
-    result = check_auth(token, ldap_group_str)
+    result = check_auth(token, ldap_groups_values)
 
     if not result.verified:
         raise ApiUnauthorized(
@@ -95,6 +83,19 @@ def _check_access_auth(
         raise ApiForbidden()
 
     return result.value
+
+
+def token_required(f):
+    """Execute function if request contains valid access token."""
+
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token_payload = _check_access_token()
+        for name, val in token_payload.items():
+            setattr(decorated, name, val)
+        return f(*args, **kwargs)
+
+    return decorated
 
 
 def _check_access_token():
