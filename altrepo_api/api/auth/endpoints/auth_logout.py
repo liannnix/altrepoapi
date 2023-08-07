@@ -25,11 +25,17 @@ from ..exceptions import ApiUnauthorized
 
 
 class AuthLogout(APIWorker):
-    """Authenticate an existing user and return an access token."""
+    """
+    Implementing user logout using access and refresh tokens.
+    If the access token is valid, it is added to the blacklist.
+    The refresh token for user logout is taken from cookie files.
+    """
 
-    def __init__(self, connection, **kwargs):
+    def __init__(self, connection, token: str, token_exp: int, **kwargs):
         self.conn = connection
         self.args = kwargs
+        self.token = token
+        self.token_exp = token_exp
         self.conn_redis = redis.from_url(namespace.REDIS_URL, db=0)
         self.refresh_token = request.cookies.get("refresh_token")
         super().__init__()
@@ -38,7 +44,7 @@ class AuthLogout(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.refresh_token is False:
+        if self.refresh_token is None:
             self.validation_results.append("User is not authorized")
 
         if self.validation_results != []:
@@ -47,14 +53,13 @@ class AuthLogout(APIWorker):
             return True
 
     def post(self):
-        access_token = self.args["token"]
         token_payload = jwt.decode(
-            access_token, namespace.ADMIN_PASSWORD, algorithms=["HS256"]
+            self.token, namespace.ADMIN_PASSWORD, algorithms=["HS256"]
         )
         user_sessions = self.conn_redis.hgetall(
             REFRESH_TOKEN_KEY.format(user=token_payload.get("nickname", ""))
         )
-        blacklisted = BlacklistedAccessToken(access_token, self.args["exp"])
+        blacklisted = BlacklistedAccessToken(self.token, self.token_exp)
         check_access_token = blacklisted.check_blacklist()
 
         if check_access_token:

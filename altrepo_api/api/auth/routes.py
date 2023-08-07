@@ -65,8 +65,8 @@ class routeAuthLogout(Resource):
     @token_required
     def post(self):
         url_logging(logger, g.url)
-        args = {"token": self.post.token, "exp": self.post.exp}
-        w = AuthLogout(g.connection, **args)
+        args = {}
+        w = AuthLogout(g.connection, self.post.token, self.post.exp, **args)
         return run_worker(
             worker=w,
             args=args,
