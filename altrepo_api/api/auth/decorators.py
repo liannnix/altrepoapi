@@ -23,11 +23,11 @@ from .endpoints.blacklisted_token import BlacklistedAccessToken
 from .exceptions import ApiUnauthorized, ApiForbidden
 from .auth import check_auth
 
-from altrepo_api.settings import namespace
+from altrepo_api.settings import namespace, AccessGroups
 
 
 def auth_required(
-    _func=None, *, ldap_group: Union[namespace.AG, None] = None, admin_only=False
+    _func=None, *, ldap_group: Union[AccessGroups, None] = None, admin_only=False
 ):
     def _auth_required(func):
         """Execute function if request contains valid access token."""
@@ -60,7 +60,7 @@ def token_required(f):
 
 
 def _check_access_auth(
-    admin_only: bool = False, ldap_group: Union[namespace.AG, None] = None
+    admin_only: bool = False, ldap_group: Union[AccessGroups, None] = None
 ) -> dict[str, Any]:
     token = request.headers.get("Authorization")
 
