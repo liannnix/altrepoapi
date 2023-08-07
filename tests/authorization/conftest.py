@@ -8,7 +8,7 @@ from flask_restx import Api, Resource
 os.environ["ALTREPO_API_CONFIG"] = "./tests/api.conf"
 
 from altrepo_api import read_config  # noqa
-from altrepo_api.utils import CustomJSONEncoder, get_logger
+from altrepo_api.utils import json_default, get_logger
 from altrepo_api.api.auth.decorators import auth_required
 
 from tests.authorization.assets import slapdtest
@@ -71,7 +71,7 @@ def make_app():
         return {"message": message}, 500
 
     app.config["BUNDLE_ERRORS"] = True
-    app.config["RESTX_JSON"] = {"cls": CustomJSONEncoder}
+    app.config["RESTX_JSON"] = {"default": json_default}
 
     app.register_blueprint(bp)
 
