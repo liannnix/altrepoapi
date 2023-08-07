@@ -16,6 +16,7 @@ from tests.authorization.test_api_authorization import (
     TEST_ROUTE_ADMIN_AUTH,
     TEST_ROUTE_LDAP_USER_AUTH,
     TEST_ROUTE_LDAP_ADMIN_AUTH,
+    TEST_ROUTE_LDAP_GROUPS_AUTH,
 )
 
 
@@ -48,7 +49,7 @@ def make_app():
     class AuthLDAPAdmin(Resource):
         @api.doc(description="API LDAP authorization check")
         @api.doc(security="BasicAuth")
-        @auth_required(ldap_group=read_config.settings.AG.API_ADMIN, admin_only=True)
+        @auth_required(ldap_groups=[read_config.settings.AG.API_ADMIN], admin_only=True)
         def get(self):
             return {"message": "authorized"}, 200
 
@@ -56,7 +57,20 @@ def make_app():
     class AuthLDAPUser(Resource):
         @api.doc(description="API LDAP authorization check")
         @api.doc(security="BasicAuth")
-        @auth_required(ldap_group=read_config.settings.AG.API_USER)
+        @auth_required(ldap_groups=[read_config.settings.AG.API_USER])
+        def get(self):
+            return {"message": "authorized"}, 200
+
+    @api.route(TEST_ROUTE_LDAP_GROUPS_AUTH)
+    class AuthLDAPGroups(Resource):
+        @api.doc(description="API LDAP groups authorization check")
+        @api.doc(security="BasicAuth")
+        @auth_required(
+            ldap_groups=[
+                read_config.settings.AG.API_ADMIN,
+                read_config.settings.AG.CVE_USER,
+            ]
+        )
         def get(self):
             return {"message": "authorized"}, 200
 

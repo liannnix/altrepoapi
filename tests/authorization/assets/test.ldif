@@ -52,6 +52,20 @@ givenName: Robert
 sn: User
 homeDirectory: /home/user
 
+dn: uid=user2,ou=people,o=test
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: posixAccount
+cn: user2
+uid: user2
+userPassword: password
+uidNumber: 2500
+gidNumber: 500
+givenName: Mark
+sn: User2
+homeDirectory: /home/user2
+
 # posixGroup objects
 dn: cn=test_admin,ou=groups,o=test
 objectClass: posixGroup
@@ -62,15 +76,22 @@ memberUid: admin2
 
 dn: cn=test_user,ou=groups,o=test
 objectClass: posixGroup
-cn: test_admin
+cn: test_user
 gidNumber: 500 
 memberUid: user
+memberUid: user2
 
 # groupOfNames objects
 dn: cn=users,ou=groups,o=test
 cn: users
 objectClass: groupOfNames
 member: uid=user,ou=people,o=test
+# member: uid=user2,ou=people,o=test
+
+dn: cn=users2,ou=groups,o=test
+cn: users2
+objectClass: groupOfNames
+member: uid=user2,ou=people,o=test
 
 dn: cn=admins,ou=groups,o=test
 cn: users
