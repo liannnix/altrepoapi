@@ -66,11 +66,12 @@ class BasePathNamespace:
     LDAP_REQUIRE_GROUP = ""
     # LDAP access groups
     AG = AccessGroups
-    ACCESS_GROUPS = {g: None for g in AccessGroups}
+    ACCESS_GROUPS = {g: "" for g in AccessGroups}
     # authentication token settings
     EXPIRES_ACCESS_TOKEN = 60  # access token storage time in seconds
     EXPIRES_REFRESH_TOKEN = 300  # refresh token storage time in seconds
     MAX_REFRESH_SESSIONS_COUNT = 1
+    TOKEN_STORAGE = "redis"
     # redis
     REDIS_URL = ""
 

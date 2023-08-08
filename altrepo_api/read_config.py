@@ -56,6 +56,7 @@ PARAMS = {
         "ldap_require_group": ("LDAP_REQUIRE_GROUP", "str"),
     },
     "authentication": {
+        "token_storage": ("TOKEN_STORAGE", "str"),
         "expires_access_token": ("EXPIRES_ACCESS_TOKEN", "int"),
         "expires_refresh_token": ("EXPIRES_REFRESH_TOKEN", "int"),
         "max_refresh_sessions_count": ("MAX_REFRESH_SESSIONS_COUNT", "int"),
