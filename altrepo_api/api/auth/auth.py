@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2023 BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -16,9 +16,10 @@
 
 import hashlib
 import ldap
-import base64
 
 from typing import Any, NamedTuple
+
+from .token.token import parse_basic_auth_token
 
 from altrepo_api.settings import namespace
 from altrepo_api.utils import get_logger
@@ -34,18 +35,17 @@ class AuthCheckResult(NamedTuple):
 
 def check_auth(token: str, ldap_groups: list[str]) -> AuthCheckResult:
     try:
-        token = token.split()[1].strip()
-        user, password = base64.b64decode(token).decode("utf-8").split(":")
-    except Exception:
+        credentials = parse_basic_auth_token(token)
+    except ValueError:
         logger.error("Authorization token validation error")
         return AuthCheckResult(False, "token validation error", {})
 
-    logger.info(f"User '{user}' attempt to authorize")
+    logger.info(f"User '{credentials.user}' attempt to authorize")
 
     if ldap_groups:
-        return check_auth_ldap(user, password, ldap_groups)
+        return check_auth_ldap(credentials.user, credentials.password, ldap_groups)
     else:
-        return check_auth_basic(user, password)
+        return check_auth_basic(credentials.user, credentials.password)
 
 
 def check_auth_basic(user: str, password: str) -> AuthCheckResult:
@@ -89,9 +89,9 @@ def check_auth_ldap(
             try:
                 if is_memeber_of_ldap_group(group):
                     user_groups.append(group)
-            except ldap.PROTOCOL_ERROR:  # type: ignore
-                logger.warning(f"User '{user}' LDAP authorization failed")
-                return AuthCheckResult(False, "LDAP authorization failed", {})
+            except (ldap.NO_SUCH_OBJECT, ldap.PROTOCOL_ERROR):  # type: ignore
+                logger.info(f"No such group `{group}` found for `{user}`")
+                pass
 
         if user_groups:
             logger.info(f"User '{user}' successfully authorized with LDAP")

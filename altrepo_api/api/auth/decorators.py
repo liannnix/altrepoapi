@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2023 BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -13,15 +13,14 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import jwt
 
 from functools import wraps
 from flask import request
 from typing import Any
 
-from .endpoints.blacklisted_token import BlacklistedAccessToken
-from .exceptions import ApiUnauthorized, ApiForbidden
 from .auth import check_auth
+from .exceptions import ApiUnauthorized, ApiForbidden
+from .token.token import AccessTokenBlacklist, InvalidTokenError, decode_jwt_token
 
 from altrepo_api.settings import namespace, AccessGroups
 
@@ -35,7 +34,6 @@ def auth_required(
         @wraps(func)
         def decorated(*args, **kwargs):
             _ = _check_access_auth(admin_only=admin_only, ldap_groups=ldap_groups)
-
             return func(*args, **kwargs)
 
         return decorated
@@ -54,19 +52,7 @@ def _check_access_auth(
     if not token:
         raise ApiUnauthorized(description="Unauthorized", admin_only=admin_only)
 
-    ldap_groups_values = []
-    for group in ldap_groups:
-        ldap_group_str = namespace.ACCESS_GROUPS[group]
-        if not ldap_group_str:
-            raise ApiUnauthorized(
-                description="Unauthorized",
-                admin_only=admin_only,
-                error="Configuration error",
-                error_description=f"{group.name} not set in configuration",
-            )
-        ldap_groups_values.append(ldap_group_str)
-
-    result = check_auth(token, ldap_groups_values)
+    result = check_auth(token, [namespace.ACCESS_GROUPS[g] for g in ldap_groups])
 
     if not result.verified:
         raise ApiUnauthorized(
@@ -80,42 +66,46 @@ def _check_access_auth(
         admin_only
         and not result.value.get("user", "_NOT_FOUND_") == namespace.ADMIN_USER
     ):
-        raise ApiForbidden()
+        raise ApiForbidden("You are not an administrator")
 
     return result.value
 
 
-def token_required(f):
-    """Execute function if request contains valid access token."""
+def token_required(ldap_groups: list[AccessGroups]):
+    def _token_required(func):
+        """Execute function if request contains valid access token."""
 
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token_payload = _check_access_token()
-        for name, val in token_payload.items():
-            setattr(decorated, name, val)
-        return f(*args, **kwargs)
+        @wraps(func)
+        def decorated(*args, **kwargs):
+            token_payload = _check_access_token(ldap_groups)
+            for name, val in token_payload.items():
+                setattr(decorated, name, val)
+            return func(*args, **kwargs)
 
-    return decorated
+        return decorated
+
+    return _token_required
 
 
-def _check_access_token():
+def _check_access_token(ldap_groups: list[AccessGroups]) -> dict[str, Any]:
     token = request.headers.get("Authorization")
     if not token:
-        raise ApiUnauthorized(
-            description="Authentication Token is missing", admin_only=False
-        )
+        raise ApiUnauthorized("Authentication token is required")
+
     try:
-        token_payload = jwt.decode(
-            token, namespace.ADMIN_PASSWORD, algorithms=["HS256"]
-        )
-    except jwt.ExpiredSignatureError:
-        raise ApiUnauthorized("Access token expired.")
-    except jwt.InvalidTokenError:
+        token_payload = decode_jwt_token(token)
+    except InvalidTokenError:
         raise ApiUnauthorized("Invalid token.")
 
-    if BlacklistedAccessToken(
-        token=token, expires=token_payload["exp"]
-    ).check_blacklist():
-        raise ApiUnauthorized("Token blacklisted.")
-    token_payload["token"] = token
-    return token_payload
+    if AccessTokenBlacklist(token, int(token_payload["exp"])).check():
+        raise ApiUnauthorized("Token blacklisted")
+
+    # check if user groups from token is intersects with given LDAP groups
+    user_ldap_groups = set(token_payload.get("groups", []))
+
+    if not user_ldap_groups or not user_ldap_groups.intersection(
+        namespace.ACCESS_GROUPS[g] for g in ldap_groups
+    ):
+        raise ApiForbidden()
+
+    return {"token": token, "exp": token_payload.get("exp")}

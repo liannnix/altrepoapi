@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2023 BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -39,4 +39,4 @@ class ApiUnauthorized(Unauthorized):
 class ApiForbidden(Forbidden):
     """Raise status code 403 with WWW-Authenticate header."""
 
-    description = "You are not an administrator"
+    description = "Access denied"
