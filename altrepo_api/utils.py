@@ -15,8 +15,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import datetime
-import hashlib
-import json
 import logging
 import mmh3
 import re
@@ -24,8 +22,7 @@ import time
 
 from collections import defaultdict
 from dataclasses import dataclass
-from flask import send_file, __version__ as FLASK_VERSION
-from flask.wrappers import Response, Request
+from flask import Response, send_file, __version__ as FLASK_VERSION
 from logging import handlers
 from packaging import version
 from typing import Any, Iterable, Union
@@ -405,18 +402,3 @@ def arch_sort_index(arch: str) -> int:
         "e2kv6": -12,
         "x86_64-i586": -13,
     }.get(arch, -100)
-
-
-def get_fingerprint_to_md5(request: Request):
-    """
-    Get fingerprint hash based on ip, user-agent and accept-language.
-    """
-    meta_ = [
-        str(request.remote_addr),
-        str(request.user_agent),
-        str(request.accept_languages)
-    ]
-    user_info = "/".join(meta_)
-    result = hashlib.md5(user_info.encode("utf-8")).hexdigest()
-    return result
-
