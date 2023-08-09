@@ -126,4 +126,3 @@ class ErrataBranches(APIWorker):
         branches = [branch for branch in sort_branches([el[0] for el in response])]
         res = {"length": len(branches), "branches": branches}
         return res, 200
-

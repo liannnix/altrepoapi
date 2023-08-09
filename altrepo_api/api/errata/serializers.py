@@ -221,6 +221,6 @@ errata_branches_model = ns.model(
     "ErrataBranchesModel",
     {
         "length": fields.Integer(description="number of branches"),
-        "branches": fields.List(fields.String, description="list of branches")
-    }
+        "branches": fields.List(fields.String, description="list of branches"),
+    },
 )

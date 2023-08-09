@@ -21,7 +21,7 @@ from altrepo_api.libs.oval.altlinux_errata import BUGZILLA_BASE_URL
 from altrepo_api.api.errata.endpoints.xml_builder import (
     NVD_CVE_BASE_URL,
     FSTEC_BDU_BASE_URL,
-    ERRATA_BASE_URL
+    ERRATA_BASE_URL,
 )
 from ..sql import sql
 
@@ -124,9 +124,6 @@ class TaskVulnerabilities(APIWorker):
                 )
                 vulnerabilities.append(errata_info._asdict())
 
-        res = {
-            **task_info._asdict(),
-            "packages": vulnerabilities
-        }
+        res = {**task_info._asdict(), "packages": vulnerabilities}
 
         return res, 200

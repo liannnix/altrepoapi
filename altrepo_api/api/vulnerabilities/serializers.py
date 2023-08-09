@@ -135,8 +135,8 @@ cve_task_package_vulns_el_model = ns.model(
     {
         "number": fields.String(description="vulnerability number"),
         "type": fields.String(description="vulnerability type"),
-        "link": fields.String(description="vulnerability link")
-    }
+        "link": fields.String(description="vulnerability link"),
+    },
 )
 cve_task_packages_el_model = ns.model(
     "CveTaskPackagesElementModel",
@@ -153,8 +153,8 @@ cve_task_packages_el_model = ns.model(
             cve_task_package_vulns_el_model,
             description="fixed vulnerabilities list",
             as_list=True,
-        )
-    }
+        ),
+    },
 )
 cve_task_model = ns.model(
     "CveVulnerableTaskModel",
@@ -173,6 +173,6 @@ cve_task_model = ns.model(
             cve_task_packages_el_model,
             description="vulnerable packages information",
             as_list=True,
-        )
-    }
+        ),
+    },
 )

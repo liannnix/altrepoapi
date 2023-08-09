@@ -46,7 +46,7 @@ from altrepo_api.api.auth import ns as auth_ns
 
 authorizations = {
     "BasicAuth": {"type": "basic", "in": "header", "name": "Authorization"},
-    "Bearer": {"type": "apiKey", "in": "header", "name": "Authorization"}
+    "Bearer": {"type": "apiKey", "in": "header", "name": "Authorization"},
 }
 
 blueprint = Blueprint("api", __name__, url_prefix="/api")

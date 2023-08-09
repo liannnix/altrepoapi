@@ -633,7 +633,7 @@ def errata_search_type(value: Any) -> str:
 
 errata_search_type.__schema__ = {
     "type": "string",
-    "pattern": __errata_search_match.pattern
+    "pattern": __errata_search_match.pattern,
 }
 
 
@@ -646,7 +646,11 @@ def password_type(value: Any) -> str:
     return value
 
 
-password_type.__schema__ = {"type": "string", "pattern": __password_match.pattern, "format": "password"}
+password_type.__schema__ = {
+    "type": "string",
+    "pattern": __password_match.pattern,
+    "format": "password",
+}
 
 
 def positive_integer_type(value: Any) -> str:
@@ -658,4 +662,7 @@ def positive_integer_type(value: Any) -> str:
     return value
 
 
-positive_integer_type.__schema__ = {"type": "string", "pattern": __positive_integer.pattern}
+positive_integer_type.__schema__ = {
+    "type": "string",
+    "pattern": __positive_integer.pattern,
+}

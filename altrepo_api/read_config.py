@@ -61,9 +61,7 @@ PARAMS = {
         "expires_refresh_token": ("EXPIRES_REFRESH_TOKEN", "int"),
         "max_refresh_sessions_count": ("MAX_REFRESH_SESSIONS_COUNT", "int"),
     },
-    "redis": {
-        "redis_url": ("REDIS_URL", "str")
-    }
+    "redis": {"redis_url": ("REDIS_URL", "str")},
 }
 
 
