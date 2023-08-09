@@ -141,6 +141,8 @@ class AuthLogin(APIWorker):
             )
         }
 
-        self.storage.map_set(self._token, new_refresh_session)
+        self.storage.map_set(
+            self._token, new_refresh_session, namespace.EXPIRES_REFRESH_TOKEN
+        )
 
         return token
