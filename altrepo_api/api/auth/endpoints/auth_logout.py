@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2022  BaseALT Ltd
+# Copyright (C) 2021-2023  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -13,15 +13,13 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import jwt
-import redis
+
 from flask import request
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.settings import namespace
-from .blacklisted_token import BlacklistedAccessToken
 from ..constants import REFRESH_TOKEN_KEY
 from ..exceptions import ApiUnauthorized
+from ..token.token import AccessTokenBlacklist, STORAGE, decode_jwt_token
 
 
 class AuthLogout(APIWorker):
@@ -36,8 +34,9 @@ class AuthLogout(APIWorker):
         self.args = kwargs
         self.token = token
         self.token_exp = token_exp
-        self.conn_redis = redis.from_url(namespace.REDIS_URL, db=0)
-        self.refresh_token = request.cookies.get("refresh_token")
+        self.storage = STORAGE
+        self.refresh_token = request.cookies.get("refresh_token", "")
+        self.blacklist = AccessTokenBlacklist(self.token, self.token_exp)
         super().__init__()
 
     def check_params(self):
@@ -53,32 +52,27 @@ class AuthLogout(APIWorker):
             return True
 
     def post(self):
-        token_payload = jwt.decode(
-            self.token, namespace.ADMIN_PASSWORD, algorithms=["HS256"]
-        )
-        user_sessions = self.conn_redis.hgetall(
-            REFRESH_TOKEN_KEY.format(user=token_payload.get("nickname", ""))
-        )
-        blacklisted = BlacklistedAccessToken(self.token, self.token_exp)
-        check_access_token = blacklisted.check_blacklist()
+        token_payload = decode_jwt_token(self.token)
 
-        if check_access_token:
+        refresh_token_key = REFRESH_TOKEN_KEY.format(
+            user=token_payload.get("nickname", "")
+        )
+
+        user_sessions = self.storage.map_getall(refresh_token_key)
+
+        if self.blacklist.check():
             raise ApiUnauthorized(description="Access token is not valid.")
-        else:
-            blacklisted.write_to_blacklist()
 
-        if self.refresh_token.encode() in user_sessions.keys():
-            del user_sessions[self.refresh_token.encode()]
-            if not user_sessions:
-                self.conn_redis.delete(
-                    REFRESH_TOKEN_KEY.format(user=token_payload.get("nickname", ""))
-                )
-            else:
-                self.conn_redis.hdel(
-                    REFRESH_TOKEN_KEY.format(user=token_payload.get("nickname", "")),
-                    self.refresh_token,
-                )
-        else:
+        self.blacklist.add()
+
+        if self.refresh_token not in user_sessions.keys():
             raise ApiUnauthorized(description="User not authorized")
 
-        return "you successfully logged out", 201
+        del user_sessions[self.refresh_token]
+
+        if not user_sessions:
+            self.storage.delete(refresh_token_key)
+        else:
+            self.storage.map_delete(refresh_token_key, self.refresh_token)
+
+        return {"message": "Logged out"}, 200

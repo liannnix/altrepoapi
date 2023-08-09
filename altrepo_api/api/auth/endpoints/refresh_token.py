@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2022  BaseALT Ltd
+# Copyright (C) 2021-2023  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -13,20 +13,25 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import datetime
 import json
 
-import jwt
-import redis
 from flask import request
-from jwt import DecodeError
 
-from altrepo_api.api.auth.constants import REFRESH_TOKEN_KEY
-from altrepo_api.api.auth.endpoints.blacklisted_token import BlacklistedAccessToken
-from altrepo_api.api.auth.exceptions import ApiUnauthorized
 from altrepo_api.api.base import APIWorker
-from altrepo_api.settings import namespace
-from altrepo_api.utils import get_fingerprint_to_md5
+from ..constants import REFRESH_TOKEN_KEY
+from ..exceptions import ApiUnauthorized
+from ..token.token import (
+    AccessTokenBlacklist,
+    InvalidTokenError,
+    STORAGE,
+    update_access_token,
+    check_fingerprint,
+    decode_jwt_token,
+)
+
+# from altrepo_api.utils import get_fingerprint_to_md5
 
 
 class RefreshToken(APIWorker):
@@ -35,10 +40,11 @@ class RefreshToken(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
         self.args = kwargs
-        self.conn_redis = redis.from_url(namespace.REDIS_URL, db=0)
-        self.refresh_token = request.cookies.get("refresh_token")
+        self.storage = STORAGE
+        self.refresh_token = request.cookies.get("refresh_token", "")
         self.access_token = self.args["access_token"]
         self.access_token_payload = {}
+        self.blacklist: AccessTokenBlacklist
         super().__init__()
 
     def check_params(self):
@@ -47,24 +53,19 @@ class RefreshToken(APIWorker):
 
         # check access token and decode it.
         try:
-            self.access_token_payload = jwt.decode(
-                self.access_token,
-                namespace.ADMIN_PASSWORD,
-                algorithms=["HS256"],
-                options={"verify_signature": False},
-            )
-        except DecodeError:
+            self.access_token_payload = decode_jwt_token(self.access_token)
+        except InvalidTokenError:
             self.validation_results.append("Invalid access token")
             return False
 
-        self.blacklisted = BlacklistedAccessToken(
+        self.blacklist = AccessTokenBlacklist(
             self.access_token, self.access_token_payload["exp"]
         )
 
-        if self.blacklisted.get_token_from_blacklist():
-            self.validation_results.append("Token to blacklisted")
+        if self.blacklist.get():
+            self.validation_results.append("Token is blacklisted")
 
-        if self.refresh_token is None:
+        if not self.refresh_token:
             self.validation_results.append("User is not authorized")
 
         if self.validation_results != []:
@@ -73,47 +74,36 @@ class RefreshToken(APIWorker):
             return True
 
     def post(self):
-        user_sessions = self.conn_redis.hgetall(
+        user_sessions = self.storage.map_getall(
             REFRESH_TOKEN_KEY.format(user=self.access_token_payload.get("nickname", ""))
         )
-        active_session = user_sessions.get(self.refresh_token.encode())
+        active_session = user_sessions.get(self.refresh_token)
+
         if not active_session:
             raise ApiUnauthorized(description="User not authorized.")
 
-        session_data_to_dict = json.loads(active_session)
-        if self.check_fingerprint(session_data_to_dict.get("fingerprint")):
+        session_data_json: dict = json.loads(active_session)
+
+        if not check_fingerprint(session_data_json.get("fingerprint", "")):
             raise ApiUnauthorized(description="User not authorized.")
 
         if (
-            session_data_to_dict["create_at"] + session_data_to_dict["expires"]
+            session_data_json["create_at"] + session_data_json["expires"]
             <= datetime.datetime.now().timestamp()
         ):
-            self.conn_redis.hdel(
+            self.storage.map_delete(
                 REFRESH_TOKEN_KEY.format(
                     user=self.access_token_payload.get("nickname", "")
                 ),
                 self.refresh_token,
             )
-            raise ApiUnauthorized(description="Session expired")
+            raise ApiUnauthorized(description="Session is expired")
 
         # add the old access token to the blacklist if it hasn't expired yet.
-        self.blacklisted.write_to_blacklist()
-        new_access_token = self.new_access_token(self.access_token_payload)
+        self.blacklist.add()
+        new_access_token = update_access_token(self.access_token_payload)
 
-        res = {"access_token": new_access_token, "refresh_token": self.refresh_token}
-
-        return res, 201
-
-    @staticmethod
-    def new_access_token(payload):
-        token_expires = datetime.datetime.now(
-            tz=datetime.timezone.utc
-        ) + datetime.timedelta(seconds=namespace.EXPIRES_ACCESS_TOKEN)
-        payload["exp"] = token_expires
-        encoded_jwt = jwt.encode(payload, namespace.ADMIN_PASSWORD, algorithm="HS256")
-        return encoded_jwt
-
-    @staticmethod
-    def check_fingerprint(session_fingerprint):
-        current_fingerprint = get_fingerprint_to_md5(request)
-        return session_fingerprint != current_fingerprint
+        return {
+            "access_token": new_access_token,
+            "refresh_token": self.refresh_token,
+        }, 200
