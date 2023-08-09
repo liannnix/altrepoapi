@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2022  BaseALT Ltd
+# Copyright (C) 2021-2023  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -13,12 +13,13 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 from functools import cached_property
 from math import ceil
+from typing import Any
 
 
 class Paginator:
-
     def __init__(self, object_list: list, limit: int):
         self.object_list = object_list
         self.limit = int(limit) if limit and int(limit) > 0 else self.count
@@ -49,14 +50,13 @@ class Paginator:
         hits = max(1, self.count)
         return ceil(hits / self.limit)
 
-    def page(self, to_page: int) -> list:
+    def page(self, to_page: int) -> list[Any]:
         bottom = (to_page - 1) * self.limit
         top = bottom + self.limit
         if top >= self.count:
             top = self.count
         return self.object_list[bottom:top]
 
-    def get_page(self, to_page: int) -> page:
+    def get_page(self, to_page: int):
         page_number = self.validate_page_number(to_page)
         return self.page(page_number)
-
