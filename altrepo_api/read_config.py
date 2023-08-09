@@ -62,6 +62,9 @@ PARAMS = {
         "max_refresh_sessions_count": ("MAX_REFRESH_SESSIONS_COUNT", "int"),
     },
     "redis": {"redis_url": ("REDIS_URL", "str")},
+    "errata": {
+        "errata_id_url": ("ERRATA_ID_URL", "str")
+    }
 }
 
 

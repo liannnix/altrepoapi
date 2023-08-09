@@ -83,6 +83,8 @@ class BasePathNamespace:
     MAX_REFRESH_SESSIONS_COUNT = 2
     # redis
     REDIS_URL = ""
+    # errata service
+    ERRATA_ID_URL = ""
 
 
 namespace = BasePathNamespace()
