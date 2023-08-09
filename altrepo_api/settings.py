@@ -14,8 +14,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
 import logging
+import os
+
 from dataclasses import dataclass
 from enum import Enum, auto
 
@@ -25,6 +26,14 @@ class AccessGroups(Enum):
     API_USER = auto()
     CVE_ADMIN = auto()
     CVE_USER = auto()
+
+
+AG_ALL = [
+    AccessGroups.API_ADMIN,
+    AccessGroups.API_USER,
+    AccessGroups.CVE_ADMIN,
+    AccessGroups.CVE_USER,
+]
 
 
 @dataclass
@@ -65,7 +74,7 @@ class BasePathNamespace:
     LDAP_USER_SEARCH = ""
     LDAP_REQUIRE_GROUP = ""
     # LDAP access groups
-    AG = AccessGroups
+    AG = AccessGroups  # used in tests only
     ACCESS_GROUPS = {g: "" for g in AccessGroups}
     # authentication token settings
     EXPIRES_ACCESS_TOKEN = 60  # access token storage time in seconds
