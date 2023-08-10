@@ -56,6 +56,18 @@ def get_workdir() -> Path:
     return workdir
 
 
+def value_to_storage(value: ValueType, type: ValueTypeName) -> Any:
+    if type == "datetime":
+        return value.isoformat()  # type: ignore
+    return value
+
+
+def value_from_storage(value: Any, type: ValueTypeName) -> ValueType:
+    if type == "datetime":
+        return datetime.fromisoformat(value)
+    return value
+
+
 class FileStorageError(Exception):
     pass
 
@@ -72,7 +84,7 @@ class FileStorage:
     def map_delete(self, name: str, key: str) -> None:
         """Deletes value from mapping in storage by name and key."""
 
-        map: dict[str, Any] = self.s.get(name, "dict")  # type: ignore
+        map: dict[str, Any] = self.s.get(name)  # type: ignore
 
         if map is None or key not in map:
             return None
@@ -83,13 +95,13 @@ class FileStorage:
     def map_getall(self, name: str) -> dict[str, str]:
         """Retrives mapping from storage by name."""
 
-        map: dict[str, str] = self.s.get(name, "dict")  # type: ignore
+        map: dict[str, str] = self.s.get(name)  # type: ignore
         return {} if map is None else map
 
     def map_get(self, name: str, key: str) -> Union[str, None]:
         """Retrives mapping value from storage by name and key."""
 
-        map: dict[str, str] = self.s.get(name, "dict")  # type: ignore
+        map: dict[str, str] = self.s.get(name)  # type: ignore
         if map is None or key not in map:
             return None
         return map[key]
@@ -102,7 +114,7 @@ class FileStorage:
     ) -> None:
         """Saves mapping to storage and set expiration time."""
 
-        map: dict[str, Any] = self.s.get(name, "dict")  # type: ignore
+        map: dict[str, Any] = self.s.get(name)  # type: ignore
         if map is None:
             self.s.set(name, "dict", mapping, expire)
         else:
@@ -136,7 +148,7 @@ class StorageHandler:
 
     def _load_file(self) -> None:
         if not self.file.exists():
-            logger.warning(f"{self.file!s} doesn't exist")
+            logger.warning(f"{self.file!s} doesn't exist. Creating...")
             with self.file.open("wt") as f:
                 json.dump(EMPTY_STORAGE, f)
             self.storage = EMPTY_STORAGE
@@ -148,8 +160,8 @@ class StorageHandler:
             data: dict[str, Any] = json.load(self.file.open("rt"))
             self.storage = Storage(meta=data.get("meta", {}), data=data.get("data", {}))
         except Exception as e:
-            logger.error(f"Failed to read data from {self.file!s} due to {e}")
-            self.storage = EMPTY_STORAGE
+            logger.error(f"Failed to load data from {self.file!s} due to {e}")
+            raise FileStorageError(f"Failed to load data from {self.file!s}")
 
     def _save_file(self) -> None:
         try:
@@ -193,7 +205,7 @@ class StorageHandler:
         return name
 
     def _delete(self, name: str) -> None:
-        # delete key meta and related value
+        # delete key meta and related value if exists
         if name not in self.storage["meta"] and name not in self.storage["data"]:
             return
 
@@ -219,7 +231,7 @@ class StorageHandler:
             type=type,
             expires=expires if expires is not None else 0,
         )
-        self.storage["data"][name] = value
+        self.storage["data"][name] = value_to_storage(value, type)
         self._save_file()
 
     def _update(
@@ -230,19 +242,17 @@ class StorageHandler:
         expires: Union[int, None],
     ) -> None:
         meta = self.storage["meta"][name]
-        meta.update(
-            {
-                "updated": int(datetime.now().timestamp()),
-                "type": type,
-            }
-        )
+        # update metadata
+        meta["updated"] = int(datetime.now().timestamp())
+        meta["type"] = type
         if expires is not None:
-            meta.update({"expires": expires})
+            meta["expires"] = expires
+        # store changes
         self.storage["meta"][name] = meta
-        self.storage["data"][name] = value
+        self.storage["data"][name] = value_to_storage(value, type)
         self._save_file()
 
-    def get(self, name: str, type: ValueTypeName) -> ValueType:
+    def get(self, name: str) -> ValueType:
         with self.lock:
             key = self._meta_get_key(name)
 
@@ -252,10 +262,7 @@ class StorageHandler:
             value_type = self.storage["meta"][key]["type"]
             value = self.storage["data"].get(key)
 
-            if value is not None and value_type == "datetime":
-                return datetime.fromtimestamp(value)
-
-            return value
+            return value_from_storage(value, value_type)
 
     def set(
         self,
@@ -276,7 +283,6 @@ class StorageHandler:
                 return
 
             self._delete(name)
-            return
 
 
 class FileLock:
