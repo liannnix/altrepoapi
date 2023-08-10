@@ -77,10 +77,10 @@ class BasePathNamespace:
     AG = AccessGroups  # used in tests only
     ACCESS_GROUPS = {g: "" for g in AccessGroups}
     # authentication token settings
+    TOKEN_STORAGE = "file"  # {file | redis}
     EXPIRES_ACCESS_TOKEN = 60 * 5  # access token storage time in seconds
     EXPIRES_REFRESH_TOKEN = 60 * 60 * 12  # refresh token storage time in seconds
     MAX_REFRESH_SESSIONS_COUNT = 2
-    TOKEN_STORAGE = "redis"
     # redis
     REDIS_URL = ""
 

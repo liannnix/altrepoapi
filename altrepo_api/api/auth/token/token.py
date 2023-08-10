@@ -28,6 +28,15 @@ from .file_storage import FileStorage
 from ..constants import BLACKLISTED_ACCESS_TOKEN_KEY, JWT_ENCODE_ALGORITHM
 
 
+# define `STORAGE` using `namespace.TOKEN_STORAGE` value
+if namespace.TOKEN_STORAGE == "file":
+    STORAGE = FileStorage()
+elif namespace.TOKEN_STORAGE == "redis":
+    STORAGE = RedisStorage(namespace.REDIS_URL)
+else:
+    raise ValueError(f"Unknown token storage type: {namespace.TOKEN_STORAGE}")
+
+
 class InvalidTokenError(Exception):
     pass
 
@@ -62,12 +71,6 @@ class Storage(Protocol):
     ) -> None:
         """Saves mapping to storage and set expiration time."""
         ...
-
-
-STORAGE: Storage = {
-    "file": FileStorage(),
-    "redis": RedisStorage(namespace.REDIS_URL),
-}[namespace.TOKEN_STORAGE]
 
 
 def parse_basic_auth_token(token: str) -> UserCredentials:
