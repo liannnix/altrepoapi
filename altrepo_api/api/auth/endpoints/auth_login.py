@@ -26,7 +26,7 @@ from altrepo_api.utils import get_logger
 
 from ..auth import check_auth_ldap
 from ..constants import REFRESH_TOKEN_KEY
-from ..token.token import STORAGE, encode_jwt_token, user_fingerprint
+from ..token import STORAGE, encode_jwt_token, user_fingerprint
 
 logger = get_logger(__name__)
 

@@ -19,7 +19,7 @@ from flask import request
 from altrepo_api.api.base import APIWorker
 from ..constants import REFRESH_TOKEN_KEY
 from ..exceptions import ApiUnauthorized
-from ..token.token import AccessTokenBlacklist, STORAGE, decode_jwt_token
+from ..token import AccessTokenBlacklist, STORAGE, decode_jwt_token
 
 
 class AuthLogout(APIWorker):
