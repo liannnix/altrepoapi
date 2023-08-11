@@ -6,6 +6,25 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.15.0] - 2023-08-11
+
+Regular API code updates and fixes.
+
+### Added
+- `/errata/errata_branches` route
+- `/errata/find_erratas` route
+- `/vuln/task` route
+- `/auth` namespace and routes
+- `file_storage` backend for authorization tokens storage
+### Changed
+- use file_storage backand as default for authorization tokens
+- update configuration examples
+- update project dependencies
+- update Docker files
+### Fixed
+- code style flaws
+- routes descritpion and docstrings
+
 ## [1.14.4] - 2023-08-04
 
 Regular API code updates and fixes.
