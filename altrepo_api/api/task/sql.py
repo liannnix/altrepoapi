@@ -844,12 +844,14 @@ WITH editions_status AS (
     FROM ImageStatus
     WHERE img_branch = '{branch}'
     GROUP BY img_edition
+    HAVING edition_show = 'show'
 ),
 tags_status AS (
     SELECT img_tag,
            argMax(img_show, ts) AS tag_show
     FROM ImageTagStatus
     GROUP BY img_tag
+    HAVING tag_show = 'show'
 )
 SELECT DISTINCT
     img_file,
@@ -862,15 +864,10 @@ SELECT DISTINCT
     pkg_arch,
     pkg_hash
 FROM lv_all_image_packages
-WHERE (pkg_hash IN (
-    SELECT DISTINCT pkg_hash
-    FROM Packages
-    WHERE (pkg_name IN (SELECT pkg_name FROM {tmp_table}))
-    AND (pkg_sourcepackage = 0)
-))
+WHERE pkg_name IN (SELECT pkg_name FROM {tmp_table})
 AND (img_branch = '{branch}')
-AND img_edition IN (select img_edition FROM editions_status WHERE edition_show = 'show')
-AND img_tag IN (select img_tag FROM tags_status WHERE tag_show = 'show')
+AND img_edition IN (select img_edition FROM editions_status)
+AND img_tag IN (select img_tag FROM tags_status)
 """
 
     get_task_subtasks_packages_hashes = """
