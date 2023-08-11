@@ -33,16 +33,16 @@ class ErrataInfo(NamedTuple):
     eh_type: str
     task_id: int
     branch: str
-    pkgs: list
-    vuln_numbers: list
-    vuln_types: list
+    pkgs: list[tuple[int, str, str, str]]
+    vuln_ids: list[str]
+    vuln_types: list[str]
     changed: str
     vulnerabilities: list[dict[str, str]] = []
     packages: list[dict[str, str]] = []
 
 
 class Vulns(NamedTuple):
-    number: str
+    id: str
     type: str
 
 
@@ -168,14 +168,14 @@ class FindErratas(APIWorker):
         return True
 
     def get(self):
-        input_val: list[str] = self.args["input"][:] if self.args["input"] else []
+        input_val: list[str] = self.args["input"] if self.args["input"] else []
         branch = self.args["branch"]
         eh_type = self.args["type"]
         limit = self.args["limit"]
         page = self.args["page"]
 
         branch_clause = f"AND pkgset_name = '{branch}'" if branch else ""
-        where = [f"type = '{eh_type}'"] if eh_type else []
+        where_conditions = [f"type = '{eh_type}'"] if eh_type else []
 
         conditions = [
             " OR ".join(
@@ -185,16 +185,15 @@ class FindErratas(APIWorker):
                     f"arrayExists(x -> x ILIKE '%{v}%', refs_links)",
                 )
             )
-            for v in input_val[:]
+            for v in input_val
         ]
 
         if conditions:
-            where.append(f"({' OR '.join(conditions)})")
+            where_conditions.append(f"({' OR '.join(conditions)})")
 
-        if where:
-            where_clause = "WHERE " + " AND ".join(where)
-        else:
-            where_clause = ""
+        where_clause = (
+            f"WHERE {' AND '.join(where_conditions)}" if where_conditions else ""
+        )
 
         response = self.send_sql_request(
             self.sql.find_erratas.format(
@@ -210,15 +209,15 @@ class FindErratas(APIWorker):
 
         erratas = []
         for el in response:
-            errata_inf = ErrataInfo(*el)
+            errata_info = ErrataInfo(*el)
             vulns = [
-                Vulns(vuln, errata_inf.vuln_types[i])._asdict()
-                for i, vuln in enumerate(errata_inf.vuln_numbers)
+                Vulns(v_id, v_type)._asdict()
+                for v_id, v_type in zip(errata_info.vuln_ids, errata_info.vuln_types)
             ]
-            pkgs = [PackageInfo(*el)._asdict() for el in errata_inf.pkgs]
+            pkgs = [PackageInfo(*el)._asdict() for el in errata_info.pkgs]
 
             erratas.append(
-                errata_inf._replace(vulnerabilities=vulns, packages=pkgs)._asdict()
+                errata_info._replace(vulnerabilities=vulns, packages=pkgs)._asdict()
             )
 
         paginator = Paginator(erratas, limit)

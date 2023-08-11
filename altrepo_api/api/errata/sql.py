@@ -241,7 +241,7 @@ WITH errata_tasks AS (
         FROM (
             SELECT
                 errata_id_noversion,
-                argMax(errata_id, eh_updated) AS eid
+                argMax(errata_id, errata_id_version) AS eid
             FROM ErrataHistory
             WHERE task_state = 'DONE'
             {branch}
@@ -261,7 +261,16 @@ errata_branches AS (
         argMax(eh_references.type, ts) AS refs_types,
         max(eh_updated) AS changed
     FROM ErrataHistory
-    WHERE eh_type = 'branch'
+    WHERE eh_type = 'branch' AND errata_id IN (
+        SELECT eid
+        FROM (
+            SELECT
+                errata_id_noversion,
+                argMax(errata_id, errata_id_version) AS eid
+            FROM ErrataHistory
+            GROUP BY errata_id_noversion
+        )
+    )
     {branch}
     GROUP BY errata_id
 ),
@@ -276,7 +285,16 @@ errata_bulletin AS (
         argMax(eh_references.type, ts) AS refs_types,
         max(eh_updated) AS changed
     FROM ErrataHistory
-    WHERE eh_type == 'bulletin'
+    WHERE eh_type == 'bulletin' AND errata_id IN (
+        SELECT eid
+        FROM (
+            SELECT
+                errata_id_noversion,
+                argMax(errata_id, errata_id_version) AS eid
+            FROM ErrataHistory
+            GROUP BY errata_id_noversion
+        )
+    )
     {branch}
     GROUP BY errata_id, eh_type, ref_link
 )

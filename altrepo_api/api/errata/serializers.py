@@ -179,7 +179,7 @@ pkgs_el_model = ns.model(
 vulns_el_model = ns.model(
     "VulnerabilitiesElementModel",
     {
-        "number": fields.String(description="vulnerability number"),
+        "id": fields.String(description="vulnerability id"),
         "type": fields.String(description="vulnerability type"),
     },
 )

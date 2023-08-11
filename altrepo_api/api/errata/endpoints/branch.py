@@ -107,7 +107,7 @@ class BranchesUpdates(APIWorker):
 
 
 class ErrataBranches(APIWorker):
-    """Get errata branches."""
+    """Get branches list from errata history."""
 
     def __init__(self, connection, **kwargs):
         self.conn = connection
@@ -123,6 +123,7 @@ class ErrataBranches(APIWorker):
             return self.store_error(
                 {"message": "No data not found in database"},
             )
+
         branches = [branch for branch in sort_branches([el[0] for el in response])]
-        res = {"length": len(branches), "branches": branches}
-        return res, 200
+
+        return {"length": len(branches), "branches": branches}, 200
