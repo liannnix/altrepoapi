@@ -243,7 +243,7 @@ WITH errata_tasks AS (
                 errata_id_noversion,
                 argMax(errata_id, errata_id_version) AS eid
             FROM ErrataHistory
-            WHERE task_state = 'DONE'
+            WHERE task_state = 'DONE' AND pkgset_name != 'icarus'
             {branch}
             GROUP BY errata_id_noversion
         )
@@ -261,17 +261,18 @@ errata_branches AS (
         argMax(eh_references.type, ts) AS refs_types,
         max(eh_updated) AS changed
     FROM ErrataHistory
-    WHERE eh_type = 'branch' AND errata_id IN (
+    WHERE errata_id IN (
         SELECT eid
         FROM (
             SELECT
                 errata_id_noversion,
                 argMax(errata_id, errata_id_version) AS eid
             FROM ErrataHistory
+            WHERE eh_type = 'branch' AND pkgset_name != 'icarus'
+            {branch}
             GROUP BY errata_id_noversion
         )
     )
-    {branch}
     GROUP BY errata_id
 ),
 errata_bulletin AS (
@@ -285,17 +286,18 @@ errata_bulletin AS (
         argMax(eh_references.type, ts) AS refs_types,
         max(eh_updated) AS changed
     FROM ErrataHistory
-    WHERE eh_type == 'bulletin' AND errata_id IN (
+    WHERE errata_id IN (
         SELECT eid
         FROM (
             SELECT
                 errata_id_noversion,
                 argMax(errata_id, errata_id_version) AS eid
             FROM ErrataHistory
+            WHERE eh_type == 'bulletin' AND pkgset_name != 'icarus'
+            {branch}
             GROUP BY errata_id_noversion
         )
     )
-    {branch}
     GROUP BY errata_id, eh_type, ref_link
 )
 SELECT * FROM (
