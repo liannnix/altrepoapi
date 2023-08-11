@@ -17,12 +17,8 @@
 from typing import NamedTuple
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.libs.oval.altlinux_errata import BUGZILLA_BASE_URL
-from altrepo_api.api.errata.endpoints.xml_builder import (
-    NVD_CVE_BASE_URL,
-    FSTEC_BDU_BASE_URL,
-    ERRATA_BASE_URL,
-)
+from altrepo_api.api.misc import lut
+
 from ..sql import sql
 
 
@@ -47,14 +43,14 @@ class TaskErrataInfo(NamedTuple):
     pkg_release: str
     branch: str
     errata_id: str
-    vuln_numbers: list
-    vuln_types: list
+    vuln_ids: list[str]
+    vuln_types: list[str]
     errata_link: str = ""
     vulnerabilities: list[dict[str, str]] = []
 
 
 class TaskVulns(NamedTuple):
-    number: str
+    id: str
     type: str
     link: str
 
@@ -103,22 +99,20 @@ class TaskVulnerabilities(APIWorker):
             for el in response:
                 errata_info = TaskErrataInfo(*el)
                 vulns = []
-                for i, vuln in enumerate(errata_info.vuln_numbers):
+                for v_id, v_type in zip(errata_info.vuln_ids, errata_info.vuln_types):
                     # build vulnerability link
-                    if vuln.startswith("CVE-"):
-                        url = f"{NVD_CVE_BASE_URL}/{vuln}"
-                    elif vuln.startswith("BDU:"):
-                        url = f"{FSTEC_BDU_BASE_URL}/{vuln.split(':')[-1]}"
-                    elif errata_info.vuln_types[i] == "bug":
-                        url = f"{BUGZILLA_BASE_URL}/{vuln}"
+                    if v_id.startswith("CVE-"):
+                        url = f"{lut.nvd_cve_base}/{v_id}"
+                    elif v_id.startswith("BDU:"):
+                        url = f"{lut.fstec_bdu_base}/{v_id.split(':')[-1]}"
+                    elif v_type == "bug":
+                        url = f"{lut.bugzilla_base}/{v_id}"
                     else:
                         url = ""
-                    vulns.append(
-                        TaskVulns(vuln, errata_info.vuln_types[i], url)._asdict()
-                    )
+                    vulns.append(TaskVulns(v_id, v_type, url)._asdict())
 
                 # build errata link to errata.altlinux.org
-                errata_link = f"{ERRATA_BASE_URL}/{errata_info.errata_id}"
+                errata_link = f"{lut.errata_base}/{errata_info.errata_id}"
                 errata_info = errata_info._replace(
                     vulnerabilities=vulns, errata_link=errata_link
                 )

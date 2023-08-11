@@ -133,7 +133,7 @@ cve_packages_model = ns.model(
 cve_task_package_vulns_el_model = ns.model(
     "CveTaskPackageVulnerableElementModel",
     {
-        "number": fields.String(description="vulnerability number"),
+        "id": fields.String(description="vulnerability id"),
         "type": fields.String(description="vulnerability type"),
         "link": fields.String(description="vulnerability link"),
     },
