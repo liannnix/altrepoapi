@@ -90,9 +90,9 @@ LINK_BDU_BY_CVE = False
 GENERATOR_PRODUCT_NAME = "ALT Linux Errata System"
 ALT_LINUX_OVAL_ID_PREFIX = "org.altlinux.errata"
 XML_VERSION = 1
-ERRATA_BASE_URL = "https://errata.altlinux.org"
-NVD_CVE_BASE_URL = "https://nvd.nist.gov/vuln/detail"
-FSTEC_BDU_BASE_URL = "https://bdu.fstec.ru/vul"
+ERRATA_BASE_URL = lut.errata_base
+NVD_CVE_BASE_URL = lut.nvd_cve_base
+FSTEC_BDU_BASE_URL = lut.fstec_bdu_base
 
 PRODUCTS = {
     "p9": [

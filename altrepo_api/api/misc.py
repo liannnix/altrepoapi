@@ -316,6 +316,9 @@ class LookupTables:
     packages_base = "https://packages.altlinux.org/en"
     bugzilla_base = "https://bugzilla.altlinux.org"
     public_ftp_base = "http://ftp.altlinux.org/pub/distributions/ALTLinux"
+    errata_base = "https://errata.altlinux.org"
+    nvd_cve_base = "https://nvd.nist.gov/vuln/detail"
+    fstec_bdu_base = "https://bdu.fstec.ru/vul"
 
     rpmsense_flags = [
         "RPMSENSE_ANY",
