@@ -298,12 +298,12 @@ def test_errata_branches_updates(client, kwargs):
         {
             "input": VUILN_ID_BDU_IN_DB,
             "branch": BRANCH_IN_DB_NO_ERRATA,
-            "status_code": 404
+            "status_code": 404,
         },
         {
             "input": BUG_NOT_IN_ERRATA,
             "branch": BRANCH_IN_DB_NO_ERRATA,
-            "status_code": 404
+            "status_code": 404,
         },
         {"input": BU_ERRATA_ID_NOT_IN_DB, "status_code": 404},
         {"input": PU_ERRATA_ID_NOT_IN_DB, "status_code": 404},
@@ -325,9 +325,10 @@ def test_find_erratas(client, kwargs):
 
         for elem in data["erratas"]:
             if kwargs.get("input"):
-                assert kwargs["input"].lower() in [elem["errata_id"].lower()] + [
-                    vuln["number"].lower() for vuln in elem["vulnerabilities"]
-                ]
+                assert kwargs["input"].lower() in (
+                    [elem["errata_id"].lower()]
+                    + [vuln["id"].lower() for vuln in elem["vulnerabilities"]]
+                )
 
             if kwargs.get("branch"):
                 assert kwargs["branch"] == elem["branch"]
