@@ -111,7 +111,7 @@ class routeOvalExport(Resource):
 @ns.route(
     "/packages_updates",
     doc={
-        "description": "Get information about packages updates",
+        "description": "Get information about package update erratas",
         "responses": POST_RESPONSES_400_404,
     },
 )
@@ -128,7 +128,7 @@ class routePackagesUpdates(Resource):
 @ns.route(
     "/branches_updates",
     doc={
-        "description": "Get information about branches updates",
+        "description": "Get information about branch update erratas",
         "responses": GET_RESPONSES_400_404,
     },
 )
@@ -179,7 +179,7 @@ class routeErrataIds(Resource):
 @ns.route(
     "/errata_branches",
     doc={
-        "description": "Get errata branches.",
+        "description": "Get list of branches form errata history.",
         "responses": GET_RESPONSES_404,
     },
 )
@@ -195,7 +195,7 @@ class routeErrataBranches(Resource):
 @ns.route(
     "/find_erratas",
     doc={
-        "description": "Erratas search by ID, vulnerability ID or package name.",
+        "description": "Find errata by ID, vulnerability ID or package name.",
         "responses": GET_RESPONSES_400_404,
     },
 )
