@@ -114,6 +114,7 @@ PRODUCTS = {
         "Starterkit",
     ],
     "c9f2": ["ALT SPWorkstation", "ALT SPServer"],
+    "c10f1": ["ALT SP Workstation", "ALT SP Server"],
 }
 PRODUCT_CPE = {
     "p9": [
