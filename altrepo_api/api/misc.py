@@ -374,6 +374,7 @@ class LookupTables:
         "p8": ["snowmix", "amakeenk", "jenya"],
         "c10f1": ["@maint", "@tester"],
         "c9f2": ["@maint", "@tester"],
+        "c9f1": ["@maint", "@tester"],
     }
 
 
