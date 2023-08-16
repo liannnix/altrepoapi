@@ -19,3 +19,55 @@ from flask_restx import fields
 from .namespace import get_namespace
 
 ns = get_namespace()
+
+vulns_el_model = ns.model(
+    "VulnerabilitiesElementModel",
+    {
+        "id": fields.String(description="vulnerability id"),
+        "type": fields.String(description="vulnerability type"),
+    },
+)
+subtask_info_el_model = ns.model(
+    "SubTaskInfoElementModel",
+    {
+        "subtask_id": fields.Integer(description="subtasks id"),
+        "subtask_type": fields.String(description="subtask type"),
+        "subtask_changed": fields.DateTime(description="subtask changed"),
+        "type": fields.String(description="subtask type"),
+        "src_pkg_name": fields.String(description="source package name"),
+        "src_pkg_hash": fields.String(description="source package hash"),
+        "src_pkg_version": fields.String(description="source package version"),
+        "src_pkg_release": fields.String(description="source package release"),
+    },
+)
+task_list_el_model = ns.model(
+    "TaskListElementModel",
+    {
+        "task_id": fields.Integer(description="task id"),
+        "branch": fields.String(description="repository name"),
+        "owner": fields.String(description="task owner"),
+        "state": fields.String(description="task state"),
+        "changed": fields.DateTime(description="task changed"),
+        "erratas": fields.List(fields.String, description="errata ID list"),
+        "vulnerabilities": fields.Nested(
+            vulns_el_model,
+            description="fixed vulnerabilities list",
+            as_list=True,
+        ),
+        "subtasks": fields.Nested(
+            subtask_info_el_model, description="list of subtasks by task", as_list=True
+        ),
+    },
+)
+task_list_model = ns.model(
+    "TasksListModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of tasks found"),
+        "tasks": fields.Nested(
+            task_list_el_model,
+            description="list of task",
+            as_list=True,
+        ),
+    },
+)
