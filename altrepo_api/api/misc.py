@@ -377,5 +377,20 @@ class LookupTables:
         "c9f1": ["@maint", "@tester"],
     }
 
+    branch_tree_branches = [
+        "sisyphus",
+        "p10",
+        "p9",
+        "p8",
+        "p7",
+        "c10f1",
+        "c9f2",
+        "c9f1",
+        "c8.1",
+        "c8",
+        "c7.1",
+        "c7",
+    ]
+
 
 lut = LookupTables()

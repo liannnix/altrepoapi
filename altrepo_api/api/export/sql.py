@@ -173,5 +173,36 @@ WHERE pkgset_name IN {branches}
 ORDER BY pkg_name
 """
 
+    get_done_tasks = """
+WITH task_and_repo AS (
+    SELECT DISTINCT
+        task_id,
+        task_repo
+    FROM Tasks
+    WHERE task_repo IN {branches}
+)
+SELECT
+    task_id,
+    task_prev,
+    task_repo,
+    task_changed
+FROM TaskStates
+LEFT JOIN (SELECT * FROM task_and_repo) AS TR USING task_id
+WHERE task_state = 'DONE' and task_id IN (
+    SELECT task_id FROM task_and_repo
+)
+ORDER BY task_changed DESC
+"""
+
+    get_branch_history = """
+SELECT
+    pkgset_nodename,
+    pkgset_date,
+    toUInt32(pkgset_kv.v[indexOf(pkgset_kv.k, 'task')])
+FROM PackageSetName
+WHERE pkgset_depth = 0 AND pkgset_nodename IN {branches}
+ORDER BY pkgset_date DESC
+"""
+
 
 sql = SQL()
