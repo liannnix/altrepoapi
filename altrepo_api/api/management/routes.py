@@ -18,7 +18,8 @@ from flask import g
 from flask_restx import Resource
 
 from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
-from altrepo_api.api.management.serializers import task_list_model
+from altrepo_api.api.management.endpoints.task_info import TaskInfo
+from altrepo_api.api.management.serializers import task_list_model, task_info_model
 from altrepo_api.utils import (
     get_logger,
     url_logging,
@@ -50,4 +51,25 @@ class routeTaskList(Resource):
         url_logging(logger, g.url)
         args = task_list_args.parse_args(strict=True)
         w = TaskList(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/task_info/<int:id>",
+    doc={
+        "description": "Get information about the task in the state "
+        "'DONE' and a list of vulnerabilities for subtasks "
+        "based on task ID.",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeTaskInfo(Resource):
+    # @ns.expect()
+    @ns.marshal_with(task_info_model)
+    def get(self, id):
+        url_logging(logger, g.url)
+        args = {}
+        w = TaskInfo(g.connection, id, **args)
+        if not w.check_task_id():
+            ns.abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
         return run_worker(worker=w, args=args)

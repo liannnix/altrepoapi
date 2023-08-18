@@ -5,6 +5,8 @@ from flask import url_for
 BRANCH_IN_DB = "sisyphus"
 BRANCH_NOT_IN_DB = "fakebranch"
 TASK_IN_DB = "310692"
+TASK_IN_DB2 = "326814"
+TASK_DEL_PACKAGES_IN_DB = "327131"
 TASK_NOT_IN_DB = "123456789"
 DELETED_TASK_IN_DB = "307229"
 OWNER_IN_DB = "rider"
@@ -29,6 +31,7 @@ BU_ERRATA_ID_NOT_IN_DB = "ALT-BU-2999-1000-1"
     [
         {"input": TASK_IN_DB, "branch": BRANCH_IN_DB, "status_code": 200},
         {"input": TASK_IN_DB, "status_code": 200},
+        {"input": TASK_IN_DB2, "status_code": 200},
         {"input": f"#{TASK_IN_DB}", "status_code": 200},
         {"input": f"bug:47017", "status_code": 200},
         {"input": VULN_IN_DB, "status_code": 200},
@@ -81,3 +84,29 @@ def test_task_list(client, kwargs):
                 assert params["input"] in str(task["task_id"])
         if params.get("limit", ""):
             assert params["limit"] == data["length"]
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"id": TASK_IN_DB, "status_code": 200},
+        {"id": TASK_IN_DB2, "status_code": 200},
+        {"id": TASK_DEL_PACKAGES_IN_DB, "status_code": 404},
+        {"id": TASK_NOT_IN_DB, "status_code": 404},
+        {"id": DELETED_TASK_IN_DB, "status_code": 404},
+    ]
+)
+def test_task_info(client, kwargs):
+    params = {k: v for k, v in kwargs.items() if k not in ("status_code",)}
+    url = url_for("api.management_route_task_info", **{"id": kwargs["id"]})
+    response = client.get(url, query_string=params)
+    data = response.json
+    if response.status_code == 200:
+        assert data != {}
+        assert data["task_state"] == "DONE"
+        assert data["subtasks"] != []
+        for sub in data["subtasks"]:
+            if sub["errata_id"] != "":
+                assert sub["vulnerabilities"] != []
+            else:
+                assert sub["vulnerabilities"] == []

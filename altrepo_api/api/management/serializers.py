@@ -71,3 +71,49 @@ task_list_model = ns.model(
         ),
     },
 )
+
+subtask_errata_el_model = ns.model(
+    "SubtaskErrataElementModel",
+    {
+        "subtask_id": fields.Integer(description="subtask ID"),
+        "subtask_changed": fields.DateTime(
+            description="date and time the subtask was last changed"
+        ),
+        "src_pkg_hash": fields.String(description="package hash UInt64 as string"),
+        "src_pkg_name": fields.String(description="source package name"),
+        "src_pkg_version": fields.String(description="source package version"),
+        "src_pkg_release": fields.String(description="source package release"),
+        "chlog_text": fields.String(description="package last changelog message"),
+        "chlog_date": fields.DateTime(
+            description="package last changelog message date"
+        ),
+        "chlog_name": fields.String(description="package last changelog name"),
+        "chlog_evr": fields.String(description="package last changelog evr"),
+        "errata_id": fields.String(description="errata ID"),
+        "eh_created": fields.DateTime(
+            description="date and time the errata was created"
+        ),
+        "eh_update": fields.DateTime(description="date and time the errata was update"),
+        "vulnerabilities": fields.Nested(
+            vulns_el_model, description="fixed vulnerabilities list", as_list=True
+        ),
+    },
+)
+task_info_model = ns.model(
+    "TaskInfoModel",
+    {
+        "task_id": fields.Integer(description="task id"),
+        "task_repo": fields.String(description="repository where the task was built"),
+        "task_state": fields.String(description="task state"),
+        "task_changed": fields.DateTime(
+            description="date and time the task was last changed"
+        ),
+        "task_message": fields.String(description="task message"),
+        "task_owner": fields.String(description="task owner nickname"),
+        "subtasks": fields.Nested(
+            subtask_errata_el_model,
+            description="list of subtasks and vulnerabilities by task ID",
+            as_list=True,
+        ),
+    },
+)
