@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, NamedTuple
 
 from altrepo_api.api.base import APIWorker
@@ -112,4 +112,9 @@ class BranchTreeExport(APIWorker):
             "branch_points": [bp.asdict() for bp in branch_points],
         }
 
-        return res, 200
+        last_modified = datetime.strftime(
+            next(iter(tasks.values())).date.astimezone(timezone.utc),
+            "%a, %d %b %Y %H:%M:%S",
+        )
+
+        return res, 200, {"Last-Modified": f"{last_modified} GMT"}
