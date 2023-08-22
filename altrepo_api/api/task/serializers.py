@@ -567,3 +567,75 @@ needs_approval_model = ns.model(
         ),
     },
 )
+check_images_input_filter_model = ns.model(
+    "CheckImagesInputFilterModel",
+    {
+        "editions": fields.List(fields.String(description="image edition")),
+        "releases": fields.List(fields.String(description="image release")),
+        "versions": fields.List(fields.String(description="image version")),
+        "archs": fields.List(fields.String(description="image architecture")),
+        "variants": fields.List(fields.String(description="image variant")),
+        "types": fields.List(fields.String(description="image type")),
+    },
+)
+check_images_input_model = ns.model(
+    "CheckImagesInputModel",
+    {
+        "task_id": fields.Integer(description="task id"),
+        "binpkgs_names": fields.List(fields.String(description="binary package name")),
+        "filters": fields.Nested(
+            check_images_input_filter_model, description="list of filters", as_list=True
+        ),
+    },
+)
+
+
+check_images_output_package_model = ns.model(
+    "CheckImagesOutputPackageModel",
+    {
+        "status": fields.String(description="binary package status"),
+        "from_subtask": fields.Integer(description="subtask id"),
+        "srcpkg_name": fields.String(description="source package name"),
+        "binpkg_name": fields.String(description="binary package name"),
+        "binpkg_arch": fields.String(description="binary package architecture"),
+    },
+)
+check_images_output_image_model = ns.model(
+    "CheckImagesOutputImageModel",
+    {
+        "file": fields.String(description="image file"),
+        "branch": fields.String(description="image branch"),
+        "edition": fields.String(description="image edition"),
+        "flavor": fields.String(description="image flavor"),
+        "platform": fields.String(description="image platform"),
+        "release": fields.String(description="image release"),
+        "major_version": fields.Integer(description="image major version"),
+        "minor_version": fields.Integer(description="image minor version"),
+        "sub_version": fields.Integer(description="image sub version"),
+        "arch": fields.String(description="image arch"),
+        "variant": fields.String(description="image variant"),
+        "type": fields.String(description="image type"),
+        "buildtime": fields.DateTime(description="image built date in ISO8601 format"),
+        "packages": fields.Nested(
+            check_images_output_package_model,
+            description="list of binary packages",
+            as_list=True,
+        ),
+    },
+)
+check_images_output_model = ns.model(
+    "CheckImagesOutputModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "in_images": fields.Nested(
+            check_images_output_image_model,
+            description="list of images with binary packages",
+            as_list=True,
+        ),
+        "not_in_images": fields.Nested(
+            check_images_output_package_model,
+            description="list of binary packages which doesn't belong to any image",
+            as_list=True,
+        ),
+    },
+)

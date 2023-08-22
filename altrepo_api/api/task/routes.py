@@ -31,6 +31,7 @@ from .endpoints.task_build_dependency import TaskBuildDependency
 from .endpoints.find_images import FindImages
 from .endpoints.task_packages import TaskPackages
 from .endpoints.needs_approval import NeedsApproval
+from .endpoints.check_images import CheckImages
 from .parsers import (
     task_info_args,
     task_repo_args,
@@ -53,6 +54,8 @@ from .serializers import (
     find_images_by_task_model,
     task_packages_model,
     needs_approval_model,
+    check_images_input_model,
+    check_images_output_model,
 )
 
 ns = get_namespace()
@@ -285,3 +288,70 @@ class routeNeedsApproval(Resource):
         args = needs_approval_args.parse_args(strict=True)
         w = NeedsApproval(g.connection, **args)
         return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/check_images",
+    doc={
+        "description": """
+## Description
+Get relation between images and binary packages:
+- if some packages from a task are in images, they will be in **in_images** list.
+- if some packages from a task aren't in any image, they will be in **not_in_images** list.
+
+## Arguments
+- Allowed task's states: **EPERM**, **TESTED** or **DONE**.
+- If parameter **packages_names** (list of binary packages names) is set, it will show only specified binary packages.
+- You can provide multiple filters for images. If an image matches at least one filter, it will be shown.
+
+## Examples
+Show information about all of the binary packages inside images:
+```json
+{
+    "task_id": 327143
+}
+```
+Show information about all of the binary packages inside images which edition is 'alt-kworkstation', type is 'iso' and version is '10.1.*':
+```json
+{
+    "task_id": 327143,
+    "filters": [
+        {
+            "editions": ["alt-kworkstation"],
+            "types": ["iso"],
+            "versions": ["10.1"]
+        }
+    ]
+}
+```
+Show information about **liblash** binary package inside images which edition is 'alt-kworkstation' with version '10.1.*' or edition 'slinux' with version '10.2.*'.
+```json
+{
+    "task_id": 312990,
+    "packages_names": [
+        "liblash"
+    ],
+    "filters": [
+        {
+            "editions": ["alt-kworkstation"],
+            "versions": ["10.1"]
+        },
+        {
+            "editions": ["slinux"],
+            "versions": ["10.2"]
+        }
+    ]
+}
+```
+        """,
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeCheckImages(Resource):
+    @ns.expect(check_images_input_model)
+    @ns.marshal_with(check_images_output_model)
+    def post(self):
+        url_logging(logger, g.url)
+        args = {}
+        w = CheckImages(g.connection, json_data=ns.payload)
+        return run_worker(worker=w, args=args, run_method=w.post, ok_code=200)
