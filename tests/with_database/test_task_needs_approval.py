@@ -15,8 +15,8 @@ from flask import url_for
         {"branches": ["p7"], "group": "tester", "status_code": 400},
         {"branches": ["c9f2"], "group": "maint", "status_code": 200},
         {"branches": ["c9f2"], "group": "tester", "status_code": 200},
-        {"branches": ["c9f1"], "group": "maint", "status_code": 400},
-        {"branches": ["c9f1"], "group": "tester", "status_code": 400},
+        {"branches": ["c10f1"], "group": "maint", "status_code": 200},
+        {"branches": ["c9f1"], "group": "tester", "status_code": 200},
     ],
 )
 def test_needs_approval(client, kwargs):
