@@ -137,28 +137,48 @@ WHERE (task_id, subtask_id) IN
 )
 """
 
-    get_last_subtasks_from_tasks = """
-WITH
-last_tasks AS
+    get_last_subtasks_branch_preselect = """
+(
+    SELECT DISTINCT
+        task_id,
+        task_changed,
+        task_message
+    FROM BranchPackageHistory
+    WHERE pkgset_name = '{branch}'
+    ORDER BY task_changed DESC
+    LIMIT {limit}
+)
+"""
+
+    get_last_subtasks_maintainer_preselect = """
 (
     SELECT DISTINCT
         task_id ,
         task_changed,
         task_message
     FROM TaskStates
-    WHERE task_id IN
+    WHERE task_state = 'DONE' AND task_id IN
     (
         SELECT DISTINCT task_id
         FROM Tasks
-        WHERE task_repo = %(branch)s
-            {task_owner_sub}
-        ORDER BY task_changed DESC LIMIT %(limit2)s
+        WHERE task_repo = '{branch}'
+            AND task_owner = '{task_owner}'
+            AND task_id IN (
+                SELECT task_id
+                FROM TaskStates
+                WHERE task_state = 'DONE'
+            )
+        ORDER BY task_changed DESC
+        LIMIT {limit}
     )
-    AND task_state = 'DONE'
-    ORDER BY
-    task_changed DESC
-    LIMIT %(limit)s
+    ORDER BY task_changed DESC
 )
+"""
+
+    get_last_subtasks_from_tasks = """
+WITH
+last_tasks AS
+{last_tasks_preselect}
 SELECT * FROM
 (
     SELECT DISTINCT
