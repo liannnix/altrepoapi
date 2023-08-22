@@ -6,6 +6,19 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.15.1] - 2023-08-22
+
+Regular API code updates and fixes.
+
+### Added
+- `export/branch_tree` route
+- `task/check_images` route
+### Changed
+- add `c9f1` branch in `known_approvers` LUT used in `task/needs_approval` route
+### Fixed
+- exclude `icarus` branch in `find_erratas` route SQL request
+- fix missing tasks in `site/last_packages_by_tasks` endpoint results due to limit argument handling in SQL request
+
 ## [1.15.0] - 2023-08-11
 
 Regular API code updates and fixes.
