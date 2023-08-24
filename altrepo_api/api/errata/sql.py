@@ -128,8 +128,13 @@ SELECT
     vuln_published_date,
     vuln_json
 FROM Vulnerabilities
-WHERE vuln_id IN (
-    SELECT vuln_id FROM {tmp_table}
+WHERE (vuln_id, vuln_hash) IN (
+    SELECT
+        vuln_id,
+        argMax(vuln_hash, ts)
+    FROM Vulnerabilities
+    WHERE vuln_id IN (SELECT vuln_id FROM {tmp_table})
+    GROUP BY vuln_id
 )
 """
 
