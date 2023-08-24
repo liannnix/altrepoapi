@@ -17,6 +17,7 @@
 from typing import Union
 
 from altrepo_api.api.base import APIWorker
+from altrepo_api.api.misc import lut
 
 from .common import (
     CPE,
@@ -58,10 +59,10 @@ class VulnerablePackageByCve(APIWorker):
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
         branch = self.args["branch"]
-        if branch is not None and branch not in self.sql.CPE_BRANCH_MAP:
+        if branch is not None and branch not in lut.cpe_branch_map:
             self.validation_results.append(
                 f"No CPE matches is specified for branch {branch}. "
-                f"Use one of: {', '.join(self.sql.CPE_BRANCH_MAP.keys())}"
+                f"Use one of: {', '.join(lut.cpe_branch_map.keys())}"
             )
 
         if self.validation_results != []:

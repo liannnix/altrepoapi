@@ -19,25 +19,6 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class SQL:
-    CPE_BRANCH_MAP = {
-        # P9
-        "p9": "alt_p9",
-        "c9f1": "alt_p9",
-        "c9f2": "alt_p9",
-        "p9_e2k": "alt_p9",
-        "p9_mipsel": "alt_p9",
-        # P10
-        "p10": "alt_p10",
-        "c10f1": "alt_p10",
-        "c10f2": "alt_p10",
-        "p10_e2k": "alt_p10",
-        # Sisyphus
-        "sisyphus": "altsisyphus",
-        "sisyphus_e2k": "altsisyphus",
-        "sisyphus_mipsel": "altsisyphus",
-        "sisyphus_riscv64": "altsisyphus",
-    }
-
     get_vuln_info_by_ids = """
 SELECT
     vuln_hash,

@@ -540,9 +540,9 @@ def get_packages_cpes(
 ) -> None:
     cls.status = False
 
-    cpe_branches = tuple({v for v in cls.sql.CPE_BRANCH_MAP.values()})
+    cpe_branches = tuple({v for v in lut.cpe_branch_map.values()})
     if cls.branch is not None:
-        cpe_branch = cls.sql.CPE_BRANCH_MAP.get(cls.branch, None)
+        cpe_branch = lut.cpe_branch_map.get(cls.branch, None)
         if cpe_branch is None:
             _ = cls.store_error(
                 {"message": f"No CPE branch mapping found for branch {cls.branch}"}
@@ -593,7 +593,7 @@ def get_last_packages_versions(
 ) -> None:
     cls.status = False
 
-    branches = tuple(cls.sql.CPE_BRANCH_MAP.keys())
+    branches = tuple(lut.cpe_branch_map.keys())
     if cls.branch is not None:
         branches = (cls.branch,)
 
