@@ -411,5 +411,20 @@ class LookupTables:
         "sisyphus_riscv64": "altsisyphus",
     }
 
+    branch_inheritance = {
+        "c10f1": ["p10", "sisyphus"],
+        "c9f2": ["c9f1", "p9", "sisyphus"],
+        "c9f1": ["p9", "sisyphus"],
+        # "c8.1": ["c8", "p8", "sisyphus"],
+        # "c8": ["p8", "sisyphus"],
+        # "c7.1": ["c7", "p7", "sisyphus"],
+        # "c7": ["p7", "sisyphus"],
+        "p10": ["sisyphus"],
+        "p9": ["sisyphus"],
+        # "p8": ["sisyphus"],
+        # "p7": ["sisyphus"],
+        "sisyphus": ["sisyphus"],
+    }
+
 
 lut = LookupTables()
