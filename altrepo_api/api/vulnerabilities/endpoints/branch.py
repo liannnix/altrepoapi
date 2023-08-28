@@ -14,8 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Union
-
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
 
@@ -45,7 +43,7 @@ class BranchOpenVulnerabilities(APIWorker):
         self.args = kwargs
         self.sql = sql
         super().__init__()
-        self.branch: Union[str, None] = None
+        self.branch: str = self.args["branch"]
         self.cve_info: dict[str, VulnerabilityInfo] = {}
         self.cve_cpems: dict[str, list[CpeMatch]] = {}
         self.erratas: list[Errata] = []
@@ -69,8 +67,6 @@ class BranchOpenVulnerabilities(APIWorker):
             return True
 
     def get(self):
-        self.branch = self.args["branch"]
-
         # get branch source packages
         response = self.send_sql_request(
             self.sql.get_branch_src_packages.format(branch=self.branch)

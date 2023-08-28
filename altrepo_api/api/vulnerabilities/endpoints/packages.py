@@ -14,8 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Union
-
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
 
@@ -45,7 +43,7 @@ class PackageOpenVulnerabilities(APIWorker):
         self.args = kwargs
         self.sql = sql
         super().__init__()
-        self.branch: Union[str, None] = None
+        self.branch: str = self.args["branch"]
         self.cve_info: dict[str, VulnerabilityInfo] = {}
         self.cve_cpems: dict[str, list[CpeMatch]] = {}
         self.erratas: list[Errata] = []
@@ -57,7 +55,7 @@ class PackageOpenVulnerabilities(APIWorker):
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
         branch = self.args["branch"]
-        if branch is not None and branch not in lut.cpe_branch_map:
+        if branch not in lut.cpe_branch_map:
             self.validation_results.append(
                 f"No CPE matches is specified for branch {branch}. "
                 f"Use one of: {', '.join(lut.cpe_branch_map.keys())}"
@@ -69,7 +67,6 @@ class PackageOpenVulnerabilities(APIWorker):
             return True
 
     def get(self):
-        self.branch = self.args["branch"]
         pkg_names = (self.args["name"],)
 
         # get erratas
@@ -120,7 +117,7 @@ class PackageOpenVulnerabilities(APIWorker):
             pv for pv in self.packages_vulnerabilities if pv.vulnerable
         ]
 
-        # update packagex vulnerabilities with erratas data
+        # update packages vulnerabilities with erratas data
         get_vulnerability_fix_errata(self, cve_ids)
         # filter only vulnerable packages found by CPE matching version compare
         self.packages_vulnerabilities = [
