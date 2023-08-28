@@ -6,6 +6,16 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.15.2] - 2023-08-28
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `api/vuln` endpoints uses task and branch inheritance history when search for erratas and open vulnerabilities
+### Fixed
+- tests failed due DB contents changed
+
 ## [1.15.1] - 2023-08-22
 
 Regular API code updates and fixes.
