@@ -173,7 +173,6 @@ WHERE (errata_id, eh_updated) IN (
             max(eh_updated) AS updated
         FROM ErrataHistory
         WHERE eh_type IN ('branch', 'task')
-        {branch_clause}
         {where_clause}
         GROUP BY errata_id_noversion
     )
@@ -340,6 +339,40 @@ WHERE eh_type = 'task'
 AND (task_id, subtask_id) IN (SELECT * FROM task_subtasks)
 GROUP BY subtask_id
 ORDER BY subtask_id
+"""
+
+    get_done_tasks_by_packages = """
+SELECT DISTINCT
+    task_id,
+    pkgset_name,
+    pkg_name
+FROM BranchPackageHistory
+WHERE pkgset_name in {branches}
+    AND pkg_name IN {tmp_table}
+    AND pkg_sourcepackage = 1
+    AND tplan_action = 'add'
+ORDER BY task_changed DESC
+"""
+
+    get_done_tasks_history = """
+WITH task_and_repo AS (
+    SELECT DISTINCT
+        task_id,
+        task_repo
+    FROM Tasks
+    WHERE task_repo IN {branches}
+)
+SELECT
+    task_id,
+    task_prev,
+    task_repo,
+    task_changed
+FROM TaskStates
+LEFT JOIN (SELECT * FROM task_and_repo) AS TR USING task_id
+WHERE task_state = 'DONE' and task_id IN (
+    SELECT task_id FROM task_and_repo
+)
+-- ORDER BY task_changed DESC
 """
 
 

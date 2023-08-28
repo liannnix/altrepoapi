@@ -35,6 +35,9 @@ from ..sql import SQL
 logger = logging.getLogger(__name__)
 
 
+ROOT_BRANCH = "sisyphus"
+
+
 def unescape(x: str) -> str:
     def first_pass(s: str) -> str:
         escaped = False
@@ -66,7 +69,13 @@ class PackageVersion(NamedTuple):
     branch: str
 
 
-@dataclass
+class Task(NamedTuple):
+    id: int
+    branch: str
+    package: str
+
+
+@dataclass(frozen=True)
 class Errata:
     id: str
     ref_type: list[str]
@@ -95,6 +104,9 @@ class Errata:
         del res["ref_link"]
         res["vulns"] = [x for x in self.ref_link]
         return res
+
+    def __hash__(self) -> int:
+        return hash(json.dumps(self.asdict()))
 
 
 @dataclass
@@ -269,6 +281,9 @@ class PackageVulnerability:
         res["fixed_in"] = [e.asdict() for e in self.fixed_in]
         return res
 
+    def __hash__(self) -> int:
+        return hash(json.dumps(self.asdict()))
+
 
 def vulnerability_closed_in_errata(
     package: PackageVulnerability, errata: Errata
@@ -304,10 +319,6 @@ class _pHasBranch(Protocol):
     branch: str
 
 
-class _pHasBranchOptional(Protocol):
-    branch: Union[str, None]
-
-
 class _pHasCveInfo(Protocol):
     cve_info: dict[str, VulnerabilityInfo]
 
@@ -332,18 +343,22 @@ class _pHasPackagesVulnerabilities(Protocol):
     packages_vulnerabilities: list[PackageVulnerability]
 
 
-class _pGetErratas(_pHasErratas, _pHasBranchOptional, _pAPIWorker, Protocol):
+class _pGetErratasCompatible(_pHasErratas, _pHasBranch, _pAPIWorker, Protocol):
+    ...
+
+
+class _pDedupErratasCompatible(_pHasErratas, _pAPIWorker, Protocol):
     ...
 
 
 class _pGetPackagesCpesCompatible(
-    _pHasPackagesCpes, _pHasBranchOptional, _pAPIWorker, Protocol
+    _pHasPackagesCpes, _pHasBranch, _pAPIWorker, Protocol
 ):
     ...
 
 
 class _pGetCveInfoCompatible(
-    _pHasCveInfo, _pHasCveCpems, _pHasBranchOptional, _pAPIWorker, Protocol
+    _pHasCveInfo, _pHasCveCpems, _pHasBranch, _pAPIWorker, Protocol
 ):
     ...
 
@@ -363,7 +378,7 @@ class _pGetCveInfoByIdsCompatible(_pHasCveInfo, _pAPIWorker, Protocol):
 
 class _pGetLastPackageVersionsCompatible(
     _pHasPackagesVersions,
-    _pHasBranchOptional,
+    _pHasBranch,
     _pAPIWorker,
     Protocol,
 ):
@@ -390,83 +405,46 @@ class _pGetPackagesVulnerabilitiesCompatible(
     ...
 
 
+class _pDedupPackagesVulnerabilitiesCompatible(
+    _pHasPackagesVulnerabilities, _pAPIWorker, Protocol
+):
+    ...
+
+
 class _pGetVulnerabilityFixErrataCompatible(
     _pHasPackagesVulnerabilities,
     _pHasPackagesVersions,
     _pHasErratas,
-    _pHasBranchOptional,
+    _pHasBranch,
     _pAPIWorker,
     Protocol,
 ):
     ...
 
 
+class _pGetTaskHistoryCompatible(_pHasBranch, _pAPIWorker, Protocol):
+    ...
+
+
 # Mixin
-def get_erratas(
-    cls: _pGetErratas, where_clause: str, external_tables: list[dict[str, Any]] = []
-) -> None:
+def _get_task_history(
+    cls: _pGetTaskHistoryCompatible, pkg_names: Iterable[str]
+) -> Union[dict[str, list[Task]], None]:
+    """Find 'DONE' tasks by given package names and branch in accordance to
+    task history and branch inheritance order."""
+
     cls.status = False
 
-    branch_clause = ""
-    if cls.branch is not None:
-        branch_clause = f"AND pkgset_name = '{cls.branch}'"
-
-    # find errata by branch (if set) and CVE ids
-    response = cls.send_sql_request(
-        cls.sql.get_erratas.format(
-            branch_clause=branch_clause, where_clause=where_clause
-        ),
-        external_tables=external_tables,
-    )
-    if not cls.sql_status:
-        return None
-    if response:
-        erratas = [Errata(*el[:-1]) for el in response]
-
-        # get last task states
-        # get last state for tasks in erratas
-        task_states: dict[int, str] = {}
-
-        tmp_table = make_tmp_table_name("task_ids")
-
-        response = cls.send_sql_request(
-            cls.sql.get_last_tasks_state.format(tmp_table=tmp_table),
-            external_tables=[
-                {
-                    "name": tmp_table,
-                    "structure": [("task_id", "UInt32")],
-                    "data": [{"task_id": e.task_id} for e in erratas],
-                }
-            ],
-        )
-        if not cls.sql_status:
-            return None
-        if response:
-            task_states = {el[0]: el[1] for el in response}
-
-        for errata in erratas:
-            # skip erratas from deleted tasks
-            if errata.task_id != 0 and task_states.get(errata.task_id, "") not in (
-                "DONE",
-                "EPERM",
-                "TESTED",
-            ):
-                continue
-
-            cls.erratas.append(errata)
-
+    if cls.branch not in lut.branch_inheritance:
+        # nothing to do with it
         cls.status = True
-    else:
-        _ = cls.store_error({"message": "No errata records found in DB"})
+        return None
 
+    # use branches by inheritance
+    branches = [cls.branch]
+    branches += lut.branch_inheritance[cls.branch]
 
-def get_errata_by_cve_ids(cls: _pGetErratas, cve_ids: Iterable[str]) -> None:
-    return get_erratas(cls, f"AND hasAny(eh_references.link, {cve_ids})")
-
-
-def get_errata_by_pkg_names(cls: _pGetErratas, pkg_names: Iterable[str]) -> None:
     tmp_table = make_tmp_table_name("pkg_names")
-    pkg_names_clause = f"AND pkg_name in {tmp_table}"
     external_tables = [
         {
             "name": tmp_table,
@@ -475,7 +453,233 @@ def get_errata_by_pkg_names(cls: _pGetErratas, pkg_names: Iterable[str]) -> None
         }
     ]
 
-    return get_erratas(cls, pkg_names_clause, external_tables)
+    # get 'DONE' tasks by package names and branches
+    response = cls.send_sql_request(
+        cls.sql.get_done_tasks_by_packages.format(
+            branches=branches, tmp_table=tmp_table
+        ),
+        external_tables=external_tables,
+    )
+    if not cls.sql_status:
+        return None
+    if not response:
+        _ = cls.store_error({"message": "No 'DONE' tasks found in DB"})
+        return None
+
+    # order by task_changed in descending order
+    tasks: dict[str, list[Task]] = {}
+    for task in (Task(*el) for el in response):
+        if task.package not in tasks:
+            tasks[task.package] = []
+        tasks[task.package].append(task)
+
+    # collect all branches from found tasks
+    _all_branches = set()
+
+    # process tasks
+    for package, _tasks in tasks.items():
+        _branches = {t.branch for t in _tasks}
+        _all_branches.update(_branches)
+
+        if cls.branch in _branches:
+            i = 0
+            for ii, t in enumerate(_tasks):
+                if t.branch == cls.branch:
+                    i = ii
+            tasks[package] = _tasks[i:]
+
+    if all(v == [] for v in tasks.values()):
+        cls.status = True
+        return None
+
+    # collect all branches, including inherited from
+    for b in tuple(_all_branches):
+        _all_branches.update(lut.branch_inheritance.get(b, []))
+
+    response = cls.send_sql_request(
+        cls.sql.get_done_tasks_history.format(branches=tuple(_all_branches))
+    )
+    if not cls.sql_status:
+        return None
+    if not response:
+        _ = cls.store_error({"message": "No tasks history found in DB"})
+        return None
+
+    class TaskHistory(NamedTuple):
+        id: int
+        prev: int
+        branch: str
+        changed: datetime
+
+    tasks_history = {t.id: t for t in (TaskHistory(*el) for el in response)}
+
+    first_tasks: dict[str, TaskHistory] = {}
+    for task in tasks_history.values():
+        if (
+            task.branch not in first_tasks
+            or task.changed > first_tasks[task.branch].changed
+        ):
+            first_tasks[task.branch] = task
+
+    branch_history: dict[str, set[int]] = {}
+
+    for branch, task in ((b, t) for b, t in first_tasks.items()):
+        t = task
+        tasks_set = set()
+        intermediate_branches = set()
+
+        while True:
+            tasks_set.add(t.id)
+
+            if t.prev not in tasks_history:
+                # End of the list
+                break
+
+            t = tasks_history[t.prev]
+
+            if t.branch != branch and t.branch not in intermediate_branches:
+                intermediate_branches.add(t.branch)
+
+        branch_history[branch] = tasks_set
+
+    # filter out tasks using branch tasks history
+    for package, _tasks in tasks.items():
+        if not _tasks:
+            continue
+
+        _branch = _tasks[0].branch
+        tasks[package] = [t for t in _tasks if t.id in branch_history[_branch]]
+
+    cls.status = True
+    return tasks
+
+
+def _get_erratas(
+    cls: _pGetErratasCompatible,
+    where_clause: str,
+    external_tables: list[dict[str, Any]] = [],
+) -> None:
+    cls.status = False
+
+    # find errata by branch (if set) and CVE ids
+    response = cls.send_sql_request(
+        cls.sql.get_erratas.format(
+            # branch_clause=branch_clause, where_clause=where_clause
+            where_clause=where_clause
+        ),
+        external_tables=external_tables,
+    )
+    if not cls.sql_status:
+        return None
+    if not response:
+        _ = cls.store_error({"message": "No errata records found in DB"})
+        return None
+
+    erratas = [Errata(*el[:-1]) for el in response]
+
+    # get last task states
+    # get last state for tasks in erratas
+    task_states: dict[int, str] = {}
+
+    tmp_table = make_tmp_table_name("task_ids")
+
+    response = cls.send_sql_request(
+        cls.sql.get_last_tasks_state.format(tmp_table=tmp_table),
+        external_tables=[
+            {
+                "name": tmp_table,
+                "structure": [("task_id", "UInt32")],
+                "data": [{"task_id": e.task_id} for e in erratas],
+            }
+        ],
+    )
+    if not cls.sql_status:
+        return None
+    if response:
+        task_states = {el[0]: el[1] for el in response}
+
+    for errata in erratas:
+        # skip erratas from deleted tasks
+        if errata.task_id != 0 and task_states.get(errata.task_id, "") not in (
+            "DONE",
+            "EPERM",
+            "TESTED",
+        ):
+            continue
+
+        cls.erratas.append(errata)
+
+    cls.status = True
+
+
+def deduplicate_erratas(cls: _pDedupErratasCompatible) -> None:
+    if not cls.erratas:
+        return None
+
+    cls.erratas = list(set(cls.erratas))
+
+
+def deduplicate_packages_vulnerabilities(
+    cls: _pDedupPackagesVulnerabilitiesCompatible,
+) -> None:
+    if not cls.packages_vulnerabilities:
+        return None
+
+    cls.packages_vulnerabilities = list(set(cls.packages_vulnerabilities))
+
+
+def get_errata_by_cve_ids(cls: _pGetErratasCompatible, cve_ids: Iterable[str]) -> None:
+    where_clause = (
+        f"AND pkgset_name = '{cls.branch}'" f"AND hasAny(eh_references.link, {cve_ids})"
+    )
+    return _get_erratas(cls, where_clause)
+
+
+def get_errata_by_pkg_names(
+    cls: _pGetErratasCompatible, pkg_names: Iterable[str]
+) -> None:
+    tasks_history = _get_task_history(cls, pkg_names)
+    # propagate error
+    if not cls.status:
+        return None
+
+    # pass package names through external table
+    tmp_table = make_tmp_table_name("pkg_names")
+    external_tables = [
+        {
+            "name": tmp_table,
+            "structure": [("pkg_name", "String")],
+            "data": [{"pkg_name": n} for n in pkg_names],
+        }
+    ]
+
+    where_clause = f"AND pkgset_name = '{cls.branch}' AND pkg_name IN {tmp_table}"
+
+    if tasks_history is None:
+        return _get_erratas(cls, where_clause, external_tables)
+
+    task_ids = {t.id for tt in tasks_history.values() for t in tt}
+
+    if not task_ids:
+        return _get_erratas(cls, where_clause, external_tables)
+
+    where_clause = (
+        f"AND ((pkgset_name = '{cls.branch}' AND pkg_name IN {tmp_table}) OR "
+    )
+
+    tmp_table = make_tmp_table_name("task_ids")
+
+    where_clause += f"(task_id IN {tmp_table}))"
+
+    external_tables.append(
+        {
+            "name": tmp_table,
+            "structure": [("task_id", "UInt32")],
+            "data": [{"task_id": tid} for tid in task_ids],
+        }
+    )
+
+    return _get_erratas(cls, where_clause, external_tables)
 
 
 def get_cve_info(
@@ -540,15 +744,7 @@ def get_packages_cpes(
 ) -> None:
     cls.status = False
 
-    cpe_branches = tuple({v for v in lut.cpe_branch_map.values()})
-    if cls.branch is not None:
-        cpe_branch = lut.cpe_branch_map.get(cls.branch, None)
-        if cpe_branch is None:
-            _ = cls.store_error(
-                {"message": f"No CPE branch mapping found for branch {cls.branch}"}
-            )
-            return None
-        cpe_branches = (cpe_branch,)
+    cpe_branches = (lut.cpe_branch_map[cls.branch],)
 
     pkg_names_clause = ""
     external_tables = []
@@ -593,9 +789,7 @@ def get_last_packages_versions(
 ) -> None:
     cls.status = False
 
-    branches = tuple(lut.cpe_branch_map.keys())
-    if cls.branch is not None:
-        branches = (cls.branch,)
+    branches = (cls.branch,)
 
     tmp_table = make_tmp_table_name("pkg_names")
 
@@ -714,6 +908,12 @@ def get_vulnerability_fix_errata(
         for e in v.fixed_in
     }
 
+    vulnerable_packages = {
+        (p.name, p.version, p.release, p.vuln_id)
+        for p in cls.packages_vulnerabilities
+        if p.vulnerable
+    }
+
     pv_list: list[PackageVulnerability] = []
 
     for errata in cls.erratas:
@@ -729,7 +929,9 @@ def get_vulnerability_fix_errata(
 
         # build package vulnerability from errata and last package version
         for pkg in cls.packages_versions:
-            if (pkg.branch, pkg.name) == (errata.branch, errata.pkg_name):
+            # XXX: do not match branch here to handle erratas from parent branches
+            # if (pkg.branch, pkg.name) == (errata.branch, errata.pkg_name):
+            if pkg.name == errata.pkg_name:
                 # get any vuln_id if it is linked with errata
                 vuln_ids = cve_ids_set.intersection(set(errata.ref_ids("vuln")))
                 if not vuln_ids:
@@ -757,6 +959,14 @@ def get_vulnerability_fix_errata(
 
                 # add PackageVulnerability record for every CVE id mentioned in errata
                 for vuln_id in vuln_ids:
+                    # skip vulnerabilities marked as not vulnerable
+                    if (
+                        pkg.name,
+                        pkg.version,
+                        pkg.release,
+                        vuln_id,
+                    ) not in vulnerable_packages:
+                        continue
                     # XXX: make a copy of dataclass object instance here!
                     pv_ = replace(pv, vuln_id=vuln_id)
                     pv_list.append(pv_)
@@ -773,7 +983,8 @@ def get_vulnerability_fix_errata(
     for pv in [
         pv
         for pv in cls.packages_vulnerabilities
-        if (pv.vulnerable is False and pv.fixed is False)
+        # if (pv.vulnerable is False and pv.fixed is False)
+        if (pv.vulnerable is True and pv.fixed is False)
     ]:
         for errata_pv in pv_list:
             if pv2cmp_tuple(pv) == pv2cmp_tuple(errata_pv):

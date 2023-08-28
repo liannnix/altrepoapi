@@ -55,13 +55,6 @@ bdu_id_list = parser.register_item(
     help="BDU id",
     location="args",
 )
-branch_opt = parser.register_item(
-    "branch",
-    type=branch_name_type,
-    required=False,
-    help="branch",
-    location="args",
-)
 branch = parser.register_item(
     "branch",
     type=branch_name_type,
@@ -101,9 +94,9 @@ maintainer_nick = parser.register_item(
 
 cve_info_args = parser.build_parser(cve_id)
 bdu_info_args = parser.build_parser(bdu_id)
-cve_vulnerable_packages_args = parser.build_parser(cve_id_list, branch_opt)
-bdu_vulnerable_packages_args = parser.build_parser(bdu_id_list, branch_opt)
-package_vulnerabilities_args = parser.build_parser(pkg_name, branch_opt)
+cve_vulnerable_packages_args = parser.build_parser(cve_id_list, branch)
+bdu_vulnerable_packages_args = parser.build_parser(bdu_id_list, branch)
+package_vulnerabilities_args = parser.build_parser(pkg_name, branch)
 branch_vulnerabilities_args = parser.build_parser(branch)
 maintainer_vulnerabilities_args = parser.build_parser(
     branch, maintainer_nick, by_acl_opt
