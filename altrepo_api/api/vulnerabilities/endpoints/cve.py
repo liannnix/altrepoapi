@@ -14,8 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Union
-
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
 
@@ -33,6 +31,8 @@ from .common import (
     get_packages_vulnerabilities,
     get_vulnerability_fix_errata,
     get_errata_by_cve_ids,
+    get_errata_by_pkg_names,
+    deduplicate_erratas,
 )
 from ..sql import sql
 
@@ -47,7 +47,7 @@ class VulnerablePackageByCve(APIWorker):
         self.args = kwargs
         self.sql = sql
         super().__init__()
-        self.branch: Union[str, None] = None
+        self.branch: str = self.args["branch"]
         self.cve_info: dict[str, VulnerabilityInfo] = {}
         self.cve_cpems: dict[str, list[CpeMatch]] = {}
         self.erratas: list[Errata] = []
@@ -59,7 +59,7 @@ class VulnerablePackageByCve(APIWorker):
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
         branch = self.args["branch"]
-        if branch is not None and branch not in lut.cpe_branch_map:
+        if branch not in lut.cpe_branch_map:
             self.validation_results.append(
                 f"No CPE matches is specified for branch {branch}. "
                 f"Use one of: {', '.join(lut.cpe_branch_map.keys())}"
@@ -127,11 +127,15 @@ class VulnerablePackageByCve(APIWorker):
         if not self.status:
             return
 
-        # 7. check if there any buld tasks that fixes vulnerable packages
+        # 7. get erratas by collected package names including tasks by branch inheritance
+        pkg_names = {p.name for p in self.packages_vulnerabilities if p.vulnerable}
+        get_errata_by_pkg_names(self, pkg_names)
+        deduplicate_erratas(self)
+
+        # 8. check if there any buld tasks that fixes vulnerable packages
         get_vulnerability_fix_errata(self, cve_ids)
 
     def get(self):
-        self.branch = self.args["branch"]
         cve_ids = self.args["vuln_id"]
 
         self._find_vulnerable_packages(cve_ids)
@@ -144,12 +148,17 @@ class VulnerablePackageByCve(APIWorker):
                 vuln.asdict()
                 for vuln in sorted(self.cve_info.values(), key=lambda x: x.id)
             ],
-            "packages": [p.asdict() for p in self.packages_vulnerabilities],
+            "packages": [
+                p.asdict()
+                for p in sorted(
+                    self.packages_vulnerabilities,
+                    key=lambda x: (x.vulnerable, x.name, x.fixed, x.vuln_id),
+                )
+            ],
             "result": self.result_message,
         }, 200
 
     def get_by_bdu(self):
-        self.branch = self.args["branch"]
         bdu_ids = self.args["vuln_id"]
 
         # get CVE id's from BDU
@@ -188,5 +197,11 @@ class VulnerablePackageByCve(APIWorker):
                 vuln.asdict()
                 for vuln in sorted(self.cve_info.values(), key=lambda x: x.id)
             ],
-            "packages": [p.asdict() for p in self.packages_vulnerabilities],
+            "packages": [
+                p.asdict()
+                for p in sorted(
+                    self.packages_vulnerabilities,
+                    key=lambda x: (x.vulnerable, x.name, x.fixed, x.vuln_id),
+                )
+            ],
         }, 200
