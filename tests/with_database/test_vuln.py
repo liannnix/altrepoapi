@@ -56,14 +56,12 @@ def test_vuln_bdu_info(client, kwargs):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"vuln_id": BDU_IN_DB, "status_code": 200},
-        {"vuln_id": ",".join(LIST_BDU_IN_DB), "status_code": 200},
         {"vuln_id": BDU_IN_DB, "branch": BRANCH_IN_DB, "status_code": 200},
-        {"vuln_id": BDU_IN_DB, "branch": BRANCH_IN_DB2, "status_code": 200},
+        {"vuln_id": ",".join(LIST_BDU_IN_DB), "branch": BRANCH_IN_DB2, "status_code": 200},
         {"vuln_id": BDU_IN_DB, "branch": BRANCH_NOT_IN_DB, "status_code": 400},
-        {"vuln_id": BDU_NOT_IN_DB, "status_code": 404},
         {"vuln_id": BDU_NOT_IN_DB, "branch": BRANCH_IN_DB, "status_code": 404},
-        {"vuln_id": BAD_BDU_ID, "status_code": 400},
+        {"vuln_id": BDU_NOT_IN_DB, "branch": BRANCH_IN_DB, "status_code": 404},
+        {"vuln_id": BAD_BDU_ID, "branch": BRANCH_IN_DB, "status_code": 400},
     ],
 )
 def test_vuln_bdu_packages(client, kwargs):
@@ -112,14 +110,11 @@ def test_vuln_cve_info(client, kwargs):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"vuln_id": CVE_IN_DB, "status_code": 200},
-        {"vuln_id": ",".join(LIST_CVE_IN_DB), "status_code": 200},
         {"vuln_id": CVE_IN_DB, "branch": BRANCH_IN_DB, "status_code": 200},
-        {"vuln_id": CVE_IN_DB, "branch": BRANCH_IN_DB2, "status_code": 200},
+        {"vuln_id": ",".join(LIST_CVE_IN_DB), "branch": BRANCH_IN_DB2, "status_code": 200},
         {"vuln_id": CVE_IN_DB, "branch": BRANCH_NOT_IN_DB, "status_code": 400},
-        {"vuln_id": CVE_NOT_IN_DB, "status_code": 404},
         {"vuln_id": CVE_NOT_IN_DB, "branch": BRANCH_IN_DB, "status_code": 404},
-        {"vuln_id": BAD_CVE_ID, "status_code": 400},
+        {"vuln_id": BAD_CVE_ID, "branch": BRANCH_IN_DB, "status_code": 400},
     ],
 )
 def test_vuln_cve_packages(client, kwargs):
@@ -144,11 +139,10 @@ def test_vuln_cve_packages(client, kwargs):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"name": PAKCAGE_IN_DB, "status_code": 200},
+        {"name": PAKCAGE_IN_DB, "status_code": 400},
         {"name": PAKCAGE_IN_DB, "branch": BRANCH_IN_DB, "status_code": 200},
-        {"name": BAD_PACKAGE_NAME, "status_code": 400},
+        {"name": BAD_PACKAGE_NAME, "branch": BRANCH_IN_DB, "status_code": 400},
         {"name": PAKCAGE_IN_DB, "branch": BRANCH_NOT_IN_DB, "status_code": 400},
-        {"name": PAKCAGE_NOT_IN_DB, "status_code": 404},
         {"name": PAKCAGE_NOT_IN_DB, "branch": BRANCH_IN_DB, "status_code": 404},
     ],
 )
