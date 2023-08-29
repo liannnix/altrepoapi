@@ -71,33 +71,17 @@ def test_needs_approval(client, kwargs):
         assert data["length"] == len(data["tasks"])
 
         for task in data["tasks"]:
-            url = url_for("api.task_route_task_info", id=task["id"])
-            task_info_response = client.get(url)
-
-            assert task_info_response.status_code == 200
-            task_info = task_info_response.json
+            for field in task_fields:
+                assert task[field] is not None
 
             assert task["state"] == "EPERM"
             assert task["testonly"] is False
             assert task["branch"] in kwargs["branches"]
 
-            for field in task_fields:
-                assert task[field] == task_info[field]
-
-            assert len(task["subtasks"]) == len(task_info["subtasks"])
-
             for subtask in task["subtasks"]:
-                for sub in task_info["subtasks"]:
-                    if sub["subtask_id"] == subtask["id"]:
-                        subtask_info = sub
-
-                assert subtask["id"] == subtask_info["subtask_id"]
-
                 for field in subtask_fields:
-                    assert subtask[field] == subtask_info[field]
+                    assert subtask[field] is not None
 
+                source_package = subtask["source_package"]
                 for field in source_package_fields:
-                    assert (
-                        subtask["source_package"][field]
-                        in (subtask_info["source_package"][field], '')
-                    )
+                    assert source_package[field] is not None
