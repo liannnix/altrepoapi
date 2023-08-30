@@ -21,6 +21,7 @@ from datetime import datetime
 from typing import Any, Iterable, NamedTuple, Protocol, Union
 
 from altrepo_api.utils import make_tmp_table_name
+from altrepo_api.api.misc import lut
 
 from ..sql import SQL
 
@@ -181,9 +182,19 @@ def empty_vuln(vuln_id: str) -> Vulnerability:
     vuln_type = ""
     if vuln_id.startswith("CVE-"):
         vuln_type = "CVE"
+        normalized_id = vuln_id.lower()
+        vuln_url = f"{lut.nvd_cve_base}/{normalized_id}"
     elif vuln_id.startswith("BDU:"):
         vuln_type = "BDU"
-    return Vulnerability(id=vuln_id, type=vuln_type)
+        normalized_id = vuln_id.removeprefix("BDU:")
+        vuln_url = f"{lut.fstec_bdu_base}/{normalized_id}"
+    elif vuln_id.startswith("MFSA"):
+        vuln_type = "MFSA"
+        normalized_id = vuln_id.replace("MFSA ", "mfsa").replace("MFSA-", "mfsa")
+        vuln_url = f"{lut.mfsa_base}/{normalized_id}"
+    else:
+        vuln_url = f"#{vuln_id}"
+    return Vulnerability(id=vuln_id, type=vuln_type, url=vuln_url)
 
 
 # Protocols
