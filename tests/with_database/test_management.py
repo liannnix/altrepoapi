@@ -13,8 +13,14 @@ OWNER_IN_DB = "rider"
 OWNER_NOT_IN_DB = "fakeowner"
 PACKAGE_IN_DB = "curl"
 PACKAGE_NOT_IN_DB = "fakepackagename"
+
 VULN_IN_DB = "CVE-2019-17069"
 VULN_IN_DB2 = "BDU:2021-04545"
+VULN_NOT_IN_DB = "CVE-1111-11111"
+VULN_NOT_IN_DB2 = "BDU:1111-11111"
+
+BUG_IN_DB = "36250"
+BUG_NOT_IN_DB = "1"
 
 PU_ERRATA_ID_IN_DB_1 = "ALT-PU-2023-2000-1"
 PU_ERRATA_ID_IN_DB_2 = "ALT-PU-2013-1000-1"
@@ -94,7 +100,7 @@ def test_task_list(client, kwargs):
         {"id": TASK_DEL_PACKAGES_IN_DB, "status_code": 404},
         {"id": TASK_NOT_IN_DB, "status_code": 404},
         {"id": DELETED_TASK_IN_DB, "status_code": 404},
-    ]
+    ],
 )
 def test_task_info(client, kwargs):
     params = {k: v for k, v in kwargs.items() if k not in ("status_code",)}
@@ -110,3 +116,56 @@ def test_task_info(client, kwargs):
                 assert sub["vulnerabilities"] != []
             else:
                 assert sub["vulnerabilities"] == []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "payload": {"vuln_ids": [VULN_IN_DB, VULN_IN_DB2, BUG_IN_DB]},
+            "status_code": 200,
+        },
+        {
+            "payload": {"vuln_ids": [VULN_IN_DB, VULN_IN_DB2]},
+            "status_code": 200,
+        },
+        {
+            "payload": {"vuln_ids": [BUG_IN_DB, BUG_NOT_IN_DB]},
+            "status_code": 200,
+        },
+        {
+            "payload": {"vuln_ids": [VULN_NOT_IN_DB, VULN_NOT_IN_DB2]},
+            "status_code": 200,
+        },
+        {
+            "payload": {"vuln_ids": [BUG_NOT_IN_DB, VULN_NOT_IN_DB2]},
+            "status_code": 404,
+        },
+        {
+            "payload": {"vuln_ids": []},
+            "status_code": 404,
+        },
+        {
+            "payload": {"vuln_ids": ["test"]},
+            "status_code": 400,
+        },
+    ],
+)
+def test_vulns(client, kwargs):
+    url = url_for("api.management_route_vulns_info")
+    response = client.post(url, json=kwargs["payload"], content_type="application/json")
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        if BUG_IN_DB in kwargs["payload"]["vuln_ids"]:
+            assert data["bugs"] != []
+        else:
+            assert data["bugs"] == []
+
+        if BUG_NOT_IN_DB in kwargs["payload"]["vuln_ids"]:
+            assert data["not_found"] != []
+        if VULN_NOT_IN_DB2 in kwargs["payload"]["vuln_ids"]:
+            assert data["not_found"] != []
+        if VULN_NOT_IN_DB in kwargs["payload"]["vuln_ids"]:
+            assert data["vulns"] != []

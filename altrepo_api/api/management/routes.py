@@ -17,9 +17,19 @@
 from flask import g
 from flask_restx import Resource
 
-from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
+from altrepo_api.api.base import (
+    run_worker,
+    GET_RESPONSES_400_404,
+    POST_RESPONSES_400_404,
+)
 from altrepo_api.api.management.endpoints.task_info import TaskInfo
-from altrepo_api.api.management.serializers import task_list_model, task_info_model
+from altrepo_api.api.management.endpoints.vulns_info import VulnsInfo
+from altrepo_api.api.management.serializers import (
+    task_list_model,
+    task_info_model,
+    vuln_ids_json_list_model,
+    vuln_ids_json_post_list_model,
+)
 from altrepo_api.utils import (
     get_logger,
     url_logging,
@@ -73,3 +83,21 @@ class routeTaskInfo(Resource):
         if not w.check_task_id():
             ns.abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
         return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/vulns",
+    doc={
+        "description": "Find vulnerability information.",
+        "responses": POST_RESPONSES_400_404,
+    },
+)
+class routeVulnsInfo(Resource):
+    @ns.expect(vuln_ids_json_post_list_model)
+    @ns.marshal_with(vuln_ids_json_list_model)
+    def post(self):
+        url_logging(logger, g.url)
+        w = VulnsInfo(g.connection, json_data=ns.payload)
+        return run_worker(
+            worker=w, run_method=w.post, check_method=w.check_params_post, ok_code=200
+        )

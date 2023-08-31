@@ -314,5 +314,71 @@ LEFT JOIN (
 ) AS EH ON EH.task_id = SI.task_id AND EH.subtask_id = SI.subtask_id
 """
 
+    get_bugs_by_ids = """
+SELECT
+    bz_id,
+    argMax(bz_summary, ts)
+FROM Bugzilla
+WHERE bz_id IN (
+    SELECT bz_id FROM {tmp_table}
+)
+GROUP BY bz_id
+"""
+
+    get_vuln_info_by_ids = """
+SELECT
+    vuln_id,
+    vuln_hash,
+    vuln_type,
+    vuln_summary,
+    vuln_score,
+    vuln_severity,
+    vuln_url,
+    vuln_modified_date,
+    vuln_published_date,
+    vuln_json,
+    vuln_references.type,
+    vuln_references.link
+FROM Vulnerabilities
+WHERE (vuln_id, vuln_hash) IN (
+    SELECT
+        vuln_id,
+        argMax(vuln_hash, ts)
+    FROM Vulnerabilities
+    WHERE vuln_id IN {tmp_table}
+    GROUP BY vuln_id
+)
+ORDER BY vuln_modified_date DESC
+"""
+
+    get_related_vulns_for_cve = """
+SELECT
+    vuln_id,
+    vuln_hash,
+    vuln_type,
+    vuln_summary,
+    vuln_score,
+    vuln_severity,
+    vuln_url,
+    vuln_modified_date,
+    vuln_published_date,
+    vuln_json,
+    vuln_references.type,
+    vuln_references.link
+FROM Vulnerabilities
+WHERE (vuln_id, vuln_hash) IN (
+    SELECT
+        vuln_id,
+        argMax(vuln_hash, ts)
+    FROM Vulnerabilities
+    WHERE vuln_id IN (
+        SELECT vuln_id
+        FROM Vulnerabilities
+        WHERE arrayExists(x -> x IN {tmp_table}, `vuln_references.link`)
+        )
+    GROUP BY vuln_id
+)
+"""
+
 
 sql = SQL()
