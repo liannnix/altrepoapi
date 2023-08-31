@@ -151,7 +151,7 @@ class StorageHandler:
             logger.warning(f"{self.file!s} doesn't exist. Creating...")
             with self.file.open("wt") as f:
                 json.dump(EMPTY_STORAGE, f)
-            self.storage = EMPTY_STORAGE
+            self.storage = EMPTY_STORAGE.copy()
 
         if not self.file.is_file():
             raise FileStorageError(f"Not a file {self.file!s}")
