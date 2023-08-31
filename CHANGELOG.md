@@ -6,6 +6,17 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.15.3] - 2023-08-31
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `api/file`: use case sensitive search to improve performance for 2 to 7 times 
+### Fixed
+- fragile (DB contents dependent) tests
+- `api/errata`: URLs for vulnerabilities that has no data in DB
+
 ## [1.15.2] - 2023-08-28
 
 Regular API code updates and fixes.
