@@ -66,7 +66,7 @@ WHERE (file_hashname, pkg_hash) IN (
     find_pkg_hshs_by_file = """
 SELECT argMax(lead, ts) as lead
 FROM FileSearch
-WHERE search_string ILIKE '{branch}|{file_name}|%|binary|%'
+WHERE search_string LIKE '{branch}|{file_name}|%|binary|%'
 GROUP BY search_string
 """
 
@@ -77,11 +77,9 @@ SELECT DISTINCT
     pkg_version,
     pkg_release,
     pkg_arch
-FROM last_packages
-WHERE pkgset_name = '{branch}'
+FROM Packages
+WHERE pkg_sourcepackage = 0
     AND pkg_hash IN (SELECT * FROM {tmp_table})
-    AND pkg_buildtime >= 0
-    AND pkg_sourcepackage = 0
 ORDER BY pkg_name
 """
 
