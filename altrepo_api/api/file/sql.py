@@ -31,7 +31,7 @@ FROM (
             search_string,
             argMax(lead, ts) as lead
         FROM FileSearch
-        WHERE search_string ILIKE '{branch}|%{input}%|%|binary|%'
+        WHERE search_string LIKE '{branch}|%{input}%|%|binary|%'
         GROUP BY search_string
     )
 )
@@ -43,7 +43,7 @@ ORDER BY length(fn_name)
     fast_find_files = """
 SELECT DISTINCT splitByChar('|', search_string)[2] as fn_name
 FROM FileSearch
-WHERE search_string ILIKE '{branch}|%{input}%|%|binary|%'
+WHERE search_string LIKE '{branch}|%{input}%|%|binary|%'
 {limit}
 """
 

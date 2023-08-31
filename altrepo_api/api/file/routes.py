@@ -34,7 +34,7 @@ logger = get_logger(__name__)
 @ns.route(
     "/search",
     doc={
-        "description": "Find files by name including partial occurrence.",
+        "description": "Find files by name (case sensitive) including partial occurrence.",
         "responses": GET_RESPONSES_400_404,
     },
 )
@@ -51,7 +51,7 @@ class routeFileSearch(Resource):
 @ns.route(
     "/fast_lookup",
     doc={
-        "description": "Fast search files by name including partial occurrence.",
+        "description": "Fast search files by name (case sensitive) including partial occurrence.",
         "responses": GET_RESPONSES_400_404,
     },
 )
