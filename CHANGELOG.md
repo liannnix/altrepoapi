@@ -6,6 +6,15 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.15.4] - 2023-08-31
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/file`: fix binary packages search for version related file paths
+
 ## [1.15.3] - 2023-08-31
 
 Regular API code updates and fixes.
