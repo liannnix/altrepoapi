@@ -154,25 +154,22 @@ class NeedsApproval(APIWorker):
                             del task_approvals[task.id]
 
         def needs_approval_by_maint(X):
-            return ("@maint" not in X,)
+            return "@maint" not in X
 
         def needs_approval_by_tester(X):
-            return ("@maint" in X, "@tester" not in X)
+            return "@maint" in X and "@tester" not in X
 
         if acl_group == "maint":
             needs_approval_check = needs_approval_by_maint
-            target = (True,)
         else:
             needs_approval_check = needs_approval_by_tester
-            target = (False, True)
 
         needs_approval: dict[int, TaskApproval] = {}
 
         for task in task_approvals.values():
-            if (
-                tuple(map(all, zip(map(needs_approval_check, task.subtasks.values()))))
-                == target
-            ):
+            # _All_ of subtasks of a task should be all approved by a ACL group.
+            # So we need to use all() function to make a correct algorithm.
+            if all(needs_approval_check(sub) for sub in task.subtasks.values()):
                 needs_approval[task.id] = task
 
         class SourcePackage(NamedTuple):
