@@ -153,24 +153,27 @@ class NeedsApproval(APIWorker):
                             # Discard a task if it has any disapproval(-s).
                             del task_approvals[task.id]
 
-        def check_if_not_maint(X):
-            return "@maint" not in X
+        def needs_approval_by_maint(X):
+            return ("@maint" not in X,)
 
-        def check_if_maint_and_not_tester(X):
-            return ("@maint" in X) and ("@tester" not in X)
+        def needs_approval_by_tester(X):
+            return ("@maint" in X, "@tester" not in X)
 
-        needs_approval_check = (
-            check_if_not_maint
-            if acl_group == "maint"
-            else check_if_maint_and_not_tester
-        )
+        if acl_group == "maint":
+            needs_approval_check = needs_approval_by_maint
+            target = (True,)
+        else:
+            needs_approval_check = needs_approval_by_tester
+            target = (False, True)
 
         needs_approval: dict[int, TaskApproval] = {}
 
         for task in task_approvals.values():
-            for sub in task.subtasks.values():
-                if needs_approval_check(sub):
-                    needs_approval[task.id] = task
+            if (
+                tuple(map(all, zip(map(needs_approval_check, task.subtasks.values()))))
+                == target
+            ):
+                needs_approval[task.id] = task
 
         class SourcePackage(NamedTuple):
             name: str
