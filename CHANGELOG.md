@@ -6,6 +6,15 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.15.5] - 2023-09-04
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `task/needs_approval`: algorithm error
+
 ## [1.15.4] - 2023-08-31
 
 Regular API code updates and fixes.
