@@ -322,6 +322,7 @@ WITH task_subtasks AS (
     SELECT DISTINCT task_id, subtask_id
     FROM Tasks
     WHERE task_id = {task_id}
+    AND task_changed = '{task_changed}'
     AND subtask_deleted = 0
 )
 SELECT

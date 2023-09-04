@@ -91,7 +91,9 @@ class TaskVulnerabilities(APIWorker):
         # get fixed vulnerabilities in the task
         vulnerabilities = []
         response = self.send_sql_request(
-            self.sql.get_task_cve.format(task_id=self.task_id)
+            self.sql.get_task_cve.format(
+                task_id=task_info.task_id, task_changed=task_info.task_changed
+            )
         )
         if not self.sql_status:
             return self.error
