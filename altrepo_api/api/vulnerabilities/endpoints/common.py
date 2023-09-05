@@ -75,6 +75,13 @@ class Task(NamedTuple):
     package: str
 
 
+class TaskState(NamedTuple):
+    id: int
+    state: str
+    changed: datetime
+    subtasks: set[int]
+
+
 @dataclass(frozen=True)
 class Errata:
     id: str
@@ -561,12 +568,9 @@ def _get_erratas(
 ) -> None:
     cls.status = False
 
-    # find errata by branch (if set) and CVE ids
+    # find errata by given `where_clause` and `external_tables` contents
     response = cls.send_sql_request(
-        cls.sql.get_erratas.format(
-            # branch_clause=branch_clause, where_clause=where_clause
-            where_clause=where_clause
-        ),
+        cls.sql.get_erratas.format(where_clause=where_clause),
         external_tables=external_tables,
     )
     if not cls.sql_status:
@@ -579,7 +583,7 @@ def _get_erratas(
 
     # get last task states
     # get last state for tasks in erratas
-    task_states: dict[int, str] = {}
+    task_states: dict[int, TaskState] = {}
 
     tmp_table = make_tmp_table_name("task_ids")
 
@@ -596,16 +600,26 @@ def _get_erratas(
     if not cls.sql_status:
         return None
     if response:
-        task_states = {el[0]: el[1] for el in response}
+        task_states = {el[0]: TaskState(*el) for el in response}
 
     for errata in erratas:
-        # skip erratas from deleted tasks
-        if errata.task_id != 0 and task_states.get(errata.task_id, "") not in (
-            "DONE",
-            "EPERM",
-            "TESTED",
-        ):
-            continue
+        # filter out task related erratas
+        if errata.task_id != 0:
+            # XXX: task state info should be in DB!
+            if errata.task_id not in task_states:
+                cls.logger.warning(f"No task state data found for {errata.task_id}")
+                continue
+
+            ets = task_states[errata.task_id]
+            # skip erratas from deleted tasks
+            if ets.state not in ("DONE", "EPERM", "TESTED"):
+                continue
+            # skip erratas from deleted subtasks
+            if errata.subtask_id not in ets.subtasks:
+                cls.logger.debug(
+                    f"Skip errata for task {ets.id} due to subtask {errata.subtask_id} deleted"
+                )
+                continue
 
         cls.erratas.append(errata)
 
@@ -669,7 +683,7 @@ def get_errata_by_pkg_names(
 
     tmp_table = make_tmp_table_name("task_ids")
 
-    where_clause += f"(task_id IN {tmp_table}))"
+    where_clause += f"(task_id IN {tmp_table} AND task_state = 'DONE'))"
 
     external_tables.append(
         {

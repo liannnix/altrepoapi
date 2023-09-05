@@ -98,11 +98,11 @@ repology_names AS (
     FROM (
         SELECT
             pkg_name AS alt_name,
-            argMax(pnc_result, ts) AS repology_name,
+            pnc_result AS repology_name,
             argMax(pnc_state, ts) AS state
         FROM PackagesNameConversion
         WHERE pnc_type IN {cpe_branches}
-        GROUP BY alt_name
+        GROUP BY pkg_name, pnc_result
     ) WHERE state = 'active'
 )
 SELECT
@@ -181,12 +181,34 @@ ORDER BY eh_updated DESC
 """
 
     get_last_tasks_state = """
+WITH
+last_task_states AS (
+    SELECT
+        task_id,
+        argMax(task_state, task_changed) AS state,
+        max(task_changed) AS changed
+    FROM TaskStates
+    WHERE task_id IN {tmp_table}
+    GROUP BY task_id
+),
+last_task_subtasks AS (
+    SELECT
+        task_id,
+        groupUniqArray(subtask_id) AS subtasks
+    FROM Tasks
+    WHERE (task_id, task_changed) IN (
+        SELECT task_id, changed FROM last_task_states
+    )
+    GROUP BY task_id
+    HAVING subtask_deleted = 0
+)
 SELECT
     task_id,
-    argMax(task_state, task_changed) AS state
-FROM TaskStates
-WHERE task_id IN {tmp_table}
-GROUP BY task_id
+    state,
+    changed,
+    subtasks
+FROM last_task_states
+LEFT JOIN last_task_subtasks AS LTS USING task_id
 """
 
     get_maintainer_pkg = """
