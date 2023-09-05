@@ -6,6 +6,17 @@ ALTrepo API changelog
 ### Changed
 ### Fixed
 
+## [1.15.6] - 2023-09-04
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `errata/find_erratas`: `type` argument allowed values
+### Fixed
+- `api/vuln`: packages' CPE matches SQL request for multiple matching records
+- `task/needs_approval`: finally fixed endpoint business logic
+
 ## [1.15.5] - 2023-09-04
 
 Regular API code updates and fixes.
