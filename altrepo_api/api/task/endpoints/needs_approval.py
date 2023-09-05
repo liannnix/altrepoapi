@@ -47,6 +47,57 @@ class NeedsApproval(APIWorker):
         return True
 
     def get(self):
+        class SourcePackage(NamedTuple):
+            name: str
+            version: str
+            release: str
+            filename: str
+
+        class Subtask(NamedTuple):
+            source_package: SourcePackage
+            id: int
+            type: str
+            package: str
+            userid: str
+            dir: str
+            sid: str
+            pkg_from: str
+            tag_author: str
+            tag_id: str
+            tag_name: str
+            srpm: str
+            srpm_name: str
+            srpm_evr: str
+            last_changed: datetime
+
+            def asdict(self) -> dict[str, Any]:
+                res = self._asdict()
+                res["source_package"] = self.source_package._asdict()
+                return res
+
+        class Task(NamedTuple):
+            id: int
+            state: str
+            runby: str
+            try_: int
+            iter: int
+            failearly: bool
+            shared: bool
+            depends: list[int]
+            testonly: bool
+            message: str
+            version: str
+            prev: int
+            last_changed: datetime
+            branch: str
+            user: str
+            subtasks: list[Subtask]
+
+            def asdict(self) -> dict[str, Any]:
+                res = self._asdict()
+                res["subtasks"] = [s.asdict() for s in self.subtasks]
+                return res
+
         class TaskApproval(NamedTuple):
             id: int
             repo: str
@@ -103,7 +154,7 @@ class NeedsApproval(APIWorker):
             return self.error
 
         task_approvals = {
-            row[0]: TaskApproval(*row[:-1], {s: set() for s in row[-1]})
+            row[0]: TaskApproval(*row[:-1], {s: set() for s in row[-1]})  # type: ignore
             for row in response
         }
 
@@ -154,9 +205,11 @@ class NeedsApproval(APIWorker):
                             del task_approvals[task.id]
 
         def needs_approval_by_maint(X):
+            # check if `@maint` group not in subtask' approvers list
             return "@maint" not in X
 
         def needs_approval_by_tester(X):
+            # check if `@maint` group in subtask' approvers list and `@tester` is not
             return "@maint" in X and "@tester" not in X
 
         if acl_group == "maint":
@@ -167,56 +220,10 @@ class NeedsApproval(APIWorker):
         needs_approval: dict[int, TaskApproval] = {}
 
         for task in task_approvals.values():
-            # _All_ of subtasks of a task should be all approved by a ACL group.
-            # So we need to use all() function to make a correct algorithm.
+            # XXX: all subtasks from task should be `true` with predicate function!
+            # Any partially approved task are excluded from results.
             if all(needs_approval_check(sub) for sub in task.subtasks.values()):
                 needs_approval[task.id] = task
-
-        class SourcePackage(NamedTuple):
-            name: str
-            version: str
-            release: str
-            filename: str
-
-        class Subtask(NamedTuple):
-            source_package: SourcePackage
-            id: int
-            type: str
-            package: str
-            userid: str
-            dir: str
-            sid: str
-            pkg_from: str
-            tag_author: str
-            tag_id: str
-            tag_name: str
-            srpm: str
-            srpm_name: str
-            srpm_evr: str
-            last_changed: datetime
-
-            def asdict(self) -> dict[str, Any]:
-                res = self._asdict()
-                res["source_package"] = self.source_package._asdict()
-                return res
-
-        class Task(NamedTuple):
-            id: int
-            state: str
-            runby: str
-            try_: int
-            iter: int
-            failearly: bool
-            shared: bool
-            depends: list[int]
-            testonly: bool
-            message: str
-            version: str
-            prev: int
-            last_changed: datetime
-            branch: str
-            user: str
-            subtasks: list[Subtask]
 
         _tmp_table = "tmp_tasks_ids"
         response = self.send_sql_request(
@@ -275,15 +282,15 @@ class NeedsApproval(APIWorker):
         for task_id, subtasks in response:
             result[task_id].subtasks.extend(
                 sorted(
-                    (Subtask(SourcePackage(*s[:4]), *s[4:]).asdict() for s in subtasks),
-                    key=lambda s: s["id"],
+                    (Subtask(SourcePackage(*s[:4]), *s[4:]) for s in subtasks),
+                    key=lambda s: s.id,
                 )
             )
 
         return {
             "length": len(result),
             "tasks": sorted(
-                [t._asdict() | {"try": t.try_} for t in result.values()],
+                [t.asdict() | {"try": t.try_} for t in result.values()],
                 key=lambda t: t["id"],
             ),
         }, 200
