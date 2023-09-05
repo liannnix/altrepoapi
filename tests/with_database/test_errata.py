@@ -9,7 +9,7 @@ BRANCH_IN_DB3 = "sisyphus_e2k"
 BRANCH_NOT_IN_DB = "fakebranch"
 BRANCH_IN_DB_NO_ERRATA = "4.0"
 
-ERRATA_TYPES_IN_DB = ["task", "branch", "bulletin"]
+ERRATA_TYPES_IN_DB = ["packages", "repository"]
 
 PKG_NAME_IN_DB = "curl"
 PKG_NAME_NOT_IN_DB = "fakepackage"
@@ -285,9 +285,10 @@ def test_errata_branches_updates(client, kwargs):
         {
             "input": BU_ERRATA_ID_IN_DB_3,
             "branch": BRANCH_IN_DB,
-            "type": ERRATA_TYPES_IN_DB[2],
+            "type": ERRATA_TYPES_IN_DB[1],
             "status_code": 200,
         },
+        {"type": ERRATA_TYPES_IN_DB[0], "page": 1, "limit": 10, "status_code": 200},
         {"input": PU_ERRATA_ID_IN_DB_1, "status_code": 200},
         {"input": BUG_IN_ERRATA, "status_code": 200},
         {"input": VUILN_ID_BDU_IN_DB, "status_code": 200},
@@ -334,4 +335,7 @@ def test_find_erratas(client, kwargs):
                 assert kwargs["branch"] == elem["branch"]
 
             if kwargs.get("type"):
-                assert kwargs["type"] == elem["eh_type"]
+                if kwargs.get("type") == ERRATA_TYPES_IN_DB[0]:
+                    assert elem["eh_type"] in ("branch", "task")
+                elif kwargs.get("type") == ERRATA_TYPES_IN_DB[1]:
+                    assert elem["eh_type"] in ("bulletin",)

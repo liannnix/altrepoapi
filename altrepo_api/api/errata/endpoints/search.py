@@ -23,7 +23,7 @@ from altrepo_api.libs.pagination import Paginator
 
 from .common import ErrataID, get_erratas_by_search_conditions
 from ..sql import sql
-
+from ...misc import lut
 
 _vuln_id_match = re.compile(r"(^CVE-\d{4}-\d{4,}$)|(^BDU:\d{4}-\d{5}$)|(^\d{4,}$)")
 
@@ -170,12 +170,12 @@ class FindErratas(APIWorker):
     def get(self):
         input_val: list[str] = self.args["input"] if self.args["input"] else []
         branch = self.args["branch"]
-        eh_type = self.args["type"]
+        eh_type = lut.known_errata_type.get(self.args["type"], "")
         limit = self.args["limit"]
         page = self.args["page"]
 
         branch_clause = f"AND pkgset_name = '{branch}'" if branch else ""
-        where_conditions = [f"type = '{eh_type}'"] if eh_type else []
+        where_conditions = [f"type IN {eh_type}"] if eh_type else []
 
         conditions = [
             " OR ".join(

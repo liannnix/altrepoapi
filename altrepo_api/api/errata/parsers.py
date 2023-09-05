@@ -63,9 +63,9 @@ vuln_id_opt = parser.register_item(
 errata_type_opt = parser.register_item(
     "type",
     type=str,
-    choices=("task", "branch", "bulletin"),
+    choices=("packages", "repository"),
     required=False,
-    help="errata type [task|branch|bulletin]",
+    help="errata type [packages|repository]",
     location="args",
 )
 last_chngs_limit_opt = parser.register_item(
