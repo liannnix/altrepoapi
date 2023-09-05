@@ -33,27 +33,27 @@ PARTIAL_IMAGE_VERSION = re.compile(r"^(\d+)+\.{,1}(\d+)*\.{,1}(\d+)*$")
 
 FILTER_FIELDS = {
     "editions": {
-        "validator": lambda l: [e for e in l if e not in lut.known_image_editions],
+        "validator": lambda x: [e for e in x if e not in lut.known_image_editions],
         "valid_values": ", ".join(f"'{e}'" for e in lut.known_image_editions),
     },
     "releases": {
-        "validator": lambda l: [e for e in l if e not in lut.known_image_releases],
+        "validator": lambda x: [e for e in x if e not in lut.known_image_releases],
         "valid_values": ", ".join(f"'{e}'" for e in lut.known_image_releases),
     },
     "versions": {
-        "validator": lambda l: [e for e in l if not PARTIAL_IMAGE_VERSION.search(e)],
+        "validator": lambda x: [e for e in x if not PARTIAL_IMAGE_VERSION.search(e)],
         "valid_values": "dot-separated strings of positive integers without spaces",
     },
     "archs": {
-        "validator": lambda l: [e for e in l if e not in lut.known_image_archs],
+        "validator": lambda x: [e for e in x if e not in lut.known_image_archs],
         "valid_values": ", ".join(f"'{e}'" for e in lut.known_image_archs),
     },
     "types": {
-        "validator": lambda l: [e for e in l if e not in lut.known_image_types],
+        "validator": lambda x: [e for e in x if e not in lut.known_image_types],
         "valid_values": ", ".join(f"'{e}'" for e in lut.known_image_types),
     },
     "variants": {
-        "validator": lambda l: [e for e in l if e not in lut.known_image_variants],
+        "validator": lambda x: [e for e in x if e not in lut.known_image_variants],
         "valid_values": ", ".join(f"'{e}'" for e in lut.known_image_variants),
     },
 }
@@ -126,6 +126,8 @@ class CheckImages(APIWorker):
             task_id = int(json_data["task_id"])
         except KeyError:
             self.validation_results.append("task_id is required")
+            return False
+
         response = self.send_sql_request(self.sql.check_task.format(id=task_id))
         if not self.sql_status:
             return False
