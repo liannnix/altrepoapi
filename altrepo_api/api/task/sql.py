@@ -1241,4 +1241,5 @@ FROM ImagePackageSetName
 RIGHT JOIN uuid_with_package AS U USING pkgset_uuid
 """
 
+
 sql = SQL()
