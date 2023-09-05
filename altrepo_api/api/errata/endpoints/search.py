@@ -19,11 +19,12 @@ import re
 from typing import NamedTuple, Any
 
 from altrepo_api.api.base import APIWorker
+from altrepo_api.api.misc import lut
 from altrepo_api.libs.pagination import Paginator
 
 from .common import ErrataID, get_erratas_by_search_conditions
 from ..sql import sql
-from ...misc import lut
+
 
 _vuln_id_match = re.compile(r"(^CVE-\d{4}-\d{4,}$)|(^BDU:\d{4}-\d{5}$)|(^\d{4,}$)")
 
