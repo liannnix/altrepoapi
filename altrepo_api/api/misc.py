@@ -427,5 +427,10 @@ class LookupTables:
         "sisyphus": ["sisyphus"],
     }
 
+    known_errata_type = {
+        "packages": ["branch", "task"],
+        "repository": ["bulletin"]
+    }
+
 
 lut = LookupTables()
