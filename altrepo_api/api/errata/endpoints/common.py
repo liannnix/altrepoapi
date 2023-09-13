@@ -27,10 +27,16 @@ from ..sql import SQL
 
 
 DATETIME_NEVER = datetime.fromtimestamp(0)
-ERRATA_PACKAGE_UPDATE_PREFIX = "ALT-PU-"
-ERRATA_BRANCH_BULLETIN_PREFIX = "ALT-BU-"
+ERRATA_PACKAGE_UPDATE_PREFIX = f"{lut.errata_package_update_prefix}-"
+ERRATA_BRANCH_BULLETIN_PREFIX = f"{lut.errata_branch_update_prefix}-"
 PACKAGE_UPDATE_MAX_BATCH = 1000
 BRANCH_UPDATE_MAX_BATCH = 1000
+BDU_ID_TYPE = "BDU"
+BDU_ID_PREFIX = f"{BDU_ID_TYPE}:"
+CVE_ID_TYPE = "CVE"
+CVE_ID_PREFIX = f"{CVE_ID_TYPE}-"
+MFSA_ID_TYPE = "MFSA"
+MFSA_ID_PREFIX = f"{MFSA_ID_TYPE}"
 
 
 # @dataclass
@@ -180,16 +186,16 @@ class BranchUpdate:
 
 def empty_vuln(vuln_id: str) -> Vulnerability:
     vuln_type = ""
-    if vuln_id.startswith("CVE-"):
-        vuln_type = "CVE"
+    if vuln_id.startswith(CVE_ID_PREFIX):
+        vuln_type = CVE_ID_TYPE
         normalized_id = vuln_id.lower()
         vuln_url = f"{lut.nvd_cve_base}/{normalized_id}"
-    elif vuln_id.startswith("BDU:"):
-        vuln_type = "BDU"
-        normalized_id = vuln_id.removeprefix("BDU:")
+    elif vuln_id.startswith(BDU_ID_PREFIX):
+        vuln_type = BDU_ID_TYPE
+        normalized_id = vuln_id.removeprefix(BDU_ID_PREFIX)
         vuln_url = f"{lut.fstec_bdu_base}/{normalized_id}"
-    elif vuln_id.startswith("MFSA"):
-        vuln_type = "MFSA"
+    elif vuln_id.startswith(MFSA_ID_PREFIX):
+        vuln_type = MFSA_ID_TYPE
         normalized_id = vuln_id.replace("MFSA ", "mfsa").replace("MFSA-", "mfsa")
         vuln_url = f"{lut.mfsa_base}/{normalized_id}"
     else:
