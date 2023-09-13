@@ -23,6 +23,8 @@ from .common import (
     Errata,
     PackageVersion,
     PackageVulnerability,
+    PackageVulnerabiltyInfo,
+    Vulnerability,
     VulnerabilityInfo,
     get_cve_info_by_ids,
     get_cve_matching_by_cpes,
@@ -122,12 +124,22 @@ class BranchOpenVulnerabilities(APIWorker):
             pv for pv in self.packages_vulnerabilities if pv.vulnerable
         ]
 
+        for pv in self.packages_vulnerabilities:
+            if pv.name == "ImageMagick":
+                print("DBG", pv)
+                # break
+
         # update packagex vulnerabilities with erratas data
         get_vulnerability_fix_errata(self, cve_ids)
         # filter only vulnerable packages found by CPE matching version compare
         self.packages_vulnerabilities = [
             pv for pv in self.packages_vulnerabilities if pv.vulnerable
         ]
+
+        for pv in self.packages_vulnerabilities:
+            if pv.name == "ImageMagick":
+                print("DBG", pv)
+                break
 
         # collect vulnerabilities info
         vuln_info: list[VulnerabilityInfo] = []
@@ -136,11 +148,30 @@ class BranchOpenVulnerabilities(APIWorker):
             if vi is not None:
                 vuln_info.append(vi)
 
+        # build human readable compact response
+        result: dict[str, PackageVulnerabiltyInfo] = {}
+
+        for pv in self.packages_vulnerabilities:
+            # build new container
+            if pv.name not in result:
+                result[pv.name] = PackageVulnerabiltyInfo(
+                    pv.name, pv.version, pv.release, pv.branch
+                )
+            # update with data
+            if pv.cpe_matches or pv.vuln_id not in {
+                v.id for v in result[pv.name].vulnerabilities
+            }:
+                result[pv.name].vulnerabilities.append(
+                    Vulnerability(id=pv.vuln_id, cpe_matches=pv.cpe_matches)
+                )
+            result[pv.name].fixed_in.update(pv.fixed_in)
+
         return {
             "request_args": self.args,
             "result": self.result_message,
             "vuln_info": [
                 vuln.asdict() for vuln in sorted(vuln_info, key=lambda x: x.id)
             ],
-            "packages": [p.asdict() for p in self.packages_vulnerabilities],
+            # "packages": [p.asdict() for p in self.packages_vulnerabilities],
+            "packages": [p.asdict() for p in result.values()],
         }, 200

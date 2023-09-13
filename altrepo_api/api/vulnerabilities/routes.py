@@ -31,7 +31,12 @@ from .parsers import (
     branch_vulnerabilities_args,
     maintainer_vulnerabilities_args,
 )
-from .serializers import vulnerability_info_model, cve_packages_model, cve_task_model
+from .serializers import (
+    vulnerability_info_model,
+    cve_packages_model,
+    cve_task_model,
+    branch_cve_packages_model,
+)
 from .endpoints.vuln import VulnInfo
 from .endpoints.cve import VulnerablePackageByCve
 from .endpoints.packages import PackageOpenVulnerabilities
@@ -141,7 +146,7 @@ class routePackageVulnerabilities(Resource):
 )
 class routeBranchOpenVulnerabilities(Resource):
     @ns.expect(branch_vulnerabilities_args)
-    @ns.marshal_with(cve_packages_model)
+    @ns.marshal_with(branch_cve_packages_model)
     def get(self):
         url_logging(logger, g.url)
         args = branch_vulnerabilities_args.parse_args(strict=True)

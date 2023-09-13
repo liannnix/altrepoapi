@@ -176,3 +176,49 @@ cve_task_model = ns.model(
         ),
     },
 )
+
+branch_package_vulnerability_model = ns.model(
+    "BranchPackageVulnerabilityModel",
+    {
+        "id": fields.String(description="vulnerability identificator"),
+        "cpe_matches": fields.Nested(
+            vuln_cpe_match_model,
+            description="CPE matches list that package is vulnerable through",
+            as_list=True,
+        ),
+    }
+)
+branch_vulnerable_package_model = ns.model(
+    "BranchVulnerablePackageModel",
+    {
+        "branch": fields.String(description="packageset name"),
+        "name": fields.String(description="package name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "vulneravilities": fields.Nested(
+            branch_package_vulnerability_model,
+            description="Vulnerability matching info",
+            as_list=True,
+        ),
+        "fixed_in": fields.Nested(
+            vuln_errata_model,
+            description="Errata list that closes vulnerability for package",
+            as_list=True,
+        ),
+    },
+)
+branch_cve_packages_model = ns.model(
+    "BranchCveVulnerablePackagesModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "result": fields.List(fields.String, description="Data collection details"),
+        "vuln_info": fields.Nested(
+            vulnerability_model, description="vulnerabilty information", as_list=True
+        ),
+        "packages": fields.Nested(
+            branch_vulnerable_package_model,
+            description="vulnerable packages information",
+            as_list=True,
+        ),
+    },
+)

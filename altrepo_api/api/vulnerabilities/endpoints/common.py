@@ -82,6 +82,16 @@ class TaskState(NamedTuple):
     subtasks: set[int]
 
 
+class CpeMatchVersions(NamedTuple):
+    version_start: str
+    version_end: str
+    version_start_excluded: bool
+    version_end_excluded: bool
+
+    def asdict(self) -> dict[str, Any]:
+        return self._asdict()
+
+
 @dataclass(frozen=True)
 class Errata:
     id: str
@@ -152,14 +162,6 @@ class VulnerabilityInfo:
 
 
 @dataclass
-class CpeMatchVersions:
-    version_start: str
-    version_end: str
-    version_start_excluded: bool
-    version_end_excluded: bool
-
-
-@dataclass
 class CPE:
     part: str
     vendor: str
@@ -213,7 +215,38 @@ class CpeMatch:
         self.version = CpeMatchVersions(*args)
 
     def asdict(self) -> dict[str, Any]:
-        return asdict(self)
+        return {"cpe": repr(self.cpe), "versions": self.version.asdict()}
+
+
+class Vulnerability(NamedTuple):
+    id: str
+    cpe_matches: list[CpeMatch]
+
+    def asdict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "cpe_matches": [cpem.asdict() for cpem in self.cpe_matches],
+        }
+
+
+@dataclass
+class PackageVulnerabiltyInfo:
+    name: str
+    version: str
+    release: str
+    branch: str
+    vulnerabilities: list[Vulnerability] = field(default_factory=list)
+    fixed_in: set[Errata] = field(default_factory=set)
+
+    def asdict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "version": self.version,
+            "release": self.release,
+            "branch": self.branch,
+            "vulneravilities": [v.asdict() for v in self.vulnerabilities],
+            "fixed_in": [fix.asdict() for fix in self.fixed_in],
+        }
 
 
 def match_cpem_by_version(
@@ -281,10 +314,7 @@ class PackageVulnerability:
 
     def asdict(self) -> dict[str, Any]:
         res = asdict(self)
-        res["cpe_matches"] = [
-            {"cpe": repr(cpem.cpe), "versions": asdict(cpem.version)}
-            for cpem in self.cpe_matches
-        ]
+        res["cpe_matches"] = [cpem.asdict() for cpem in self.cpe_matches]
         res["fixed_in"] = [e.asdict() for e in self.fixed_in]
         return res
 
@@ -993,11 +1023,10 @@ def get_vulnerability_fix_errata(
     # 2. remove duplicated elements from results
     def pv2cmp_tuple(pv: PackageVulnerability) -> tuple[Any, ...]:
         return (pv.hash, pv.name, pv.version, pv.release, pv.branch, pv.vuln_id)
-
+    # FIXME: update here erases `cpe_matches` from original `packages_vulnerabilities` list
     for pv in [
         pv
         for pv in cls.packages_vulnerabilities
-        # if (pv.vulnerable is False and pv.fixed is False)
         if (pv.vulnerable is True and pv.fixed is False)
     ]:
         for errata_pv in pv_list:
