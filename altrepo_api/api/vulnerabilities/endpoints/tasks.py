@@ -19,6 +19,7 @@ from typing import NamedTuple
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
 
+from .common import BDU_ID_PREFIX, CVE_ID_PREFIX
 from ..sql import sql
 
 
@@ -103,9 +104,9 @@ class TaskVulnerabilities(APIWorker):
                 vulns = []
                 for v_id, v_type in zip(errata_info.vuln_ids, errata_info.vuln_types):
                     # build vulnerability link
-                    if v_id.startswith("CVE-"):
+                    if v_id.startswith(CVE_ID_PREFIX):
                         url = f"{lut.nvd_cve_base}/{v_id}"
-                    elif v_id.startswith("BDU:"):
+                    elif v_id.startswith(BDU_ID_PREFIX):
                         url = f"{lut.fstec_bdu_base}/{v_id.split(':')[-1]}"
                     elif v_type == "bug":
                         url = f"{lut.bugzilla_base}/{v_id}"

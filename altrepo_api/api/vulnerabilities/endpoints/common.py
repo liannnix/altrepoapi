@@ -41,6 +41,10 @@ logger = logging.getLogger(__name__)
 ROOT_BRANCH = "sisyphus"
 CVE_MATCHER_MAX_CPU = 4  # running more than 4 processes is inefficient
 CVE_MATCHER_CHUNK_SIZE = 1000  # optimal chunk size is around 500-1000
+BDU_ID_TYPE = "BDU"
+BDU_ID_PREFIX = f"{BDU_ID_TYPE}:"
+CVE_ID_TYPE = "CVE"
+CVE_ID_PREFIX = f"{CVE_ID_TYPE}-"
 
 
 def unescape(x: str) -> str:
