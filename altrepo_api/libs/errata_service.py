@@ -14,12 +14,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import re
+
 from datetime import datetime
 from requests import Session
 from requests.adapters import HTTPAdapter, Retry
 from typing import Any, NamedTuple, Optional, Union
 
-from altrepo_api import read_config
 
 RETRY_ATTEMPTS_TOTAL = 5
 RETRY_ALLOWED_METHODS = frozenset(["GET", "HEAD", "POST", "PUT"])
@@ -27,34 +28,32 @@ RETRY_STATUS_FORCELIST = [502, 503, 504]
 RETRY_BACKOFF_FACTOR_SECONDS = 0.5
 
 
-class ErrataIDError(Exception):
+re_errata_prefix = re.compile(r"^ALT-[A-Z]{2,}$")
+
+
+class ErrataIDServiceError(Exception):
     pass
 
 
-class ErrataIDConfig(NamedTuple):
-    address: str
-    port: int
-    prefix: str
-    schema: str = "http"
-
-    @property
-    def url(self) -> str:
-        return f"{self.schema}://{self.address}:{self.port}/"
-
-
-class ErrataIDResult(NamedTuple):
+class ErrataIDServiceResult(NamedTuple):
     id: str
     created: datetime
     updated: datetime
 
 
-def _result(response: dict[str, Any]) -> ErrataIDResult:
+def _result(response: dict[str, Any]) -> ErrataIDServiceResult:
     data = response["errata"]
-    return ErrataIDResult(
+    return ErrataIDServiceResult(
         id=data["id"],
         created=datetime.fromisoformat(data["created"]),
         updated=datetime.fromisoformat(data["updated"]),
     )
+
+
+def _validate_prefix(prefix: str):
+    if not re_errata_prefix.match(prefix):
+        raise ErrataIDServiceError("Invalid prefix: %s" % prefix)
+    return prefix
 
 
 def _validate_year(year: Union[int, None]) -> int:
@@ -64,14 +63,13 @@ def _validate_year(year: Union[int, None]) -> int:
     if 2000 <= year <= 2999:
         return year
 
-    raise ErrataIDError(f"Invalid year value: {year}")
+    raise ErrataIDServiceError("Invalid year value: %s" % year)
 
 
-def config_from_url(prefix: str) -> ErrataIDConfig:
-    if not read_config.settings.ERRATA_ID_URL:
-        raise ErrataIDError("Errata ID server URL should be specified")
-    else:
-        url = read_config.settings.ERRATA_ID_URL
+def _parse_url(url: str) -> tuple[str, str]:
+    if not url:
+        raise ErrataIDServiceError("Valid service URL should be specified")
+
     url = url.rstrip("/")
 
     if url.startswith("http://"):
@@ -79,29 +77,38 @@ def config_from_url(prefix: str) -> ErrataIDConfig:
     elif url.startswith("https://"):
         schema = "https"
     else:
-        raise ErrataIDError(f"Invalid ErrataID URL: {url}")
+        raise ErrataIDServiceError("Invalid service URL: %s" % url)
 
     try:
         url = url.lstrip(f"{schema}://")
-        a, p = url.split(":")
-        return ErrataIDConfig(address=a, port=int(p), prefix=prefix, schema=schema)
-    except Exception:
-        raise ErrataIDError(f"Failed to parse ErrataID URL: {url}")
+        address, port = url.split(":")
+        if not port.isdigit():
+            raise ErrataIDServiceError("Failed to parse port from URL: %s" % url)
+    except ValueError:
+        raise ErrataIDServiceError("Failed to parse service URL: %s" % url)
+
+    return f"{schema}://{address}:{port}/", schema
 
 
-class ErrataID:
-    def __init__(self, config: ErrataIDConfig) -> None:
-        self.url = config.url
-        self.prefix = config.prefix
+class ErrataIDService:
+    """ErrataID service interface class."""
+
+    def __init__(self, url: str, prefix: str) -> None:
+        self.url, self.schema = _parse_url(url)
+        self.prefix = _validate_prefix(prefix)
         self.session = Session()
-        # config retries
-        retires = Retry(
-            total=RETRY_ATTEMPTS_TOTAL,
-            backoff_factor=RETRY_BACKOFF_FACTOR_SECONDS,
-            status_forcelist=RETRY_STATUS_FORCELIST,
-            allowed_methods=RETRY_ALLOWED_METHODS,
+        # config session retries
+        self.session.mount(
+            self.schema,
+            HTTPAdapter(
+                max_retries=Retry(
+                    total=RETRY_ATTEMPTS_TOTAL,
+                    backoff_factor=RETRY_BACKOFF_FACTOR_SECONDS,
+                    status_forcelist=RETRY_STATUS_FORCELIST,
+                    allowed_methods=RETRY_ALLOWED_METHODS,
+                )
+            ),
         )
-        self.session.mount(f"{config.schema}://", HTTPAdapter(max_retries=retires))
         self._check_service_connection()
 
     def _check_service_connection(self):
@@ -112,11 +119,11 @@ class ErrataID:
             response.raise_for_status()
             return None
         except Exception as e:
-            raise ErrataIDError(
-                f"Failed to connect to ErrataID service at {url}"
+            raise ErrataIDServiceError(
+                "Failed to connect to ErrataID service at %s" % url
             ) from e
 
-    def register(self, year: Optional[int]) -> ErrataIDResult:
+    def register(self, year: Optional[int]) -> ErrataIDServiceResult:
         url = self.url + "register"
         try:
             response = self.session.get(
@@ -125,22 +132,22 @@ class ErrataID:
             response.raise_for_status()
             return _result(response.json())
         except Exception as e:
-            raise ErrataIDError from e
+            raise ErrataIDServiceError("Failed on %s: %s" % (url, e)) from e
 
-    def check(self, id: str) -> ErrataIDResult:
+    def check(self, id: str) -> ErrataIDServiceResult:
         url = self.url + "check"
         try:
             response = self.session.get(url, params={"name": id})
             response.raise_for_status()
             return _result(response.json())
         except Exception as e:
-            raise ErrataIDError from e
+            raise ErrataIDServiceError("Failed on %s: %s" % (url, e)) from e
 
-    def update(self, id: str) -> ErrataIDResult:
+    def update(self, id: str) -> ErrataIDServiceResult:
         url = self.url + "update"
         try:
             response = self.session.post(url, params={"name": id})
             response.raise_for_status()
             return _result(response.json())
         except Exception as e:
-            raise ErrataIDError from e
+            raise ErrataIDServiceError("Failed on %s: %s" % (url, e)) from e
