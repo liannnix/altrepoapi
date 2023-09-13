@@ -13,18 +13,17 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import datetime
-import logging
+
+from datetime import datetime
 from dataclasses import dataclass, field, asdict
 from typing import Any, NamedTuple
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.management.sql import sql
 from altrepo_api.api.parser import bdu_id_type, cve_id_type
 from altrepo_api.utils import make_tmp_table_name
 
-
-logger = logging.getLogger(__name__)
+from .common import BDU_ID_PREFIX, CVE_ID_TYPE, CVE_ID_PREFIX
+from ..sql import sql
 
 
 class Bug(NamedTuple):
@@ -42,32 +41,19 @@ class VulnerabilityInfo:
     score: float = 0.0
     severity: str = ""
     url: str = ""
-    modified_date: datetime = datetime.datetime.fromtimestamp(0)
-    published_date: datetime = datetime.datetime.fromtimestamp(0)
-    body: dict[str, Any] = field(default_factory=dict)
+    modified_date: datetime = datetime.fromtimestamp(0)
+    published_date: datetime = datetime.fromtimestamp(0)
     refs_type: list[str] = field(default_factory=list)
     refs_link: list[str] = field(default_factory=list)
     is_valid: bool = False
     related_vulns: list[str] = field(default_factory=list)
-
-    def __post_init__(self):
-        parsed = None
-
-        try:
-            parsed = json.loads(self.json)  # type: ignore
-        except Exception:
-            logger.debug(f"Failed to parse vulnerability JSON for {self.id}")
-            pass
-
-        if parsed is not None:
-            self.json = parsed
 
     def asdict(self) -> dict[str, Any]:
         res = asdict(self)
 
         del res["refs_type"]
         del res["refs_link"]
-        res["refs"] = [r for r in self.refs_link]
+        res["references"] = [r for r in self.refs_link]
 
         return res
 
@@ -94,19 +80,14 @@ class VulnsInfo(APIWorker):
             return False
 
         for vuln_id in vuln_ids:
-            try:
-                if vuln_id.startswith("BDU:"):
-                    self.bdu_ids.add(bdu_id_type(vuln_id))
-                elif vuln_id.startswith("CVE-"):
-                    self.cve_ids.add(cve_id_type(vuln_id))
-                elif vuln_id.isdigit():
-                    self.bug_ids.add(int(vuln_id))
-                else:
-                    self.validation_results.append(f"invalid vuln id: {vuln_id}")
-                    break
-            except ValueError:
-                self.validation_results.append(f"invalid vuln id: {vuln_id}")
-                break
+            if vuln_id.startswith(BDU_ID_PREFIX):
+                self.bdu_ids.add(bdu_id_type(vuln_id))
+            elif vuln_id.startswith(CVE_ID_PREFIX):
+                self.cve_ids.add(cve_id_type(vuln_id))
+            elif vuln_id.isdigit():
+                self.bug_ids.add(int(vuln_id))
+            else:
+                self.validation_results.append(f"invalid identifier: {vuln_id}")
 
         if self.validation_results != []:
             return False
@@ -114,7 +95,7 @@ class VulnsInfo(APIWorker):
         return True
 
     def post(self):
-        bugs: dict[str, dict[str, Any]] = {}
+        bugs: dict[int, dict[str, Any]] = {}
         vulns_found: dict[str, VulnerabilityInfo] = {}
         # get a list of found bugs in Bugzilla
         if self.bug_ids:
@@ -157,11 +138,11 @@ class VulnsInfo(APIWorker):
 
                 for bdu in response:
                     bdu = VulnerabilityInfo(*bdu, is_valid=True)
-                    for idx, ref_type in enumerate(bdu.refs_type):
-                        if ref_type == "CVE":
-                            vulns_found[bdu.refs_link[idx]].related_vulns.append(bdu.id)
+                    for ref_type, ref_link in zip(bdu.refs_type, bdu.refs_type):
+                        if ref_type == CVE_ID_TYPE:
+                            vulns_found[ref_link].related_vulns.append(bdu.id)
                     vulns_found[bdu.id] = bdu
-                    if bdu.id in self.bdu_ids:
+                    if bdu.id in self.bdu_ids.copy():
                         self.bdu_ids.remove(bdu.id)
 
         if self.bdu_ids:
@@ -176,10 +157,10 @@ class VulnsInfo(APIWorker):
                 cve_ids = []
                 for bdu in response:
                     bdu = VulnerabilityInfo(*bdu, is_valid=True)
-                    for idx, ref_type in enumerate(bdu.refs_type):
-                        if ref_type == "CVE":
-                            cve_ids.append(bdu.refs_link[idx])
-                            bdu.related_vulns.append(bdu.refs_link[idx])
+                    for ref_type, ref_link in zip(bdu.refs_type, bdu.refs_link):
+                        if ref_type == CVE_ID_TYPE:
+                            cve_ids.append(ref_link)
+                            bdu.related_vulns.append(ref_link)
                     vulns_found[bdu.id] = bdu
 
                 # get CVE id's from BDU
@@ -197,11 +178,11 @@ class VulnsInfo(APIWorker):
                         },
                     }
 
-        vulns = [asdict(el) for el in vulns_found.values()]
+        vulns = list(vulns_found.values())
         # add invalids CVEs to the resulting list of vulnerabilities
         for cve in self.cve_ids:
             if cve not in vulns_found.keys():
-                vulns.insert(0, asdict(VulnerabilityInfo(id=cve, type="CVE")))
+                vulns.insert(0, VulnerabilityInfo(id=cve, type=CVE_ID_TYPE))
 
         if not vulns and not bugs:
             return self.store_error(
@@ -212,14 +193,13 @@ class VulnsInfo(APIWorker):
             )
 
         # BDUs and Bugzilla vulnerabilities not found in the DB
-        not_found_vulns: list[str] = [
+        not_found_vulns = [
             bdu for bdu in self.bdu_ids if bdu not in vulns_found.keys()
-        ]
-        not_found_vulns += [bug for bug in self.bug_ids if bug not in bugs.keys()]
+        ] + [str(bug) for bug in self.bug_ids if bug not in bugs.keys()]
 
         res = {
             "bugs": list(bugs.values()),
-            "vulns": vulns,
+            "vulns": [v.asdict() for v in vulns],
             "not_found": not_found_vulns,
         }
 
