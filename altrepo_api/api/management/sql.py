@@ -60,10 +60,10 @@ WITH global_search AS (
                  SELECT
                     task_id,
                     subtask_id,
-                    argMax(subtask_type, ts) AS sub_type,
-                    argMax(subtask_srpm, ts) AS srpm,
-                    argMax(subtask_dir, ts) AS dir,
-                    argMax(subtask_package, ts) AS package,
+                    argMax(subtask_type, task_changed) AS sub_type,
+                    argMax(subtask_srpm, task_changed) AS srpm,
+                    argMax(subtask_dir, task_changed) AS dir,
+                    argMax(subtask_package, task_changed) AS package,
                     if(has(groupUniqArray(subtask_deleted), 0), 'create', 'delete') AS tp
                 FROM Tasks
                 GROUP BY task_id, subtask_id
@@ -73,35 +73,35 @@ WITH global_search AS (
     )
 ),
 errata_tasks AS (
-    SELECT
+    SELECT DISTINCT
         errata_id,
-        argMax(task_id, ts) AS tsk_id,
-        argMax(eh_references.link, ts) AS refs_links,
-        argMax(eh_references.type, ts) AS refs_types,
-        max(eh_updated) AS changed
+        task_id,
+        eh_references.link AS refs_links,
+        eh_references.type AS refs_types,
+        eh_updated AS changed
     FROM ErrataHistory
-    WHERE eh_type = 'task' AND errata_id IN (
-    SELECT eid
-    FROM (
-        SELECT
-            errata_id_noversion,
-            argMax(errata_id, errata_id_version) AS eid
-        FROM ErrataHistory
-        WHERE task_state = 'DONE' AND pkgset_name != 'icarus'
-        {branch_errata_clause}
-        GROUP BY errata_id_noversion
+    WHERE errata_id IN (
+        SELECT eid
+        FROM (
+            SELECT
+                errata_id_noversion,
+                argMax(errata_id, errata_id_version) AS eid
+            FROM ErrataHistory
+            WHERE eh_type = 'task' AND task_state = 'DONE' AND pkgset_name != 'icarus'
+            {branch_errata_clause}
+            GROUP BY errata_id_noversion
+        )
     )
 )
-GROUP BY errata_id
-)
-SELECT global_search.*,
-       TT.errata_id,
-       TT.refs_links,
-       TT.refs_types
+SELECT
+    global_search.*,
+    TT.errata_id,
+    TT.refs_links,
+    TT.refs_types
 FROM global_search
 LEFT JOIN (
     SELECT  * FROM errata_tasks
-) AS TT ON TT.tsk_id = global_search.task_id
+) AS TT ON TT.task_id = global_search.task_id
 {where_clause_errata}
 """
 
@@ -113,7 +113,7 @@ WITH pkg_hashes AS (
            subtask_arch
     FROM TaskIterations
     WHERE (task_id, task_changed) IN (SELECT task_id, changed FROM {tmp_table})
-      AND titer_srcrpm_hash != 0
+        AND titer_srcrpm_hash != 0
 ),
 tasks_info AS (
     SELECT
@@ -126,24 +126,25 @@ tasks_info AS (
     WHERE task_id IN (SELECT task_id FROM pkg_hashes)
     GROUP BY task_id, subtask_id
 )
-SELECT task_id,
-       subtask_id,
-       sub_type,
-       changed,
-       tp,
-       toString(TT.titer_srcrpm_hash),
-       TT.pkg_name,
-       TT.pkg_version,
-       TT.pkg_release
+SELECT
+    task_id,
+    subtask_id,
+    sub_type,
+    changed,
+    tp,
+    toString(TT.titer_srcrpm_hash),
+    TT.pkg_name,
+    TT.pkg_version,
+    TT.pkg_release
 FROM tasks_info
 LEFT JOIN (
     SELECT
-    task_id,
-    subtask_id,
-    titer_srcrpm_hash,
-    PKG.pkg_name AS pkg_name,
-    PKG.pkg_version AS pkg_version,
-    PKG.pkg_release AS pkg_release
+        task_id,
+        subtask_id,
+        titer_srcrpm_hash,
+        PKG.pkg_name AS pkg_name,
+        PKG.pkg_version AS pkg_version,
+        PKG.pkg_release AS pkg_release
     FROM pkg_hashes
     LEFT JOIN (
         SELECT pkg_name, pkg_hash, pkg_version, pkg_release
@@ -213,9 +214,10 @@ WHERE task_id IN (
 
     get_subtasks_by_task_id = """
 WITH pkg_hashes AS (
-    SELECT task_id,
-           subtask_id,
-           argMax(titer_srcrpm_hash, task_changed) as pkg_hash
+    SELECT
+        task_id,
+        subtask_id,
+        argMax(titer_srcrpm_hash, task_changed) as pkg_hash
     FROM TaskIterations
     WHERE task_id = {task_id}
       AND titer_srcrpm_hash != 0
@@ -256,26 +258,27 @@ FROM (
     ) AS ST
     LEFT JOIN (
         SELECT
-        task_id,
-        subtask_id,
-        pkg_hash,
-        PKG.pkg_name AS pkg_name,
-        PKG.pkg_version AS pkg_version,
-        PKG.pkg_release AS pkg_release,
-        PKG.chlog_text AS chlog_text,
-        PKG.chlog_date AS chlog_date,
-        PKG.chlog_name AS chlog_name,
-        PKG.chlog_evr AS chlog_evr
+            task_id,
+            subtask_id,
+            pkg_hash,
+            PKG.pkg_name AS pkg_name,
+            PKG.pkg_version AS pkg_version,
+            PKG.pkg_release AS pkg_release,
+            PKG.chlog_text AS chlog_text,
+            PKG.chlog_date AS chlog_date,
+            PKG.chlog_name AS chlog_name,
+            PKG.chlog_evr AS chlog_evr
         FROM pkg_hashes
         LEFT JOIN (
-            SELECT pkg_name,
-                   pkg_hash,
-                   pkg_version,
-                   pkg_release,
-                   chlog_text,
-                   chlog_date,
-                   chlog_name,
-                   chlog_evr
+            SELECT
+                pkg_name,
+                pkg_hash,
+                pkg_version,
+                pkg_release,
+                chlog_text,
+                chlog_date,
+                chlog_name,
+                chlog_evr
             FROM BranchPackageHistory
             WHERE pkg_hash IN (
                 SELECT pkg_hash FROM pkg_hashes
