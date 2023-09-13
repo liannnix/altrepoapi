@@ -13,30 +13,32 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import datetime
+
 from dataclasses import dataclass, field, asdict
+from datetime import datetime
 from typing import Any
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.management.sql import sql
+
+from ..sql import sql
 
 
 @dataclass
 class SubtaskMeta:
     task_id: int
     subtask_id: int
-    subtask_changed: datetime.datetime
+    subtask_changed: datetime
     src_pkg_hash: str
     src_pkg_name: str
     src_pkg_version: str
     src_pkg_release: str
     chlog_text: str
-    chlog_date: datetime.datetime
+    chlog_date: datetime
     chlog_name: str
     chlog_evr: str
     errata_id: str
-    eh_created: datetime.datetime
-    eh_update: datetime.datetime
+    eh_created: datetime
+    eh_update: datetime
     errata_id: str
     vulnerabilities: list[dict[str, Any]] = field(default_factory=list)
 
@@ -46,7 +48,7 @@ class TaskMeta:
     task_id: int
     task_repo: str
     task_state: str
-    task_changed: datetime.datetime
+    task_changed: datetime
     task_message: str
     task_owner: str
     subtasks: list[SubtaskMeta] = field(default_factory=list)
@@ -101,7 +103,7 @@ class TaskInfo(APIWorker):
         for el in response:
             subtask = SubtaskMeta(*el[:-2])
             subtask.vulnerabilities = [
-                {"id": vuln, "type": el[-1][i]} for i, vuln in enumerate(el[-2])
+                {"id": v, "type": t} for t, v in zip(el[-1], el[-2])
             ]
             task_info.subtasks.append(subtask)
 
