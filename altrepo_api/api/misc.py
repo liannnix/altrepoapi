@@ -433,5 +433,9 @@ class LookupTables:
 
     known_errata_type = {"packages": ["branch", "task"], "repository": ["bulletin"]}
 
+    errata_branch_update_prefix = "ALT-BU"
+    errata_package_update_prefix = "ALT-PU"
+    errata_change_prefix = "ALT-EC"
+
 
 lut = LookupTables()
