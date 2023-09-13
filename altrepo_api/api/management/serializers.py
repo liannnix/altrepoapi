@@ -143,8 +143,10 @@ vuln_model = ns.model(
         "url": fields.String(description="vulnerability url"),
         "modified_date": fields.DateTime(description="vulnerability modified date"),
         "published_date": fields.DateTime(description="vulnerability published date"),
-        "body": fields.String(description="vulnerability body in JSON format"),
         "is_valid": fields.Boolean(description="vulnerability information is valid"),
+        "references": fields.List(
+            fields.String, description="vulnerability references list", as_list=True
+        ),
         "related_vulns": fields.List(
             fields.String, description="related vulnerabilities list", as_list=True
         ),

@@ -152,7 +152,7 @@ LEFT JOIN (
             SELECT titer_srcrpm_hash FROM pkg_hashes
         )
     ) AS PKG ON PKG.pkg_hash = titer_srcrpm_hash
-    GROUP BY 
+    GROUP BY
         task_id,
         subtask_id,
         titer_srcrpm_hash,
@@ -336,7 +336,7 @@ SELECT
     vuln_url,
     vuln_modified_date,
     vuln_published_date,
-    vuln_json,
+    -- vuln_json,
     vuln_references.type,
     vuln_references.link
 FROM Vulnerabilities
@@ -362,7 +362,7 @@ SELECT
     vuln_url,
     vuln_modified_date,
     vuln_published_date,
-    vuln_json,
+    -- vuln_json,
     vuln_references.type,
     vuln_references.link
 FROM Vulnerabilities
