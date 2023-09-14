@@ -17,9 +17,12 @@
 import re
 import json
 import logging
+import multiprocessing as mp
 
 from dataclasses import dataclass, asdict, field, replace
 from datetime import datetime
+from functools import partial
+from itertools import islice
 from typing import Any, Iterable, Literal, NamedTuple, Protocol, Union
 
 from altrepo_api.api.misc import lut
@@ -36,6 +39,8 @@ logger = logging.getLogger(__name__)
 
 
 ROOT_BRANCH = "sisyphus"
+CVE_MATCHER_MAX_CPU = 4  # running more than 4 processes is inefficient
+CVE_MATCHER_CHUNK_SIZE = 1000  # optimal chunk size is around 500-1000
 
 
 def unescape(x: str) -> str:
@@ -59,6 +64,12 @@ def unescape(x: str) -> str:
         return x_
     else:
         return x_.replace("\\", "")
+
+
+def chunks(data: dict[str, Any], size: int) -> Iterable[dict[str, Any]]:
+    it = iter(data)
+    for _ in range(0, len(data), size):
+        yield {k: data[k] for k in islice(it, size)}
 
 
 class PackageVersion(NamedTuple):
@@ -874,24 +885,30 @@ def get_matched_packages_names(cls: _pGetMatchedPackagesNamesCompatible) -> list
     )
 
 
-def get_packages_vulnerabilities(cls: _pGetPackagesVulnerabilitiesCompatible) -> None:
-    cls.status = False
+def matcher(
+    cve_cpems: dict[str, list[CpeMatch]],
+    packages_versions: list[PackageVersion],
+    packages_cpes: dict[str, list[CPE]],
+) -> list[PackageVulnerability]:
+    """Build package vulnerabilites objects by CPE matching."""
 
-    for vuln_id, cpems in cls.cve_cpems.items():
+    result = []
+
+    for vuln_id, cpems in cve_cpems.items():
         cve_cpe_triplets = {
             (cpem.cpe.vendor, cpem.cpe.product, cpem.cpe.target_sw) for cpem in cpems
         }
 
-        for pkg in cls.packages_versions:
+        for pkg in packages_versions:
             pkg_cpe_triplets = {
                 (cpe.vendor, cpe.product, cpe.target_sw)
-                for cpe in cls.packages_cpes.get(pkg.name, [])
+                for cpe in packages_cpes.get(pkg.name, [])
             }
 
             if not cve_cpe_triplets.intersection(pkg_cpe_triplets):
                 continue
 
-            cls.packages_vulnerabilities.append(
+            result.append(
                 PackageVulnerability(**pkg._asdict(), vuln_id=vuln_id).match_by_version(
                     (
                         cpem
@@ -901,6 +918,35 @@ def get_packages_vulnerabilities(cls: _pGetPackagesVulnerabilitiesCompatible) ->
                     )
                 )
             )
+
+    return result
+
+
+def get_packages_vulnerabilities(cls: _pGetPackagesVulnerabilitiesCompatible) -> None:
+    cls.status = False
+
+    cls.logger.debug(f"Starting packages CVE matching: {datetime.now()}")
+    cls.logger.debug(f"CVE objects count: {len(cls.cve_cpems)}")
+    cls.logger.debug(f"Packages count: {len(cls.packages_versions)}")
+    cls.logger.debug(
+        f"Total CPE matches count: {len([c for cpems in cls.cve_cpems.values() for c in cpems])}"
+    )
+
+    # # for pv in matcher(cls.cve_cpems, cls.packages_versions, cls.packages_cpes):
+    # for pv in _matcher(cls.cve_cpems):
+    #     cls.packages_vulnerabilities.append(pv)
+
+    _matcher = partial(
+        matcher,
+        packages_versions=cls.packages_versions,
+        packages_cpes=cls.packages_cpes,
+    )
+
+    with mp.Pool(processes=min(mp.cpu_count(), CVE_MATCHER_MAX_CPU)) as p:
+        for pvs in p.map(_matcher, chunks(cls.cve_cpems, CVE_MATCHER_CHUNK_SIZE)):
+            cls.packages_vulnerabilities.extend(pvs)
+
+    cls.logger.debug(f"Packages CVE matching finished: {datetime.now()}")
 
     cls.packages_vulnerabilities = sorted(
         cls.packages_vulnerabilities,
@@ -1023,6 +1069,7 @@ def get_vulnerability_fix_errata(
     # 2. remove duplicated elements from results
     def pv2cmp_tuple(pv: PackageVulnerability) -> tuple[Any, ...]:
         return (pv.hash, pv.name, pv.version, pv.release, pv.branch, pv.vuln_id)
+
     # FIXME: update here erases `cpe_matches` from original `packages_vulnerabilities` list
     for pv in [
         pv
