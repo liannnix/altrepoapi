@@ -124,22 +124,12 @@ class BranchOpenVulnerabilities(APIWorker):
             pv for pv in self.packages_vulnerabilities if pv.vulnerable
         ]
 
-        for pv in self.packages_vulnerabilities:
-            if pv.name == "ImageMagick":
-                print("DBG", pv)
-                # break
-
         # update packagex vulnerabilities with erratas data
         get_vulnerability_fix_errata(self, cve_ids)
         # filter only vulnerable packages found by CPE matching version compare
         self.packages_vulnerabilities = [
             pv for pv in self.packages_vulnerabilities if pv.vulnerable
         ]
-
-        for pv in self.packages_vulnerabilities:
-            if pv.name == "ImageMagick":
-                print("DBG", pv)
-                break
 
         # collect vulnerabilities info
         vuln_info: list[VulnerabilityInfo] = []
