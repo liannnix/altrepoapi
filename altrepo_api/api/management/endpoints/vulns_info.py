@@ -138,7 +138,7 @@ class VulnsInfo(APIWorker):
 
                 for bdu in response:
                     bdu = VulnerabilityInfo(*bdu, is_valid=True)
-                    for ref_type, ref_link in zip(bdu.refs_type, bdu.refs_type):
+                    for ref_type, ref_link in zip(bdu.refs_type, bdu.refs_link):
                         if ref_type == CVE_ID_TYPE:
                             vulns_found[ref_link].related_vulns.append(bdu.id)
                     vulns_found[bdu.id] = bdu
