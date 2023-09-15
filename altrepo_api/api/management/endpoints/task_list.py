@@ -157,7 +157,7 @@ class TaskList(APIWorker):
             condition = f"WHERE {bug_id_clause}" if bug_id_clause else ""
 
         where_clause_errata = (
-            f"WHERE task_id IN (SELECT tsk_id FROM errata_tasks {condition})"
+            f"WHERE task_id IN (SELECT task_id FROM errata_tasks {condition})"
             if condition
             else ""
         )
