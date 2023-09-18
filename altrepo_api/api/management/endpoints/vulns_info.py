@@ -187,7 +187,7 @@ class VulnsInfo(APIWorker):
         if not vulns and not bugs:
             return self.store_error(
                 {
-                    "message": f"No data info found in DB "
+                    "message": "No data info found in DB "
                     f"for {self.args['json_data']['vuln_ids']}"
                 }
             )
