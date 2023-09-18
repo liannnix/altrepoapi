@@ -93,9 +93,8 @@ def _parse_url(url: str) -> tuple[str, str]:
 class ErrataIDService:
     """ErrataID service interface class."""
 
-    def __init__(self, url: str, prefix: str) -> None:
+    def __init__(self, url: str) -> None:
         self.url, self.schema = _parse_url(url)
-        self.prefix = _validate_prefix(prefix)
         self.session = Session()
         # config session retries
         self.session.mount(
@@ -112,7 +111,6 @@ class ErrataIDService:
         self._check_service_connection()
 
     def _check_service_connection(self):
-        # XXX: requires ErrataID service version v1.0.6+
         url = self.url + "version"
         try:
             response = self.session.get(url)
@@ -123,11 +121,12 @@ class ErrataIDService:
                 "Failed to connect to ErrataID service at %s" % url
             ) from e
 
-    def register(self, year: Optional[int]) -> ErrataIDServiceResult:
+    def register(self, prefix: str, year: Optional[int]) -> ErrataIDServiceResult:
+        prefix = _validate_prefix(prefix)
         url = self.url + "register"
         try:
             response = self.session.get(
-                url, params={"prefix": self.prefix, "year": _validate_year(year)}
+                url, params={"prefix": prefix, "year": _validate_year(year)}
             )
             response.raise_for_status()
             return _result(response.json())
