@@ -22,7 +22,7 @@ from altrepo_api.api.base import APIWorker
 from altrepo_api.api.parser import bdu_id_type, cve_id_type
 from altrepo_api.utils import make_tmp_table_name
 
-from .common import BDU_ID_PREFIX, CVE_ID_TYPE, CVE_ID_PREFIX
+from .tools.constants import BDU_ID_PREFIX, CVE_ID_TYPE, CVE_ID_PREFIX
 from ..sql import sql
 
 

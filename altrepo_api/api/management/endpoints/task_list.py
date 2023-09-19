@@ -21,7 +21,7 @@ from typing import Any, NamedTuple
 from altrepo_api.api.base import APIWorker
 from altrepo_api.libs.pagination import Paginator
 
-from .common import BDU_ID_PREFIX, CVE_ID_PREFIX, ERRATA_PACKAGE_UPDATE_PREFIX
+from .tools.constants import BDU_ID_PREFIX, CVE_ID_PREFIX, ERRATA_PACKAGE_UPDATE_PREFIX
 from ..sql import sql
 
 
