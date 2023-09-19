@@ -13,15 +13,3 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-from altrepo_api.api.misc import lut
-
-
-BDU_ID_TYPE = "BDU"
-BDU_ID_PREFIX = f"{BDU_ID_TYPE}:"
-CVE_ID_TYPE = "CVE"
-CVE_ID_PREFIX = f"{CVE_ID_TYPE}-"
-
-ERRATA_PACKAGE_UPDATE_PREFIX = f"{lut.errata_package_update_prefix}-"
-ERRATA_BRANCH_BULLETIN_PREFIX = f"{lut.errata_branch_update_prefix}-"
-ERRATA_CHNAGE_PREFIX = f"{lut.errata_change_prefix}-"
