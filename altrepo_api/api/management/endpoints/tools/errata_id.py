@@ -26,8 +26,9 @@ from altrepo_api.libs.errata_service import (
     ErrataIDServiceResult,
 )
 
-from .base import ErrataID, ErrataManageError
-from .constants import DT_NEVER
+from .base import Errata, ErrataID, ErrataManageError, Reference
+from .constants import ERRATA_REFERENCE_TYPE  # , DT_NEVER
+from .errata import errata_hash
 
 logger = logging.getLogger(__name__)
 
@@ -80,16 +81,41 @@ def register_errata_change_id(eid_service: ErrataIDService) -> ErrataIDServiceRe
     )
 
 
-def update_errata_id(eid_service: ErrataIDService, id: str) -> ErrataIDServiceResult:
-    # FIXME: mocked up
-    # try:
-    #     return eid_service.update(id)
-    # except ErrataIDServiceError as e:
-    #     logger.error(f"Failed to update errata ID version for {id}: {e}")
-    #     raise ErrataManageError("error: %s" % e)
+def _update_errata_id(eid_service: ErrataIDService, id: str) -> ErrataIDServiceResult:
+    try:
+        return eid_service.update(id)
+    except ErrataIDServiceError as e:
+        logger.error(f"Failed to update errata ID version for {id}: {e}")
+        raise ErrataManageError("error: %s" % e)
 
-    # *** DEBUG ***
-    _eid = ErrataID.from_id(id)
-    return ErrataIDServiceResult(
-        f"{_eid.no_version}-{_eid.version + 1}", DT_NEVER, DT_NEVER
+
+def update_errata_id(eid_service: ErrataIDService, errata: Errata) -> Errata:
+    return errata.update(_update_errata_id(eid_service, errata.id.id)._asdict())  # type: ignore
+
+
+def update_errata_change_id(
+    eid_service: ErrataIDService, eid: ErrataID
+) -> ErrataIDServiceResult:
+    return _update_errata_id(eid_service, eid.id)
+
+
+def update_bulletin_errata(
+    eid_service: ErrataIDService, bulletin: Errata, errata: Errata, new_errata: Errata
+) -> Errata:
+    b_refs = bulletin.references[:]
+    old_errata_id = errata.id.id  # type: ignore
+    new_errata_id = new_errata.id.id  # type: ignore
+
+    for i, br in enumerate(bulletin.references):
+        if br.link == old_errata_id:
+            b_refs.pop(i)
+            break
+
+    b_refs.append(Reference(ERRATA_REFERENCE_TYPE, new_errata_id))
+
+    new_bulletin = update_errata_id(eid_service, bulletin).update_kw(
+        references=sorted(b_refs)
     )
+    new_bulletin = new_bulletin.update_kw(hash=errata_hash(new_bulletin))
+
+    return new_bulletin
