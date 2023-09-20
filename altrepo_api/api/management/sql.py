@@ -400,8 +400,7 @@ SELECT DISTINCT
     task_state,
     arrayZip(eh_references.type, eh_references.link),
     eh_hash
--- FROM ErrataHistory
-FROM test_ErrataHistory
+FROM ErrataHistory
 WHERE errata_id = '{errata_id}'
 """
 
@@ -422,8 +421,7 @@ SELECT DISTINCT
     task_state,
     arrayZip(eh_references.type, eh_references.link),
     eh_hash
--- FROM ErrataHistory
-FROM test_ErrataHistory
+FROM ErrataHistory
 WHERE eh_type = 'bulletin'
     AND has(eh_references.link, '{errata_id}')
 """
