@@ -22,7 +22,7 @@ from .base import Errata, ErrataID, Reference
 from .utils import dt_from_iso, re_errata_id
 
 
-def _errata_hash(errata: Errata) -> int:
+def errata_hash(errata: Errata) -> int:
     # XXX: sort errata references before hashing to be consistent with DB contents
     return mmhash("".join([f"{el[0]}:{el[1]}" for el in sorted(errata.references)]))
 
@@ -48,4 +48,4 @@ def json2errata(data: dict[str, Any]) -> Errata:
         references=sorted(Reference(**v) for v in data["references"]),
         hash=0,
     )
-    return errata._replace(hash=_errata_hash(errata))
+    return errata._replace(hash=errata_hash(errata))
