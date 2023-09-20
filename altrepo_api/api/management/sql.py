@@ -383,5 +383,68 @@ WHERE (vuln_id, vuln_hash) IN (
 )
 """
 
+    get_errata_info = """
+SELECT DISTINCT
+    errata_id,
+    eh_type,
+    eh_source,
+    eh_created,
+    eh_updated,
+    pkg_hash,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkgset_name,
+    task_id,
+    subtask_id,
+    task_state,
+    arrayZip(eh_references.type, eh_references.link),
+    eh_hash
+-- FROM ErrataHistory
+FROM test_ErrataHistory
+WHERE errata_id = '{errata_id}'
+"""
+
+    get_bulletin_by_pkg_update = """
+SELECT DISTINCT
+    errata_id,
+    eh_type,
+    eh_source,
+    eh_created,
+    eh_updated,
+    pkg_hash,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkgset_name,
+    task_id,
+    subtask_id,
+    task_state,
+    arrayZip(eh_references.type, eh_references.link),
+    eh_hash
+-- FROM ErrataHistory
+FROM test_ErrataHistory
+WHERE eh_type = 'bulletin'
+    AND has(eh_references.link, '{errata_id}')
+"""
+
+    get_ecc_by_errata_id = """
+SELECT
+    ec_id_noversion,
+    argMax(ec_id, ec_updated)
+FROM ErrataChangeHistory
+WHERE errata_id LIKE '{errata_id_noversion}%%'
+GROUP BY ec_id_noversion
+"""
+
+    store_errata_history = """
+-- INSERT INTO ErrataHistory (* EXCEPT ts) VALUES
+INSERT INTO test_ErrataHistory (* EXCEPT ts) VALUES
+"""
+
+    store_errata_change_history = """
+INSERT INTO ErrataChangeHistory (* EXCEPT ts) VALUES
+"""
+
 
 sql = SQL()

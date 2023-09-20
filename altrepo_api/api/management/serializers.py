@@ -171,3 +171,75 @@ vuln_ids_json_list_model = ns.model(
         ),
     },
 )
+
+errata_manage_reference_el_model = ns.model(
+    "ErrataManageReferenceElementModel",
+    {
+        "type": fields.String(description="errata reference type"),
+        "link": fields.String(description="errata reference link"),
+    },
+)
+errata_manage_errata_model = ns.model(
+    "ErrataManageErrataModel",
+    {
+        "id": fields.String(description="errata id"),
+        "created": fields.DateTime(description="errata created date"),
+        "updated": fields.DateTime(description="errata updated date"),
+        "type": fields.String(description="errata type"),
+        "source": fields.String(description="errata source"),
+        "references": fields.Nested(
+            errata_manage_reference_el_model,
+            description="list of errata references",
+            as_list=True,
+        ),
+        "pkg_hash": fields.String(description="package hash"),
+        "pkg_name": fields.String(description="package name"),
+        "pkg_version": fields.String(description="package version"),
+        "pkg_release": fields.String(description="package release"),
+        "pkgset_name": fields.String(description="packageset name"),
+        "task_id": fields.Integer(description="task id"),
+        "subtask_id": fields.Integer(description="subtask id"),
+        "task_state": fields.String(description="task state"),
+    },
+)
+errata_manage_errata_change_model = ns.model(
+    "ErrataManageErrataChangeModel",
+    {
+        "id": fields.String(description="errata change id"),
+        "created": fields.DateTime(description="errata created date"),
+        "updated": fields.DateTime(description="errata updated date"),
+        "user": fields.String(description="errata change user"),
+        "user_ip": fields.String(description="errata change user IP"),
+        "reason": fields.String(description="errata change reason"),
+        "type": fields.String(description="errata change type"),
+        "source": fields.String(description="errata change source"),
+        "origin": fields.String(description="errata change origin"),
+        "errata_id": fields.String(description="changed errata id refernce"),
+    },
+)
+
+errata_manage_model = ns.model(
+    "ErrataManageModel",
+    {
+        "user": fields.String(description="errata change originator"),
+        "action": fields.String(description="errata manage action"),
+        "reason": fields.String(description="errata change reason"),
+        "errata": fields.Nested(
+            errata_manage_errata_model, description="errata contents"
+        ),
+    },
+)
+
+errata_manage_response_model = ns.model(
+    "ErrataManageResponseModel",
+    {
+        "message": fields.String(description="errata manage result message"),
+        "action": fields.String(description="errata manage action"),
+        "errata": fields.Nested(
+            errata_manage_errata_model, description="errata contents"
+        ),
+        "errata_change": fields.Nested(
+            errata_manage_errata_change_model, description="errata change contents"
+        ),
+    },
+)

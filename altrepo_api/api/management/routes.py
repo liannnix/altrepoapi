@@ -22,22 +22,22 @@ from altrepo_api.api.base import (
     GET_RESPONSES_400_404,
     POST_RESPONSES_400_404,
 )
-from altrepo_api.api.management.endpoints.task_info import TaskInfo
-from altrepo_api.api.management.endpoints.vulns_info import VulnsInfo
-from altrepo_api.api.management.serializers import (
+from altrepo_api.utils import get_logger, url_logging
+
+from .namespace import get_namespace
+from .endpoints.manage import ManageErrata
+from .endpoints.task_info import TaskInfo
+from .endpoints.task_list import TaskList
+from .endpoints.vulns_info import VulnsInfo
+from .parsers import task_list_args
+from .serializers import (
     task_list_model,
     task_info_model,
     vuln_ids_json_list_model,
     vuln_ids_json_post_list_model,
+    errata_manage_model,
+    errata_manage_response_model,
 )
-from altrepo_api.utils import (
-    get_logger,
-    url_logging,
-)
-
-from altrepo_api.api.management import get_namespace
-from altrepo_api.api.management.parsers import task_list_args
-from altrepo_api.api.management.endpoints.task_list import TaskList
 
 
 ns = get_namespace()
@@ -100,4 +100,72 @@ class routeVulnsInfo(Resource):
         w = VulnsInfo(g.connection, json_data=ns.payload)
         return run_worker(
             worker=w, run_method=w.post, check_method=w.check_params_post, ok_code=200
+        )
+
+
+RESPONSES_400_409 = {
+    200: "Data loaded",
+    400: "Request payload validation error",
+    409: "Requests payload inconsistent with DB contents",
+}
+RESPONSES_400_404_409 = {
+    200: "Data loaded",
+    400: "Request payload validation error",
+    404: "Requested data not found in database",
+    409: "Requests payload inconsistent with DB contents",
+}
+
+
+@ns.route("/errata")
+class routeManageErrata(Resource):
+    @ns.doc(
+        description="Get errata info.",
+        responses=GET_RESPONSES_400_404,
+    )
+    # @ns.expect(errata_manage_get_args)
+    @ns.marshal_with(errata_manage_response_model)
+    def get(self):
+        url_logging(logger, g.url)
+        # args = errata_manage_get_args.parse_args(strict=True)
+        args = {}
+        w = ManageErrata(g.connection, payload={}, **args)
+        return run_worker(worker=w, args=args)
+
+    @ns.doc(
+        description="Update errata version with new contents.",
+        responses=RESPONSES_400_404_409,
+    )
+    @ns.expect(errata_manage_model)
+    @ns.marshal_with(errata_manage_response_model)
+    def put(self):
+        url_logging(logger, g.url)
+        w = ManageErrata(g.connection, payload=ns.payload)
+        return run_worker(
+            worker=w, run_method=w.put, check_method=w.check_params_put, ok_code=200
+        )
+
+    @ns.doc(
+        description="Register new errata record.",
+        responses=RESPONSES_400_409,
+    )
+    @ns.expect(errata_manage_model)
+    @ns.marshal_with(errata_manage_response_model)
+    def post(self):
+        url_logging(logger, g.url)
+        w = ManageErrata(g.connection, payload=ns.payload)
+        return run_worker(
+            worker=w, run_method=w.post, check_method=w.check_params_post, ok_code=200
+        )
+
+    @ns.doc(description="Discard errata record.", responses=GET_RESPONSES_400_404)
+    @ns.expect(errata_manage_model)
+    @ns.marshal_with(errata_manage_response_model)
+    def delete(self):
+        url_logging(logger, g.url)
+        w = ManageErrata(g.connection, payload=ns.payload)
+        return run_worker(
+            worker=w,
+            run_method=w.delete,
+            check_method=w.check_params_delete,
+            ok_code=200,
         )
