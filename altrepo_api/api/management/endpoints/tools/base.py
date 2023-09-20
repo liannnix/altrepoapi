@@ -117,18 +117,21 @@ class Errata(NamedTuple):
         res["hash"] = str(self.hash)
         return res
 
-    def update(self, kwargs: dict[str, Any]) -> "Errata":
+    def update(self, update: dict[str, Any]) -> "Errata":
         res = self._asdict()
-        for k in kwargs:
+        for k in update:
             if k not in self._fields:
                 raise ValueError(
                     "Class %s has not attribute %s" % (self.__class__.__name__, k)
                 )
-        res.update(kwargs)
+        res.update(update)
         _id = res["id"]
         if isinstance(_id, str):
             res["id"] = ErrataID.from_id(_id)
         return Errata(**res)
+
+    def update_kw(self, **kwargs) -> "Errata":
+        return self.update(kwargs)
 
     def __str__(self) -> str:
         return str(self.asdict())
@@ -162,4 +165,15 @@ class ErrataChange(NamedTuple):
     type: ErrataChangeType
     source: ErrataChangeSource
     origin: ErrataChangeOrigin
-    errata_id: str
+    errata_id: ErrataID
+
+    def asdict(self) -> dict[str, Any]:
+        res = self._asdict()
+        res["id"] = self.id.id
+        res["errata_id"] = self.errata_id.id
+        res["created"] = self.created.isoformat()
+        res["updated"] = self.updated.isoformat()
+        res["type"] = self.type.name
+        res["source"] = self.source.name
+        res["origin"] = self.origin.name
+        return res
