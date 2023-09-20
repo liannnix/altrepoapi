@@ -615,74 +615,119 @@ ORDER BY pkg_buildtime DESC
 """
 
     get_watch_by_last_acl_with_group = """
-WITH (
+WITH 
+(
     SELECT max(toDate(date_update))
     FROM PackagesWatch
 ) AS max_watch_date
-SELECT
-    argMax(pkg_name, date_update),
-    argMax(old_version, date_update),
-    argMax(new_version, date_update),
-    argMax(url, date_update),
-    max(date_update)
-FROM PackagesWatch
-WHERE pkg_name IN (
-    SELECT pkgname
-    FROM last_acl_with_groups
-    WHERE acl_user = '{maintainer_nickname}'
-        AND acl_branch = 'sisyphus'
-        AND order_u = 1
-    )
-    AND toDate(date_update) = max_watch_date
-GROUP BY
-    pkg_name,
-    url
-ORDER BY pkg_name ASC
+SELECT PW.*, CP.pnc_result
+FROM (
+    SELECT
+        argMax(pkg_name, date_update) as package,
+        argMax(old_version, date_update),
+        argMax(new_version, date_update),
+        argMax(url, date_update),
+        max(date_update)
+    FROM PackagesWatch
+    WHERE pkg_name IN (
+        SELECT pkgname
+        FROM last_acl_with_groups
+        WHERE acl_user = '{maintainer_nickname}'
+            AND acl_branch = 'sisyphus'
+            AND order_u = 1
+        )
+        AND toDate(date_update) = max_watch_date
+        AND url NOT LIKE 'watch_file_error%'
+    GROUP BY
+        pkg_name,
+        url
+    ORDER BY pkg_name ASC
+) AS PW
+LEFT JOIN (
+    SELECT DISTINCT
+        pnc_result,
+        pkg_name,
+        pnc_type
+    FROM PackagesNameConversion
+    WHERE pnc_type = 'altsisyphus'
+    AND pnc_source = 'repology'
+    AND pnc_state = 'active'
+) AS CP ON CP.pkg_name = package
 """
 
     get_watch_by_last_acl = """
-WITH (
+WITH 
+(
     SELECT max(toDate(date_update))
     FROM PackagesWatch
 ) AS max_watch_date
-SELECT
-    argMax(pkg_name, date_update),
-    argMax(old_version, date_update),
-    argMax(new_version, date_update),
-    argMax(url, date_update),
-    max(date_update)
-FROM PackagesWatch
-WHERE acl = '{maintainer_nickname}'
-    AND toDate(date_update) = max_watch_date
-GROUP BY
-    pkg_name,
-    url
-ORDER BY pkg_name ASC
+SELECT PW.*, CP.pnc_result
+FROM (
+    SELECT
+        argMax(pkg_name, date_update) as package,
+        argMax(old_version, date_update),
+        argMax(new_version, date_update),
+        argMax(url, date_update),
+        max(date_update)
+    FROM PackagesWatch
+    WHERE acl = '{maintainer_nickname}'
+        AND toDate(date_update) = max_watch_date
+        AND url NOT LIKE 'watch_file_error%'
+    GROUP BY
+        pkg_name,
+        url
+    ORDER BY pkg_name ASC
+) AS PW
+LEFT JOIN (
+    SELECT DISTINCT
+        pnc_result,
+        pkg_name,
+        pnc_type
+    FROM PackagesNameConversion
+    WHERE pnc_type = 'altsisyphus'
+    AND pnc_source = 'repology'
+    AND pnc_state = 'active'
+) AS CP ON CP.pkg_name = package
 """
 
     get_watch_by_nick_acl = """
-WITH (
+WITH 
+(
     SELECT max(toDate(date_update))
     FROM PackagesWatch
 ) AS max_watch_date
-SELECT
-    argMax(pkg_name, date_update),
-    argMax(old_version, date_update),
-    argMax(new_version, date_update),
-    argMax(url, date_update),
-    max(date_update)
-FROM PackagesWatch
-WHERE pkg_name IN (
-    SELECT acl_for
-    FROM last_acl_stage1
-    WHERE acl_branch = 'sisyphus'
-        AND has(acl_list, '{maintainer_nickname}')
-    )
-    AND toDate(date_update) = max_watch_date
-GROUP BY
-    pkg_name,
-    url
-ORDER BY pkg_name ASC
+SELECT PW.*, CP.pnc_result
+FROM (
+    SELECT
+        argMax(pkg_name, date_update) as package,
+        argMax(old_version, date_update),
+        argMax(new_version, date_update),
+        argMax(url, date_update),
+        max(date_update)
+    FROM PackagesWatch
+    WHERE pkg_name IN (
+        SELECT acl_for
+        FROM last_acl_stage1
+        WHERE acl_branch = 'sisyphus'
+            AND has(acl_list, '{maintainer_nickname}')
+        )
+        AND toDate(date_update) = max_watch_date
+        AND url NOT LIKE 'watch_file_error%'
+    GROUP BY
+        pkg_name,
+        url
+    ORDER BY pkg_name ASC
+) AS PW
+LEFT JOIN (
+    SELECT DISTINCT
+        pnc_result,
+        pkg_name,
+        pnc_type
+    FROM PackagesNameConversion
+    WHERE pnc_type = 'altsisyphus'
+    AND pnc_source = 'repology'
+    AND pnc_state = 'active'
+) AS CP ON CP.pkg_name = package
 """
 
     get_watch_by_nick_or_group_acl = """
@@ -698,53 +743,82 @@ WITH
     SELECT max(toDate(date_update))
     FROM PackagesWatch
 ) AS max_watch_date
-SELECT
-    argMax(pkg_name, date_update),
-    argMax(old_version, date_update),
-    argMax(new_version, date_update),
-    argMax(url, date_update),
-    max(date_update)
-FROM PackagesWatch
-WHERE pkg_name IN (
-    SELECT acl_for
-    FROM last_acl_stage1
-    WHERE acl_branch = 'sisyphus'
-        AND (has(acl_list, '{maintainer_nickname}')
-        OR hasAny(acl_list, acl_group))
-    )
-    AND toDate(date_update) = max_watch_date
-GROUP BY
-    pkg_name,
-    url
-ORDER BY pkg_name ASC
+SELECT PW.*, CP.pnc_result
+FROM (
+    SELECT
+        argMax(pkg_name, date_update) as package,
+        argMax(old_version, date_update),
+        argMax(new_version, date_update),
+        argMax(url, date_update),
+        max(date_update)
+    FROM PackagesWatch
+    WHERE pkg_name IN (
+        SELECT acl_for
+        FROM last_acl_stage1
+        WHERE acl_branch = 'sisyphus'
+            AND (has(acl_list, '{maintainer_nickname}')
+            OR hasAny(acl_list, acl_group))
+        )
+        AND toDate(date_update) = max_watch_date
+        AND url NOT LIKE 'watch_file_error%'
+    GROUP BY
+        pkg_name,
+        url
+    ORDER BY pkg_name ASC
+) AS PW
+LEFT JOIN (
+    SELECT DISTINCT
+        pnc_result,
+        pkg_name,
+        pnc_type
+    FROM PackagesNameConversion
+    WHERE pnc_type = 'altsisyphus'
+    AND pnc_source = 'repology'
+    AND pnc_state = 'active'
+) AS CP ON CP.pkg_name = package
 """
 
     get_watch_by_packager = """
-WITH (
+WITH
+(
     SELECT max(toDate(date_update))
     FROM PackagesWatch
 ) AS max_watch_date
-SELECT
-    argMax(pkg_name, date_update),
-    argMax(old_version, date_update),
-    argMax(new_version, date_update),
-    argMax(url, date_update),
-    max(date_update)
-FROM PackagesWatch
-WHERE pkg_name IN (
-    SELECT pkg_name
-    FROM last_packages
-    WHERE pkgset_name = 'sisyphus'
-        AND pkg_sourcepackage = 1
-        AND (pkg_packager_email LIKE '{maintainer_nickname}@%'
-            OR pkg_packager_email LIKE '{maintainer_nickname} at%'
-            OR pkg_packager LIKE '%{maintainer_nickname}@%')
-    )
-    AND toDate(date_update) = max_watch_date
-GROUP BY
-    pkg_name,
-    url
-ORDER BY pkg_name ASC
+SELECT PW.*, CP.pnc_result
+FROM (
+    SELECT
+        argMax(pkg_name, date_update) as package,
+        argMax(old_version, date_update),
+        argMax(new_version, date_update),
+        argMax(url, date_update),
+        max(date_update)
+    FROM PackagesWatch
+    WHERE pkg_name IN (
+        SELECT pkg_name
+        FROM last_packages
+        WHERE pkgset_name = 'sisyphus'
+            AND pkg_sourcepackage = 1
+            AND (pkg_packager_email LIKE '{maintainer_nickname}@%'
+                OR pkg_packager_email LIKE '{maintainer_nickname} at%'
+                OR pkg_packager LIKE '%{maintainer_nickname}@%')
+        )
+        AND toDate(date_update) = max_watch_date
+        AND url NOT LIKE 'watch_file_error%'
+    GROUP BY
+        pkg_name,
+        url
+    ORDER BY pkg_name ASC
+) AS PW
+LEFT JOIN (
+    SELECT DISTINCT
+        pnc_result,
+        pkg_name,
+        pnc_type
+    FROM PackagesNameConversion
+    WHERE pnc_type = 'altsisyphus'
+    AND pnc_source = 'repology'
+    AND pnc_state = 'active'
+) AS CP ON CP.pkg_name = package
 """
 
 

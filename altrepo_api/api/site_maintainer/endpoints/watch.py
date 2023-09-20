@@ -39,7 +39,14 @@ class WatchByMaintainer(APIWorker):
 
         MaintainerWatch = namedtuple(
             "MaintainerWatch",
-            ["pkg_name", "old_version", "new_version", "url", "date_update"],
+            [
+                "pkg_name",
+                "old_version",
+                "new_version",
+                "url",
+                "date_update",
+                "repology_name",
+            ],
         )
 
         if self.args["by_acl"] == "by_nick_leader_and_group":
