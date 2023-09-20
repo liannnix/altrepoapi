@@ -20,6 +20,10 @@ from altrepo_api.api.misc import lut
 
 DT_NEVER = datetime.fromtimestamp(0).replace(tzinfo=timezone.utc)
 
+BUG_REFERENCE_TYPE = 'bug'
+VULN_REFERENCE_TYPE = 'vuln'
+ERRATA_REFERENCE_TYPE = 'errata'
+
 BDU_ID_TYPE = "BDU"
 BDU_ID_PREFIX = f"{BDU_ID_TYPE}:"
 CVE_ID_TYPE = "CVE"
