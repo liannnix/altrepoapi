@@ -39,13 +39,15 @@ from .tools.constants import (
     TASK_STATE_DONE,
     DT_NEVER,
 )
-from .tools.errata import json2errata
+from .tools.errata import (
+    json2errata,
+    build_errata_with_updated_id,
+    build_new_bulletin_errata,
+)
 from .tools.errata_id import (
     get_errataid_service,
     check_errata_id,
     update_errata_id,
-    update_bulletin_errata,
-    update_errata_change_id,
     register_errata_change_id,
 )
 from .tools.helpers import (
@@ -258,7 +260,7 @@ class ManageErrata(APIWorker):
             }, 200
 
         # 3. register new errata version for package update
-        new_errata = update_errata_id(self.eid_service, self.errata)
+        new_errata = build_errata_with_updated_id(self.eid_service, self.errata)
         new_errata_history_records.append(new_errata)
 
         # 4. find affected branch update errata
@@ -280,7 +282,7 @@ class ManageErrata(APIWorker):
             )
 
         # 5. register new errata version for branch update
-        new_bulletin = update_bulletin_errata(
+        new_bulletin = build_new_bulletin_errata(
             self.eid_service, bulletin, self.errata, new_errata
         )
         new_errata_history_records.append(new_bulletin)
@@ -289,7 +291,7 @@ class ManageErrata(APIWorker):
         # check if errata change already registered for current package update errata
         ec_errata_id = get_ec_id_by_package_update(self, self.errata.id)
         if ec_errata_id is not None:
-            ec_id = update_errata_change_id(self.eid_service, ec_errata_id)
+            ec_id = update_errata_id(self.eid_service, ec_errata_id.id)
         else:
             ec_id = register_errata_change_id(self.eid_service)
 

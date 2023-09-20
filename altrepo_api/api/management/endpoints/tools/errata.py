@@ -19,6 +19,8 @@ from typing import Any
 from altrepo_api.utils import mmhash
 
 from .base import Errata, ErrataID, Reference
+from .constants import ERRATA_REFERENCE_TYPE
+from .errata_id import ErrataIDService, update_errata_id
 from .utils import dt_from_iso, re_errata_id
 
 
@@ -49,3 +51,30 @@ def json2errata(data: dict[str, Any]) -> Errata:
         hash=0,
     )
     return errata._replace(hash=errata_hash(errata))
+
+
+def build_errata_with_updated_id(eid_service: ErrataIDService, errata: Errata) -> Errata:
+    return errata.update(update_errata_id(eid_service, errata.id.id)._asdict())  # type: ignore
+
+
+def build_new_bulletin_errata(
+    eid_service: ErrataIDService, bulletin: Errata, errata: Errata, new_errata: Errata
+) -> Errata:
+    b_refs = bulletin.references[:]
+    old_errata_id = errata.id.id  # type: ignore
+    new_errata_id = new_errata.id.id  # type: ignore
+
+    for i, br in enumerate(bulletin.references):
+        if br.link == old_errata_id:
+            b_refs.pop(i)
+            break
+
+    b_refs.append(Reference(ERRATA_REFERENCE_TYPE, new_errata_id))
+
+    new_bulletin = build_errata_with_updated_id(eid_service, bulletin).update_kw(
+        # XXX: sort errata references to be consistent with DB contents!
+        references=sorted(b_refs)
+    )
+    new_bulletin = new_bulletin.update_kw(hash=errata_hash(new_bulletin))
+
+    return new_bulletin
