@@ -236,10 +236,14 @@ errata_manage_response_model = ns.model(
         "message": fields.String(description="errata manage result message"),
         "action": fields.String(description="errata manage action"),
         "errata": fields.Nested(
-            errata_manage_errata_model, description="errata contents"
+            errata_manage_errata_model,
+            description="errata contents",
+            as_list=True,
         ),
         "errata_change": fields.Nested(
-            errata_manage_errata_change_model, description="errata change contents"
+            errata_manage_errata_change_model,
+            description="errata change contents",
+            as_list=True,
         ),
     },
 )
