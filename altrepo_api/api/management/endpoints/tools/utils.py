@@ -15,9 +15,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
-import logging
 
 from datetime import datetime
+
+from altrepo_api.utils import get_logger
 
 from .constants import (
     DT_NEVER,
@@ -26,7 +27,7 @@ from .constants import (
     ERRATA_VALID_TYPES,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 re_errata_id = re.compile(r"^ALT-[A-Z]+-2\d{3}-\d{4,}-\d{1,}$")
 
 

@@ -14,8 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import logging
-
 from typing import Optional
 
 from altrepo_api.api.misc import lut
@@ -25,19 +23,24 @@ from altrepo_api.libs.errata_service import (
     ErrataIDServiceError,
     ErrataIDServiceResult,
 )
+from altrepo_api.utils import get_logger
 
 from .base import ErrataID, ErrataManageError
 
-
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def get_errataid_service() -> ErrataIDService:
-    return ErrataIDService(url=namespace.ERRATA_ID_URL)
+    try:
+        return ErrataIDService(url=namespace.ERRATA_ID_URL)
+    except ErrataIDServiceError as e:
+        logger.error(f"Failed to connect to ErrataID service: {e}")
+        raise ErrataManageError("error: %s" % e)
 
 
 def _check_errata_id(eid_service: ErrataIDService, id: str) -> ErrataIDServiceResult:
     try:
+        logger.debug(f"Check errata ID latest version for {id}")
         return eid_service.check(id)
     except ErrataIDServiceError as e:
         logger.error(f"Failed to update errata ID version for {id}: {e}")
@@ -52,6 +55,7 @@ def _reister_errata_id(
     eid_service: ErrataIDService, prefix: str, year: Optional[int]
 ) -> ErrataIDServiceResult:
     try:
+        logger.debug(f"Register new errata ID for {prefix}-{year}")
         return eid_service.register(prefix=prefix, year=year)
     except ErrataIDServiceError as e:
         logger.error(f"Failed to register new errata ID for {prefix}-{year}: {e}")
@@ -82,6 +86,7 @@ def register_errata_change_id(eid_service: ErrataIDService) -> ErrataIDServiceRe
 
 def update_errata_id(eid_service: ErrataIDService, id: str) -> ErrataIDServiceResult:
     try:
+        logger.debug(f"Update errata ID version for {id}")
         return eid_service.update(id)
     except ErrataIDServiceError as e:
         logger.error(f"Failed to update errata ID version for {id}: {e}")
