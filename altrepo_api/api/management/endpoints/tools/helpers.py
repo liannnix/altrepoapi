@@ -19,7 +19,8 @@ from typing import Any, Iterable, Protocol, Union
 
 from altrepo_api.api.management.sql import SQL
 
-from .base import Errata, ErrataChange, ErrataID, Reference
+from .base import Errata, ErrataChange, ErrataID, ErrataManageError, Reference
+from .errata_id import ErrataIDService, check_errata_id
 
 
 class _pAPIWorker(Protocol):
@@ -37,6 +38,90 @@ class _pAPIWorker(Protocol):
         self, request_line: Any, http_code: int = ..., **kwargs
     ) -> Any:
         ...
+
+
+class _pHasErrataID(_pAPIWorker, Protocol):
+    errata: Errata
+
+
+class _pHasErrataIDService(_pAPIWorker, Protocol):
+    eid_service: ErrataIDService
+
+
+class _pManageErrata(_pHasErrataIDService, _pHasErrataID, Protocol):
+    ...
+
+
+def get_last_errata_id_version(cls: _pManageErrata) -> Union[ErrataID, None]:
+    """Checks if current errata version is the latest one."""
+
+    cls.status = False
+
+    if cls.errata.id is None:
+        return
+
+    try:
+        last_errata_id = check_errata_id(cls.eid_service, cls.errata.id)
+    except ErrataManageError:
+        _ = cls.store_error(
+            {
+                "message": f"Failed to check version for {cls.errata.id} by ErrataID service"
+            },
+            http_code=404,
+        )
+        return None
+
+    if cls.errata.id < last_errata_id:
+        _ = cls.store_error(
+            {
+                "message": f"Errata ID version is outdated: {cls.errata.id} < {last_errata_id}"
+            },
+            http_code=409,
+        )
+        return None
+    elif cls.errata.id > last_errata_id:
+        _ = cls.store_error(
+            {
+                "message": (
+                    f"Errata ID version not found in DB: {cls.errata.id}. "
+                    f"Lates found version is {last_errata_id}"
+                )
+            },
+            http_code=404,
+        )
+        return None
+
+    cls.status = True
+    return last_errata_id
+
+
+def check_errata_contents_is_changed(cls: _pManageErrata) -> bool:
+    """Checks if errata contents have been changed in fact."""
+
+    last_errata_id = get_last_errata_id_version(cls)
+    if not cls.status or last_errata_id is None:
+        return False
+
+    cls.status = False
+
+    response = cls.send_sql_request(
+        cls.sql.get_errata_info.format(errata_id=last_errata_id.id)
+    )
+    if not cls.sql_status:
+        return False
+    if not response:
+        _ = cls.store_error(
+            {"message": f"Failed to get errata info from DB for {last_errata_id}"}
+        )
+        return False
+
+    r = response[0]
+    errata_from_db = Errata(
+        ErrataID.from_id(r[0]), *r[1:-2], [Reference(*el) for el in r[-2]], r[-1]  # type: ignore
+    )
+
+    cls.status = True
+    return cls.errata.hash != errata_from_db.hash
 
 
 def get_bulletin_by_package_update(

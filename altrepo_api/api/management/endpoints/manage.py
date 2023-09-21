@@ -26,7 +26,7 @@ from .tools.base import (
     ErrataChangeOrigin,
     ErrataChangeSource,
     ErrataChangeType,
-    Reference,
+    # Reference,
 )
 from .tools.constants import (
     ERRATA_CHANGE_ACTION_CREATE,
@@ -46,7 +46,6 @@ from .tools.errata import (
 )
 from .tools.errata_id import (
     get_errataid_service,
-    check_errata_id,
     update_errata_id,
     register_errata_change_id,
 )
@@ -55,8 +54,10 @@ from .tools.helpers import (
     get_ec_id_by_package_update,
     store_errata_history_records,
     store_errata_change_records,
+    get_last_errata_id_version,
+    check_errata_contents_is_changed,
 )
-from .tools.utils import validate_action, validate_source, validate_type
+from .tools.utils import validate_action  # , validate_source, validate_type
 
 from ..sql import sql
 
@@ -115,35 +116,6 @@ class ManageErrata(APIWorker):
                 "Invalid errata contents: references shouldn't be empty"
             )
 
-        if not validate_type(self.errata.type):
-            self.validation_results.append(f"Invalid errata type: {self.errata.type}")
-
-        if not validate_source(self.errata.source):
-            self.validation_results.append(
-                f"Invalid errata source: {self.errata.source}"
-            )
-
-    def check_params(self) -> bool:
-        return True
-
-    def check_params_put(self) -> bool:
-        self._valiadte_and_parse()
-        if self.validation_results != []:
-            return False
-
-        # validate request payload contents for particular HTTP method
-        if self.errata.id is None:
-            self.validation_results.append(
-                "Failed to get or parse errata ID from request payload."
-            )
-        elif not self.errata.id.id.startswith(ERRATA_PACKAGE_UPDATE_PREFIX):
-            self.validation_results.append(
-                "API requests supports only package update errata records."
-            )
-
-        if not self.action == ERRATA_CHANGE_ACTION_UPDATE:
-            self.validation_results.append("Errata change action validation error")
-
         if self.errata.type not in ERRATA_PACKAGE_UPDATE_TYPES:
             self.validation_results.append("Incorrect errata type")
 
@@ -166,6 +138,27 @@ class ManageErrata(APIWorker):
         ):
             self.validation_results.append("Incorrect package information")
 
+    def check_params(self) -> bool:
+        return True
+
+    def check_params_put(self) -> bool:
+        self._valiadte_and_parse()
+        if self.validation_results != []:
+            return False
+
+        # validate request payload contents for particular HTTP method
+        if self.errata.id is None:
+            self.validation_results.append(
+                "Failed to get or parse errata ID from request payload."
+            )
+        elif not self.errata.id.id.startswith(ERRATA_PACKAGE_UPDATE_PREFIX):
+            self.validation_results.append(
+                "API requests supports only package update errata records."
+            )
+
+        if not self.action == ERRATA_CHANGE_ACTION_UPDATE:
+            self.validation_results.append("Errata change action validation error")
+
         if self.errata.created <= DT_NEVER or self.errata.updated <= DT_NEVER:
             self.validation_results.append("Incorrect errata dates information")
 
@@ -178,6 +171,7 @@ class ManageErrata(APIWorker):
         if self.validation_results != []:
             return False
 
+        # validate request payload contents for particular HTTP method
         if not self.action == ERRATA_CHANGE_ACTION_CREATE:
             self.validation_results.append("Errata change action validation error")
 
@@ -190,8 +184,12 @@ class ManageErrata(APIWorker):
         if self.validation_results != []:
             return False
 
+        # validate request payload contents for particular HTTP method
         if not self.action == ERRATA_CHANGE_ACTION_DISCARD:
             self.validation_results.append("Errata change action validation error")
+
+        if self.errata.created <= DT_NEVER or self.errata.updated <= DT_NEVER:
+            self.validation_results.append("Incorrect errata dates information")
 
         if self.validation_results != []:
             return False
@@ -217,53 +215,25 @@ class ManageErrata(APIWorker):
         if self.errata.id is None:
             return "fail", 400
 
-        # 1. check if current errata version is the latest one
-        last_errata_id = check_errata_id(self.eid_service, self.errata.id)
-        if self.errata.id < last_errata_id:
-            return self.store_error(
-                {
-                    "message": f"Errata ID version is outdated: {self.errata.id} < {last_errata_id}"
-                },
-                http_code=409,
-            )
-        elif self.errata.id > last_errata_id:
-            return self.store_error(
-                {
-                    "message": (
-                        f"Errata ID version not found in DB: {self.errata.id}. "
-                        f"Lates found version is {last_errata_id}"
-                    )
-                },
-                http_code=404,
-            )
-
-        # 2. check if errata contents have been changed in fact (ensure request is idempotent)
-        response = self.send_sql_request(
-            self.sql.get_errata_info.format(errata_id=last_errata_id.id)
-        )
-        if not self.sql_status:
+        # 1. check if current errata version is the latest one and
+        # check if errata contents have been changed in fact (ensure request is idempotent)
+        is_changed = check_errata_contents_is_changed(self)
+        if not self.status:
             return self.error
-        if not response:
-            return self.store_error(
-                {"message": f"Failed to get errata info from DB for {last_errata_id}"}
-            )
-        r = response[0]
-        errata_from_db = Errata(
-            ErrataID.from_id(r[0]), *r[1:-2], [Reference(*el) for el in r[-2]], r[-1]  # type: ignore
-        )
 
-        if self.errata.hash == errata_from_db.hash:
+        if not is_changed:
             return {
                 "action": self.action,
                 "message": f"no changes found to be saved to DB for {self.errata.id}",
                 "errata": [self.errata.asdict()],
+                "errata_change": [],
             }, 200
 
-        # 3. register new errata version for package update
+        # 2. register new errata version for package update
         new_errata = build_errata_with_updated_id(self.eid_service, self.errata)
         new_errata_history_records.append(new_errata)
 
-        # 4. find affected branch update errata
+        # 3. find affected branch update errata
         bulletin = get_bulletin_by_package_update(self, self.errata.id.id)
         if not self.sql_status:
             return self.error
@@ -281,13 +251,13 @@ class ManageErrata(APIWorker):
                 http_code=404,
             )
 
-        # 5. register new errata version for branch update
+        # 4. register new errata version for branch update
         new_bulletin = build_new_bulletin_errata(
             self.eid_service, bulletin, self.errata, new_errata
         )
         new_errata_history_records.append(new_bulletin)
 
-        # 6. register new errata change id
+        # 5. register new errata change id
         # check if errata change already registered for current package update errata
         ec_errata_id = get_ec_id_by_package_update(self, self.errata.id)
         if ec_errata_id is not None:
@@ -295,7 +265,7 @@ class ManageErrata(APIWorker):
         else:
             ec_id = register_errata_change_id(self.eid_service)
 
-        # 7. create new erracha change records for package and branch update erratas
+        # 6. create new errata change records for package and branch update erratas
         new_errata_change_records = [
             ErrataChange(
                 id=ErrataID.from_id(ec_id.id),
@@ -323,7 +293,7 @@ class ManageErrata(APIWorker):
             ),
         ]
 
-        # 8. store new errata and errata change records to DB
+        # 7. store new errata and errata change records to DB
         store_errata_history_records(self, new_errata_history_records)
         if not self.sql_status:
             return self.error
@@ -331,7 +301,7 @@ class ManageErrata(APIWorker):
         if not self.sql_status:
             return self.error
 
-        # 9. build API response that includes newest versions for package update errata,
+        # 8. build API response that includes newest versions for package update errata,
         # branch update errata and errata change records
         return {
             "action": self.action,
@@ -358,4 +328,52 @@ class ManageErrata(APIWorker):
             - 404 (Not found) if errata discarded already or does not exists
         """
 
-        return "OK", 200
+        # XXX: get rid of type check errors here due to
+        # self.errata.id is set properly during request payload validation
+        if self.errata.id is None:
+            return "fail", 400
+
+        new_errata_history_records: list[Errata] = []
+        new_errata_change_records: list[ErrataChange] = []
+
+        # 1. check if current errata version is the latest one
+        last_errata_id = get_last_errata_id_version(self)
+        if not self.status or last_errata_id is None:
+            return self.error
+
+        # 2. find affected branch update errata
+        bulletin = get_bulletin_by_package_update(self, self.errata.id.id)
+        if not self.sql_status:
+            return self.error
+
+        if bulletin is None:
+            # XXX: shouldn't ever happen
+            return self.store_error(
+                {
+                    "message": (
+                        f"Failed to find branch update errata for {self.errata.id}. "
+                        "This shouldn't happen and means possible DB inconsistency."
+                    ),
+                    "errata": [self.errata.asdict()],
+                },
+                http_code=404,
+            )
+
+        # 3. update branch update errata by discarded errata
+        pass
+
+        # 4. check if something left from branch update errata and if not? discard it too
+        pass
+
+        # 5. create new errata change records for package and branch update erratas
+        pass
+
+        # 6. build API response
+        pass
+
+        return {
+            "action": self.action,
+            "message": "OK",
+            "errata": [e.asdict() for e in new_errata_history_records],
+            "errata_change": [e.asdict() for e in new_errata_change_records],
+        }, 200
