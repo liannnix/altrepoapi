@@ -91,6 +91,8 @@ errata_tasks AS (
             {branch_errata_clause}
             GROUP BY errata_id_noversion
         )
+    ) AND errata_id NOT IN (
+        SELECT errata_id FROM last_discarded_erratas
     )
 )
 SELECT
@@ -402,6 +404,9 @@ SELECT DISTINCT
     eh_hash
 FROM ErrataHistory
 WHERE errata_id = '{errata_id}'
+    AND errata_id NOT IN (
+        SELECT errata_id FROM last_discarded_erratas
+    )
 """
 
     get_bulletin_by_pkg_update = """
@@ -424,6 +429,15 @@ SELECT DISTINCT
 FROM ErrataHistory
 WHERE eh_type = 'bulletin'
     AND has(eh_references.link, '{errata_id}')
+    AND errata_id NOT IN (
+        SELECT errata_id FROM last_discarded_erratas
+    )
+"""
+
+    check_errata_id_is_discarded = """
+SELECT count(errata_id)
+FROM last_discarded_erratas
+WHERE errata_id = '{errata_id}'
 """
 
     get_ecc_by_errata_id = """
@@ -436,8 +450,7 @@ GROUP BY ec_id_noversion
 """
 
     store_errata_history = """
--- INSERT INTO ErrataHistory (* EXCEPT ts) VALUES
-INSERT INTO test_ErrataHistory (* EXCEPT ts) VALUES
+INSERT INTO ErrataHistory (* EXCEPT ts) VALUES
 """
 
     store_errata_change_history = """

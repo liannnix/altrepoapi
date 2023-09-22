@@ -124,6 +124,37 @@ def check_errata_contents_is_changed(cls: _pManageErrata) -> bool:
     return cls.errata.hash != errata_from_db.hash
 
 
+def check_errata_is_discarded(cls: _pManageErrata) -> bool:
+    """Checks whether errata was discarded already in DB."""
+
+    cls.status = False
+
+    if cls.errata.id is None:
+        cls.logger.error(
+            "Failed to check if errata is discarded: no errata id is specified"
+        )
+        _ = cls.store_error(
+            {
+                "message": "Failed to check if errata is discarded: no errata id is specified"
+            }
+        )
+        return False
+
+    response = cls.send_sql_request(
+        cls.sql.check_errata_id_is_discarded.format(errata_id=cls.errata.id.id)
+    )
+    if not cls.sql_status:
+        return False
+    if not response:
+        _ = cls.store_error(
+            {"message": f"Failed to get errata info from DB for {cls.errata.id.id}"}
+        )
+        return False
+
+    cls.status = True
+    return response[0][0] == 1
+
+
 def get_bulletin_by_package_update(
     cls: _pAPIWorker, errata_id: str
 ) -> Union[Errata, None]:
