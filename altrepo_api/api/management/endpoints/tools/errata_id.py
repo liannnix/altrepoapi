@@ -31,6 +31,9 @@ logger = get_logger(__name__)
 
 
 def get_errataid_service() -> ErrataIDService:
+    """Returns ErrataID service interface class instance using URL from API
+    configuration namespace."""
+
     try:
         return ErrataIDService(url=namespace.ERRATA_ID_URL)
     except ErrataIDServiceError as e:
@@ -48,6 +51,7 @@ def _check_errata_id(eid_service: ErrataIDService, id: str) -> ErrataIDServiceRe
 
 
 def check_errata_id(eid_service: ErrataIDService, eid: ErrataID) -> ErrataID:
+    """Returns latest errata id version from ErrataID service."""
     return ErrataID.from_id(_check_errata_id(eid_service, eid.id).id)
 
 
@@ -65,6 +69,7 @@ def _reister_errata_id(
 def register_package_update_id(
     eid_service: ErrataIDService, year: int
 ) -> ErrataIDServiceResult:
+    """Registers new package update identificator in ErrataID service."""
     return _reister_errata_id(
         eid_service=eid_service, prefix=lut.errata_package_update_prefix, year=year
     )
@@ -73,20 +78,24 @@ def register_package_update_id(
 def register_branch_update_id(
     eid_service: ErrataIDService, year: int
 ) -> ErrataIDServiceResult:
+    """Registers new branch update identificator in ErrataID service."""
     return _reister_errata_id(
         eid_service=eid_service, prefix=lut.errata_branch_update_prefix, year=year
     )
 
 
 def register_errata_change_id(eid_service: ErrataIDService) -> ErrataIDServiceResult:
+    """Registers new errata change identificator in ErrataID service."""
     return _reister_errata_id(
         eid_service=eid_service, prefix=lut.errata_change_prefix, year=None
     )
 
 
 def update_errata_id(eid_service: ErrataIDService, id: str) -> ErrataIDServiceResult:
+    """Updates errata identificator version in ErrataID service."""
+
     try:
-        logger.debug(f"Update errata ID version for {id}")
+        logger.debug(f"Update errata identificator version for {id}")
         return eid_service.update(id)
     except ErrataIDServiceError as e:
         logger.error(f"Failed to update errata ID version for {id}: {e}")

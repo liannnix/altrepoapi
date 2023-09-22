@@ -127,6 +127,8 @@ def check_errata_contents_is_changed(cls: _pManageErrata) -> bool:
 def get_bulletin_by_package_update(
     cls: _pAPIWorker, errata_id: str
 ) -> Union[Errata, None]:
+    """Retrieves bulletin errata record from DB by package update errata identificator."""
+
     cls.status = False
 
     response = cls.send_sql_request(
@@ -149,6 +151,9 @@ def get_bulletin_by_package_update(
 def get_ec_id_by_package_update(
     cls: _pAPIWorker, errata: ErrataID
 ) -> Union[ErrataID, None]:
+    """Retrieves errata change identificator from DB by package update errata
+    identificator if exist."""
+
     cls.status = False
 
     response = cls.send_sql_request(
