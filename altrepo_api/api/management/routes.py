@@ -29,7 +29,7 @@ from .endpoints.manage import ManageErrata
 from .endpoints.task_info import TaskInfo
 from .endpoints.task_list import TaskList
 from .endpoints.vulns_info import VulnsInfo
-from .parsers import task_list_args
+from .parsers import task_list_args, errata_manage_get_args
 from .serializers import (
     task_list_model,
     task_info_model,
@@ -37,6 +37,7 @@ from .serializers import (
     vuln_ids_json_post_list_model,
     errata_manage_model,
     errata_manage_response_model,
+    errata_manage_get_response_model,
 )
 
 
@@ -114,20 +115,25 @@ RESPONSES_400_404_409 = {
     404: "Requested data not found in database",
     409: "Requests payload inconsistent with DB contents",
 }
+RESPONSES_GET_400_404_409 = {
+    200: "OK",
+    400: "Request arguments validation error",
+    404: "Requested data not found in database",
+    409: "Request arguments is inconsistent with DB contents",
+}
 
 
 @ns.route("/errata")
 class routeManageErrata(Resource):
     @ns.doc(
         description="Get errata info.",
-        responses=GET_RESPONSES_400_404,
+        responses=RESPONSES_GET_400_404_409,
     )
-    # @ns.expect(errata_manage_get_args)
-    @ns.marshal_with(errata_manage_response_model)
+    @ns.expect(errata_manage_get_args)
+    @ns.marshal_with(errata_manage_get_response_model)
     def get(self):
         url_logging(logger, g.url)
-        # args = errata_manage_get_args.parse_args(strict=True)
-        args = {}
+        args = errata_manage_get_args.parse_args(strict=True)
         w = ManageErrata(g.connection, payload={}, **args)
         return run_worker(worker=w, args=args)
 

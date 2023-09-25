@@ -247,3 +247,14 @@ errata_manage_response_model = ns.model(
         ),
     },
 )
+
+errata_manage_get_response_model = ns.model(
+    "ErrataManageGetResponseModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "message": fields.String(description="errata manage result message"),
+        "errata": fields.Nested(
+            errata_manage_errata_model, description="errata contents"
+        ),
+    },
+)

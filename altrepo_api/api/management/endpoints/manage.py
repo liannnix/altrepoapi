@@ -43,6 +43,7 @@ from .tools.errata import (
     build_errata_with_id_version_updated,
     build_new_bulletin_by_errata_discard,
     build_new_bulletin_by_errata_update,
+    build_stub_errata,
 )
 from .tools.errata_id import (
     get_errataid_service,
@@ -50,6 +51,7 @@ from .tools.errata_id import (
     register_errata_change_id,
 )
 from .tools.helpers import (
+    get_errata_contents,
     get_bulletin_by_package_update,
     get_ec_id_by_package_update,
     store_errata_history_records,
@@ -196,7 +198,41 @@ class ManageErrata(APIWorker):
         return True
 
     def get(self):
-        return "OK", 200
+        """Handles errata record data gather.
+        Returns:
+            - 200 (OK)
+            - 400 (Bad request) on arguments validation errors
+            - 404 (Not found) if errata discarded already or does not exists
+            - 409 (Conflict) if errata version is outdated
+        """
+        self.errata = build_stub_errata(self.args["errata_id"])
+        # 1. check if current errata version is the latest one
+        last_errata_id = get_last_errata_id_version(self)
+        if not self.status or last_errata_id is None:
+            return self.error
+
+        # 2. check if current errat is not discarded yet
+        is_discarded = check_errata_is_discarded(self)
+        if not self.status or not self.sql_status:
+            return self.error
+        if is_discarded:
+            return self.store_error(
+                {
+                    "message": f"Errata {self.errata.id} is discarded already.",
+                },
+                http_code=404,
+            )
+
+        # 3. get and return errata contents in the same fom as used in other HTTP methods
+        get_errata_contents(self)
+        if not self.status or last_errata_id is None:
+            return self.error
+
+        return {
+            "request_args": self.args,
+            "message": "OK",
+            "errata": self.errata.asdict(),
+        }, 200
 
     def put(self):
         """Handles errata record update.
@@ -408,8 +444,9 @@ class ManageErrata(APIWorker):
                 errata_id=self.errata.id,  # type: ignore
             )
         ]
-        # discrad branch update errats too if it become empty one
+
         if new_bulletin is None:
+            # discrad branch update errata too if it become empty one
             new_errata_change_records.append(
                 ErrataChange(
                     id=ErrataID.from_id(ec_id.id),
@@ -422,6 +459,22 @@ class ManageErrata(APIWorker):
                     source=ErrataChangeSource.AUTO,
                     origin=ErrataChangeOrigin.CHILD,
                     errata_id=bulletin.id,  # type: ignore
+                )
+            )
+        else:
+            # store branch update errata chnaged due to package update discard
+            new_errata_change_records.append(
+                ErrataChange(
+                    id=ErrataID.from_id(ec_id.id),
+                    created=ec_id.created,
+                    updated=ec_id.updated,
+                    user=self.user,
+                    user_ip=self.user_ip,
+                    reason=self.reason,
+                    type=ErrataChangeType.UPDATE,
+                    source=ErrataChangeSource.AUTO,
+                    origin=ErrataChangeOrigin.CHILD,
+                    errata_id=new_bulletin.id,  # type: ignore
                 )
             )
 

@@ -17,6 +17,7 @@
 from altrepo_api.api.parser import (
     parser,
     branch_name_type,
+    errata_id_type,
     positive_integer_type,
     task_search_type,
 )
@@ -46,7 +47,15 @@ page_opt = parser.register_item(
     help="number page",
     location="args",
 )
+errata_id = parser.register_item(
+    "errata_id",
+    type=errata_id_type,
+    required=True,
+    help="errata ID",
+    location="args"
+)
 
 task_list_args = parser.build_parser(
     input_val_opt, branch_name_opt, page_opt, limit_opt
 )
+errata_manage_get_args = parser.build_parser(errata_id)
