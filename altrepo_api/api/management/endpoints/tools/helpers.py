@@ -14,13 +14,15 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from datetime import datetime
 from logging import Logger
-from typing import Any, Iterable, Protocol, Union
+from typing import Any, Iterable, NamedTuple, Protocol, Union
 
 from altrepo_api.api.management.sql import SQL
 
 from .base import Errata, ErrataChange, ErrataID, ErrataManageError, Reference
 from .errata_id import ErrataIDService, check_errata_id
+from .utils import convert_dt_to_timezone_aware
 
 
 class _pAPIWorker(Protocol):
@@ -50,6 +52,67 @@ class _pHasErrataIDService(_pAPIWorker, Protocol):
 
 class _pManageErrata(_pHasErrataIDService, _pHasErrataID, Protocol):
     ...
+
+
+def _sql2errata(sql_data: tuple[Any, ...]) -> Errata:
+    """Converts errata history record SQL representation to Errata object."""
+
+    class ErrataRaw(NamedTuple):
+        errata_id: str
+        type: str
+        source: str
+        created: datetime
+        updated: datetime
+        pkg_hash: int
+        pkg_name: str
+        pkg_version: str
+        pkg_release: str
+        pkgset_name: str
+        task_id: int
+        subtask_id: int
+        task_state: str
+        references: list[tuple[str, str]]
+        hash: int
+
+    raw = ErrataRaw(*sql_data)
+
+    return Errata(
+        id=ErrataID.from_id(raw.errata_id),
+        type=raw.type,
+        source=raw.source,
+        created=convert_dt_to_timezone_aware(raw.created),
+        updated=convert_dt_to_timezone_aware(raw.updated),
+        pkg_hash=raw.pkg_hash,
+        pkg_name=raw.pkg_name,
+        pkg_version=raw.pkg_version,
+        pkg_release=raw.pkg_release,
+        pkgset_name=raw.pkgset_name,
+        task_id=raw.task_id,
+        subtask_id=raw.subtask_id,
+        task_state=raw.task_state,
+        references=[Reference(*el) for el in raw.references],
+        hash=raw.hash,
+    )
+
+
+def get_errata_contents(cls: _pManageErrata) -> None:
+    """Gathers errata contents from DB to `self.errata` object."""
+
+    cls.status = False
+
+    response = cls.send_sql_request(
+        cls.sql.get_errata_info.format(errata_id=cls.errata.id)
+    )
+    if not cls.sql_status:
+        return None
+    if not response:
+        _ = cls.store_error(
+            {"message": f"Failed to get errata info from DB for {cls.errata.id}"}
+        )
+        return None
+
+    cls.errata = _sql2errata(response[0])
+    cls.status = True
 
 
 def get_last_errata_id_version(cls: _pManageErrata) -> Union[ErrataID, None]:
@@ -115,12 +178,10 @@ def check_errata_contents_is_changed(cls: _pManageErrata) -> bool:
         )
         return False
 
-    r = response[0]
-    errata_from_db = Errata(
-        ErrataID.from_id(r[0]), *r[1:-2], [Reference(*el) for el in r[-2]], r[-1]  # type: ignore
-    )
-
+    errata_from_db = _sql2errata(response[0])
     cls.status = True
+    # XXX: compare errata using only hash here due to other values except references
+    # is gathered from DB and must be consistent!
     return cls.errata.hash != errata_from_db.hash
 
 
@@ -171,10 +232,7 @@ def get_bulletin_by_package_update(
     cls.status = True
 
     if response:
-        r = response[0]
-        return Errata(
-            ErrataID.from_id(r[0]), *r[1:-2], [Reference(*el) for el in r[-2]], r[-1]  # type: ignore
-        )
+        return _sql2errata(response[0])
 
     return None
 

@@ -19,7 +19,7 @@ from typing import Any, Union
 from altrepo_api.utils import mmhash
 
 from .base import Errata, ErrataID, ErrataManageError, Reference
-from .constants import ERRATA_REFERENCE_TYPE
+from .constants import ERRATA_REFERENCE_TYPE, DT_NEVER
 from .errata_id import ErrataIDService, update_errata_id
 from .utils import dt_from_iso, re_errata_id
 
@@ -57,12 +57,33 @@ def json2errata(data: dict[str, Any]) -> Errata:
     return errata._replace(hash=errata_hash(errata))
 
 
+def build_stub_errata(errata_id: str) -> Errata:
+    return Errata(
+        id=(ErrataID.from_id(errata_id)),
+        type="",
+        source="",
+        created=DT_NEVER,
+        updated=DT_NEVER,
+        pkg_hash=0,
+        pkg_name="",
+        pkg_version="",
+        pkg_release="",
+        pkgset_name="",
+        task_id=0,
+        subtask_id=0,
+        task_state="",
+        references=[],
+        hash=0,
+    )
+
+
 def build_errata_with_id_version_updated(
     eid_service: ErrataIDService, errata: Errata
 ) -> Errata:
     """Registers new errata id version and returns updated errata object."""
 
-    return errata.update(update_errata_id(eid_service, errata.id.id)._asdict())  # type: ignore
+    new_eid = update_errata_id(eid_service, errata.id.id)  # type: ignore
+    return errata.update(id=new_eid.id, updated=new_eid.updated)
 
 
 def _do_bulletin_update(
@@ -89,11 +110,12 @@ def _do_bulletin_update(
     if b_refs != []:
         new_bulletin = build_errata_with_id_version_updated(
             eid_service, bulletin
-        ).update_kw(
+        ).update(
             # XXX: sort errata references to be consistent with DB contents!
             references=sorted(b_refs)
         )
-        new_bulletin = new_bulletin.update_kw(hash=errata_hash(new_bulletin))
+        # calculate hash from updated errata references
+        new_bulletin = new_bulletin.update(hash=errata_hash(new_bulletin))
         return new_bulletin
 
     return None

@@ -16,7 +16,7 @@
 
 import re
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from altrepo_api.utils import get_logger
 
@@ -29,6 +29,9 @@ from .constants import (
 
 logger = get_logger(__name__)
 re_errata_id = re.compile(r"^ALT-[A-Z]+-2\d{3}-\d{4,}-\d{1,}$")
+
+_TZ_UTC = timezone.utc
+_TZ_LOCAL = datetime.now().astimezone(None).tzinfo
 
 
 def validate_action(action: str) -> bool:
@@ -43,9 +46,22 @@ def validate_source(value: str) -> bool:
     return value in ERRATA_VALID_SOURCES
 
 
+def convert_dt_to_timezone_aware(dt: datetime) -> datetime:
+    """Checks if datetime object is timezone aware.
+    Converts timezone naive datetime to aware one assuming timezone is
+    equal to local one for API host."""
+
+    if dt.tzinfo is not None and dt.tzinfo.utcoffset is not None:
+        # datetime object is timezone aware
+        return dt
+
+    # datetime object is timezone naive
+    return dt.replace(tzinfo=_TZ_LOCAL).astimezone(_TZ_UTC)
+
+
 def dt_from_iso(value: str) -> datetime:
     try:
-        return datetime.fromisoformat(value)
+        return convert_dt_to_timezone_aware(datetime.fromisoformat(value))
     except (TypeError, ValueError):
         logger.warning(f"Failed to parse datetime: {value}")
         return DT_NEVER

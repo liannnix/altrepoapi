@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 
 from altrepo_api.api.misc import lut
 
-DT_NEVER = datetime.fromtimestamp(0).replace(tzinfo=timezone.utc)
+DT_NEVER = datetime.fromtimestamp(0, tz=timezone.utc)
 
 BUG_REFERENCE_TYPE = 'bug'
 VULN_REFERENCE_TYPE = 'vuln'

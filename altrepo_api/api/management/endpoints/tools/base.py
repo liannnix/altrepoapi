@@ -117,21 +117,24 @@ class Errata(NamedTuple):
         res["hash"] = str(self.hash)
         return res
 
-    def update(self, update: dict[str, Any]) -> "Errata":
+    def update(self, **kwargs) -> "Errata":
         res = self._asdict()
-        for k in update:
+
+        # check keywords are all valid
+        for k in kwargs:
             if k not in self._fields:
                 raise ValueError(
                     "Class %s has not attribute %s" % (self.__class__.__name__, k)
                 )
-        res.update(update)
+
+        res.update(kwargs)
+
+        # handle `id` filed update
         _id = res["id"]
         if isinstance(_id, str):
             res["id"] = ErrataID.from_id(_id)
-        return Errata(**res)
 
-    def update_kw(self, **kwargs) -> "Errata":
-        return self.update(kwargs)
+        return Errata(**res)
 
     def __str__(self) -> str:
         return str(self.asdict())
