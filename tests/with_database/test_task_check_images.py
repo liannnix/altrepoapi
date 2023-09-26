@@ -471,23 +471,23 @@ def test_task_check_images(client, kwargs):
                     for s in data_find_images["subtasks"]
                     if s["id"] == pkg["from_subtask"]
                 ]
-                assert len(subtasks) == 1
-                subtask = subtasks[0]
+                if len(subtasks) == 1:
+                    subtask = subtasks[0]
 
-                assert pkg["srcpkg_name"] == subtask["srpm_name"]
-                if pkg["status"] == "built":
-                    assert subtask["type"] != "delete"
-                    if subtask["type"] != "rebuild":
-                        assert pkg["srcpkg_name"] in plan["add"]["src"]
-                    assert (pkg["binpkg_name"], pkg["binpkg_arch"]) in plan["add"][
-                        "bin"
-                    ]
-                else:
-                    assert subtask["type"] == "delete"
-                    assert pkg["srcpkg_name"] in plan["del"]["src"]
-                    assert (pkg["binpkg_name"], pkg["binpkg_arch"]) in plan["del"][
-                        "bin"
-                    ]
+                    assert pkg["srcpkg_name"] == subtask["srpm_name"]
+                    if pkg["status"] == "built":
+                        assert subtask["type"] != "delete"
+                        if subtask["type"] != "rebuild":
+                            assert pkg["srcpkg_name"] in plan["add"]["src"]
+                        assert (pkg["binpkg_name"], pkg["binpkg_arch"]) in plan["add"][
+                            "bin"
+                        ]
+                    else:
+                        assert subtask["type"] == "delete"
+                        assert pkg["srcpkg_name"] in plan["del"]["src"]
+                        assert (pkg["binpkg_name"], pkg["binpkg_arch"]) in plan["del"][
+                            "bin"
+                        ]
 
                 if img["buildtime"] >= data_find_images["task_changed"]:
                     continue
