@@ -614,8 +614,30 @@ GROUP BY
 ORDER BY pkg_buildtime DESC
 """
 
+    last_repology_name_conversion = """
+SELECT DISTINCT
+    pkg_name,
+    result AS pnc_result,
+    type AS pnc_type
+FROM (
+    SELECT
+        pkg_name,
+        argMax(pnc_result, ts) AS result,
+        argMax(pnc_type, ts) AS type,
+        argMax(pnc_state, ts) AS state
+    FROM PackagesNameConversion
+    WHERE pnc_type = 'altsisyphus'
+        AND pnc_source = 'repology'
+    GROUP BY
+        pkg_name,
+        pnc_type,
+        pnc_result
+    HAVING state = 'active'
+)
+"""
+
     get_watch_by_last_acl_with_group = """
-WITH 
+WITH
 (
     SELECT max(toDate(date_update))
     FROM PackagesWatch
@@ -643,20 +665,11 @@ FROM (
         url
     ORDER BY pkg_name ASC
 ) AS PW
-LEFT JOIN (
-    SELECT DISTINCT
-        pnc_result,
-        pkg_name,
-        pnc_type
-    FROM PackagesNameConversion
-    WHERE pnc_type = 'altsisyphus'
-    AND pnc_source = 'repology'
-    AND pnc_state = 'active'
-) AS CP ON CP.pkg_name = package
+LEFT JOIN ({last_repology_pnc}) AS CP ON CP.pkg_name = package
 """
 
     get_watch_by_last_acl = """
-WITH 
+WITH
 (
     SELECT max(toDate(date_update))
     FROM PackagesWatch
@@ -678,20 +691,11 @@ FROM (
         url
     ORDER BY pkg_name ASC
 ) AS PW
-LEFT JOIN (
-    SELECT DISTINCT
-        pnc_result,
-        pkg_name,
-        pnc_type
-    FROM PackagesNameConversion
-    WHERE pnc_type = 'altsisyphus'
-    AND pnc_source = 'repology'
-    AND pnc_state = 'active'
-) AS CP ON CP.pkg_name = package
+LEFT JOIN ({last_repology_pnc}) AS CP ON CP.pkg_name = package
 """
 
     get_watch_by_nick_acl = """
-WITH 
+WITH
 (
     SELECT max(toDate(date_update))
     FROM PackagesWatch
@@ -718,16 +722,7 @@ FROM (
         url
     ORDER BY pkg_name ASC
 ) AS PW
-LEFT JOIN (
-    SELECT DISTINCT
-        pnc_result,
-        pkg_name,
-        pnc_type
-    FROM PackagesNameConversion
-    WHERE pnc_type = 'altsisyphus'
-    AND pnc_source = 'repology'
-    AND pnc_state = 'active'
-) AS CP ON CP.pkg_name = package
+LEFT JOIN ({last_repology_pnc}) AS CP ON CP.pkg_name = package
 """
 
     get_watch_by_nick_or_group_acl = """
@@ -766,16 +761,7 @@ FROM (
         url
     ORDER BY pkg_name ASC
 ) AS PW
-LEFT JOIN (
-    SELECT DISTINCT
-        pnc_result,
-        pkg_name,
-        pnc_type
-    FROM PackagesNameConversion
-    WHERE pnc_type = 'altsisyphus'
-    AND pnc_source = 'repology'
-    AND pnc_state = 'active'
-) AS CP ON CP.pkg_name = package
+LEFT JOIN ({last_repology_pnc}) AS CP ON CP.pkg_name = package
 """
 
     get_watch_by_packager = """
@@ -809,16 +795,7 @@ FROM (
         url
     ORDER BY pkg_name ASC
 ) AS PW
-LEFT JOIN (
-    SELECT DISTINCT
-        pnc_result,
-        pkg_name,
-        pnc_type
-    FROM PackagesNameConversion
-    WHERE pnc_type = 'altsisyphus'
-    AND pnc_source = 'repology'
-    AND pnc_state = 'active'
-) AS CP ON CP.pkg_name = package
+LEFT JOIN ({last_repology_pnc}) AS CP ON CP.pkg_name = package
 """
 
 
