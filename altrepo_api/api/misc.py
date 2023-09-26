@@ -32,6 +32,7 @@ class LookupTables:
         "c9f1",
         "c9f2",
         "c10f1",
+        "c10f2",
         "p5",
         "p6",
         "p7",
@@ -373,6 +374,7 @@ class LookupTables:
         "p10": ["@maint", "@tester"],
         "p9": ["@maint", "@tester"],
         "p8": ["snowmix", "amakeenk", "jenya"],
+        "c10f2": ["@maint", "@tester"],
         "c10f1": ["@maint", "@tester"],
         "c9f2": ["@maint", "@tester"],
         "c9f1": ["@maint", "@tester"],
@@ -413,6 +415,7 @@ class LookupTables:
     }
 
     branch_inheritance = {
+        "c10f2": ["c10f1", "p10", "sisyphus"],
         "c10f1": ["p10", "sisyphus"],
         "c9f2": ["c9f1", "p9", "sisyphus"],
         "c9f1": ["p9", "sisyphus"],
