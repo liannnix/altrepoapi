@@ -1209,14 +1209,16 @@ uuid_with_package AS
         img_file,
         subtask_id,
         action,
-        T.srcpkg_name,
-        T.binpkg_name AS binpkg_name,
-        T.binpkg_arch AS binpkg_arch
-    FROM lv_all_image_packages
-    RIGHT JOIN {packages_tmp_table} AS T
-        ON pkg_name=T.binpkg_name AND pkg_arch=T.binpkg_arch
-    WHERE img_edition IN (SELECT img_edition FROM editions_status)
-        AND img_tag IN (SELECT img_tag FROM tags_status)
+        P.srcpkg_name,
+        P.binpkg_name AS binpkg_name,
+        P.binpkg_arch AS binpkg_arch
+    FROM {packages_tmp_table} AS P
+    LEFT JOIN (
+        SELECT *
+        FROM lv_all_image_packages
+        WHERE img_edition IN (SELECT img_edition FROM editions_status)
+            AND img_tag IN (SELECT img_tag FROM tags_status)
+    ) AS I ON I.pkg_name=P.binpkg_name AND I.pkg_arch=P.binpkg_arch
 )
 SELECT DISTINCT
     img_branch,
