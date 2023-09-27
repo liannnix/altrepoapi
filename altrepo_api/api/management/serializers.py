@@ -182,6 +182,9 @@ errata_manage_reference_el_model = ns.model(
 errata_manage_errata_model = ns.model(
     "ErrataManageErrataModel",
     {
+        "is_discarded": fields.Boolean(
+            description="is errata discarded", default=False
+        ),
         "id": fields.String(description="errata id"),
         "created": fields.DateTime(description="errata created date"),
         "updated": fields.DateTime(description="errata updated date"),
@@ -255,6 +258,11 @@ errata_manage_get_response_model = ns.model(
         "message": fields.String(description="errata manage result message"),
         "errata": fields.Nested(
             errata_manage_errata_model, description="errata contents"
+        ),
+        "vulns": fields.Nested(
+            vuln_model,
+            description="list of vulnerabilities closed in errata",
+            as_list=True,
         ),
     },
 )
