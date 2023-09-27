@@ -107,6 +107,7 @@ class Errata(NamedTuple):
     task_state: str
     references: list[Reference]
     hash: int
+    is_discarded: bool = False
 
     def asdict(self) -> dict[str, Any]:
         res = self._asdict()
@@ -114,6 +115,7 @@ class Errata(NamedTuple):
         res["created"] = self.created.isoformat()
         res["updated"] = self.updated.isoformat()
         res["references"] = [r.asdict() for r in self.references]
+        res["pkg_hash"] = str(self.pkg_hash)
         res["hash"] = str(self.hash)
         return res
 
