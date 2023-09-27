@@ -53,8 +53,10 @@ def json2errata(data: dict[str, Any]) -> Errata:
         # XXX: sort errata references to be consistent with DB contents!
         references=sorted(Reference(**v) for v in data["references"]),
         hash=0,
+        # XXX: optional value, default is False
+        is_discarded=data.get("is_discarded", False),
     )
-    return errata._replace(hash=errata_hash(errata))
+    return errata.update(hash=errata_hash(errata))
 
 
 def build_stub_errata(errata_id: str) -> Errata:
@@ -89,18 +91,19 @@ def build_errata_with_id_version_updated(
 def _do_bulletin_update(
     eid_service: ErrataIDService,
     bulletin: Errata,
-    errata: Errata,
+    errata: Union[Errata, None],
     new_errata: Union[Errata, None],
 ) -> Union[Errata, None]:
     b_refs = bulletin.references[:]
-    old_errata_id = errata.id.id  # type: ignore
+    old_errata_id = errata.id.id if errata is not None else None  # type: ignore
     new_errata_id = new_errata.id.id if new_errata is not None else None  # type: ignore
 
-    # delete old errata id from bulletin references
-    for i, br in enumerate(bulletin.references):
-        if br.link == old_errata_id:
-            b_refs.pop(i)
-            break
+    # delete old errata id from bulletin references if provided
+    if old_errata_id is not None:
+        for i, br in enumerate(bulletin.references):
+            if br.link == old_errata_id:
+                b_refs.pop(i)
+                break
 
     # add new errata id to bulletin refernces if provided
     if new_errata_id is not None:
@@ -121,7 +124,7 @@ def _do_bulletin_update(
     return None
 
 
-def build_new_bulletin_by_errata_update(
+def update_bulletin_by_errata_update(
     *,
     eid_service: ErrataIDService,
     bulletin: Errata,
@@ -141,7 +144,7 @@ def build_new_bulletin_by_errata_update(
     return new_bulletin
 
 
-def build_new_bulletin_by_errata_discard(
+def update_bulletin_by_errata_discard(
     *,
     eid_service: ErrataIDService,
     bulletin: Errata,
@@ -151,3 +154,22 @@ def build_new_bulletin_by_errata_discard(
     removing discarded errata id from it."""
 
     return _do_bulletin_update(eid_service, bulletin, errata, None)
+
+
+def update_bulletin_by_errata_add(
+    *,
+    eid_service: ErrataIDService,
+    bulletin: Errata,
+    new_errata: Errata,
+) -> Errata:
+    """Registers new errata id version for bulletin and returns updated bulletin object
+    using data from new errata id."""
+
+    new_bulletin = _do_bulletin_update(eid_service, bulletin, None, new_errata)
+
+    if new_bulletin is None:
+        raise ErrataManageError(
+            f"Failed to update bulletin {bulletin.id} with {new_errata.id}"
+        )
+
+    return new_bulletin

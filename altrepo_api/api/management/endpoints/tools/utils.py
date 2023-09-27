@@ -25,6 +25,9 @@ from .constants import (
     ERRATA_CHANGE_ACTIONS,
     ERRATA_VALID_SOURCES,
     ERRATA_VALID_TYPES,
+    SUPPORTED_BRANCHES,
+    SUPPORTED_BRANCHES_WITH_TASKS,
+    SUPPORTED_BRANCHES_WITHOUT_TASKS,
 )
 
 logger = get_logger(__name__)
@@ -44,6 +47,18 @@ def validate_type(value: str) -> bool:
 
 def validate_source(value: str) -> bool:
     return value in ERRATA_VALID_SOURCES
+
+
+def validate_branch(branch: str) -> bool:
+    return branch in SUPPORTED_BRANCHES
+
+
+def validate_branch_with_tatsks(branch: str) -> bool:
+    return branch in SUPPORTED_BRANCHES_WITH_TASKS
+
+
+def validate_branch_without_tasks(branch: str) -> bool:
+    return branch in SUPPORTED_BRANCHES_WITHOUT_TASKS
 
 
 def convert_dt_to_timezone_aware(dt: datetime) -> datetime:

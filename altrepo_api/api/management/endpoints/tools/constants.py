@@ -20,14 +20,16 @@ from altrepo_api.api.misc import lut
 
 DT_NEVER = datetime.fromtimestamp(0, tz=timezone.utc)
 
-BUG_REFERENCE_TYPE = 'bug'
-VULN_REFERENCE_TYPE = 'vuln'
-ERRATA_REFERENCE_TYPE = 'errata'
+BUG_REFERENCE_TYPE = "bug"
+VULN_REFERENCE_TYPE = "vuln"
+ERRATA_REFERENCE_TYPE = "errata"
 
 BDU_ID_TYPE = "BDU"
 BDU_ID_PREFIX = f"{BDU_ID_TYPE}:"
 CVE_ID_TYPE = "CVE"
 CVE_ID_PREFIX = f"{CVE_ID_TYPE}-"
+MFSA_ID_TYPE = "MFSA"
+MFSA_ID_PREFIX = f"{MFSA_ID_TYPE}"
 
 ERRATA_PACKAGE_UPDATE_PREFIX = f"{lut.errata_package_update_prefix}-"
 ERRATA_BRANCH_BULLETIN_PREFIX = f"{lut.errata_branch_update_prefix}-"
@@ -67,3 +69,34 @@ ERRATA_PACKAGE_UPDATE_SOURCES = (
     TASK_PACKAGE_ERRATA_SOURCE,
 )
 ERRATA_PACKAGE_UPDATE_TYPES = (BRANCH_PACKAGE_ERRATA_TYPE, TASK_PACKAGE_ERRATA_TYPE)
+
+SUPPORTED_BRANCHES_WITH_TASKS = (
+    "c9f1",
+    "c9f2",
+    "c10f1",
+    "c10f2",
+    "p9",
+    "p10",
+    "sisyphus",
+)
+SUPPORTED_BRANCHES_WITHOUT_TASKS = (
+    "p9_mipsel",
+    "p9_e2k",
+    "p10_e2k",
+    "sisyphus_mipsel",
+    "sisyphus_riscv64",
+    "sisyphus_e2k",
+)
+SUPPORTED_BRANCHES = (*SUPPORTED_BRANCHES_WITH_TASKS, *SUPPORTED_BRANCHES_WITHOUT_TASKS)
+# errata comparison field sets
+CHECK_ERRATA_CONTENT_IS_CHANGED_FIELDS = ("hash",)
+CHEK_ERRATA_CONTENT_ON_CREATE = (
+    "pkg_hash",
+    "pkg_name",
+    "pkg_version",
+    "pkg_release",
+    "pkgset_name",
+    "task_id",
+    "subtask_id",
+    "task_state",
+)
