@@ -385,7 +385,7 @@ WHERE (vuln_id, vuln_hash) IN (
 )
 """
 
-    get_errata_info = """
+    get_errata_info_template = """
 SELECT DISTINCT
     errata_id,
     eh_type,
@@ -401,41 +401,69 @@ SELECT DISTINCT
     subtask_id,
     task_state,
     arrayZip(eh_references.type, eh_references.link),
-    eh_hash
+    eh_hash,
+    if(discarded_id != '', 1, 0)
 FROM ErrataHistory
-WHERE errata_id = '{errata_id}'
-    AND errata_id NOT IN (
-        SELECT errata_id FROM last_discarded_erratas
-    )
+LEFT JOIN (
+    SELECT errata_id AS discarded_id
+    FROM last_discarded_erratas
+) AS DE ON errata_id = DE.discarded_id
+{where_clause}
 """
 
-    get_bulletin_by_pkg_update = """
-SELECT DISTINCT
-    errata_id,
-    eh_type,
-    eh_source,
-    eh_created,
-    eh_updated,
-    pkg_hash,
-    pkg_name,
-    pkg_version,
-    pkg_release,
-    pkgset_name,
-    task_id,
-    subtask_id,
-    task_state,
-    arrayZip(eh_references.type, eh_references.link),
-    eh_hash
-FROM ErrataHistory
-WHERE eh_type = 'bulletin'
-    AND has(eh_references.link, '{errata_id}')
-    AND errata_id NOT IN (
-        SELECT errata_id FROM last_discarded_erratas
+    get_errata_by_id_where_clause = """
+WHERE errata_id = '{errata_id}'
+"""
+
+    get_bulletin_by_pkg_update_where_clause = """
+WHERE errata_id IN (
+    SELECT DISTINCT eid
+    FROM (
+        SELECT
+            errata_id_noversion,
+            argMax(errata_id, eh_updated) AS eid
+        FROM ErrataHistory
+        WHERE eh_type = 'bulletin'
+            AND has(eh_references.link, '{errata_id}')
+        GROUP BY errata_id_noversion
     )
+)
+"""
+
+    get_bulletin_by_branch_date__where_clause = """
+WHERE errata_id IN (
+    SELECT DISTINCT eid
+    FROM (
+        SELECT
+            errata_id_noversion,
+            argMax(errata_id, eh_updated) AS eid
+        FROM ErrataHistory
+        WHERE eh_type = 'bulletin'
+            AND pkgset_name = '{branch}'
+            AND eh_created = '{date}'
+        GROUP BY errata_id_noversion
+    )
+)
+"""
+
+    get_errata_by_task_where_clause = """
+WHERE errata_id IN (
+    SELECT DISTINCT eid
+    FROM (
+        SELECT
+            errata_id_noversion,
+            argMax(errata_id, eh_updated) AS eid
+        FROM ErrataHistory
+        WHERE task_state = 'DONE'
+            AND task_id = {task_id}
+            AND subtask_id = {subtask_id}
+        GROUP BY errata_id_noversion
+    )
+)
 """
 
     check_errata_id_is_discarded = """
-SELECT count(errata_id)
+SELECT countDistinct(errata_id)
 FROM last_discarded_erratas
 WHERE errata_id = '{errata_id}'
 """
@@ -455,6 +483,98 @@ INSERT INTO ErrataHistory (* EXCEPT ts) VALUES
 
     store_errata_change_history = """
 INSERT INTO ErrataChangeHistory (* EXCEPT ts) VALUES
+"""
+
+    get_package_info_by_task_and_subtask = """
+WITH
+(
+    SELECT DISTINCT task_changed
+    FROM TaskStates
+    WHERE task_id = {task_id} AND task_state = 'DONE'
+) AS t_changed,
+(
+    SELECT DISTINCT titer_srcrpm_hash
+    FROM TaskIterations
+    WHERE task_id = {task_id}
+        AND subtask_id = {subtask_id}
+        AND task_changed = t_changed
+) AS srcrpm_hash
+SELECT DISTINCT
+    pkg_hash,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    (SELECT DISTINCT task_repo FROM Tasks WHERE task_id  = {task_id}) AS pkgset_name,
+    {task_id} AS task_id,
+    {subtask_id} AS subtask_id,
+    'DONE' AS task_state,
+    t_changed AS task_changed
+FROM Packages
+WHERE pkg_hash = srcrpm_hash
+"""
+
+    get_done_tasks = """
+SELECT
+    task_id,
+    task_prev,
+    task_changed
+FROM TaskStates
+WHERE task_state = 'DONE'
+    AND task_id IN (
+        SELECT DISTINCT
+            task_id
+        FROM Tasks
+        WHERE task_repo = '{branch}'
+        AND task_changed >= parseDateTime32BestEffort('{changed}')
+    )
+    AND task_changed >= parseDateTime32BestEffort('{changed}')
+ORDER BY task_changed DESC
+"""
+
+    get_nearest_branch_point = """
+SELECT
+    pkgset_nodename,
+    pkgset_date,
+    toUInt32(pkgset_kv.v[indexOf(pkgset_kv.k, 'task')])
+FROM PackageSetName
+WHERE pkgset_depth = 0
+    AND pkgset_nodename = '{branch}'
+    AND pkgset_date >= parseDateTime32BestEffort('{changed}')
+ORDER BY pkgset_date ASC
+LIMIT 1
+"""
+
+    get_vulns_by_ids = """
+SELECT
+    vuln_id,
+    vuln_type,
+    vuln_summary,
+    vuln_score,
+    vuln_severity,
+    vuln_url,
+    vuln_modified_date,
+    vuln_published_date,
+    vuln_references.link
+FROM Vulnerabilities
+WHERE (vuln_id, vuln_hash) IN (
+    SELECT
+        vuln_id,
+        argMax(vuln_hash, ts)
+    FROM Vulnerabilities
+    WHERE vuln_id IN (SELECT vuln_id FROM {tmp_table})
+    GROUP BY vuln_id
+)
+"""
+
+    get_bugs_by_ids = """
+SELECT
+    bz_id,
+    bz_summary,
+    bz_last_changed
+FROM Bugzilla
+WHERE bz_id IN (
+    SELECT bz_id FROM {tmp_table}
+)
 """
 
 
