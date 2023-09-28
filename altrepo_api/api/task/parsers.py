@@ -173,7 +173,7 @@ no_chanche_opt = parser.register_item(
     required=False,
     help="cache override value, not affect on request results",
     location="args",
-    default=""
+    default="",
 )
 
 # build parsers
@@ -188,10 +188,11 @@ task_build_dep_args = parser.build_parser(
     filter_by_package_list_opt,
     filter_by_source_opt,
     oneandhalf_opt,
+    no_chanche_opt,
 )
 task_misconflict_args = parser.build_parser(arch_list_opt, no_chanche_opt)
 task_find_pkgset_args = parser.build_parser(branch_list_opt)
-task_buid_dep_set_args = parser.build_parser(arch_opt, no_chanche_opt)
+task_buid_dep_set_args = parser.build_parser(arch_opt)
 task_history_args = parser.build_parser(
     branch, start_task_opt, end_task_opt, start_date_opt, end_date_opt
 )
