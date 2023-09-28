@@ -3,6 +3,18 @@ ALTrepo API changelog
 ## [newrelease] - yyyy-mm-dd
 
 ### Added
+- `site/watch_by_maintainer`: add latest packages versions from Repology
+- add `c10f2` branch support
+### Changed
+- `task/`: add `no_cache` argument upport in `/task_info`, `/misconflict` and `what_depends_src` routes
+### Fixed
+- `task/check_images`: fix SQL request
+
+## [1.15.8] - 2023-09-28
+
+Regular API code updates and fixes.
+
+### Added
 ### Changed
 ### Fixed
 
