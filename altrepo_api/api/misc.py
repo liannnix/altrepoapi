@@ -386,6 +386,7 @@ class LookupTables:
         "p9",
         "p8",
         "p7",
+        "c10f2",
         "c10f1",
         "c9f2",
         "c9f1",
@@ -430,10 +431,7 @@ class LookupTables:
         "sisyphus": ["sisyphus"],
     }
 
-    known_errata_type = {
-        "packages": ["branch", "task"],
-        "repository": ["bulletin"]
-    }
+    known_errata_type = {"packages": ["branch", "task"], "repository": ["bulletin"]}
 
 
 lut = LookupTables()

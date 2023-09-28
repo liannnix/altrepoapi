@@ -214,7 +214,7 @@ def datetime_to_iso(dt: datetime.datetime) -> str:
     return dt.isoformat()
 
 
-def sort_branches(branches: Iterable[str]) -> tuple[str]:
+def sort_branches(branches: Iterable[str]) -> tuple[str, ...]:
     """Use predefined sort list order for branch sorting."""
     res = []
     branches = set(branches)
@@ -232,6 +232,7 @@ def sort_branches(branches: Iterable[str]) -> tuple[str]:
         "p7",
         "p6",
         "p5",
+        "c10f2",
         "c10f1",
         "c9f2",
         "c9f1",

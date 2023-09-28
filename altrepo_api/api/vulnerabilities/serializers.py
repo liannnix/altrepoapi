@@ -186,7 +186,7 @@ branch_package_vulnerability_model = ns.model(
             description="CPE matches list that package is vulnerable through",
             as_list=True,
         ),
-    }
+    },
 )
 branch_vulnerable_package_model = ns.model(
     "BranchVulnerablePackageModel",
