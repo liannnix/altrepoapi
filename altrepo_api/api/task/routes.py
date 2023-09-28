@@ -73,7 +73,7 @@ logger = get_logger(__name__)
 )
 class routeTaskInfo(Resource):
     @ns.expect(task_info_args)
-    @ns.marshal_with(task_info_model, as_list=True)
+    @ns.marshal_with(task_info_model)
     def get(self, id):
         url_logging(logger, g.url)
         args = task_info_args.parse_args(strict=True)

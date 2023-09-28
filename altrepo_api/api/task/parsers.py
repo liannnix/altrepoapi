@@ -167,9 +167,17 @@ acl_group = parser.register_item(
     help="ACL-group from which approval is required",
     location="args",
 )
+no_chanche_opt = parser.register_item(
+    "no_cache",
+    type=str,
+    required=False,
+    help="cache override value, not affect on request results",
+    location="args",
+    default=""
+)
 
 # build parsers
-task_info_args = parser.build_parser(try_opt, iteration_opt)
+task_info_args = parser.build_parser(try_opt, iteration_opt, no_chanche_opt)
 task_repo_args = parser.build_parser(include_task_packages_opt)
 task_build_dep_args = parser.build_parser(
     depth_opt,
@@ -181,9 +189,9 @@ task_build_dep_args = parser.build_parser(
     filter_by_source_opt,
     oneandhalf_opt,
 )
-task_misconflict_args = parser.build_parser(arch_list_opt)
+task_misconflict_args = parser.build_parser(arch_list_opt, no_chanche_opt)
 task_find_pkgset_args = parser.build_parser(branch_list_opt)
-task_buid_dep_set_args = parser.build_parser(arch_opt)
+task_buid_dep_set_args = parser.build_parser(arch_opt, no_chanche_opt)
 task_history_args = parser.build_parser(
     branch, start_task_opt, end_task_opt, start_date_opt, end_date_opt
 )
