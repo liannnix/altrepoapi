@@ -319,17 +319,6 @@ LEFT JOIN (
 ) AS EH ON EH.task_id = SI.task_id AND EH.subtask_id = SI.subtask_id
 """
 
-    get_bugs_by_ids = """
-SELECT
-    bz_id,
-    argMax(bz_summary, ts)
-FROM Bugzilla
-WHERE bz_id IN (
-    SELECT bz_id FROM {tmp_table}
-)
-GROUP BY bz_id
-"""
-
     get_vuln_info_by_ids = """
 SELECT
     vuln_id,
@@ -569,12 +558,13 @@ WHERE (vuln_id, vuln_hash) IN (
     get_bugs_by_ids = """
 SELECT
     bz_id,
-    bz_summary,
-    bz_last_changed
+    argMax(bz_summary, ts),
+    argMax(bz_last_changed, ts)
 FROM Bugzilla
 WHERE bz_id IN (
     SELECT bz_id FROM {tmp_table}
 )
+GROUP BY bz_id
 """
 
 

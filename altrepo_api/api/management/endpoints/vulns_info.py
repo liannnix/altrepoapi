@@ -112,7 +112,7 @@ class VulnsInfo(APIWorker):
             )
             if not self.sql_status:
                 return self.error
-            bugs = {row[0]: Bug(*row, is_valid=True)._asdict() for row in response}
+            bugs = {row[0]: Bug(*row[:2], is_valid=True)._asdict() for row in response}
 
         if self.cve_ids:
             # get CVE info
