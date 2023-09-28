@@ -13,7 +13,7 @@ BRANCHES_NOT_IN_DB = "fakebranch1,fakebranch2"
 PKG_NOT_IN_DB = "fakepackage"
 BIN_PKG_HASH_IN_DB = 2737734146634739740  # curl-7.80.0-alt1.x86_64.rpm
 SRC_PKG_HASH_IN_DB = 2737731585263144792  # curl-7.80.0-alt1.src.rpm
-FILE_MD5_IN_DB = "8dfc83632bdc36dba5da858fb5bddd7b"  # /bin/bash4
+FILE_MD5_IN_DB = "d2b0c6770f40995c844f3291acc8227b"  # /bin/bash4
 
 
 @pytest.mark.parametrize(
