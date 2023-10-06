@@ -16,35 +16,38 @@
 
 from datetime import datetime
 from dataclasses import dataclass, field, asdict
-from typing import Any, NamedTuple
+from typing import Any
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.parser import bdu_id_type, cve_id_type
+from altrepo_api.api.misc import lut
 from altrepo_api.utils import make_tmp_table_name
 
-from .tools.constants import BDU_ID_PREFIX, CVE_ID_TYPE, CVE_ID_PREFIX
+from .tools.base import Reference
+from .tools.constants import (
+    BDU_ID_TYPE,
+    BUG_ID_TYPE,
+    CVE_ID_TYPE,
+    MFSA_ID_TYPE,
+    OVE_ID_TYPE,
+    DT_NEVER,
+)
+from .tools.helpers import Bug
+from .tools.utils import parse_vuln_id_list
 from ..sql import sql
-
-
-class Bug(NamedTuple):
-    id: int
-    summary: str = ""
-    is_valid: bool = False
 
 
 @dataclass
 class VulnerabilityInfo:
     id: str
-    hash: str = ""
     type: str = ""
     summary: str = ""
     score: float = 0.0
     severity: str = ""
     url: str = ""
-    modified_date: datetime = datetime.fromtimestamp(0)
-    published_date: datetime = datetime.fromtimestamp(0)
-    refs_type: list[str] = field(default_factory=list)
+    modified_date: datetime = DT_NEVER
+    published_date: datetime = DT_NEVER
     refs_link: list[str] = field(default_factory=list)
+    refs_type: list[str] = field(default_factory=list)
     is_valid: bool = False
     related_vulns: list[str] = field(default_factory=list)
 
@@ -53,9 +56,23 @@ class VulnerabilityInfo:
 
         del res["refs_type"]
         del res["refs_link"]
+        res["modified_date"] = self.modified_date.isoformat()
+        res["published_date"] = self.published_date.isoformat()
         res["references"] = [r for r in self.refs_link]
 
         return res
+
+
+def bug2vulninfo(bug: Bug) -> VulnerabilityInfo:
+    return VulnerabilityInfo(
+        id=str(bug.id),
+        type=str(BUG_ID_TYPE).upper(),
+        summary=bug.summary,
+        url=f"{lut.bugzilla_base}/{bug.id}",
+        modified_date=bug.last_changed,
+        published_date=bug.last_changed,
+        is_valid=bug.is_valid,
+    )
 
 
 class VulnsInfo(APIWorker):
@@ -67,38 +84,28 @@ class VulnsInfo(APIWorker):
         self.conn = connection
         self.args = kwargs
         self.sql = sql
-        self.cve_ids: set[str] = set()
-        self.bdu_ids: set[str] = set()
-        self.bug_ids: set[int] = set()
+        self.vulns: set[Reference] = set()
         super().__init__()
 
     def check_params_post(self):
         try:
-            vuln_ids: list[str] = self.args["json_data"]["vuln_ids"]
-        except (TypeError, KeyError):
-            self.validation_results.append("Payload data parsing error")
-            return False
-
-        for vuln_id in vuln_ids:
-            if vuln_id.startswith(BDU_ID_PREFIX):
-                self.bdu_ids.add(bdu_id_type(vuln_id))
-            elif vuln_id.startswith(CVE_ID_PREFIX):
-                self.cve_ids.add(cve_id_type(vuln_id))
-            elif vuln_id.isdigit():
-                self.bug_ids.add(int(vuln_id))
-            else:
-                self.validation_results.append(f"invalid identifier: {vuln_id}")
-
-        if self.validation_results != []:
+            self.vulns = set(parse_vuln_id_list(self.args["json_data"]["vuln_ids"]))
+        except (AttributeError, KeyError, TypeError, ValueError) as e:
+            self.validation_results.append(f"Payload data parsing error: {e}")
             return False
 
         return True
 
     def post(self):
-        bugs: dict[int, dict[str, Any]] = {}
+        bugs: dict[int, Bug] = {}
         vulns_found: dict[str, VulnerabilityInfo] = {}
+
+        bug_ids = [int(v.link) for v in self.vulns if v.type == BUG_ID_TYPE]
+        bdu_ids = [v.link for v in self.vulns if v.type == BDU_ID_TYPE]
+        cve_ids = [v.link for v in self.vulns if v.type == CVE_ID_TYPE]
+
         # get a list of found bugs in Bugzilla
-        if self.bug_ids:
+        if bug_ids:
             tmp_table = make_tmp_table_name("bz_ids")
             response = self.send_sql_request(
                 self.sql.get_bugs_by_ids.format(tmp_table=tmp_table),
@@ -106,18 +113,26 @@ class VulnsInfo(APIWorker):
                     {
                         "name": tmp_table,
                         "structure": [("bz_id", "UInt32")],
-                        "data": [{"bz_id": bz_id} for bz_id in self.bug_ids],
+                        "data": [{"bz_id": bz_id} for bz_id in bug_ids],
                     },
                 ],
             )
             if not self.sql_status:
                 return self.error
-            bugs = {row[0]: Bug(*row[:2], is_valid=True)._asdict() for row in response}
+            bugs = {row[0]: Bug(*row, is_valid=True) for row in response}
 
-        if self.cve_ids:
+        if cve_ids:
             # get CVE info
+            tmp_table = make_tmp_table_name("cve_ids")
             response = self.send_sql_request(
-                self.sql.get_vuln_info_by_ids.format(tmp_table=tuple(self.cve_ids))
+                self.sql.get_vuln_info_by_ids.format(tmp_table=tmp_table),
+                external_tables=[
+                    {
+                        "name": tmp_table,
+                        "structure": [("vuln_id", "String")],
+                        "data": [{"vuln_id": v_id} for v_id in cve_ids],
+                    },
+                ],
             )
             if not self.sql_status:
                 return self.error
@@ -142,30 +157,46 @@ class VulnsInfo(APIWorker):
                         if ref_type == CVE_ID_TYPE:
                             vulns_found[ref_link].related_vulns.append(bdu.id)
                     vulns_found[bdu.id] = bdu
-                    if bdu.id in self.bdu_ids.copy():
-                        self.bdu_ids.remove(bdu.id)
+                    if bdu.id in bdu_ids.copy():
+                        bdu_ids.remove(bdu.id)
 
-        if self.bdu_ids:
+        if bdu_ids:
             # get BDU info
+            tmp_table = make_tmp_table_name("bdu_ids")
             response = self.send_sql_request(
-                self.sql.get_vuln_info_by_ids.format(tmp_table=tuple(self.bdu_ids))
+                self.sql.get_vuln_info_by_ids.format(tmp_table=tmp_table),
+                external_tables=[
+                    {
+                        "name": tmp_table,
+                        "structure": [("vuln_id", "String")],
+                        "data": [{"vuln_id": v_id} for v_id in bdu_ids],
+                    },
+                ],
             )
             if not self.sql_status:
                 return self.error
 
             if response:
-                cve_ids = []
+                _cves = []
                 for bdu in response:
                     bdu = VulnerabilityInfo(*bdu, is_valid=True)
                     for ref_type, ref_link in zip(bdu.refs_type, bdu.refs_link):
                         if ref_type == CVE_ID_TYPE:
-                            cve_ids.append(ref_link)
+                            _cves.append(ref_link)
                             bdu.related_vulns.append(ref_link)
                     vulns_found[bdu.id] = bdu
 
                 # get CVE id's from BDU
+                tmp_table = make_tmp_table_name("cve_ids")
                 response = self.send_sql_request(
-                    self.sql.get_vuln_info_by_ids.format(tmp_table=tuple(cve_ids))
+                    self.sql.get_vuln_info_by_ids.format(tmp_table=tmp_table),
+                    external_tables=[
+                        {
+                            "name": tmp_table,
+                            "structure": [("vuln_id", "String")],
+                            "data": [{"vuln_id": v_id} for v_id in _cves],
+                        },
+                    ],
                 )
                 if not self.sql_status:
                     return self.error
@@ -179,26 +210,36 @@ class VulnsInfo(APIWorker):
                     }
 
         vulns = list(vulns_found.values())
-        # add invalids CVEs to the resulting list of vulnerabilities
-        for cve in self.cve_ids:
-            if cve not in vulns_found.keys():
+
+        # add not found CVEs to the resulting list of vulnerabilities
+        for cve in cve_ids:
+            if cve not in vulns_found:
                 vulns.insert(0, VulnerabilityInfo(id=cve, type=CVE_ID_TYPE))
 
-        if not vulns and not bugs:
+        # convert found bugs info to vulnerability objects
+        vulns.extend([bug2vulninfo(bug) for bug in bugs.values()])
+
+        # add supported vulnerabilities that has no data in DB
+        vulns.extend(
+            VulnerabilityInfo(id=v.link, type=v.type)
+            for v in self.vulns
+            if v.type in (MFSA_ID_TYPE, OVE_ID_TYPE)
+            # if v.type not in (BUG_ID_TYPE, BDU_ID_TYPE, CVE_ID_TYPE)
+        )
+
+        if not vulns:
             return self.store_error(
                 {
-                    "message": "No data info found in DB "
-                    f"for {self.args['json_data']['vuln_ids']}"
+                    "message": f"No data info found in DB for {[v.link for v in self.vulns]}"
                 }
             )
 
         # BDUs and Bugzilla vulnerabilities not found in the DB
-        not_found_vulns = [
-            bdu for bdu in self.bdu_ids if bdu not in vulns_found.keys()
-        ] + [str(bug) for bug in self.bug_ids if bug not in bugs.keys()]
+        not_found_vulns = [bdu for bdu in bdu_ids if bdu not in vulns_found.keys()] + [
+            str(bug) for bug in bug_ids if bug not in bugs.keys()
+        ]
 
         res = {
-            "bugs": list(bugs.values()),
             "vulns": [v.asdict() for v in vulns],
             "not_found": not_found_vulns,
         }

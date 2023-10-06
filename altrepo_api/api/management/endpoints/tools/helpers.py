@@ -36,6 +36,7 @@ from .constants import (
     VULN_REFERENCE_TYPE,
     BDU_ID_PREFIX,
     BDU_ID_TYPE,
+    BUG_ID_TYPE,
     CVE_ID_PREFIX,
     CVE_ID_TYPE,
     MFSA_ID_PREFIX,
@@ -520,7 +521,7 @@ class Bug(NamedTuple):
 def bug2vuln(bug: Bug) -> Vulnerability:
     return Vulnerability(
         id=str(bug.id),
-        type=str(BUG_REFERENCE_TYPE).upper(),
+        type=BUG_ID_TYPE,
         summary=bug.summary,
         url=f"#{bug.id}",
         modified_date=bug.last_changed,
@@ -556,7 +557,7 @@ def get_vulns_by_ids(
     tmp_table = make_tmp_table_name("vuln_ids")
 
     response = cls.send_sql_request(
-        cls.sql.get_vulns_by_ids.format(tmp_table=tmp_table),
+        cls.sql.get_vuln_info_by_ids.format(tmp_table=tmp_table),
         external_tables=[
             {
                 "name": tmp_table,
@@ -572,7 +573,7 @@ def get_vulns_by_ids(
         return None
 
     cls.status = True
-    return [Vulnerability(*row, is_valid=True) for row in response]
+    return [Vulnerability(*row[:-1], is_valid=True) for row in response]
 
 
 def get_bugs_by_ids(cls: _pAPIWorker, bug_ids: Iterable[int]) -> Union[list[Bug], None]:

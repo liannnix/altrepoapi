@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 
 from altrepo_api.utils import get_logger
 
+from .base import Reference
 from .constants import (
     DT_NEVER,
     ERRATA_CHANGE_ACTIONS,
@@ -28,10 +29,29 @@ from .constants import (
     SUPPORTED_BRANCHES,
     SUPPORTED_BRANCHES_WITH_TASKS,
     SUPPORTED_BRANCHES_WITHOUT_TASKS,
+    BDU_ID_TYPE,
+    CVE_ID_TYPE,
+    MFSA_ID_TYPE,
+    OVE_ID_TYPE,
+    BUG_ID_TYPE,
 )
 
 logger = get_logger(__name__)
+
 re_errata_id = re.compile(r"^ALT-[A-Z]+-2\d{3}-\d{4,}-\d{1,}$")
+re_cve_id = re.compile(r"^CVE-\d{4}-\d{4,}$", re.IGNORECASE)
+re_bdu_id = re.compile(r"^BDU:\d{4}-\d{5}$", re.IGNORECASE)
+re_mfsa_id = re.compile(r"^MFSA[- ]+\d{4}-\d{2}$", re.IGNORECASE)
+re_ove_id = re.compile(r"^OVE-\d{8}-\d{4}$", re.IGNORECASE)
+re_bug_id = re.compile(r"^\d{4,}$")
+
+VULN_ID_REGEXS = (
+    (BDU_ID_TYPE, re_bdu_id),
+    (CVE_ID_TYPE, re_cve_id),
+    (MFSA_ID_TYPE, re_mfsa_id),
+    (OVE_ID_TYPE, re_ove_id),
+    (BUG_ID_TYPE, re_bug_id),
+)
 
 _TZ_UTC = timezone.utc
 _TZ_LOCAL = datetime.now().astimezone(None).tzinfo
@@ -80,3 +100,21 @@ def dt_from_iso(value: str) -> datetime:
     except (TypeError, ValueError):
         logger.warning(f"Failed to parse datetime: {value}")
         return DT_NEVER
+
+
+def parse_vuln_id_list(vulns: list[str]) -> list[Reference]:
+    """Processes list of vulnerabilities IDs, validates it and returns as list of
+    Reference objects. Raises ValueError if found unknown or invalid ID."""
+
+    res = []
+
+    def vulnid2reftype(id: str) -> Reference:
+        for type_, regex in VULN_ID_REGEXS:
+            if regex.fullmatch(id) is not None:
+                return Reference(type=type_, link=id)
+        raise ValueError(f"Invalid vulnerability identifier: {id}")
+
+    for vuln in vulns:
+        res.append(vulnid2reftype(vuln))
+
+    return res

@@ -123,19 +123,10 @@ vuln_ids_json_post_list_model = ns.model(
     {"vuln_ids": fields.List(fields.String, description="vulnerability ids list")},
 )
 
-bug_model = ns.model(
-    "BugModel",
-    {
-        "id": fields.Integer(description="bug id"),
-        "summary": fields.String(description="bug summary"),
-        "is_valid": fields.Boolean(description="bug information is valid"),
-    },
-)
 vuln_model = ns.model(
     "VulnerabilityModel",
     {
         "id": fields.String(description="vulnerability id"),
-        "hash": fields.String(description="vulnerability hash"),
         "type": fields.String(description="vulnerability type"),
         "summary": fields.String(description="vulnerability summary"),
         "score": fields.Float(description="vulnerability score"),
@@ -155,11 +146,6 @@ vuln_model = ns.model(
 vuln_ids_json_list_model = ns.model(
     "VulnerabilitiesJsonListModel",
     {
-        "bugs": fields.Nested(
-            bug_model,
-            description="list of bugs",
-            as_list=True,
-        ),
         "vulns": fields.Nested(
             vuln_model,
             description="list of vulnerabilities",
