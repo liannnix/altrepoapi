@@ -38,6 +38,7 @@ PARAMS = {
         "port": ("DEFAULT_PORT", "int"),
         "processes": ("WORKER_PROCESSES", "str"),
         "timeout": ("WORKER_TIMEOUT", "str"),
+        "cors_origins": ("CORS_ORIGINS", "str"),
     },
     "other": {
         "admin_user": ("ADMIN_USER", "str"),
@@ -62,13 +63,13 @@ PARAMS = {
         "max_refresh_sessions_count": ("MAX_REFRESH_SESSIONS_COUNT", "int"),
     },
     "redis": {"redis_url": ("REDIS_URL", "str")},
-    "errata": {
-        "errata_id_url": ("ERRATA_ID_URL", "str")
-    }
+    "errata": {"errata_id_url": ("ERRATA_ID_URL", "str")},
 }
 
 
-def read_config(config_file: str, params: dict, namespace: object) -> bool:
+def read_config(
+    config_file: str, params: dict[str, dict[str, tuple[str, str]]], namespace: object
+) -> bool:
     config = configparser.ConfigParser(inline_comment_prefixes="#")
 
     if not config.read(config_file):

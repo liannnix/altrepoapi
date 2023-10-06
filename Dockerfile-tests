@@ -25,6 +25,7 @@ RUN \
         python3-module-ldap \
         python3-module-jwt \
         python3-module-redis-py \
+        python3-module-flask-cors \
         tzdata \
         python3-module-pytest \
         python3-module-pytest-flask \

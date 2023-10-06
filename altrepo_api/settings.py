@@ -88,6 +88,8 @@ class BasePathNamespace:
     REDIS_URL = ""
     # errata service
     ERRATA_ID_URL = ""
+    # Flask CORS origins
+    CORS_ORIGINS = "*"
 
 
 namespace = BasePathNamespace()

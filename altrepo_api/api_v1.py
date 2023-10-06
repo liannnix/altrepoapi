@@ -42,7 +42,6 @@ from altrepo_api.api.site_packageset import ns as site_packageset_ns
 from altrepo_api.api.errata import ns as errata_ns
 from altrepo_api.api.vulnerabilities import ns as vuln_ns
 from altrepo_api.api.auth import ns as auth_ns
-from altrepo_api.api.management import ns as management_ns
 
 
 authorizations = {
@@ -85,7 +84,6 @@ api.add_namespace(site_package_ns)
 api.add_namespace(site_pkgset_info)
 api.add_namespace(site_maintainer_ns)
 api.add_namespace(site_packageset_ns)
-api.add_namespace(management_ns)
 
 version_fields = api.model(
     "APIVersion",
