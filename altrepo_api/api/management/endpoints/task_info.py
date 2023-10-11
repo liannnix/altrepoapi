@@ -37,6 +37,7 @@ class SubtaskMeta:
     chlog_name: str
     chlog_evr: str
     errata_id: str
+    is_discarded: bool
     eh_created: datetime
     eh_update: datetime
     errata_id: str

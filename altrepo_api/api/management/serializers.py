@@ -90,6 +90,9 @@ subtask_errata_el_model = ns.model(
         "chlog_name": fields.String(description="package last changelog name"),
         "chlog_evr": fields.String(description="package last changelog evr"),
         "errata_id": fields.String(description="errata ID"),
+        "is_discarded": fields.Boolean(
+            description="is errata discarded", default=False
+        ),
         "eh_created": fields.DateTime(
             description="date and time the errata was created"
         ),

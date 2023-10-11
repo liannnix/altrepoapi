@@ -238,6 +238,7 @@ SELECT
     chlog_name,
     chlog_evr,
     EH.errata_id,
+    if(EH.discarded_id != '', 1, 0) AS discard,
     EH.eh_created,
     EH.eh_update,
     EH.ref_links,
@@ -304,18 +305,26 @@ FROM (
     ORDER BY subtask_id
 ) AS SI
 LEFT JOIN (
-    SELECT
-        task_id,
-        subtask_id,
-        argMax(errata_id, errata_id_version) AS errata_id,
-        argMax(eh_references.link, ts) as ref_links,
-        argMax(eh_references.type, ts) as ref_types,
-        max(eh_updated) as eh_update,
-        max(eh_created) as eh_created
-    FROM ErrataHistory
-    WHERE eh_type = 'task' AND task_id = {task_id}
-    GROUP BY subtask_id, task_id
-    ORDER BY subtask_id
+    SELECT TT.*, DE.discarded_id as discarded_id
+    FROM (
+        SELECT
+            task_id,
+            subtask_id,
+            argMax(errata_id, errata_id_version) AS errata_id,
+            argMax(eh_references.link, ts) AS ref_links,
+            argMax(eh_references.type, ts) AS ref_types,
+            max(eh_updated) AS eh_update,
+            max(eh_created) AS eh_created
+        FROM ErrataHistory
+        WHERE eh_type = 'task'
+        AND task_id = {task_id}
+        GROUP BY subtask_id, task_id
+        ORDER BY subtask_id
+    ) AS TT
+    LEFT JOIN (
+        SELECT errata_id AS discarded_id
+        FROM last_discarded_erratas
+    ) AS DE ON errata_id = DE.discarded_id
 ) AS EH ON EH.task_id = SI.task_id AND EH.subtask_id = SI.subtask_id
 """
 
