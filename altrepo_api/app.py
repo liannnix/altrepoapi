@@ -84,7 +84,13 @@ def initialize_app(flask_app: Flask):
     configure_app(flask_app)
     flask_app.register_blueprint(api_bp)
     flask_app.register_blueprint(manage_bp)
-    CORS(flask_app, resources={r"/manage/*": {"origins": settings.CORS_ORIGINS}})
+
+    CORS(
+        flask_app,
+        resources={
+            r"/*": {"origins": str(settings.CORS_ORIGINS), "supports_credentials": True}
+        },
+    )
 
 
 initialize_app(app)
