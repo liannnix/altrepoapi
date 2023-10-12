@@ -24,7 +24,7 @@ from altrepo_api.api.base import (
 )
 from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.settings import namespace as settings
-from altrepo_api.api.auth.decorators import auth_required
+from altrepo_api.api.auth.decorators import token_required
 
 from .namespace import get_namespace
 from .endpoints.manage import ManageErrata
@@ -60,7 +60,7 @@ logger = get_logger(__name__)
 class routeTaskList(Resource):
     @ns.expect(task_list_args)
     @ns.marshal_with(task_list_model)
-    @auth_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
     def get(self):
         url_logging(logger, g.url)
         args = task_list_args.parse_args(strict=True)
@@ -80,7 +80,7 @@ class routeTaskList(Resource):
 class routeTaskInfo(Resource):
     # @ns.expect()
     @ns.marshal_with(task_info_model)
-    @auth_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
     def get(self, id):
         url_logging(logger, g.url)
         args = {}
@@ -100,7 +100,7 @@ class routeTaskInfo(Resource):
 class routeVulnsInfo(Resource):
     @ns.expect(vuln_ids_json_post_list_model)
     @ns.marshal_with(vuln_ids_json_list_model)
-    @auth_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
     def post(self):
         url_logging(logger, g.url)
         w = VulnsInfo(g.connection, json_data=ns.payload)
@@ -136,7 +136,7 @@ class routeManageErrata(Resource):
     )
     @ns.expect(errata_manage_get_args)
     @ns.marshal_with(errata_manage_get_response_model)
-    @auth_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
     def get(self):
         url_logging(logger, g.url)
         args = errata_manage_get_args.parse_args(strict=True)
@@ -149,7 +149,7 @@ class routeManageErrata(Resource):
     )
     @ns.expect(errata_manage_model)
     @ns.marshal_with(errata_manage_response_model)
-    @auth_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
     def put(self):
         url_logging(logger, g.url)
         w = ManageErrata(g.connection, payload=ns.payload)
@@ -163,7 +163,7 @@ class routeManageErrata(Resource):
     )
     @ns.expect(errata_manage_model)
     @ns.marshal_with(errata_manage_response_model)
-    @auth_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
     def post(self):
         url_logging(logger, g.url)
         w = ManageErrata(g.connection, payload=ns.payload)
@@ -174,7 +174,7 @@ class routeManageErrata(Resource):
     @ns.doc(description="Discard errata record.", responses=GET_RESPONSES_400_404)
     @ns.expect(errata_manage_model)
     @ns.marshal_with(errata_manage_response_model)
-    @auth_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
     def delete(self):
         url_logging(logger, g.url)
         w = ManageErrata(g.connection, payload=ns.payload)
