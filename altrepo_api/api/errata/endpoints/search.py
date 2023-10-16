@@ -38,6 +38,7 @@ class ErrataInfo(NamedTuple):
     vuln_ids: list[str]
     vuln_types: list[str]
     changed: str
+    is_discarded: bool
     vulnerabilities: list[dict[str, str]] = []
     packages: list[dict[str, str]] = []
 

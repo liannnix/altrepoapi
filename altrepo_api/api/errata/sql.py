@@ -305,7 +305,7 @@ errata_bulletin AS (
     )
     GROUP BY errata_id, eh_type, ref_link
 )
-SELECT * FROM (
+SELECT ER.*, if(DE.discarded_id != '', 1, 0) AS discard FROM (
     SELECT * FROM errata_tasks
     UNION ALL
     SELECT * FROM errata_branches
@@ -335,7 +335,11 @@ SELECT * FROM (
                   packages,
                   refs_types,
                   changed
-)
+) AS ER
+LEFT JOIN (
+    SELECT errata_id AS discarded_id
+    FROM last_discarded_erratas
+) AS DE ON ER.errata_id = DE.discarded_id
 {where_clause}
 ORDER BY changed DESC
 """
