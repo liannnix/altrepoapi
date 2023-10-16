@@ -98,11 +98,19 @@ page_opt = parser.register_item(
     help="number page",
     location="args",
 )
+is_discarded = parser.register_item(
+    "is_discarded",
+    type=inputs.boolean,
+    default=False,
+    required=False,
+    help="is errata discarded",
+    location="args",
+)
 
 oval_export_args = parser.build_parser(package_name_opt, one_file_opt)
 errata_search_args = parser.build_parser(
     branch_name_opt, errata_pkg_name_opt, vuln_id_opt, errata_id_opt
 )
 find_erratas_args = parser.build_parser(
-    input_val_opt, branch_name_opt, errata_type_opt, page_opt, limit_opt
+    input_val_opt, branch_name_opt, errata_type_opt, page_opt, limit_opt, is_discarded
 )
