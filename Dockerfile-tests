@@ -29,6 +29,7 @@ RUN \
         tzdata \
         python3-module-pytest \
         python3-module-pytest-flask \
+        python3-module-requests \
         openldap-servers \
         openldap-clients \
     # clean-up Apt caches

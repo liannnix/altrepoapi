@@ -26,6 +26,7 @@ RUN \
         python3-module-jwt \
         python3-module-redis-py \
         python3-module-flask-cors \
+        python3-module-requests \
         tzdata \
     # clean-up Apt caches
     && rm -f /var/cache/apt/archives/*.rpm \
