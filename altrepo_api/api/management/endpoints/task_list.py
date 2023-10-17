@@ -111,6 +111,8 @@ class TaskList(APIWorker):
         branch_errata_clause = f"AND pkgset_name = '{branch}'" if branch else ""
         bug_id_clause = ""
 
+        where_clause_is_errata = f"WHERE errata != ''" if self.args["is_errata"] else ""
+
         errata_conditions = []
 
         # parse input values and look for owner name (prefixed by '@'),
@@ -182,6 +184,7 @@ class TaskList(APIWorker):
                 where_clause_errata=where_clause_errata,
                 where_clause_tasks=where_clause_tasks + owner_clause,
                 where_clause_tasks2=where_clause_tasks2,
+                where_clause_is_errata=where_clause_is_errata
             ),
         )
         if not self.sql_status:

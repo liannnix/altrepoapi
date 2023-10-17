@@ -13,6 +13,7 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from flask_restx import inputs
 
 from altrepo_api.api.parser import (
     parser,
@@ -54,8 +55,16 @@ errata_id = parser.register_item(
     help="errata ID",
     location="args"
 )
+is_errata_opt = parser.register_item(
+    "is_errata",
+    type=inputs.boolean,
+    default=False,
+    required=False,
+    help="is errata",
+    location="args",
+)
 
 task_list_args = parser.build_parser(
-    input_val_opt, branch_name_opt, page_opt, limit_opt
+    input_val_opt, branch_name_opt, is_errata_opt, page_opt, limit_opt
 )
 errata_manage_get_args = parser.build_parser(errata_id)

@@ -95,16 +95,18 @@ errata_tasks AS (
         SELECT errata_id FROM last_discarded_erratas
     )
 )
-SELECT
-    global_search.*,
-    TT.errata_id,
-    TT.refs_links,
-    TT.refs_types
-FROM global_search
-LEFT JOIN (
-    SELECT  * FROM errata_tasks
-) AS TT ON TT.task_id = global_search.task_id
-{where_clause_errata}
+SELECT * FROM (
+    SELECT
+        global_search.*,
+        TT.errata_id as errata,
+        TT.refs_links,
+        TT.refs_types
+    FROM global_search
+    LEFT JOIN (
+        SELECT  * FROM errata_tasks
+    ) AS TT ON TT.task_id = global_search.task_id
+    {where_clause_errata}
+) {where_clause_is_errata}
 """
 
     get_subtasks = """
