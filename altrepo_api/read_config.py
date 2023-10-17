@@ -19,6 +19,8 @@ import sys
 import logging
 import configparser
 
+from functools import partial
+
 from .settings import namespace as settings
 
 
@@ -38,7 +40,7 @@ PARAMS = {
         "port": ("DEFAULT_PORT", "int"),
         "processes": ("WORKER_PROCESSES", "str"),
         "timeout": ("WORKER_TIMEOUT", "str"),
-        "cors_origins": ("CORS_ORIGINS", "str"),
+        "cors_origins": ("CORS_ORIGINS", "list"),
     },
     "other": {
         "admin_user": ("ADMIN_USER", "str"),
@@ -72,6 +74,15 @@ def read_config(
 ) -> bool:
     config = configparser.ConfigParser(inline_comment_prefixes="#")
 
+    # patch ConfigParser object
+    def getlist(cls, section, option):
+        value: str = cls.get(section, option)
+        if not value:
+            return None
+        return [v.strip() for v in value.split(",") if v]
+
+    setattr(config, "getlist", partial(getlist, config))
+
     if not config.read(config_file):
         return False
 
@@ -96,6 +107,7 @@ def read_config(
         "str": config.get,
         "int": config.getint,
         "bool": config.getboolean,
+        "list": config.getlist,  # type: ignore
         "log_level": _log_level,
     }
 
