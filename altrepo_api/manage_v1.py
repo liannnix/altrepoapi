@@ -18,6 +18,7 @@ from flask import Blueprint
 from flask_restx import Api
 
 from altrepo_api.api.management import ns as management_ns
+from altrepo_api.api.auth import ns as auth_ns
 
 
 VERSION = "0.0.1"
@@ -41,4 +42,5 @@ api = Api(
     authorizations=authorizations,
 )
 
+api.add_namespace(auth_ns)
 api.add_namespace(management_ns)

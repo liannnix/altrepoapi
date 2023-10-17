@@ -55,6 +55,7 @@ logger = get_logger(__name__)
         "You can also search for issues by ID, task owner, "
         "component or Vulnerability.",
         "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
     },
 )
 class routeTaskList(Resource):
@@ -75,6 +76,7 @@ class routeTaskList(Resource):
         "'DONE' and a list of vulnerabilities for subtasks "
         "based on task ID.",
         "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
     },
 )
 class routeTaskInfo(Resource):
@@ -95,6 +97,7 @@ class routeTaskInfo(Resource):
     doc={
         "description": "Find vulnerability information.",
         "responses": POST_RESPONSES_400_404,
+        "security": "Bearer",
     },
 )
 class routeVulnsInfo(Resource):
@@ -133,6 +136,7 @@ class routeManageErrata(Resource):
     @ns.doc(
         description="Get errata info.",
         responses=RESPONSES_GET_400_404_409,
+        security="Bearer",
     )
     @ns.expect(errata_manage_get_args)
     @ns.marshal_with(errata_manage_get_response_model)
@@ -146,6 +150,7 @@ class routeManageErrata(Resource):
     @ns.doc(
         description="Update errata version with new contents.",
         responses=RESPONSES_400_404_409,
+        security="Bearer",
     )
     @ns.expect(errata_manage_model)
     @ns.marshal_with(errata_manage_response_model)
@@ -160,6 +165,7 @@ class routeManageErrata(Resource):
     @ns.doc(
         description="Register new errata record.",
         responses=RESPONSES_400_409,
+        security="Bearer",
     )
     @ns.expect(errata_manage_model)
     @ns.marshal_with(errata_manage_response_model)
