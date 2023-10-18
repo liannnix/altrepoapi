@@ -88,7 +88,7 @@ def initialize_app(flask_app: Flask):
     CORS(
         flask_app,
         resources={
-            r"/*": {"origins": str(settings.CORS_ORIGINS), "supports_credentials": True}
+            r"/*": {"origins": settings.CORS_ORIGINS, "supports_credentials": True}
         },
     )
 
