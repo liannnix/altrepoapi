@@ -18,6 +18,7 @@ import datetime
 import logging
 import mmh3
 import re
+import sys
 import time
 
 from collections import defaultdict
@@ -104,10 +105,16 @@ def get_logger(name: str) -> logging.Logger:
             # stderr handler config
             fmt = logging.Formatter("%(levelname)-9s: %(message)s")
 
-            file_handler = logging.StreamHandler()
-            file_handler.setFormatter(fmt)
+            err_handler = logging.StreamHandler(sys.stderr)
+            err_handler.setLevel(logging.ERROR)
+            err_handler.setFormatter(fmt)
 
-            root_logger.addHandler(file_handler)
+            info_handler = logging.StreamHandler(sys.stdout)
+            info_handler.setLevel(settings.LOG_LEVEL)
+            info_handler.setFormatter(fmt)
+
+            root_logger.addHandler(err_handler)
+            root_logger.addHandler(info_handler)
 
         # pass if no logging handlers enabled
         pass
