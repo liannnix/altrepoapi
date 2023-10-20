@@ -12,6 +12,9 @@ services:
       - log:/log
     ports:
       - ${APP_PORT_EXT}:5000
+    logging:
+      options:
+        tag: ${APP_LOGGING_TAG}
 volumes:
   config:
   log:
