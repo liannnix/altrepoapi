@@ -1,6 +1,30 @@
 # Changelog
 ALTrepo API changelog
-## [newrelease] - yyyy-mm-dd
+
+## [1.15.10] - 2023-10-20
+
+Regular API code updates and fixes.
+
+### Added
+- API logging: support for `APP_LOGGING_TAG` environment variable
+### Changed
+### Fixed
+
+## [1.15.9] - 2023-09-28
+
+Regular API code updates and fixes.
+
+### Added
+- optional `no_chache` argument support:
+  * `task/misconflict`
+  * `task/what_depends_src`
+### Changed
+### Fixed
+- `task/task_info`: esponse result serialization
+
+## [1.15.8] - 2023-09-28
+
+Regular API code updates and fixes.
 
 ### Added
 - `site/watch_by_maintainer`: add latest packages versions from Repology
@@ -9,14 +33,6 @@ ALTrepo API changelog
 - `task/`: add `no_cache` argument upport in `/task_info`, `/misconflict` and `what_depends_src` routes
 ### Fixed
 - `task/check_images`: fix SQL request
-
-## [1.15.8] - 2023-09-28
-
-Regular API code updates and fixes.
-
-### Added
-### Changed
-### Fixed
 
 ## [1.15.6] - 2023-09-04
 
