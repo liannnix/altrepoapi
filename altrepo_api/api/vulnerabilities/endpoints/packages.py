@@ -104,7 +104,7 @@ class PackageOpenVulnerabilities(APIWorker):
 
         self.result_message.extend(
             [
-                f"No data found in DB for {cve_id}"
+                f"No data found in DB for mentioned {cve_id} vulnerability"
                 for cve_id in {
                     cve_id for cve_id in cve_ids if cve_id not in self.cve_info
                 }
@@ -119,7 +119,7 @@ class PackageOpenVulnerabilities(APIWorker):
 
         # update packages vulnerabilities with erratas data
         get_vulnerability_fix_errata(self, cve_ids)
-        # filter only vulnerable packages found by CPE matching version compare
+        # filter only vulnerable packages using found errata fixes
         self.packages_vulnerabilities = [
             pv for pv in self.packages_vulnerabilities if pv.vulnerable
         ]
@@ -130,6 +130,9 @@ class PackageOpenVulnerabilities(APIWorker):
             vi = self.cve_info.get(vuln_id)
             if vi is not None:
                 vuln_info.append(vi)
+
+        if not self.packages_vulnerabilities:
+            self.result_message = ["No vulnerable packages found"] + self.result_message
 
         return {
             "request_args": self.args,
