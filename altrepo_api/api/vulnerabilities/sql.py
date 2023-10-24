@@ -176,6 +176,9 @@ WHERE (errata_id, eh_updated) IN (
         {where_clause}
         GROUP BY errata_id_noversion
     )
+    WHERE eid NOT IN (
+        SELECT errata_id FROM last_discarded_erratas
+    )
 )
 ORDER BY eh_updated DESC
 """
@@ -339,7 +342,7 @@ LEFT JOIN task_branch AS TB ON TB.task_id = TI.task_id
 WHERE TS.state != 'DELETED'
 """
 
-    get_task_cve = """
+    get_task_cve_from_erratas = """
 WITH task_subtasks AS (
     SELECT DISTINCT task_id, subtask_id
     FROM Tasks
@@ -347,21 +350,26 @@ WITH task_subtasks AS (
     AND task_changed = '{task_changed}'
     AND subtask_deleted = 0
 )
-SELECT
-    argMax(pkg_hash, ts),
-    subtask_id,
-    argMax(pkg_name, ts),
-    argMax(pkg_version, ts),
-    argMax(pkg_release, ts),
-    argMax(pkgset_name, ts),
-    argMax(errata_id, ts),
-    argMax(eh_references.link, ts),
-    argMax(eh_references.type, ts)
-FROM ErrataHistory
-WHERE eh_type = 'task'
-AND (task_id, subtask_id) IN (SELECT * FROM task_subtasks)
-GROUP BY subtask_id
-ORDER BY subtask_id
+SELECT * FROM (
+    SELECT
+        argMax(pkg_hash, ts),
+        subtask_id,
+        argMax(pkg_name, ts),
+        argMax(pkg_version, ts),
+        argMax(pkg_release, ts),
+        argMax(pkgset_name, ts),
+        argMax(errata_id, ts) AS eid,
+        argMax(eh_references.link, ts),
+        argMax(eh_references.type, ts)
+    FROM ErrataHistory
+    WHERE eh_type = 'task'
+        AND (task_id, subtask_id) IN (SELECT * FROM task_subtasks)
+    GROUP BY subtask_id
+    ORDER BY subtask_id
+)
+WHERE eid NOT IN (
+    SELECT errata_id FROM last_discarded_erratas
+)
 """
 
     get_done_tasks_by_packages = """
