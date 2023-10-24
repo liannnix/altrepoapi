@@ -58,8 +58,8 @@ class LookupTables:
         "p9_e2k",
         "p10_e2k",
     ]
-    oval_export_branches = ["p9", "p10", "c9f2", "c10f1"]
-    oval_export_branches_map = {"p9": "1", "p10": "2", "c9f2": "3", "c10f1": "4"}
+    oval_export_branches = ["p9", "p10", "c9f2", "c10f1", "c10f2"]
+    oval_export_branches_map = {"p9": "1", "p10": "2", "c9f2": "3", "c10f1": "4", "c10f2": "5"}
     no_downloads_branches = ["sisyphus_e2k", "p9_e2k", "p10_e2k"]
     repology_export_branches = ["sisyphus", "p9", "p10"]
     repology_cpe_branch_map = {
