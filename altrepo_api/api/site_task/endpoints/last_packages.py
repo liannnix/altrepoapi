@@ -129,6 +129,8 @@ class LastTaskPackages(APIWorker):
         if not self.sql_status:
             return self.error
         if not response:
+            # FIXME: fails here if only tasks that deleting packages were commited
+            # from last repo state ?!
             return self.store_error(
                 {
                     "message": "No data found in database for packages",
