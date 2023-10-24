@@ -140,7 +140,7 @@ def test_vuln_cve_packages(client, kwargs):
     "kwargs",
     [
         {"name": PAKCAGE_IN_DB, "status_code": 400},
-        {"name": PAKCAGE_IN_DB, "branch": BRANCH_IN_DB, "status_code": 200},
+        {"name": PAKCAGE_IN_DB, "branch": BRANCH_IN_DB2, "status_code": 200},
         {"name": BAD_PACKAGE_NAME, "branch": BRANCH_IN_DB, "status_code": 400},
         {"name": PAKCAGE_IN_DB, "branch": BRANCH_NOT_IN_DB, "status_code": 400},
         {"name": PAKCAGE_NOT_IN_DB, "branch": BRANCH_IN_DB, "status_code": 404},
