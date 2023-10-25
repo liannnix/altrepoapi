@@ -25,6 +25,7 @@ from altrepo_api.api.base import (
 from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.settings import namespace as settings
 from altrepo_api.api.auth.decorators import token_required
+from .endpoints.change_history import ErrataChangeHistory
 
 from .namespace import get_namespace
 from .endpoints.manage import ManageErrata
@@ -40,6 +41,7 @@ from .serializers import (
     errata_manage_model,
     errata_manage_response_model,
     errata_manage_get_response_model,
+    errata_change_history_model,
 )
 
 
@@ -194,3 +196,23 @@ class routeManageErrata(Resource):
             check_method=w.check_params_delete,
             ok_code=200,
         )
+
+
+@ns.route(
+    "/errata/change_history",
+    doc={
+        "description": "Get errata change history.",
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routeErrataChangeHistory(Resource):
+    @ns.expect(errata_manage_get_args)
+    @ns.marshal_with(errata_change_history_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = errata_manage_get_args.parse_args(strict=True)
+        w = ErrataChangeHistory(g.connection, **args)
+        return run_worker(worker=w, args=args)
+

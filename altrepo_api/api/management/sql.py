@@ -552,5 +552,74 @@ WHERE bz_id IN (
 GROUP BY bz_id
 """
 
+    get_errata_history = """
+WITH ec_ids AS (
+    SELECT DISTINCT ec_id_noversion
+    FROM ErrataChangeHistory
+    WHERE ec_id_noversion IN (
+        SELECT ec_id_noversion FROM ErrataChangeHistory
+        WHERE errata_id IN (
+            SELECT errata_id FROM test_ErrataHistory
+            WHERE errata_id = '{errata_id}'
+            {type}
+        )
+    )
+),
+parent_ids as (
+    SELECT ec_id,
+           errata_id,
+           ec_created,
+           ec_updated,
+           ec_user,
+           ec_reason,
+           toString(ec_type),
+           toString(ec_source),
+           EH.links,
+           EH.task_id,
+           EH.task_state
+    FROM (
+        SELECT *
+        FROM ErrataChangeHistory
+        WHERE ec_id_noversion IN (SELECT ec_id_noversion FROM ec_ids)
+        {origin}
+    ) AS EP
+    LEFT JOIN (
+        SELECT
+               errata_id,
+               eh_references.link AS links,
+               task_id,
+               task_state
+        FROM ErrataHistory
+    ) AS EH ON EH.errata_id = EP.errata_id
+)
+SELECT * FROM (
+    SELECT '' AS ec_id,
+           errata_id,
+           eh_created,
+           eh_updated,
+           '' AS ec_user,
+           '' AS ec_reason,
+           'create' AS ec_type,
+           'auto' AS ec_source,
+           eh_references.link AS links,
+           task_id,
+           task_state
+    FROM ErrataHistory
+    WHERE errata_id IN (
+        SELECT errata_id
+        FROM ErrataHistory
+        where errata_id_noversion IN (
+            SELECT DISTINCT errata_id_noversion
+            FROM ErrataHistory
+            WHERE errata_id = '{errata_id}'
+        )
+    )
+    AND errata_id NOT IN (SELECT errata_id FROM parent_ids)
+    UNION ALL
+    SELECT DISTINCT parent_ids.*
+    FROM parent_ids
+) ORDER BY eh_updated desc
+"""
+
 
 sql = SQL()

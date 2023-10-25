@@ -255,3 +255,36 @@ errata_manage_get_response_model = ns.model(
         ),
     },
 )
+
+errata_change_history_el_model = ns.model(
+    "ErrataChangeHistoryElementModel",
+    {
+        "id": fields.String(description="errata change ID"),
+        "errata_id": fields.String(description="errata ID"),
+        "created": fields.DateTime(description="date and time the errata was created"),
+        "updated": fields.DateTime(description="date and time the errata was update"),
+        "user": fields.String(description="errata change user"),
+        "reason": fields.String(description="errata change reason"),
+        "type": fields.String(description="errata change type"),
+        "source": fields.String(description="errata change source"),
+        "task_id": fields.Integer(description="task id"),
+        "task_state": fields.String(description="task state"),
+        "vulns": fields.List(fields.String, description="errata vulnerabilities"),
+        "deleted_vulns": fields.List(
+            fields.String, description="deleted vulnerabilities"
+        ),
+        "added_vulns": fields.List(fields.String, description="added vulnerabilities"),
+    }
+)
+errata_change_history_model = ns.model(
+    "ErrataChangeHistoryModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of history found"),
+        "history": fields.Nested(
+            errata_change_history_el_model,
+            description="errata change history",
+            as_list=True,
+        ),
+    }
+)
