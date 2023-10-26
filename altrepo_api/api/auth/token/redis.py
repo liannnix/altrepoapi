@@ -16,7 +16,11 @@
 
 import redis
 
+from redis import __version__ as REDIS_VERSION
+from packaging import version
 from typing import Any, Optional, Union
+
+REDIS_BREAKING_CHANGE_VERSION = "3.4.1"
 
 
 def decode_map(mapping: dict[bytes, bytes]) -> dict[str, str]:
@@ -60,7 +64,11 @@ class RedisStorage:
     ) -> None:
         """Saves mapping to storage and set expiration time."""
 
-        self.conn.hset(name, mapping=mapping)  # type: ignore
+        redis_version = version.parse(REDIS_VERSION)
+        if redis_version > version.parse(REDIS_BREAKING_CHANGE_VERSION):
+            self.conn.hset(name, mapping=mapping)  # type: ignore
+        else:
+            self.conn.hmset(name, mapping=mapping)  # type: ignore
 
         if expire is not None:
             self.conn.expire(name, expire)
