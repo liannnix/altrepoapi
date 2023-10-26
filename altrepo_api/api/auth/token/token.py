@@ -93,10 +93,7 @@ def encode_jwt_token(payload: dict[str, Any]) -> str:
 def decode_jwt_token(token: str) -> dict[str, Any]:
     try:
         return jwt.decode(
-            token,
-            namespace.ADMIN_PASSWORD,
-            algorithms=[JWT_ENCODE_ALGORITHM],
-            options={"verify_signature": False},
+            jwt=token, key=namespace.ADMIN_PASSWORD, algorithms=[JWT_ENCODE_ALGORITHM]
         )
     except (jwt.PyJWTError, jwt.DecodeError):
         raise InvalidTokenError("Invalid token")
