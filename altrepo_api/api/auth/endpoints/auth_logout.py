@@ -19,7 +19,7 @@ from flask import request
 from altrepo_api.api.base import APIWorker
 from ..constants import REFRESH_TOKEN_KEY
 from ..exceptions import ApiUnauthorized
-from ..token import AccessTokenBlacklist, STORAGE, decode_jwt_token
+from ..token import AccessTokenBlacklist, InvalidTokenError, STORAGE, decode_jwt_token
 
 
 class AuthLogout(APIWorker):
@@ -52,7 +52,10 @@ class AuthLogout(APIWorker):
             return True
 
     def post(self):
-        token_payload = decode_jwt_token(self.token)
+        try:
+            token_payload = decode_jwt_token(self.token, verify_exp=False)
+        except InvalidTokenError:
+            raise ApiUnauthorized(description="Invalid token.")
 
         refresh_token_key = REFRESH_TOKEN_KEY.format(
             user=token_payload.get("nickname", "")

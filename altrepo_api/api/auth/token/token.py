@@ -90,10 +90,13 @@ def encode_jwt_token(payload: dict[str, Any]) -> str:
     )
 
 
-def decode_jwt_token(token: str) -> dict[str, Any]:
+def decode_jwt_token(token: str, verify_exp: bool = True) -> dict[str, Any]:
     try:
         return jwt.decode(
-            jwt=token, key=namespace.ADMIN_PASSWORD, algorithms=[JWT_ENCODE_ALGORITHM]
+            jwt=token,
+            key=namespace.ADMIN_PASSWORD,
+            algorithms=[JWT_ENCODE_ALGORITHM],
+            options=None if verify_exp else {"verify_exp": False},
         )
     except (jwt.PyJWTError, jwt.DecodeError):
         raise InvalidTokenError("Invalid token")
@@ -152,7 +155,7 @@ class AccessTokenBlacklist:
     def check(self) -> bool:
         """
         Check the access token in the blacklist.
-        if the fingerprint of the current user does not
+        If the fingerprint of the current user does not
         match the fingerprint of the access token, then
         add the token to the blacklist.
         """

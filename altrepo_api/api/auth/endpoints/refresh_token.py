@@ -53,7 +53,9 @@ class RefreshToken(APIWorker):
 
         # check access token and decode it.
         try:
-            self.access_token_payload = decode_jwt_token(self.access_token)
+            self.access_token_payload = decode_jwt_token(
+                self.access_token, verify_exp=False
+            )
         except InvalidTokenError:
             self.validation_results.append("Invalid access token")
             return False
