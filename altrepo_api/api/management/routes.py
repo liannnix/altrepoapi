@@ -177,7 +177,11 @@ class routeManageErrata(Resource):
             worker=w, run_method=w.post, check_method=w.check_params_post, ok_code=200
         )
 
-    @ns.doc(description="Discard errata record.", responses=GET_RESPONSES_400_404)
+    @ns.doc(
+        description="Discard errata record.",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
     @ns.expect(errata_manage_model)
     @ns.marshal_with(errata_manage_response_model)
     @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
