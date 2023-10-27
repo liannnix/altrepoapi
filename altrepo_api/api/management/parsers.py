@@ -49,11 +49,7 @@ page_opt = parser.register_item(
     location="args",
 )
 errata_id = parser.register_item(
-    "errata_id",
-    type=errata_id_type,
-    required=True,
-    help="errata ID",
-    location="args"
+    "errata_id", type=errata_id_type, required=True, help="errata ID", location="args"
 )
 is_errata_opt = parser.register_item(
     "is_errata",

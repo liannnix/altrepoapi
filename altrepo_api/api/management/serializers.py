@@ -274,7 +274,7 @@ errata_change_history_el_model = ns.model(
             fields.String, description="deleted vulnerabilities"
         ),
         "added_vulns": fields.List(fields.String, description="added vulnerabilities"),
-    }
+    },
 )
 errata_change_history_model = ns.model(
     "ErrataChangeHistoryModel",
@@ -286,5 +286,5 @@ errata_change_history_model = ns.model(
             description="errata change history",
             as_list=True,
         ),
-    }
+    },
 )

@@ -215,4 +215,3 @@ class routeErrataChangeHistory(Resource):
         args = errata_manage_get_args.parse_args(strict=True)
         w = ErrataChangeHistory(g.connection, **args)
         return run_worker(worker=w, args=args)
-

@@ -13,6 +13,7 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import datetime
 from dataclasses import dataclass, asdict, field
 
@@ -71,7 +72,7 @@ class ErrataChangeHistory(APIWorker):
             return self.error
         if not response:
             return self.store_error(
-                {f"message": f"No change history found for errata '{errata_id}'"}
+                {"message": f"No change history found for errata '{errata_id}'"}
             )
         ErrataChngHist = [ErrataChangeInfo(*el) for el in response]
 
