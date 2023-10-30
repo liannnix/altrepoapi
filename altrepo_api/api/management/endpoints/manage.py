@@ -449,7 +449,9 @@ class ManageErrata(APIWorker):
                 http_code=500,
                 severity=self.LL.CRITICAL,
             )
-        self.logger.info(f"Task {self.errata.task_id} has no committed brunch state yet")
+        self.logger.info(
+            f"Task {self.errata.task_id} has no committed brunch state yet"
+        )
         should_has_bulletin = False
 
         # 5.create and register new package update errata
@@ -521,21 +523,27 @@ class ManageErrata(APIWorker):
             return self.error
 
         if bulletin is None:
-            # XXX: shouldn't ever happen
-            return self.store_error(
-                {
-                    "message": (
-                        f"Failed to find branch update errata for {self.errata.id}. "
-                        "This shouldn't happen and means possible DB inconsistency."
-                    ),
-                    "errata": self.errata.asdict(),
-                },
-                http_code=404,
-                severity=self.LL.ERROR,
+            if not validate_branch_with_tatsks(self.errata.pkgset_name):
+                # XXX: shouldn't ever happen
+                return self.store_error(
+                    {
+                        "message": (
+                            f"Failed to find branch update errata for {self.errata.id}. "
+                            "This shouldn't happen and means possible DB inconsistency."
+                        ),
+                        "errata": self.errata.asdict(),
+                    },
+                    http_code=400,
+                    severity=self.LL.ERROR,
+                )
+            # handle errata discard for newest tasks without commited branch state
+            self.logger.info(
+                f"Task {self.errata.task_id} has no committed brunch state yet"
             )
-
-        # 5. update branch update errata by discarded errata
-        self.trx.register_bulletin_update(bulletin)
+            pass
+        else:
+            # 5. update branch update errata by discarded errata
+            self.trx.register_bulletin_update(bulletin)
 
         # 6. register new errata change id
         # check if errata change already registered for current package update errata
