@@ -23,6 +23,24 @@ class ErrataManageError(Exception):
     pass
 
 
+class Task(NamedTuple):
+    id: int
+    prev: int
+    date: datetime
+
+
+class Branch(NamedTuple):
+    name: str
+    date: datetime
+    task: int
+
+
+class UserInfo(NamedTuple):
+    reason: str
+    name: str
+    ip: str
+
+
 class ErrataID(NamedTuple):
     """ErrataID object class"""
 

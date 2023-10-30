@@ -22,15 +22,19 @@ from altrepo_api.api.management.sql import SQL
 from altrepo_api.utils import make_tmp_table_name
 from altrepo_api.api.misc import lut
 
-from .base import Errata, ErrataChange, ErrataID, ErrataManageError, Reference
-from .errata import errata_hash
-from .errata_id import ErrataIDService, check_errata_id, register_branch_update_id
+from .base import (
+    Branch,
+    Errata,
+    ErrataChange,
+    ErrataID,
+    ErrataManageError,
+    Task,
+    Reference,
+)
+from .errata_id import ErrataIDService, check_errata_id
 from .utils import convert_dt_to_timezone_aware
 from .constants import (
     CHECK_ERRATA_CONTENT_IS_CHANGED_FIELDS,
-    BRANCH_BULLETIN_ERRATA_SOURCE,
-    BRANCH_BULLETIN_ERRATA_TYPE,
-    ERRATA_REFERENCE_TYPE,
     DT_NEVER,
     BUG_REFERENCE_TYPE,
     VULN_REFERENCE_TYPE,
@@ -71,18 +75,6 @@ class _pHasErrataIDService(_pAPIWorker, Protocol):
 
 class _pManageErrata(_pHasErrataIDService, _pHasErrataID, Protocol):
     ...
-
-
-class Task(NamedTuple):
-    id: int
-    prev: int
-    date: datetime
-
-
-class Branch(NamedTuple):
-    name: str
-    date: datetime
-    task: int
 
 
 def _sql2errata(sql_data: tuple[Any, ...]) -> Errata:
@@ -471,31 +463,6 @@ def find_closest_branch_state(
 
     cls.status = True
     return branch_state
-
-
-def build_new_bulletin(cls: _pManageErrata, branch_state: Branch) -> Errata:
-    """Builds new bulletin errata record object from errata
-    and registers new errata ID for it."""
-
-    eid = register_branch_update_id(cls.eid_service, branch_state.date.year)
-    bulletin = Errata(
-        id=(ErrataID.from_id(eid.id)),
-        type=BRANCH_BULLETIN_ERRATA_TYPE,
-        source=BRANCH_BULLETIN_ERRATA_SOURCE,
-        created=branch_state.date,
-        updated=eid.updated,
-        pkg_hash=0,
-        pkg_name="",
-        pkg_version="",
-        pkg_release="",
-        pkgset_name=branch_state.name,
-        task_id=0,
-        subtask_id=0,
-        task_state="",
-        references=[Reference(type=ERRATA_REFERENCE_TYPE, link=cls.errata.id.id)],  # type: ignore
-        hash=0,
-    )
-    return bulletin.update(hash=errata_hash(bulletin))
 
 
 class Vulnerability(NamedTuple):

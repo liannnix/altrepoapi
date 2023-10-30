@@ -19,14 +19,7 @@ from typing import Any, NamedTuple
 
 from altrepo_api.api.base import APIWorker
 
-from .tools.base import (
-    Errata,
-    ErrataID,
-    ErrataChange,
-    ErrataChangeOrigin,
-    ErrataChangeSource,
-    ErrataChangeType,
-)
+from .tools.base import Errata, UserInfo
 from .tools.constants import (
     ERRATA_CHANGE_ACTION_CREATE,
     ERRATA_CHANGE_ACTION_DISCARD,
@@ -40,20 +33,8 @@ from .tools.constants import (
     DT_NEVER,
     CHEK_ERRATA_CONTENT_ON_CREATE,
 )
-from .tools.errata import (
-    json2errata,
-    build_errata_with_id_version_updated,
-    update_bulletin_by_errata_discard,
-    update_bulletin_by_errata_update,
-    update_bulletin_by_errata_add,
-    build_stub_errata,
-)
-from .tools.errata_id import (
-    get_errataid_service,
-    update_errata_id,
-    register_errata_change_id,
-    register_package_update_id,
-)
+from .tools.errata import json2errata, build_stub_errata
+from .tools.errata_id import get_errataid_service
 from .tools.helpers import (
     get_errata_contents,
     get_bulletin_by_package_update,
@@ -67,10 +48,10 @@ from .tools.helpers import (
     is_errata_equal,
     find_closest_branch_state,
     get_bulletin_by_branch_date,
-    build_new_bulletin,
     collect_errata_vulnerabilities_info,
 )
 from .tools.utils import validate_action, validate_branch, validate_branch_with_tatsks
+from .tools.transaction import Transaction
 from ..sql import sql
 
 
@@ -83,28 +64,28 @@ class ManageErrata(APIWorker):
         self.args = kwargs
         self.sql = sql
         self.eid_service = get_errataid_service()
+        self.trx = Transaction(self.eid_service)
         # values set in self.check_params_xxx() call
-        self.user: str
-        self.user_ip: str
+        self.user_info: UserInfo
         self.action: str
-        self.reason: str
         self.errata: Errata
         super().__init__()
 
     def _valiadte_and_parse(self):
         """Validate and parse `self.payload' JSON contents."""
 
-        user_ip = request.remote_addr
-        self.user_ip = user_ip if user_ip is not None else ""
+        self.user_info = UserInfo(
+            ip=request.remote_addr or "",
+            name=self.payload.get("user", ""),
+            reason=self.payload.get("reason", ""),
+        )
 
-        self.user = self.payload.get("user", "")
         self.action = self.payload.get("action", "")
-        self.reason = self.payload.get("reason", "")
 
-        if not self.user:
+        if not self.user_info.name:
             self.validation_results.append("User name should be specified")
 
-        if not self.reason:
+        if not self.user_info.reason:
             self.validation_results.append("Errata change reason should be specified")
 
         if not validate_action(self.action):
@@ -261,9 +242,6 @@ class ManageErrata(APIWorker):
             - 409 (Conflict) if errata version update failed due to outdated version
         """
 
-        new_errata_history_records: list[Errata] = []
-        new_errata_change_records: list[ErrataChange] = []
-
         # 0. check if current errat is not discarded yet
         is_discarded = check_errata_is_discarded(self)
         if not self.status or not self.sql_status:
@@ -291,8 +269,7 @@ class ManageErrata(APIWorker):
             }, 200
 
         # 2. register new errata version for package update
-        new_errata = build_errata_with_id_version_updated(self.eid_service, self.errata)
-        new_errata_history_records.append(new_errata)
+        self.trx.register_errata_update(self.errata)
 
         # 3. find affected branch update errata
         bulletin = get_bulletin_by_package_update(self, self.errata.id.id)  # type: ignore
@@ -301,6 +278,9 @@ class ManageErrata(APIWorker):
 
         if bulletin is None:
             # XXX: shouldn't ever happen
+            # FIXME: got here for 'DONE' tasks that has no branch update errata yet (not commited repo state)
+            # 1. check branch type here
+            # 2. check task history and branch commit history here
             return self.store_error(
                 {
                     "message": (
@@ -314,65 +294,31 @@ class ManageErrata(APIWorker):
             )
 
         # 4. register new errata version for branch update
-        new_bulletin = update_bulletin_by_errata_update(
-            eid_service=self.eid_service,
-            bulletin=bulletin,
-            errata=self.errata,
-            new_errata=new_errata,
-        )
-        new_errata_history_records.append(new_bulletin)
+        self.trx.register_bulletin_update(bulletin)
 
-        # 5. register new errata change id
+        # 5. commit errata registration transaction
         # check if errata change already registered for current package update errata
         ec_errata_id = get_ec_id_by_package_update(self, self.errata.id)  # type: ignore
         if ec_errata_id is not None:
-            ec_id = update_errata_id(self.eid_service, ec_errata_id.id)
+            self.trx.commit(self.user_info, ec_errata_id.id)
         else:
-            ec_id = register_errata_change_id(self.eid_service)
+            self.trx.commit(self.user_info, None)
 
-        # 6. create new errata change records for package and branch update erratas
-        new_errata_change_records = [
-            ErrataChange(
-                id=ErrataID.from_id(ec_id.id),
-                created=ec_id.created,
-                updated=ec_id.updated,
-                user=self.user,
-                user_ip=self.user_ip,
-                reason=self.reason,
-                type=ErrataChangeType.UPDATE,
-                source=ErrataChangeSource.MANUAL,
-                origin=ErrataChangeOrigin.PARENT,
-                errata_id=new_errata.id,  # type: ignore
-            ),
-            ErrataChange(
-                id=ErrataID.from_id(ec_id.id),
-                created=ec_id.created,
-                updated=ec_id.updated,
-                user=self.user,
-                user_ip=self.user_ip,
-                reason=self.reason,
-                type=ErrataChangeType.UPDATE,
-                source=ErrataChangeSource.AUTO,
-                origin=ErrataChangeOrigin.CHILD,
-                errata_id=new_bulletin.id,  # type: ignore
-            ),
-        ]
-
-        # 7. store new errata and errata change records to DB
-        store_errata_history_records(self, new_errata_history_records)
+        # 6. store new errata and errata change records to DB
+        store_errata_history_records(self, self.trx.errata_history_records)
         if not self.sql_status:
             return self.error
-        store_errata_change_records(self, new_errata_change_records)
+        store_errata_change_records(self, self.trx.errata_change_records)
         if not self.sql_status:
             return self.error
 
-        # 8. build API response that includes newest versions for package update errata,
+        # 7. build API response that includes newest versions for package update errata,
         # branch update errata and errata change records
         return {
             "action": self.action,
             "message": "OK",
-            "errata": [e.asdict() for e in new_errata_history_records],
-            "errata_change": [e.asdict() for e in new_errata_change_records],
+            "errata": [e.asdict() for e in self.trx.errata_history_records],
+            "errata_change": [e.asdict() for e in self.trx.errata_change_records],
         }, 200
 
     def post(self):
@@ -392,9 +338,6 @@ class ManageErrata(APIWorker):
             task_id: int
             subtask_id: int
             task_state: str
-
-        new_errata_history_records: list[Errata] = []
-        new_errata_change_records: list[ErrataChange] = []
 
         # FIXME: how to validate taskless branch package update errata contents?
         if self.errata.type == BRANCH_PACKAGE_ERRATA_TYPE:
@@ -492,14 +435,9 @@ class ManageErrata(APIWorker):
             return self.error
 
         # 5.create and register new package update errata
-        eid = register_package_update_id(self.eid_service, task_changed.year)
-        self.errata = self.errata.update(
-            id=eid.id, created=eid.created, updated=eid.updated
-        )
-        new_errata_history_records.append(self.errata)
+        self.trx.register_errata_create(self.errata, task_changed.year)
 
         # 6. update and register updated branch update errata record
-        new_bulletin = None
         bulletin = get_bulletin_by_branch_date(self, branch_state)
         if not self.sql_status:
             return self.error
@@ -513,71 +451,18 @@ class ManageErrata(APIWorker):
                     },
                     http_code=409,
                 )
-            # update existing bulletin
-            bulletin = update_bulletin_by_errata_add(
-                eid_service=self.eid_service, bulletin=bulletin, new_errata=self.errata
-            )
-            new_errata_history_records.append(bulletin)
+            self.trx.register_bulletin_update(bulletin)
         else:
-            # create new bulletin
-            new_bulletin = build_new_bulletin(self, branch_state)
-            new_errata_history_records.append(new_bulletin)
+            self.trx.register_bulletin_create(branch_state)
 
-        # 7. build errata change history records
-        ec_id = register_errata_change_id(self.eid_service)
-        new_errata_change_records = [
-            ErrataChange(
-                id=ErrataID.from_id(ec_id.id),
-                created=ec_id.created,
-                updated=ec_id.updated,
-                user=self.user,
-                user_ip=self.user_ip,
-                reason=self.reason,
-                type=ErrataChangeType.CREATE,
-                source=ErrataChangeSource.MANUAL,
-                origin=ErrataChangeOrigin.PARENT,
-                errata_id=self.errata.id,  # type: ignore
-            )
-        ]
-
-        if new_bulletin is not None:
-            # new bulletin errata was created
-            new_errata_change_records.append(
-                ErrataChange(
-                    id=ErrataID.from_id(ec_id.id),
-                    created=ec_id.created,
-                    updated=ec_id.updated,
-                    user=self.user,
-                    user_ip=self.user_ip,
-                    reason=self.reason,
-                    type=ErrataChangeType.CREATE,
-                    source=ErrataChangeSource.AUTO,
-                    origin=ErrataChangeOrigin.CHILD,
-                    errata_id=new_bulletin.id,  # type: ignore
-                )
-            )
-        else:
-            # bulletin errata was updated
-            new_errata_change_records.append(
-                ErrataChange(
-                    id=ErrataID.from_id(ec_id.id),
-                    created=ec_id.created,
-                    updated=ec_id.updated,
-                    user=self.user,
-                    user_ip=self.user_ip,
-                    reason=self.reason,
-                    type=ErrataChangeType.UPDATE,
-                    source=ErrataChangeSource.AUTO,
-                    origin=ErrataChangeOrigin.CHILD,
-                    errata_id=bulletin.id,  # type: ignore
-                )
-            )
+        # 7. commit errata registration transaction
+        self.trx.commit(self.user_info, None)
 
         # 8. store new errata and errata change records to DB
-        store_errata_history_records(self, new_errata_history_records)
+        store_errata_history_records(self, self.trx.errata_history_records)
         if not self.sql_status:
             return self.error
-        store_errata_change_records(self, new_errata_change_records)
+        store_errata_change_records(self, self.trx.errata_change_records)
         if not self.sql_status:
             return self.error
 
@@ -586,8 +471,8 @@ class ManageErrata(APIWorker):
         return {
             "action": self.action,
             "message": "OK",
-            "errata": [e.asdict() for e in new_errata_history_records],
-            "errata_change": [e.asdict() for e in new_errata_change_records],
+            "errata": [e.asdict() for e in self.trx.errata_history_records],
+            "errata_change": [e.asdict() for e in self.trx.errata_change_records],
         }, 200
 
     def delete(self):
@@ -597,9 +482,6 @@ class ManageErrata(APIWorker):
             - 400 (Bad request) on paload validation errors
             - 404 (Not found) if errata discarded already or does not exists
         """
-
-        new_errata_history_records: list[Errata] = []
-        new_errata_change_records: list[ErrataChange] = []
 
         # 1. check if current errata version is the latest one
         last_errata_id = get_last_errata_id_version(self)
@@ -618,11 +500,10 @@ class ManageErrata(APIWorker):
                 http_code=404,
             )
 
-        # set `is_discarded` flag and add to request results
-        self.errata = self.errata.update(is_discarded=True)
-        new_errata_history_records.append(self.errata)
+        # 3. register new errata version for package update and set `is_discarded` flag
+        self.trx.register_errata_discard(self.errata)
 
-        # 3. find affected branch update errata
+        # 4. find affected branch update errata
         bulletin = get_bulletin_by_package_update(self, self.errata.id.id)  # type: ignore
         if not self.sql_status:
             return self.error
@@ -641,81 +522,22 @@ class ManageErrata(APIWorker):
                 severity=self.LL.ERROR,
             )
 
-        # 4. update branch update errata by discarded errata
-        new_bulletin = update_bulletin_by_errata_discard(
-            eid_service=self.eid_service, bulletin=bulletin, errata=self.errata
-        )
-        if new_bulletin is not None:
-            new_errata_history_records.append(new_bulletin)
-        else:
-            self.logger.info(
-                f"Discard bulletin {bulletin.id} due to {self.errata.id} was discarded"
-            )
-            bulletin = bulletin.update(is_discarded=True)
-            new_errata_history_records.append(bulletin)
+        # 5. update branch update errata by discarded errata
+        self.trx.register_bulletin_update(bulletin)
 
-        #  5. register new errata change id
+        # 6. register new errata change id
         # check if errata change already registered for current package update errata
         ec_errata_id = get_ec_id_by_package_update(self, self.errata.id)  # type: ignore
         if ec_errata_id is not None:
-            ec_id = update_errata_id(self.eid_service, ec_errata_id.id)
+            self.trx.commit(self.user_info, ec_errata_id.id)
         else:
-            ec_id = register_errata_change_id(self.eid_service)
-
-        # 6. create new errata change records for package and branch update erratas
-        new_errata_change_records = [
-            ErrataChange(
-                id=ErrataID.from_id(ec_id.id),
-                created=ec_id.created,
-                updated=ec_id.updated,
-                user=self.user,
-                user_ip=self.user_ip,
-                reason=self.reason,
-                type=ErrataChangeType.DISCARD,
-                source=ErrataChangeSource.MANUAL,
-                origin=ErrataChangeOrigin.PARENT,
-                errata_id=self.errata.id,  # type: ignore
-            )
-        ]
-
-        if new_bulletin is None:
-            # discrad branch update errata too if it become empty one
-            new_errata_change_records.append(
-                ErrataChange(
-                    id=ErrataID.from_id(ec_id.id),
-                    created=ec_id.created,
-                    updated=ec_id.updated,
-                    user=self.user,
-                    user_ip=self.user_ip,
-                    reason=self.reason,
-                    type=ErrataChangeType.DISCARD,
-                    source=ErrataChangeSource.AUTO,
-                    origin=ErrataChangeOrigin.CHILD,
-                    errata_id=bulletin.id,  # type: ignore
-                )
-            )
-        else:
-            # store branch update errata chnaged due to package update discard
-            new_errata_change_records.append(
-                ErrataChange(
-                    id=ErrataID.from_id(ec_id.id),
-                    created=ec_id.created,
-                    updated=ec_id.updated,
-                    user=self.user,
-                    user_ip=self.user_ip,
-                    reason=self.reason,
-                    type=ErrataChangeType.UPDATE,
-                    source=ErrataChangeSource.AUTO,
-                    origin=ErrataChangeOrigin.CHILD,
-                    errata_id=new_bulletin.id,  # type: ignore
-                )
-            )
+            self.trx.commit(self.user_info, None)
 
         # 7. store new errata and errata change records to DB
-        store_errata_history_records(self, new_errata_history_records)
+        store_errata_history_records(self, self.trx.errata_history_records)
         if not self.sql_status:
             return self.error
-        store_errata_change_records(self, new_errata_change_records)
+        store_errata_change_records(self, self.trx.errata_change_records)
         if not self.sql_status:
             return self.error
 
@@ -723,6 +545,6 @@ class ManageErrata(APIWorker):
         return {
             "action": self.action,
             "message": "OK",
-            "errata": [e.asdict() for e in new_errata_history_records],
-            "errata_change": [e.asdict() for e in new_errata_change_records],
+            "errata": [e.asdict() for e in self.trx.errata_history_records],
+            "errata_change": [e.asdict() for e in self.trx.errata_change_records],
         }, 200
