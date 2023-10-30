@@ -465,6 +465,28 @@ def find_closest_branch_state(
     return branch_state
 
 
+def get_last_branch_state(cls: _pManageErrata) -> Union[Branch, None]:
+    """gets last branch state by given task."""
+
+    cls.status = False
+    branch = cls.errata.pkgset_name
+
+    # get last commited branch state
+    response = cls.send_sql_request(
+        cls.sql.get_last_branch_state.format(branch=branch)
+    )
+    if not cls.sql_status:
+        return None
+    if not response:
+        _ = cls.store_error(
+            {"message": f"Failed to find last state for {branch}"}
+        )
+        return None
+
+    cls.status = True
+    return Branch(*response[0])
+
+
 class Vulnerability(NamedTuple):
     id: str
     type: str

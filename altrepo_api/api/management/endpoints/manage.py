@@ -46,6 +46,7 @@ from .tools.helpers import (
     check_errata_contents_is_changed,
     get_errata_by_task,
     is_errata_equal,
+    get_last_branch_state,
     find_closest_branch_state,
     get_bulletin_by_branch_date,
     collect_errata_vulnerabilities_info,
@@ -322,7 +323,7 @@ class ManageErrata(APIWorker):
         }, 200
 
     def post(self):
-        """Handles errata record cretate.
+        """Handles errata record create.
         Returns:
             - 200 (OK) if errata record created successfully
             - 400 (Bad request) on paload validation errors
@@ -379,7 +380,7 @@ class ManageErrata(APIWorker):
         if not response:
             return self.store_error(
                 {
-                    "message": "No data foind in DB for given task and subtask",
+                    "message": "No data found in DB for given task and subtask",
                     "errata": self.errata.asdict(),
                 }
             )
@@ -412,6 +413,7 @@ class ManageErrata(APIWorker):
                     http_code=409,
                 )
             elif is_equal and errata_exists.is_discarded:
+                # FIXME: handle errata 'undiscard' somehow?
                 return self.store_error(
                     {
                         "message": "Errata for given package is exists in DB but was discarded already",
@@ -431,29 +433,39 @@ class ManageErrata(APIWorker):
 
         # 4. find proper branch update errata to be updated
         branch_state = find_closest_branch_state(self, task_changed)
-        if not self.sql_status or not self.status or branch_state is None:
+        if not self.sql_status or not self.status:
             return self.error
+        should_has_bulletin = True
+
+        # XXX: check if task is 'DONE' and ahead of last commited branch state
+        if branch_state is None:
+            branch_state = get_last_branch_state(self)
+            if not self.sql_status or not self.status or branch_state is None:
+                return self.error
+        if task_changed < branch_state.date:
+            # XXX: shouldn't ever happen
+            return self.store_error(
+                {"message": "Inconsistent data in DB: "},
+                http_code=500,
+                severity=self.LL.CRITICAL,
+            )
+        self.logger.info(f"Task {self.errata.task_id} has no committed brunch state yet")
+        should_has_bulletin = False
 
         # 5.create and register new package update errata
         self.trx.register_errata_create(self.errata, task_changed.year)
 
-        # 6. update and register updated branch update errata record
-        bulletin = get_bulletin_by_branch_date(self, branch_state)
-        if not self.sql_status:
-            return self.error
+        if should_has_bulletin:
+            # 6. update and register updated branch update errata record
+            bulletin = get_bulletin_by_branch_date(self, branch_state)
+            if not self.sql_status:
+                return self.error
 
-        if bulletin is not None:
-            # FIXME: handle discarded bulletin somehow
-            if bulletin.is_discarded:
-                return self.store_error(
-                    {
-                        "message": f"Can't update discarded bulletin record {bulletin.id}"
-                    },
-                    http_code=409,
-                )
-            self.trx.register_bulletin_update(bulletin)
-        else:
-            self.trx.register_bulletin_create(branch_state)
+            if bulletin is not None:
+                # XXX: `is_discarded` flag handled in transaction if bulletin was discarded before
+                self.trx.register_bulletin_update(bulletin)
+            else:
+                self.trx.register_bulletin_create(branch_state)
 
         # 7. commit errata registration transaction
         self.trx.commit(self.user_info, None)

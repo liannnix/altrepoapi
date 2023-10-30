@@ -294,6 +294,9 @@ class Transaction:
             logger.info(
                 f"Bulletin has been updated: {self._bulletin_update.old_eid} -> {new_bulletin.id}"
             )
+            # XXX: handle previously discarded bulletin
+            if new_bulletin.is_discarded:
+                new_bulletin = new_bulletin.update(is_discarded=False)
         else:
             err_message = (
                 f"Bulletin action {self.bulletin_action.name} is not supported "

@@ -540,6 +540,18 @@ ORDER BY pkgset_date ASC
 LIMIT 1
 """
 
+    get_last_branch_state = """
+SELECT
+    pkgset_nodename,
+    pkgset_date,
+    toUInt32(pkgset_kv.v[indexOf(pkgset_kv.k, 'task')])
+FROM PackageSetName
+WHERE pkgset_depth = 0
+    AND pkgset_nodename = '{branch}'
+ORDER BY pkgset_date DESC
+LIMIT 1
+"""
+
     get_bugs_by_ids = """
 SELECT
     bz_id,
