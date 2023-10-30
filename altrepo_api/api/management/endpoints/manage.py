@@ -435,7 +435,7 @@ class ManageErrata(APIWorker):
         branch_state = find_closest_branch_state(self, task_changed)
         if not self.sql_status or not self.status:
             return self.error
-        should_has_bulletin = True
+        should_has_bulletin = True if branch_state is not None else False
 
         # XXX: check if task is 'DONE' and ahead of last commited branch state
         if branch_state is None:

@@ -231,14 +231,20 @@ class Transaction:
             origin=ErrataChangeOrigin.PARENT,
         )
 
-        bu_ec_fn = partial(
-            _build_errata_change,
-            ec_id=_ec_id,
-            user_unfo=self._user_info,
-            errata=self._errata_history_records[ErrataType.BULLETIN].id,  # type: ignore
-            source=ErrataChangeSource.AUTO,
-            origin=ErrataChangeOrigin.CHILD,
-        )
+        def stub_fn(*args, **kwargs) -> ErrataChange:
+            return  # type: ignore
+
+        if self.bulletin_action != ErrataAction.NONE:
+            bu_ec_fn = partial(
+                _build_errata_change,
+                ec_id=_ec_id,
+                user_unfo=self._user_info,
+                errata=self._errata_history_records[ErrataType.BULLETIN].id,  # type: ignore
+                source=ErrataChangeSource.AUTO,
+                origin=ErrataChangeOrigin.CHILD,
+            )
+        else:
+            bu_ec_fn = stub_fn
 
         # add errata change history record for package update
         if self.errata_action == ErrataAction.CREATE:

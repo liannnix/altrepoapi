@@ -448,9 +448,7 @@ def find_closest_branch_state(
     if not cls.sql_status:
         return None
     if not response:
-        _ = cls.store_error(
-            {"message": f"Failed to find nearest state of {branch} from {task_id}"}
-        )
+        cls.status = True
         return None
 
     branch_state = Branch(*response[0])
