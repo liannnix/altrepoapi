@@ -571,7 +571,7 @@ WITH ec_ids AS (
     WHERE ec_id_noversion IN (
         SELECT ec_id_noversion FROM ErrataChangeHistory
         WHERE errata_id IN (
-            SELECT errata_id FROM test_ErrataHistory
+            SELECT errata_id FROM ErrataHistory
             WHERE errata_id = '{errata_id}'
             {type}
         )
