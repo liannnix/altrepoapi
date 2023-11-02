@@ -15,13 +15,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from flask import Blueprint
-from flask_restx import Api
+from flask_restx import Api, Resource, fields
 
-from altrepo_api.api.management import ns as management_ns
+from altrepo_api.api.management import ns as management_ns, __version__ as VERSION
 from altrepo_api.api.auth import ns as auth_ns
 
-
-VERSION = "0.0.1"
 
 authorizations = {
     "BasicAuth": {"type": "basic", "in": "header", "name": "Authorization"},
@@ -36,11 +34,28 @@ api = Api(
     title="ALTRepo vulnerability management API",
     license="GNU AGPLv3",
     license_url="https://www.gnu.org/licenses/agpl-3.0.en.html",
-    description="altrepo API v1",
-    # default="manage",
+    description="ALTRepo API v1",
+    default="basic",
     default_label="basic functions",
     authorizations=authorizations,
 )
 
 api.add_namespace(auth_ns)
 api.add_namespace(management_ns)
+
+version_fields = api.model(
+    "APIVersion",
+    {
+        "name": fields.String(attribute="title", description="API name"),
+        "version": fields.String(description="API version"),
+        "description": fields.String(description="API description"),
+    },
+)
+
+
+@api.route("/version")
+@api.doc(description="get API version")
+class ApiVersion(Resource):
+    @api.marshal_with(version_fields)
+    def get(self):
+        return api, 200

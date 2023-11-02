@@ -16,7 +16,7 @@
 
 from flask_restx import Namespace
 
-namespace = Namespace("", description="vulnerability management API")
+namespace = Namespace("manage", description="vulnerability management API", path="/")
 
 
 def get_namespace():

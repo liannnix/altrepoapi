@@ -51,7 +51,7 @@ logger = get_logger(__name__)
 
 
 @ns.route(
-    "/task_list",
+    "/task/list",
     doc={
         "description": "Get a list of tasks in DONE status."
         "You can also search for issues by ID, task owner, "
@@ -72,7 +72,7 @@ class routeTaskList(Resource):
 
 
 @ns.route(
-    "/task_info/<int:id>",
+    "/task/info/<int:id>",
     doc={
         "description": "Get information about the task in the state "
         "'DONE' and a list of vulnerabilities for subtasks "
@@ -95,7 +95,7 @@ class routeTaskInfo(Resource):
 
 
 @ns.route(
-    "/vulns",
+    "/vuln/info",
     doc={
         "description": "Find vulnerability information.",
         "responses": POST_RESPONSES_400_404,
@@ -133,7 +133,7 @@ RESPONSES_GET_400_404_409 = {
 }
 
 
-@ns.route("/errata")
+@ns.route("/errata/manage")
 class routeManageErrata(Resource):
     @ns.doc(
         description="Get errata info.",
