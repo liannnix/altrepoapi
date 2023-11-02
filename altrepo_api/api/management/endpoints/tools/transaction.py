@@ -206,13 +206,13 @@ class Transaction:
             ErrataAction.DISCARD: self._handle_errata_discard,
         }[self._errata_update.action]()
         # build errata change history records
-        self._handle_errata_create_ec()
+        self._handle_errata_change_history()
 
     def rollback(self):
         logger.warning("Errata manage transaction rollback")
         raise NotImplementedError
 
-    def _handle_errata_create_ec(self):
+    def _handle_errata_change_history(self):
         # get new errata change ID if not provided
         if self._ec_id is None:
             _ec_id = register_errata_change_id(self.eid_service)
