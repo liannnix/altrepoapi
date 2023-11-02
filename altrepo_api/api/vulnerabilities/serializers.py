@@ -159,16 +159,6 @@ cve_task_packages_el_model = ns.model(
 cve_task_model = ns.model(
     "CveVulnerableTaskModel",
     {
-        "task_id": fields.Integer(description="task id"),
-        "task_repo": fields.String(description="repository name"),
-        "task_state": fields.String(description="task state"),
-        "task_owner": fields.String(description="task owner"),
-        "task_try": fields.Integer(description="task try number"),
-        "task_iter": fields.Integer(description="task iteration number"),
-        "task_testonly": fields.Integer(description="task test only"),
-        "task_changed": fields.DateTime(description="task changed"),
-        "task_message": fields.String(description="task message"),
-        "dependencies": fields.List(fields.Integer, description="task dependencies"),
         "packages": fields.Nested(
             cve_task_packages_el_model,
             description="vulnerable packages information",

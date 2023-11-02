@@ -292,62 +292,17 @@ FROM TaskStates
 WHERE task_id = {id}
 """
 
-    get_last_task_info = """
-WITH
-    last_task_state AS
-    (
-        SELECT
-            task_id,
-            argMax(task_state, task_changed) AS state,
-            argMax(task_depends, task_changed) AS depends,
-            argMax(task_testonly, task_changed) AS testonly,
-            argMax(task_message, task_changed) AS message,
-            max(task_changed) AS changed
-        FROM TaskStates
-        WHERE task_id = {task_id}
-        GROUP BY task_id
-    ),
-    task_try_iter AS
-    (
-        SELECT DISTINCT
-            task_id,
-            task_try,
-            task_iter
-        FROM TaskIterations
-        WHERE (task_id, task_changed) = (
-            SELECT
-                task_id,
-                changed
-            FROM last_task_state
-        )
-    ),
-    task_branch AS
-    (
-        SELECT DISTINCT
-            task_id,
-            task_repo,
-            task_owner
-        FROM Tasks
-        WHERE task_id = {task_id}
-    )
-SELECT
-    TS.*,
-    task_try,
-    task_iter,
-    task_repo,
-    task_owner
-FROM last_task_state AS TS
-LEFT JOIN task_try_iter AS TI USING (task_id)
-LEFT JOIN task_branch AS TB ON TB.task_id = TI.task_id
-WHERE TS.state != 'DELETED'
-"""
-
     get_task_cve_from_erratas = """
 WITH task_subtasks AS (
     SELECT DISTINCT task_id, subtask_id
     FROM Tasks
-    WHERE task_id = {task_id}
-    AND task_changed = '{task_changed}'
+    WHERE (task_id, task_changed) IN (
+        SELECT task_id,
+            max(task_changed) AS changed
+        FROM TaskStates
+        WHERE task_id = {task_id}
+        GROUP BY task_id
+    )
     AND subtask_deleted = 0
 )
 SELECT * FROM (

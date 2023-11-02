@@ -268,8 +268,9 @@ def test_vuln_maintainer(client, kwargs):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"id": TASK_IN_DB, "status_code": 200},
-        {"id": TASK_NOT_FIX_CVE, "status_code": 200},
+        {"id": TASK_FIX_CVE, "status_code": 200},
+        {"id": TASK_IN_DB, "status_code": 404},
+        {"id": TASK_NOT_FIX_CVE, "status_code": 404},
         {"id": DELETED_TASK_IN_DB, "status_code": 404},
         {"id": TASK_NOT_IN_DB, "status_code": 404},
     ],
@@ -280,11 +281,6 @@ def test_vuln_task(client, kwargs):
     data = response.json
     assert response.status_code == kwargs["status_code"]
     if response.status_code == 200:
-        assert data["task_id"] != 0
-        assert data["task_repo"] != ""
-        assert data["task_state"] != ""
-        assert data["task_owner"] != ""
-        assert data["task_changed"] != ""
         if kwargs["id"] == TASK_NOT_FIX_CVE:
             assert data["packages"] == []
         elif kwargs["id"] == TASK_FIX_CVE:
