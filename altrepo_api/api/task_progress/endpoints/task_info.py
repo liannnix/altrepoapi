@@ -73,6 +73,12 @@ class TaskInfo(APIWorker):
             # suppose task in progress table are always newer
             if state_p.state != state_a.state:
                 table_name = state_p.table
+                # XXX: workaround for manually reloaded tasks with missing progress
+                if (
+                    state_a.state in ("DONE", "EPERM", "TESTED", "FAILED")
+                    and state_a.changed > state_p.changed
+                ):
+                    table_name = state_a.table
             # if state is not 'consistent' one prefer task progress table
             elif state_p.state not in ("DONE", "EPERM", "TESTED", "FAILED"):
                 table_name = state_p.table
