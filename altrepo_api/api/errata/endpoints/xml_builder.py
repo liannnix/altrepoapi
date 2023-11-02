@@ -165,12 +165,20 @@ PRODUCT_CPE = {
     ],
     "c9f2": ["cpe:/o:alt:spworkstation:8.4", "cpe:/o:alt:spserver:8.4"],
     "c10f1": ["cpe:/o:alt:spworkstation:10", "cpe:/o:alt:spserver:10"],
+    "c10f2": [
+        "cpe:/o:alt:spworkstation:10",
+        "cpe:/o:alt:spserver:10",
+    ],  # FIXME: how to distinguish 'c10f1' and 'c10f2'?
 }
 BRANCH_CHECK_REGEX = {
     "p9": (r"cpe:\/o:alt:(?!sp)[a-z\-]+:p?(\d+)(?:\.\d)*", "9"),
     "p10": (r"cpe:\/o:alt:(?!sp)[a-z\-]+:p?(\d+)(?:\.\d)*", "10"),
     "c9f2": (r"cpe:\/o:alt:sp(?:server|workstation):(\d\.\d)", "8.4"),
     "c10f1": (r"cpe:\/o:alt:sp(?:server|workstation):(\d+)", "10"),
+    "c10f2": (
+        r"cpe:\/o:alt:sp(?:server|workstation):(\d+)",
+        "10",
+    ),  # FIXME: how to distinguish 'c10f1' and 'c10f2'?
 }
 NUM_TO_SEVERITY = {0: "NONE", 1: "LOW", 2: "MEDUM", 3: "HIGH", 4: "CRITICAL"}
 SEVERITY_TO_NUM = {v: k for k, v in NUM_TO_SEVERITY.items()}

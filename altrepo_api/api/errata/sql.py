@@ -60,6 +60,9 @@ WHERE eh_type = 'task' AND errata_id IN (
         WHERE task_state = 'DONE' AND pkgset_name = '{branch}'
         GROUP BY errata_id_noversion
     )
+    WHERE eid NOT IN (
+        SELECT errata_id FROM last_discarded_erratas
+    )
 )
 {pkg_name_clause}
 ORDER BY eh_updated
@@ -170,32 +173,37 @@ WHERE errata_id IN (
 """
 
     search_valid_errata = """
-SELECT
-    errata_id_noversion,
-    argMax(
-        tuple(
-            errata_id,
-            eh_type,
-            eh_source,
-            eh_created,
-            eh_updated,
-            pkg_hash,
-            pkg_name,
-            pkg_version,
-            pkg_release,
-            pkgset_name,
-            task_id,
-            subtask_id,
-            task_state,
-            arrayZip(eh_references.type, eh_references.link)
-        ),
-        eh_updated
-    ),
-    max(eh_updated) AS max_ts
-FROM ErrataHistory
-{where_clause}
-GROUP BY errata_id_noversion
-ORDER BY max_ts DESC
+SELECT * FROM (
+    SELECT
+        errata_id_noversion,
+        argMax(
+            tuple(
+                errata_id,
+                eh_type,
+                eh_source,
+                eh_created,
+                eh_updated,
+                pkg_hash,
+                pkg_name,
+                pkg_version,
+                pkg_release,
+                pkgset_name,
+                task_id,
+                subtask_id,
+                task_state,
+                arrayZip(eh_references.type, eh_references.link)
+            ),
+            eh_updated
+        ) AS errata_tuple,
+        max(eh_updated) AS max_ts
+    FROM ErrataHistory
+    {where_clause}
+    GROUP BY errata_id_noversion
+    ORDER BY max_ts DESC
+)
+WHERE tupleElement(errata_tuple, 1) NOT IN (
+    SELECT errata_id FROM last_discarded_erratas
+)
 """
 
     get_valid_errata_ids = """
@@ -210,23 +218,29 @@ FROM (
     GROUP BY errata_id_noversion
     ORDER BY updated DESC
 )
+WHERE eid NOT IN (
+    SELECT errata_id FROM last_discarded_erratas
+)
 """
 
     get_errata_branches = """
 SELECT DISTINCT pkgset_name
 FROM ErrataHistory
 WHERE pkgset_name != 'icarus'
-AND pkgset_name IN (
-    SELECT pkgset_name
-    FROM (
-        SELECT
-            pkgset_name,
-            argMax(rs_show, ts) AS show
-        FROM RepositoryStatus
-        GROUP BY pkgset_name
+    AND pkgset_name IN (
+        SELECT pkgset_name
+        FROM (
+            SELECT
+                pkgset_name,
+                argMax(rs_show, ts) AS show
+            FROM RepositoryStatus
+            GROUP BY pkgset_name
+        )
+        WHERE show = 1
     )
-    WHERE show = 1
-)
+    AND errata_id NOT IN (
+        SELECT errata_id FROM last_discarded_erratas
+    )
 """
 
     find_erratas = """
