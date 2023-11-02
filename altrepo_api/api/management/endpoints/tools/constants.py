@@ -82,27 +82,26 @@ ERRATA_PACKAGE_UPDATE_SOURCES = (
 )
 ERRATA_PACKAGE_UPDATE_TYPES = (BRANCH_PACKAGE_ERRATA_TYPE, TASK_PACKAGE_ERRATA_TYPE)
 
-SUPPORTED_BRANCHES_WITH_TASKS = (
-    "c9f1",
-    "c9f2",
-    "c10f1",
-    "c10f2",
-    "p9",
-    "p10",
-    "sisyphus",
-)
-SUPPORTED_BRANCHES_WITHOUT_TASKS = (
-    "p9_mipsel",
-    "p9_e2k",
-    "p10_e2k",
-    "sisyphus_mipsel",
-    "sisyphus_riscv64",
-    "sisyphus_e2k",
-)
+SUPPORTED_BRANCHES_WITH_TASKS = lut.errata_manage_branches_with_tasks
+SUPPORTED_BRANCHES_WITHOUT_TASKS = lut.errata_manage_branches_without_tasks
 SUPPORTED_BRANCHES = (*SUPPORTED_BRANCHES_WITH_TASKS, *SUPPORTED_BRANCHES_WITHOUT_TASKS)
 # errata comparison field sets
-CHECK_ERRATA_CONTENT_IS_CHANGED_FIELDS = ("hash",)
-CHEK_ERRATA_CONTENT_ON_CREATE = (
+CHECK_ERRATA_CONTENT_ON_UPDATE = (
+    "hash",
+    "task_id",
+    "subtask_id",
+)
+CHECK_ERRATA_CONTENT_ON_CREATE = (
+    "pkg_hash",
+    "pkg_name",
+    "pkg_version",
+    "pkg_release",
+    "pkgset_name",
+    "task_id",
+    "subtask_id",
+    "task_state",
+)
+CHECK_ERRATA_CONTENT_ON_DISCARD = (
     "pkg_hash",
     "pkg_name",
     "pkg_version",

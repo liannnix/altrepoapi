@@ -437,5 +437,23 @@ class LookupTables:
     errata_package_update_prefix = "ALT-PU"
     errata_change_prefix = "ALT-EC"
 
+    errata_manage_branches_with_tasks = (
+        "c9f1",
+        "c9f2",
+        "c10f1",
+        "c10f2",
+        "p9",
+        "p10",
+        "sisyphus",
+    )
+    errata_manage_branches_without_tasks = (
+        "p9_mipsel",
+        "p9_e2k",
+        "p10_e2k",
+        "sisyphus_mipsel",
+        "sisyphus_riscv64",
+        "sisyphus_e2k",
+    )
+
 
 lut = LookupTables()
