@@ -29,6 +29,17 @@ class Task(NamedTuple):
     date: datetime
 
 
+class TaskInfo(NamedTuple):
+    pkg_hash: int
+    pkg_name: str
+    pkg_version: str
+    pkg_release: str
+    pkgset_name: str
+    task_id: int
+    subtask_id: int
+    task_state: str
+
+
 class Branch(NamedTuple):
     name: str
     date: datetime
