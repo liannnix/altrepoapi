@@ -29,12 +29,12 @@ from .base import (
     ErrataID,
     ErrataManageError,
     Task,
+    TaskInfo,
     Reference,
 )
 from .errata_id import ErrataIDService, check_errata_id
 from .utils import convert_dt_to_timezone_aware
 from .constants import (
-    CHECK_ERRATA_CONTENT_IS_CHANGED_FIELDS,
     DT_NEVER,
     BUG_REFERENCE_TYPE,
     VULN_REFERENCE_TYPE,
@@ -157,7 +157,7 @@ def get_last_errata_id_version(cls: _pManageErrata) -> Union[ErrataID, None]:
     cls.status = False
 
     if cls.errata.id is None:
-        return
+        return None
 
     try:
         last_errata_id = check_errata_id(cls.eid_service, cls.errata.id)
@@ -194,7 +194,9 @@ def get_last_errata_id_version(cls: _pManageErrata) -> Union[ErrataID, None]:
     return last_errata_id
 
 
-def check_errata_contents_is_changed(cls: _pManageErrata) -> bool:
+def check_errata_contents_is_changed(
+    cls: _pManageErrata, errata_check_fields: Iterable[str]
+) -> bool:
     """Checks if errata contents have been changed in fact."""
 
     last_errata_id = get_last_errata_id_version(cls)
@@ -221,9 +223,7 @@ def check_errata_contents_is_changed(cls: _pManageErrata) -> bool:
     cls.status = True
     # XXX: compare errata using only hash and discard sign here due to other
     #  values except references is gathered from DB and must be consistent!
-    return not is_errata_equal(
-        cls.errata, errata_from_db, CHECK_ERRATA_CONTENT_IS_CHANGED_FIELDS
-    )
+    return not is_errata_equal(cls.errata, errata_from_db, errata_check_fields)
 
 
 def check_errata_is_discarded(cls: _pManageErrata) -> bool:
@@ -448,6 +448,7 @@ def find_closest_branch_state(
     if not cls.sql_status:
         return None
     if not response:
+        # handle this case on caller side
         cls.status = True
         return None
 
@@ -470,19 +471,38 @@ def get_last_branch_state(cls: _pManageErrata) -> Union[Branch, None]:
     branch = cls.errata.pkgset_name
 
     # get last commited branch state
+    response = cls.send_sql_request(cls.sql.get_last_branch_state.format(branch=branch))
+    if not cls.sql_status:
+        return None
+    if not response:
+        _ = cls.store_error({"message": f"Failed to find last state for {branch}"})
+        return None
+
+    cls.status = True
+    return Branch(*response[0])
+
+
+def get_task_info(cls: _pManageErrata) -> Union[tuple[TaskInfo, datetime], None]:
+    cls.status = False
+
     response = cls.send_sql_request(
-        cls.sql.get_last_branch_state.format(branch=branch)
+        cls.sql.get_package_info_by_task_and_subtask.format(
+            task_id=cls.errata.task_id, subtask_id=cls.errata.subtask_id
+        )
     )
     if not cls.sql_status:
         return None
     if not response:
         _ = cls.store_error(
-            {"message": f"Failed to find last state for {branch}"}
+            {
+                "message": "No data found in DB for given task and subtask",
+                "errata": cls.errata.asdict(),
+            }
         )
         return None
 
     cls.status = True
-    return Branch(*response[0])
+    return TaskInfo(*response[0][:-1]), response[0][-1]
 
 
 class Vulnerability(NamedTuple):

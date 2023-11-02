@@ -15,11 +15,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from flask import request
-from typing import Any, NamedTuple
+from typing import Any
 
 from altrepo_api.api.base import APIWorker
 
-from .tools.base import Errata, UserInfo
+from .tools.base import Errata, TaskInfo, UserInfo
 from .tools.constants import (
     ERRATA_CHANGE_ACTION_CREATE,
     ERRATA_CHANGE_ACTION_DISCARD,
@@ -31,7 +31,9 @@ from .tools.constants import (
     TASK_PACKAGE_ERRATA_TYPE,
     TASK_STATE_DONE,
     DT_NEVER,
-    CHEK_ERRATA_CONTENT_ON_CREATE,
+    CHECK_ERRATA_CONTENT_ON_CREATE,
+    CHECK_ERRATA_CONTENT_ON_UPDATE,
+    CHECK_ERRATA_CONTENT_ON_DISCARD,
 )
 from .tools.errata import json2errata, build_stub_errata
 from .tools.errata_id import get_errataid_service
@@ -45,6 +47,7 @@ from .tools.helpers import (
     check_errata_is_discarded,
     check_errata_contents_is_changed,
     get_errata_by_task,
+    get_task_info,
     is_errata_equal,
     get_last_branch_state,
     find_closest_branch_state,
@@ -257,14 +260,16 @@ class ManageErrata(APIWorker):
 
         # 1. check if current errata version is the latest one and
         # check if errata contents have been changed in fact (ensure request is idempotent)
-        is_changed = check_errata_contents_is_changed(self)
+        is_changed = check_errata_contents_is_changed(
+            self, CHECK_ERRATA_CONTENT_ON_UPDATE
+        )
         if not self.status:
             return self.error
 
         if not is_changed:
             return {
                 "action": self.action,
-                "message": f"no changes found to be saved to DB for {self.errata.id}",
+                "message": f"No changes found to be saved to DB for {self.errata.id}",
                 "errata": [self.errata.asdict()],
                 "errata_change": [],
             }, 200
@@ -278,24 +283,43 @@ class ManageErrata(APIWorker):
             return self.error
 
         if bulletin is None:
-            # XXX: shouldn't ever happen
-            # FIXME: got here for 'DONE' tasks that has no branch update errata yet (not commited repo state)
-            # 1. check branch type here
-            # 2. check task history and branch commit history here
-            return self.store_error(
-                {
-                    "message": (
-                        f"Failed to find branch update errata for {self.errata.id}. "
-                        "This shouldn't happen and means possible DB inconsistency."
-                    ),
-                    "errata": self.errata.asdict(),
-                },
-                http_code=404,
-                severity=self.LL.ERROR,
+            if not validate_branch_with_tatsks(self.errata.pkgset_name):
+                # XXX: shouldn't ever happen
+                return self.store_error(
+                    {
+                        "message": (
+                            f"Failed to find branch update errata for {self.errata.id}. "
+                            "This shouldn't happen and means possible DB inconsistency."
+                        ),
+                        "errata": self.errata.asdict(),
+                    },
+                    http_code=400,
+                    severity=self.LL.ERROR,
+                )
+            # XXX: handle errata update for newest tasks without commited branch state
+            # get last branch state
+            branch_state = get_last_branch_state(self)
+            if not self.sql_status or not self.status or branch_state is None:
+                return self.error
+            # get task changed info
+            ti = get_task_info(self)
+            if not self.sql_status or not self.status or ti is None:
+                return self.error
+            _, task_changed = ti
+            #
+            if task_changed < branch_state.date:
+                # XXX: shouldn't ever happen
+                return self.store_error(
+                    {"message": "Inconsistent data in DB: "},
+                    http_code=500,
+                    severity=self.LL.CRITICAL,
+                )
+            self.logger.info(
+                f"Task {self.errata.task_id} has no committed brunch state yet"
             )
-
-        # 4. register new errata version for branch update
-        self.trx.register_bulletin_update(bulletin)
+        else:
+            # 4. register new errata version for branch update
+            self.trx.register_bulletin_update(bulletin)
 
         # 5. commit errata registration transaction
         # check if errata change already registered for current package update errata
@@ -330,16 +354,6 @@ class ManageErrata(APIWorker):
             - 409 (Conflict) if such errata exists already or dtat inconsistent with DB
         """
 
-        class TaskInfo(NamedTuple):
-            pkg_hash: int
-            pkg_name: str
-            pkg_version: str
-            pkg_release: str
-            pkgset_name: str
-            task_id: int
-            subtask_id: int
-            task_state: str
-
         # FIXME: how to validate taskless branch package update errata contents?
         if self.errata.type == BRANCH_PACKAGE_ERRATA_TYPE:
             return self.store_error(
@@ -370,21 +384,10 @@ class ManageErrata(APIWorker):
         )
 
         # 1. get task information from database
-        response = self.send_sql_request(
-            self.sql.get_package_info_by_task_and_subtask.format(
-                task_id=self.errata.task_id, subtask_id=self.errata.subtask_id
-            )
-        )
-        if not self.sql_status:
+        ti = get_task_info(self)
+        if not self.sql_status or not self.status or ti is None:
             return self.error
-        if not response:
-            return self.store_error(
-                {
-                    "message": "No data found in DB for given task and subtask",
-                    "errata": self.errata.asdict(),
-                }
-            )
-        task_info_db, task_changed = TaskInfo(*response[0][:-1]), response[0][-1]
+        task_info_db, task_changed = ti
 
         # 2. compare task, subtask and package data with actual DB state
         if task_info_db != task_info_errata:
@@ -402,7 +405,7 @@ class ManageErrata(APIWorker):
             return self.error
         if errata_exists is not None:
             is_equal = is_errata_equal(
-                self.errata, errata_exists, CHEK_ERRATA_CONTENT_ON_CREATE
+                self.errata, errata_exists, CHECK_ERRATA_CONTENT_ON_CREATE
             )
             if is_equal and not errata_exists.is_discarded:
                 return self.store_error(
@@ -497,12 +500,23 @@ class ManageErrata(APIWorker):
             - 404 (Not found) if errata discarded already or does not exists
         """
 
-        # 1. check if current errata version is the latest one
-        last_errata_id = get_last_errata_id_version(self)
-        if not self.status or last_errata_id is None:
+        # 1. check if current errata version is the latest one and the contents
+        # is consistent with DB
+        check_errata = check_errata_contents_is_changed(
+            self, CHECK_ERRATA_CONTENT_ON_DISCARD
+        )
+        if not self.status:
             return self.error
 
-        # 2. check if current errat is not discarded yet
+        if check_errata:
+            return self.store_error(
+                {
+                    "message": f"Errata {self.errata.id} contents is inconsistent with DB",
+                },
+                http_code=409,
+            )
+
+        # 2. check if current errata is not discarded yet
         is_discarded = check_errata_is_discarded(self)
         if not self.status or not self.sql_status:
             return self.error
@@ -536,11 +550,27 @@ class ManageErrata(APIWorker):
                     http_code=400,
                     severity=self.LL.ERROR,
                 )
-            # handle errata discard for newest tasks without commited branch state
+            # XXX: handle errata discard for newest tasks without commited branch state
+            # get last branch state
+            branch_state = get_last_branch_state(self)
+            if not self.sql_status or not self.status or branch_state is None:
+                return self.error
+            # get task changed info
+            ti = get_task_info(self)
+            if not self.sql_status or not self.status or ti is None:
+                return self.error
+            _, task_changed = ti
+            #
+            if task_changed < branch_state.date:
+                # XXX: shouldn't ever happen
+                return self.store_error(
+                    {"message": "Inconsistent data in DB: "},
+                    http_code=500,
+                    severity=self.LL.CRITICAL,
+                )
             self.logger.info(
                 f"Task {self.errata.task_id} has no committed brunch state yet"
             )
-            pass
         else:
             # 5. update branch update errata by discarded errata
             self.trx.register_bulletin_update(bulletin)
