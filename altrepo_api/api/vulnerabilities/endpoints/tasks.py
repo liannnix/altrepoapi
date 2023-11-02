@@ -87,8 +87,10 @@ class TaskVulnerabilities(APIWorker):
         if not response:
             return self.store_error(
                 {
-                    "Error": f"No fixed vulnerabilities found in "
-                             f"database for task '{self.task_id}'"
+                    "Error": (
+                        f"No fixed vulnerabilities found in "
+                        f"database for task '{self.task_id}'"
+                    )
                 }
             )
 
