@@ -1,6 +1,26 @@
 # Changelog
 ALTrepo API changelog
 
+## [1.15.12] - 2023-11-07
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `task/task_info`: fix task data gathering for tasks in `NEW` state
+
+## [1.15.11] - 2023-10-24
+
+Regular API code updates and fixes.
+
+### Added
+- `api/errata`: add initial `c10f2` branch support
+### Changed
+- `api/errata`: check for errata discard
+### Fixed
+- logging to console: split messageas to stderr/stdout by log level
+
 ## [1.15.10] - 2023-10-20
 
 Regular API code updates and fixes.

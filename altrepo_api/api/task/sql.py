@@ -193,35 +193,43 @@ WHERE task_id = {id}
 """
 
     task_state_by_task_changed = """
-SELECT DISTINCT *
+SELECT DISTINCT
+    task_id,
+    task_state,
+    task_changed,
+    task_runby,
+    task_depends,
+    task_try,
+    task_testonly,
+    task_failearly,
+    task_shared,
+    task_message,
+    task_version,
+    task_prev,
+    task_eventlog_hash
 FROM TaskStates
 WHERE task_id = {id}
     AND task_changed = '{changed}'
 """
 
-    task_state_keys = [
-        "task_changed",
-        "task_id",
-        "task_state",
-        "task_runby",
-        "task_depends",
-        "task_try",
-        "task_testonly",
-        "task_failearly",
-        "task_shared",
-        "task_message",
-        "task_version",
-        "task_prev",
-        "task_eventlog_hash",
-    ]
-
     task_state_last = """
 SELECT
+    task_id,
     argMax(task_state, task_changed),
+    max(task_changed),
+    argMax(task_runby, task_changed),
+    argMax(task_depends, task_changed),
+    argMax(task_try, task_changed),
+    argMax(task_testonly, task_changed),
+    argMax(task_failearly, task_changed),
+    argMax(task_shared, task_changed),
     argMax(task_message, task_changed),
-    max(task_changed)
+    argMax(task_version, task_changed),
+    argMax(task_prev, task_changed),
+    argMax(task_eventlog_hash, task_changed)
 FROM TaskStates
 WHERE task_id = {id}
+GROUP BY task_id
 """
 
     task_plan_packages = """
