@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+## [1.15.13] - 2023-11-09
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `api/site_packageset`: suupport virtual `srpm` architecture
+### Fixed
+
 ## [1.15.12] - 2023-11-07
 
 Regular API code updates and fixes.
