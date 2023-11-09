@@ -97,12 +97,18 @@ class PackagesetFindPackages(APIWorker):
                 name_like=name_like_clause,
             )
         else:
-            self.arch = f"AND pkg_arch IN {(self.args['arch'],)}"
-            _sql = self.sql.get_find_packages_by_name_and_arch.format(
-                branch=self.branch,
-                arch=self.arch,
-                name_like=name_like_clause,
-            )
+            if self.args["arch"] == "srpm":
+                _sql = self.sql.get_find_packages_by_src_name.format(
+                    branch=self.branch,
+                    name_like=name_like_clause
+                )
+            else:
+                self.arch = f"AND pkg_arch IN {(self.args['arch'],)}"
+                _sql = self.sql.get_find_packages_by_name_and_arch.format(
+                    branch=self.branch,
+                    arch=self.arch,
+                    name_like=name_like_clause,
+                )
 
         response = self.send_sql_request(_sql)
         if not self.sql_status:
