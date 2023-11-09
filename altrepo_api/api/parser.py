@@ -53,6 +53,7 @@ parser = ParserFactory()
 # lookup tables
 # __pkg_groups = set(lut.pkg_groups)
 __known_archs = set(lut.known_archs)
+__known_archs_ext = set(lut.known_archs).union(("srpm",))
 __known_repo_components = set(lut.known_repo_components)
 __known_states = set(lut.known_states)
 __known_branches = set(lut.known_branches)
@@ -187,6 +188,19 @@ def arch_name_type(value: Any) -> str:
 
 
 arch_name_type.__schema__ = {"type": "string"}
+
+
+# __known_archs_ext
+def arch_name_type_ext(value: Any) -> str:
+    """Extended architecture name validator that includes virtual 'srpm' one."""
+
+    value = __get_string(value)
+    if value not in __known_archs_ext:
+        raise ValueError("Invalid architecture name: {0}".format(value))
+    return value
+
+
+arch_name_type_ext.__schema__ = {"type": "string"}
 
 
 def arch_component_name_type(value: Any) -> str:
