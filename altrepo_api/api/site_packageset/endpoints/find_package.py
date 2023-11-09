@@ -296,17 +296,14 @@ class PackagesetPkghashByNVR(APIWorker):
         return True
 
     def get(self):
-        self.name = self.args["name"]
-        self.branch = self.args["branch"]
-        self.version = self.args["version"]
-        self.release = self.args["release"]
+        name = self.args["name"]
+        branch = self.args["branch"]
+        version = self.args["version"]
+        release = self.args["release"]
 
         response = self.send_sql_request(
             self.sql.get_pkghash_by_BVR.format(
-                branch=self.branch,
-                name=self.name,
-                version=self.version,
-                release=self.release,
+                branch=branch, name=name, version=version, release=release
             )
         )
         if not self.sql_status:
@@ -315,8 +312,8 @@ class PackagesetPkghashByNVR(APIWorker):
             return self.store_error(
                 {
                     "message": (
-                        f"Package '{self.name}-{self.version}-{self.release}' "
-                        f"not found in database for branch {self.branch}"
+                        f"Package '{name}-{version}-{release}' "
+                        f"not found in database for branch {branch}"
                     ),
                     "args": self.args,
                 }
