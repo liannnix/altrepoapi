@@ -48,11 +48,9 @@ def relevance_sort(
     """Sorts packages by some relevance. Values that matches by predicate function
     has precedence and those are not matched sorted in alphanumeric order."""
 
-    # names = sorted(n.lower() for n in pkg_names)
     names = [n.lower() for n in pkg_names]
 
     def relevance_weight(key: str):
-        # res = len(key) + 100 * key.find(names[0])
         res = len(key) + WEIGHT_MULT * sum(key.find(n) for n in names)
         return res
 
