@@ -17,6 +17,7 @@
 from altrepo_api.api.parser import (
     parser,
     arch_name_type,
+    arch_name_type_ext,
     branch_name_type,
     pkg_name_type,
     pkg_groups_type,
@@ -49,7 +50,7 @@ arch = parser.register_item(
 )
 arch_opt = parser.register_item(
     "arch",
-    type=arch_name_type,
+    type=arch_name_type_ext,
     required=False,
     help="binary package arch",
     location="args",

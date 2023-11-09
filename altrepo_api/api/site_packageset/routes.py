@@ -211,7 +211,7 @@ class routePackagesetPkghashByNVR(Resource):
 @ns.route(
     "/find_source_package",
     doc={
-        "description": ("Find source package in branch"),
+        "description": "Find source package in branch by binary package name",
         "responses": GET_RESPONSES_400_404,
     },
 )
