@@ -14,8 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from collections import namedtuple
-from typing import Any, Callable
+from typing import Any, Callable, NamedTuple
 
 from altrepo_api.utils import tuplelist_to_dict, sort_branches
 
@@ -80,51 +79,50 @@ class PackagesetFindPackages(APIWorker):
         return True
 
     def get(self):
-        self.name = self.args["name"]
-        self.arch = ""
-        self.branch = ""
+        pkg_names = self.args["name"]
 
-        name_like_clause = " AND ".join([f"pkg_name ILIKE '%{n}%'" for n in self.name])
+        branch_clause = (
+            f"AND pkgset_name = '{self.args['branch']}'"
+            if self.args["branch"] is not None
+            else ""
+        )
 
-        if self.args["branch"] is not None:
-            self.branch = f"AND pkgset_name = '{self.args['branch']}'"
+        name_like_clause = " AND ".join([f"pkg_name ILIKE '%{n}%'" for n in pkg_names])
 
-        if self.args["arch"] is None:
-            self.arch = f"AND pkg_arch IN {(*lut.default_archs,)}"
+        if self.args["arch"] == "srpm":
+            _sql = self.sql.get_find_packages_by_src_name.format(
+                branch=branch_clause, name_like=name_like_clause
+            )
+        elif self.args["arch"] is None:
             _sql = self.sql.get_find_packages_by_name.format(
-                branch=self.branch,
-                arch=self.arch,
+                branch=branch_clause,
                 name_like=name_like_clause,
+                arch=f"AND pkg_arch IN {(*lut.default_archs,)}",
             )
         else:
-            if self.args["arch"] == "srpm":
-                _sql = self.sql.get_find_packages_by_src_name.format(
-                    branch=self.branch,
-                    name_like=name_like_clause
-                )
-            else:
-                self.arch = f"AND pkg_arch IN {(self.args['arch'],)}"
-                _sql = self.sql.get_find_packages_by_name_and_arch.format(
-                    branch=self.branch,
-                    arch=self.arch,
-                    name_like=name_like_clause,
-                )
+            _sql = self.sql.get_find_packages_by_name_and_arch.format(
+                branch=branch_clause,
+                name_like=name_like_clause,
+                arch=f"AND pkg_arch IN {(self.args['arch'],)}",
+            )
 
         response = self.send_sql_request(_sql)
         if not self.sql_status:
             return self.error
 
         res = []
-        PkgMeta = namedtuple(
-            "PkgMeta",
-            ["branch", "version", "release", "pkghash", "deleted"],
-            defaults=[False],  # 'deleted' default
-        )
+
+        class PkgMeta(NamedTuple):
+            branch: str
+            version: str
+            release: str
+            pkghash: int
+            deleted: bool = False
 
         if response:
             pkgs_sorted = relevance_sort(
                 tuplelist_to_dict(response, 6),
-                self.name,
+                pkg_names,
                 predicate_all_match_and_is_source,
             )
 
@@ -144,14 +142,14 @@ class PackagesetFindPackages(APIWorker):
         # search in deleted packages
         response = self.send_sql_request(
             self.sql.get_find_deleted_packages_by_name.format(
-                branch=self.branch, name_like=name_like_clause
+                branch=branch_clause, name_like=name_like_clause
             )
         )
         if not self.sql_status:
             return self.error
 
         if response:
-            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 5), self.name)
+            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 5), pkg_names)
 
             src_pkgs_found = {p["name"] for p in res}
 
@@ -179,7 +177,7 @@ class PackagesetFindPackages(APIWorker):
         if not res:
             return self.store_error(
                 {
-                    "message": f"Packages like '{' '.join(self.name)}' not found in database",
+                    "message": f"Packages like '{' '.join(pkg_names)}' not found in database",
                     "args": self.args,
                 }
             )
