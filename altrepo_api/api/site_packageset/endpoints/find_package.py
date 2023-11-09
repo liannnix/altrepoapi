@@ -200,17 +200,19 @@ class FastPackagesSearchLookup(APIWorker):
         return True
 
     def get(self):
-        self.name = self.args["name"]
-        self.branch = ""
+        pkg_names = self.args["name"]
 
-        name_like_clause = " AND ".join([f"pkg_name ILIKE '%{n}%'" for n in self.name])
+        branch_clause = (
+            f"AND pkgset_name = '{self.args['branch']}'"
+            if self.args["branch"] is not None
+            else ""
+        )
 
-        if self.args["branch"] is not None:
-            self.branch = f"AND pkgset_name = '{self.args['branch']}'"
+        name_like_clause = " AND ".join([f"pkg_name ILIKE '%{n}%'" for n in pkg_names])
 
         response = self.send_sql_request(
             self.sql.get_fast_search_packages_by_name.format(
-                branch=self.branch, name_like=name_like_clause
+                branch=branch_clause, name_like=name_like_clause
             )
         )
         if not self.sql_status:
@@ -219,7 +221,7 @@ class FastPackagesSearchLookup(APIWorker):
         res = []
 
         if response:
-            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 3), self.name)
+            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 3), pkg_names)
 
             for pkg in pkgs_sorted:
                 if pkg[1] == 1:
@@ -237,14 +239,14 @@ class FastPackagesSearchLookup(APIWorker):
         # search for deleted packages
         response = self.send_sql_request(
             self.sql.get_fast_search_deleted_packages_by_name.format(
-                branch=self.branch, name_like=name_like_clause
+                branch=branch_clause, name_like=name_like_clause
             )
         )
         if not self.sql_status:
             return self.error
 
         if response:
-            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 5), self.name)
+            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 5), pkg_names)
             src_pkgs_found = {p["name"] for p in res if p["sourcepackage"] == "source"}
 
             for pkg in pkgs_sorted:
@@ -271,7 +273,7 @@ class FastPackagesSearchLookup(APIWorker):
         if not res:
             return self.store_error(
                 {
-                    "message": f"Packages like '{' '.join(self.name)}' not found in database",
+                    "message": f"Packages like '{' '.join(pkg_names)}' not found in database",
                     "args": self.args,
                 }
             )
