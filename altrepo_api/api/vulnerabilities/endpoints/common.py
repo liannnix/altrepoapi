@@ -518,7 +518,7 @@ def _get_task_history(
         _ = cls.store_error({"message": "No 'DONE' tasks found in DB"})
         return None
 
-    # order by task_changed in descending order
+    # ordered by 'task_changed' in descending order in SQL request
     tasks: dict[str, list[Task]] = {}
     for task in (Task(*el) for el in response):
         if task.package not in tasks:
@@ -533,6 +533,9 @@ def _get_task_history(
         _branches = {t.branch for t in _tasks}
         _all_branches.update(_branches)
 
+        # cut tasks list until the first task in given branch
+        # we don't need them here due to errata history contents for
+        # current branch is collected directly by packages names
         if cls.branch in _branches:
             i = 0
             for ii, t in enumerate(_tasks):
@@ -565,17 +568,19 @@ def _get_task_history(
 
     tasks_history = {t.id: t for t in (TaskHistory(*el) for el in response)}
 
-    first_tasks: dict[str, TaskHistory] = {}
+    # get the map of latest task of each branch
+    newest_tasks: dict[str, TaskHistory] = {}
     for task in tasks_history.values():
         if (
-            task.branch not in first_tasks
-            or task.changed > first_tasks[task.branch].changed
+            task.branch not in newest_tasks
+            or task.changed > newest_tasks[task.branch].changed
         ):
-            first_tasks[task.branch] = task
+            newest_tasks[task.branch] = task
 
     branch_history: dict[str, set[int]] = {}
 
-    for branch, task in ((b, t) for b, t in first_tasks.items()):
+    # build the task and branch inheritance tree
+    for branch, task in newest_tasks.items():
         t = task
         tasks_set = set()
         intermediate_branches = set()
@@ -594,7 +599,7 @@ def _get_task_history(
 
         branch_history[branch] = tasks_set
 
-    # filter out tasks using branch tasks history
+    # filter out packages tasks using branch history
     for package, _tasks in tasks.items():
         if not _tasks:
             continue
