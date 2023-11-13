@@ -56,13 +56,6 @@ class DependsBinPackage(APIWorker):
         for el in pkg_dependencies:
             el["flag_decoded"] = dp_flags_decode(el["flag"], lut.rpmsense_flags)
 
-        # get package name and arch
-        response = self.send_sql_request(
-            self.sql.get_pkgs_name_and_arch.format(pkghash=self.pkghash)
-        )
-        if not self.sql_status:
-            return self.error
-
         res = {
             "request_args": str(self.pkghash),
             "length": len(pkg_dependencies),
