@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+## [1.15.14] - 2023-11-13
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `task/task_info`: fix task `DELETED` tasks handling
+
 ## [1.15.13] - 2023-11-09
 
 Regular API code updates and fixes.

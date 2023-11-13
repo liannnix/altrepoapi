@@ -373,7 +373,7 @@ class TaskInfo(APIWorker):
         self.task.update(**task_state.asdict())
 
         # return here for deleted task
-        if task_state.task_state == "DELETD":
+        if task_state.task_state == "DELETED":
             self.task["rebuilds"] = [
                 (str(x[0]) + "." + str(x[1]))
                 for x in sorted(self.task["rebuilds"].keys())
