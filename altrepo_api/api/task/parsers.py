@@ -24,6 +24,7 @@ from altrepo_api.api.parser import (
     date_string_type,
     pkg_name_list_type,
     acl_group_type,
+    datetime_string_type,
 )
 
 # register parser items
@@ -175,6 +176,14 @@ no_chanche_opt = parser.register_item(
     location="args",
     default="",
 )
+before_datetime_opt = parser.register_item(
+    "before",
+    type=datetime_string_type,
+    default=None,
+    required=False,
+    help="show tasks' info before specified datetime (YYYY-MM-DD[ HH:MM:SS])",
+    location="args",
+)
 
 # build parsers
 task_info_args = parser.build_parser(try_opt, iteration_opt, no_chanche_opt)
@@ -196,4 +205,6 @@ task_buid_dep_set_args = parser.build_parser(arch_opt)
 task_history_args = parser.build_parser(
     branch, start_task_opt, end_task_opt, start_date_opt, end_date_opt
 )
-needs_approval_args = parser.build_parser(acl_group, branch_list_opt)
+needs_approval_args = parser.build_parser(
+    acl_group, branch_list_opt, before_datetime_opt
+)
