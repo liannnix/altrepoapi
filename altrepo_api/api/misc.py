@@ -109,6 +109,19 @@ class LookupTables:
         "gostcrypto",
     ]
     default_archs = ["x86_64", "i586", "aarch64", "armh", "ppc64le", "noarch"]
+    branch_wds_default_archs = {
+        # RISCV64
+        "sisyphus_riscv64": ["noarch", "riscv64"],
+        # MIPSEL
+        "sisyphus_mipsel": ["noarch", "mipsel"],
+        "p9_mipsel": ["noarch", "mipsel"],
+        # E2K
+        "sisyphus_e2k": ["noarch", "e2k", "e2kv4", "e2kv5", "e2kv6"],
+        "p10_e2k": ["noarch", "e2k", "e2kv4", "e2kv5", "e2kv6"],
+        "p9_e2k": ["noarch", "e2k", "e2kv4", "e2kv5", "e2kv6"],
+        # MAIN
+        "default": ["noarch", "x86_64"]
+    }
     package_params = [
         "pkg_cs",
         "pkg_packager",

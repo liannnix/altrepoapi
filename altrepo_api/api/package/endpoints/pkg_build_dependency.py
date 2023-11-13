@@ -24,11 +24,12 @@ from altrepo_api.utils import (
     join_tuples,
     make_tmp_table_name,
 )
-
+from altrepo_api.api.misc import lut
 from altrepo_api.api.base import APIWorker
-from ..sql import sql
 from altrepo_api.libs.dependency_sorting import SortList
 from altrepo_api.api.task.endpoints.task_repo import LastRepoStateFromTask
+
+from ..sql import sql
 
 
 class BuildDependency(APIWorker):
@@ -65,17 +66,22 @@ class BuildDependency(APIWorker):
         self.result = {}
         super().__init__()
 
-    def build_dependencies(self, task_repo_hashes: Optional[tuple[int]] = None):
+    def build_dependencies(self, task_repo_hashes: Optional[tuple[int, ...]] = None):
         # do all kind of black magic here
         input_pkgs = self.packages
         depends_type_to_sql = {"source": (1,), "binary": (0,), "both": (1, 0)}
         sourcef = depends_type_to_sql[self.dptype]
 
         if self.arch:
+            # always add 'noarch' if not specified
             if "noarch" not in self.arch:
                 self.arch.append("noarch")
         else:
-            self.arch = ["x86_64", "noarch"]
+            # get default archs for given branch
+            self.arch = (
+                lut.branch_wds_default_archs.get(self.branch)
+                or lut.branch_wds_default_archs["default"]
+            )
 
         # store source packages by level
         # store source packages level 0
