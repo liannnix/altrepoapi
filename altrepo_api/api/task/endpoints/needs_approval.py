@@ -214,15 +214,17 @@ class NeedsApproval(APIWorker):
 
         if acl_group == "maint":
             needs_approval_check = needs_approval_by_maint
+            aggregate = any
         else:
             needs_approval_check = needs_approval_by_tester
+            aggregate = all
 
         needs_approval: dict[int, TaskApproval] = {}
 
         for task in task_approvals.values():
             # XXX: all subtasks from task should be `true` with predicate function!
             # Any partially approved task are excluded from results.
-            if all(needs_approval_check(sub) for sub in task.subtasks.values()):
+            if aggregate(needs_approval_check(sub) for sub in task.subtasks.values()):
                 needs_approval[task.id] = task
 
         _tmp_table = "tmp_tasks_ids"
