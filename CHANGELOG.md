@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+## [1.15.15] - 2023-11-13
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `what_depends_src`: fix architectures defaults for ports branches
+
 ## [1.15.14] - 2023-11-13
 
 Regular API code updates and fixes.
