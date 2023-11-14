@@ -59,7 +59,7 @@ INVALID_ACCESS_TOKEN = "invalid_token"
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },
         {
-            "input": f"bug:47017",
+            "input": "bug:47017",
             "status_code": 200,
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },
@@ -187,7 +187,7 @@ INVALID_ACCESS_TOKEN = "invalid_token"
 )
 def test_task_list(client, kwargs, mocked_check_access_token):
     params = {k: v for k, v in kwargs.items() if k not in ("status_code", "headers")}
-    url = url_for("manage._route_task_list")
+    url = url_for("manage.manage_route_task_list")
     mocked_check_access_token.headers = kwargs.get("headers", {})
     mocked_check_access_token.status_code = kwargs["status_code"]
     response = client.get(url, query_string=params)
@@ -257,7 +257,7 @@ def test_task_list(client, kwargs, mocked_check_access_token):
 )
 def test_task_info(client, kwargs, mocked_check_access_token):
     params = {k: v for k, v in kwargs.items() if k not in ("status_code", "headers")}
-    url = url_for("manage._route_task_info", **{"id": kwargs["id"]})
+    url = url_for("manage.manage_route_task_info", **{"id": kwargs["id"]})
     mocked_check_access_token.headers = kwargs.get("headers", {})
     mocked_check_access_token.status_code = kwargs["status_code"]
     response = client.get(url, query_string=params)
@@ -323,7 +323,7 @@ def test_task_info(client, kwargs, mocked_check_access_token):
     ],
 )
 def test_vulns(client, kwargs, mocked_check_access_token):
-    url = url_for("manage._route_vulns_info")
+    url = url_for("manage.manage_route_vulns_info")
     mocked_check_access_token.headers = kwargs.get("headers", {})
     mocked_check_access_token.status_code = kwargs["status_code"]
     response = client.post(url, json=kwargs["payload"], content_type="application/json")
@@ -396,7 +396,7 @@ def test_vulns(client, kwargs, mocked_check_access_token):
 )
 def test_errata_change_history(client, kwargs, mocked_check_access_token):
     params = {k: v for k, v in kwargs.items() if k not in ("status_code", "headers")}
-    url = url_for("manage._route_errata_change_history")
+    url = url_for("manage.manage_route_errata_change_history")
     mocked_check_access_token.headers = kwargs.get("headers", {})
     mocked_check_access_token.status_code = kwargs["status_code"]
     response = client.get(url, query_string=params)
