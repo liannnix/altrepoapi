@@ -107,6 +107,7 @@ class NeedsApproval(APIWorker):
 
         branches = self.args["branches"]
         acl_group = self.args["acl_group"]
+        before_datetime = self.args["before"]
 
         branches = (
             set(branches) if branches is not None else set(lut.known_approvers.keys())
@@ -148,7 +149,12 @@ class NeedsApproval(APIWorker):
                 branches.add("p8")
 
         response = self.send_sql_request(
-            self.sql.get_all_eperm_tasks_with_subtasks.format(branches=tuple(branches))
+            self.sql.get_all_eperm_tasks_with_subtasks.format(
+                branches=tuple(branches),
+                datetime_clause=f"WHERE task_changed < '{before_datetime}'"
+                if before_datetime
+                else "",
+            )
         )
         if not self.sql_status:
             return self.error
@@ -173,7 +179,12 @@ class NeedsApproval(APIWorker):
 
         _tmp_table = "tmp_tasks_ids"
         response = self.send_sql_request(
-            self.sql.get_all_approvals_for_tasks.format(tmp_table=_tmp_table),
+            self.sql.get_all_approvals_for_tasks.format(
+                tmp_table=_tmp_table,
+                datetime_clause=f"AND ts < '{before_datetime}'"
+                if before_datetime
+                else "",
+            ),
             external_tables=[
                 {
                     "name": _tmp_table,
@@ -214,15 +225,17 @@ class NeedsApproval(APIWorker):
 
         if acl_group == "maint":
             needs_approval_check = needs_approval_by_maint
+            aggregate = any
         else:
             needs_approval_check = needs_approval_by_tester
+            aggregate = all
 
         needs_approval: dict[int, TaskApproval] = {}
 
         for task in task_approvals.values():
             # XXX: all subtasks from task should be `true` with predicate function!
             # Any partially approved task are excluded from results.
-            if all(needs_approval_check(sub) for sub in task.subtasks.values()):
+            if aggregate(needs_approval_check(sub) for sub in task.subtasks.values()):
                 needs_approval[task.id] = task
 
         _tmp_table = "tmp_tasks_ids"

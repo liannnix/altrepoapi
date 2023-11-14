@@ -963,6 +963,7 @@ FROM (
                 argMax(task_testonly, task_changed) AS last_testonly,
                 max(task_changed) AS last_changed
             FROM TaskStates
+            {datetime_clause}
             GROUP BY task_id
             HAVING last_state='EPERM' AND last_testonly=0
         )
@@ -990,7 +991,7 @@ FROM (
     FROM TaskApprovals
     WHERE task_id IN (
         SELECT task_id FROM {tmp_table}
-    )
+    ) {datetime_clause}
     GROUP BY
         task_id,
         subtask_id,

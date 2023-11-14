@@ -354,6 +354,20 @@ def date_string_type(value: Any) -> datetime.datetime:
 date_string_type.__schema__ = {"type": "string", "format": "date"}
 
 
+def datetime_string_type(value: Any) -> datetime.datetime:
+    """ISO-8601 datetime validator."""
+
+    value = __get_string(value)
+    try:
+        as_datetime = datetime.datetime.fromisoformat(value)
+        return as_datetime
+    except ValueError:
+        raise ValueError("Invalid datetime: {0}".format(value))
+
+
+datetime_string_type.__schema__ = {"type": "string", "format": "datetime"}
+
+
 def uuid_type(value: Any) -> str:
     """UUID string validator."""
 
