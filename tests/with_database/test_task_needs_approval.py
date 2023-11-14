@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 from flask import url_for
 
@@ -6,6 +8,7 @@ from flask import url_for
 @pytest.mark.parametrize(
     "kwargs",
     [
+        # check branches
         {"branches": ["p10"], "group": "maint", "status_code": 200},
         {"branches": ["p10"], "group": "tester", "status_code": 200},
         {"branches": ["p9"], "group": "maint", "status_code": 200},
@@ -16,14 +19,45 @@ from flask import url_for
         {"branches": ["c9f2"], "group": "maint", "status_code": 200},
         {"branches": ["c9f2"], "group": "tester", "status_code": 200},
         {"branches": ["c10f1"], "group": "maint", "status_code": 200},
+        {"branches": ["c10f1"], "group": "tester", "status_code": 200},
+        {"branches": ["c10f2"], "group": "maint", "status_code": 200},
+        {"branches": ["c10f2"], "group": "tester", "status_code": 200},
         {"branches": ["c9f1"], "group": "tester", "status_code": 200},
+        # check 'before' parameter
+        {
+            "branches": ["c10f1"],
+            "group": "tester",
+            "before": "2023-11-09 09:00:00",
+            "status_code": 200,
+        },
+        {
+            "branches": ["c10f1"],
+            "group": "tester",
+            "before": "2023-11-09T09:00:00",
+            "status_code": 200,
+        },
+        {
+            "branches": ["c10f1"],
+            "group": "tester",
+            "before": "DROP DATABASE",
+            "status_code": 400,
+        },
+        {
+            "branches": ["c10f1"],
+            "group": "tester",
+            "before": "2023-11-09",
+            "status_code": 200,
+        },
     ],
 )
 def test_needs_approval(client, kwargs):
+    args = {
+        "branches": kwargs.get("branches"),
+        "acl_group": kwargs.get("group"),
+        "before": kwargs.get("before"),
+    }
     url = url_for(
-        "api.task_route_needs_approval",
-        branches=kwargs["branches"],
-        acl_group=kwargs["group"],
+        "api.task_route_needs_approval", **{k: v for k, v in args.items() if v}
     )
     response = client.get(url)
     assert response.status_code == kwargs["status_code"]
@@ -85,3 +119,8 @@ def test_needs_approval(client, kwargs):
                 source_package = subtask["source_package"]
                 for field in source_package_fields:
                     assert source_package[field] is not None
+
+            if "before" in kwargs:
+                assert datetime.fromisoformat(
+                    task["last_changed"]
+                ) < datetime.fromisoformat(kwargs["before"])
