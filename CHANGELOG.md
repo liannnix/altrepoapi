@@ -1,6 +1,17 @@
 # Changelog
 ALTrepo API changelog
 
+## [1.15.16] - 2023-11-14
+
+Regular API code updates and fixes.
+
+### Added
+- `task/needs_approval`: support for `before` argument
+### Changed
+- `api/dependencies`: remove dead code
+### Fixed
+- `task/needs_approval`: task check logic
+
 ## [1.15.15] - 2023-11-13
 
 Regular API code updates and fixes.
