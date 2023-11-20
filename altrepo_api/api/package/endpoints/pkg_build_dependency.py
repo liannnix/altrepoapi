@@ -498,7 +498,8 @@ class BuildDependency(APIWorker):
         sorted_pkgs = tuple(result_dict.keys())
 
         # get output data for sorted package list
-        # FIXME: some packages are missing here! ex: [curl <- duckstation]
+        # XXX: some source packages are filtered here if it has no binaries built from
+        # it with specified archs due to using `INNER JOIN` in SQL request
         response = self.send_sql_request(
             self.sql.get_output_data.format(
                 branch=self.branch,
