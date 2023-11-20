@@ -17,11 +17,10 @@
 import re
 import json
 import logging
-import multiprocessing as mp
 
 from dataclasses import dataclass, asdict, field, replace
 from datetime import datetime
-from functools import partial
+
 from itertools import islice
 from typing import Any, Iterable, Literal, NamedTuple, Protocol, Union
 
@@ -899,27 +898,57 @@ def matcher(
 
     result = []
 
-    for vuln_id, cpems in cve_cpems.items():
-        cve_cpe_triplets = {
-            (cpem.cpe.vendor, cpem.cpe.product, cpem.cpe.target_sw) for cpem in cpems
-        }
+    class CveMatch(NamedTuple):
+        vuln_id: str
+        cpms: list[CpeMatch]
 
-        for pkg in packages_versions:
-            pkg_cpe_triplets = {
-                (cpe.vendor, cpe.product, cpe.target_sw)
-                for cpe in packages_cpes.get(pkg.name, [])
-            }
+    class PkgMatch(NamedTuple):
+        version: PackageVersion
+        cpes: list[CPE]
 
-            if not cve_cpe_triplets.intersection(pkg_cpe_triplets):
-                continue
+    CPETriplet = tuple[str, str, str]
 
+    def cpe_triplet(cpe: CPE) -> CPETriplet:
+        return (cpe.vendor, cpe.product, cpe.target_sw)
+
+    # build-up CVE' CPE matches related data structures
+    cve_matches = tuple(
+        [CveMatch(vuln_id, cpems) for vuln_id, cpems in cve_cpems.items()]
+    )
+    # reverse index
+    cves_cpe_ridx: dict[CPETriplet, list[int]] = {}
+    for idx, cvem in enumerate(cve_matches):
+        for cpem in cvem.cpms:
+            triplet = cpe_triplet(cpem.cpe)
+            if triplet in cves_cpe_ridx:
+                cves_cpe_ridx[triplet].append(idx)
+            else:
+                cves_cpe_ridx[triplet] = [idx]
+
+    # loop through data using indexes
+    for idx, pkgm in enumerate(
+        pkgm
+        for pkgm in (
+            PkgMatch(pkg, packages_cpes.get(pkg.name, [])) for pkg in packages_versions
+        )
+        if pkgm.cpes
+    ):
+        #  collect related CVE's
+        pkg_cpe_triplets = {cpe_triplet(cpe) for cpe in pkgm.cpes}
+
+        related_cves_idxs: set[int] = set()
+        for idxs in (cves_cpe_ridx[t] for t in pkg_cpe_triplets if t in cves_cpe_ridx):
+            related_cves_idxs.update(idxs)
+
+        for cvem in (cve_matches[idx] for idx in sorted(related_cves_idxs)):
             result.append(
-                PackageVulnerability(**pkg._asdict(), vuln_id=vuln_id).match_by_version(
+                PackageVulnerability(
+                    **pkgm.version._asdict(), vuln_id=cvem.vuln_id
+                ).match_by_version(
                     (
                         cpem
-                        for cpem in cpems
-                        if (cpem.cpe.vendor, cpem.cpe.product, cpem.cpe.target_sw)
-                        in pkg_cpe_triplets
+                        for cpem in cvem.cpms
+                        if cpe_triplet(cpem.cpe) in pkg_cpe_triplets
                     )
                 )
             )
@@ -937,20 +966,9 @@ def get_packages_vulnerabilities(cls: _pGetPackagesVulnerabilitiesCompatible) ->
         f"Total CPE matches count: {len([c for cpems in cls.cve_cpems.values() for c in cpems])}"
     )
 
-    # # for pv in matcher(cls.cve_cpems, cls.packages_versions, cls.packages_cpes):
-    # for pv in _matcher(cls.cve_cpems):
-    #     cls.packages_vulnerabilities.append(pv)
-
-    _matcher = partial(
-        matcher,
-        packages_versions=cls.packages_versions,
-        packages_cpes=cls.packages_cpes,
-    )
-
-    with mp.Pool(processes=min(mp.cpu_count(), CVE_MATCHER_MAX_CPU)) as p:
-        for pvs in p.map(_matcher, chunks(cls.cve_cpems, CVE_MATCHER_CHUNK_SIZE)):
-            cls.packages_vulnerabilities.extend(pvs)
-
+    matched = matcher(cls.cve_cpems, cls.packages_versions, cls.packages_cpes)
+    cls.logger.debug(f"Matched packages vulnerabilities: {len(matched)}")
+    cls.packages_vulnerabilities.extend(matched)
     cls.logger.debug(f"Packages CVE matching finished: {datetime.now()}")
 
     cls.packages_vulnerabilities = sorted(
