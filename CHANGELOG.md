@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+## [1.15.17] - 2023-11-20
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/vuln`: increase CVE matching algorithm efficiency
+
 ## [1.15.16] - 2023-11-14
 
 Regular API code updates and fixes.
