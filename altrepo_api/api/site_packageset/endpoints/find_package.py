@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Any, Callable, NamedTuple
+from typing import Any, Callable, NamedTuple, Union
 
 from altrepo_api.utils import tuplelist_to_dict, sort_branches
 
@@ -197,20 +197,6 @@ class FastPackagesSearchLookup(APIWorker):
         self.logger.debug(f"args : {self.args}")
         return True
 
-    @staticmethod
-    def _get_pkg_dict(
-        name: str, sourcepackage: int, branches: list[str]
-    ) -> dict[str, Any]:
-        if sourcepackage == 1:
-            srcpkg = "source"
-        else:
-            srcpkg = "binary"
-        return {
-            "name": name,
-            "sourcepackage": srcpkg,
-            "branches": sort_branches(branches),
-        }
-
     def get(self):
         pkg_names = self.args["name"]
 
@@ -232,21 +218,24 @@ class FastPackagesSearchLookup(APIWorker):
 
         res = []
 
-        if response:
-            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 3), pkg_names)
+        def package2dict(
+            name: str,
+            is_sourcepackage: int,
+            branches: Union[list[str], tuple[str, ...]],
+        ) -> dict[str, Any]:
+            return {
+                "name": name,
+                "sourcepackage": "source" if is_sourcepackage else "binary",
+                "branches": sort_branches(branches),
+            }
 
-            for pkg in pkgs_sorted:
-                res.append(
-                    self._get_pkg_dict(
-                        name=pkg[0], sourcepackage=pkg[1], branches=pkg[2]
-                    )
-                )
+        if response:
+            for pkg in relevance_sort(tuplelist_to_dict(response, 3), pkg_names):
+                # add found source package
+                res.append(package2dict(*pkg[:3]))
+                # add found binary package if any
                 if len(pkg) > 3:
-                    res.append(
-                        self._get_pkg_dict(
-                            name=pkg[0], sourcepackage=pkg[3], branches=pkg[4]
-                        )
-                    )
+                    res.append(package2dict(pkg[0], *pkg[3:5]))
 
         # search for deleted packages
         response = self.send_sql_request(
@@ -258,22 +247,11 @@ class FastPackagesSearchLookup(APIWorker):
             return self.error
 
         if response:
-            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 5), pkg_names)
             src_pkgs_found = {p["name"] for p in res if p["sourcepackage"] == "source"}
 
-            for pkg in pkgs_sorted:
+            for pkg in relevance_sort(tuplelist_to_dict(response, 5), pkg_names):
                 if pkg[0] not in src_pkgs_found:
-                    if pkg[1] == 1:
-                        sourcepackage = "source"
-                    else:
-                        sourcepackage = "binary"
-                    res.append(
-                        {
-                            "name": pkg[0],
-                            "sourcepackage": sourcepackage,
-                            "branches": sort_branches(pkg[2]),
-                        }
-                    )
+                    res.append(package2dict(pkg[0], pkg[1], sort_branches(pkg[2])))
                 else:
                     for r in res:
                         if r["name"] == pkg[0]:
