@@ -123,7 +123,8 @@ package_build_deps_model = ns.model(
         ),
         "provided_by_src": fields.Nested(
             package_info_el_model,
-            description="list of source packages of binary packages that provides required dependencies",
+            description="list of source packages of binary packages that "
+            "provides required dependencies",
             as_list=True,
         ),
     },
@@ -161,6 +162,53 @@ backport_helper_model = ns.model(
             backport_helper_depth_el_model,
             description="packages dependencies list by depth",
             as_list=True,
+        ),
+    },
+)
+
+pkg_depends_el_model = ns.model(
+    "PackageDependsElementModel",
+    {
+        "pkghash": fields.String(description="package hash UInt64 as string"),
+        "name": fields.String(description="package name"),
+        "arch": fields.String(description="package architecture"),
+        "dp_name": fields.String(description="the name of the dependent package"),
+        "dp_version": fields.String(description="the version of the dependent package"),
+        "dp_flag": fields.Integer(description="dependency flag"),
+        "dp_flag_decoded": fields.List(
+            fields.String, description="decoded dependency flag"
+        ),
+    },
+)
+pkg_depends_model = ns.model(
+    "PackageDependsModel",
+    {
+        "requires": fields.Nested(
+            pkg_depends_el_model, description="package requirements"
+        ),
+        "provides": fields.Nested(pkg_depends_el_model, description="package provides"),
+    },
+)
+pkg_build_dep_el_model = ns.model(
+    "PackageBuildDependencyElementModel",
+    {
+        "pkghash": fields.String(description="source package hash UInt64 as string"),
+        "name": fields.String(description="source package name"),
+        "branch": fields.String(description="package set name"),
+        "buildtime": fields.String(description="source package buildtime"),
+        "acl": fields.List(fields.String, description="package ACL list"),
+        "depends": fields.Nested(
+            pkg_depends_model, description="package dependencies list", as_list=True
+        ),
+    },
+)
+pkg_build_dep_model = ns.model(
+    "PackageBuildDependencyModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "dependencies": fields.Nested(
+            pkg_build_dep_el_model, description="build dependency results", as_list=True
         ),
     },
 )

@@ -19,6 +19,7 @@ from flask_restx import Resource
 
 from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
+from .endpoints.pkg_build_dependency import PackageBuildDependency
 
 from .namespace import get_namespace
 from .endpoints.dependecy_info import (
@@ -27,12 +28,18 @@ from .endpoints.dependecy_info import (
     DependsSrcPackage,
 )
 from .endpoints.backport_helper import BackportHelper
-from .parsers import pkgs_depends_args, src_pkg_depends_args, backport_helper_args
+from .parsers import (
+    pkgs_depends_args,
+    src_pkg_depends_args,
+    backport_helper_args,
+    pkg_build_dep_args,
+)
 from .serializers import (
     package_dependencies_model,
     depends_packages_model,
     package_build_deps_model,
     backport_helper_model,
+    pkg_build_dep_model,
 )
 
 ns = get_namespace()
@@ -106,3 +113,20 @@ class routeBackportHelper(Resource):
         args = backport_helper_args.parse_args(strict=True)
         w = BackportHelper(g.connection, **args)
         return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/what_depends_src",
+    doc={
+        "description": "Get packages build dependencies by set of parameters",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routePackageBuildDependency(Resource):
+    @ns.expect(pkg_build_dep_args)
+    @ns.marshal_with(pkg_build_dep_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = pkg_build_dep_args.parse_args(strict=True)
+        w = PackageBuildDependency(g.connection, **args)
+        return run_worker(worker=w, args=args)  # type: ignore
