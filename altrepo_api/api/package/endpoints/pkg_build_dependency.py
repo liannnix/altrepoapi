@@ -498,6 +498,7 @@ class BuildDependency(APIWorker):
         sorted_pkgs = tuple(result_dict.keys())
 
         # get output data for sorted package list
+        # FIXME: some packages are missing here! ex: [curl <- duckstation]
         response = self.send_sql_request(
             self.sql.get_output_data.format(
                 branch=self.branch,
