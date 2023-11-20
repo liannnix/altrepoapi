@@ -197,6 +197,20 @@ class FastPackagesSearchLookup(APIWorker):
         self.logger.debug(f"args : {self.args}")
         return True
 
+    @staticmethod
+    def _get_pkg_dict(
+        name: str, sourcepackage: int, branches: list[str]
+    ) -> dict[str, Any]:
+        if sourcepackage == 1:
+            srcpkg = "source"
+        else:
+            srcpkg = "binary"
+        return {
+            "name": name,
+            "sourcepackage": srcpkg,
+            "branches": sort_branches(branches),
+        }
+
     def get(self):
         pkg_names = self.args["name"]
 
@@ -222,17 +236,17 @@ class FastPackagesSearchLookup(APIWorker):
             pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 3), pkg_names)
 
             for pkg in pkgs_sorted:
-                if pkg[1] == 1:
-                    sourcepackage = "source"
-                else:
-                    sourcepackage = "binary"
                 res.append(
-                    {
-                        "name": pkg[0],
-                        "sourcepackage": sourcepackage,
-                        "branches": sort_branches(pkg[2]),
-                    }
+                    self._get_pkg_dict(
+                        name=pkg[0], sourcepackage=pkg[1], branches=pkg[2]
+                    )
                 )
+                if len(pkg) > 3:
+                    res.append(
+                        self._get_pkg_dict(
+                            name=pkg[0], sourcepackage=pkg[3], branches=pkg[4]
+                        )
+                    )
 
         # search for deleted packages
         response = self.send_sql_request(
