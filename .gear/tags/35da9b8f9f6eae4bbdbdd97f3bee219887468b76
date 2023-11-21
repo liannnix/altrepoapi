@@ -1,0 +1,6 @@
+object c634b4950a5080b3f5452374cb530c87521a9621
+type commit
+tag v1.15.10
+tagger Danil Shein <dshein@altlinux.org> 1697801877 +0300
+
+add logging tag
