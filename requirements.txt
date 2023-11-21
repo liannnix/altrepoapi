@@ -5,5 +5,5 @@ gunicorn
 clickhouse-driver
 packaging
 pyjwt
-redis-py
+redis
 python-ldap
