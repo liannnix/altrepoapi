@@ -20,6 +20,7 @@ from altrepo_api.api.parser import (
     dp_name_type,
     pkg_name_list_type,
     arch_name_type,
+    pkg_name_type,
 )
 
 branch = parser.register_item(
@@ -88,9 +89,21 @@ arches_list = parser.register_item(
     help="architectures to show",
     location="args",
 )
+src_pkg_name = parser.register_item(
+    "name",
+    type=pkg_name_type,
+    required=True,
+    help="source package name",
+    location="args",
+)
 
 pkgs_depends_args = parser.build_parser(branch, dp_name, dp_type_opt)
 src_pkg_depends_args = parser.build_parser(branch, depends_depth_opt)
 backport_helper_args = parser.build_parser(
     branch_from, branch_to, packages_list, dp_type, arches_list
+)
+pkg_build_dep_args = parser.build_parser(
+    src_pkg_name,
+    branch,
+    dp_type,
 )

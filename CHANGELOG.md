@@ -1,6 +1,16 @@
 # Changelog
 ALTrepo API changelog
 
+## [1.15.18] - 2023-11-21
+
+Regular API code updates and fixes.
+
+### Added
+- `dependencies/what_depends_src` route
+### Changed
+### Fixed
+- `site/fast_packages_search_lookup` result handling
+
 ## [1.15.17] - 2023-11-20
 
 Regular API code updates and fixes.
