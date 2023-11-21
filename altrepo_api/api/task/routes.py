@@ -29,6 +29,9 @@ from .endpoints.misconflict_packages import TaskMisconflictPackages
 from .endpoints.build_dependency_set import TaskBuildDependencySet
 from .endpoints.task_build_dependency import TaskBuildDependency
 from .endpoints.find_images import FindImages
+from .endpoints.task_packages import TaskPackages
+from .endpoints.needs_approval import NeedsApproval
+from .endpoints.check_images import CheckImages
 from .parsers import (
     task_info_args,
     task_repo_args,
@@ -37,6 +40,7 @@ from .parsers import (
     task_find_pkgset_args,
     task_buid_dep_set_args,
     task_history_args,
+    needs_approval_args,
 )
 from .serializers import (
     task_info_model,
@@ -48,6 +52,10 @@ from .serializers import (
     task_find_pkgset_model,
     task_history_model,
     find_images_by_task_model,
+    task_packages_model,
+    needs_approval_model,
+    check_images_input_model,
+    check_images_output_model,
 )
 
 ns = get_namespace()
@@ -65,7 +73,7 @@ logger = get_logger(__name__)
 )
 class routeTaskInfo(Resource):
     @ns.expect(task_info_args)
-    @ns.marshal_with(task_info_model, as_list=True)
+    @ns.marshal_with(task_info_model)
     def get(self, id):
         url_logging(logger, g.url)
         args = task_info_args.parse_args(strict=True)
@@ -243,3 +251,107 @@ class routeFindImages(Resource):
         if not w.check_task_id():
             ns.abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
         return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/packages/<int:id>",
+    doc={
+        "params": {"id": "task ID"},
+        "description": ("Get information about packages from task "),
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeTaskPackages(Resource):
+    # @ns.expect()
+    @ns.marshal_with(task_packages_model)
+    def get(self, id):
+        url_logging(logger, g.url)
+        args = {}
+        w = TaskPackages(g.connection, id, **args)
+        if not w.check_task_id():
+            ns.abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/needs_approval",
+    doc={
+        "description": "Get EPERM tasks which require approval",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeNeedsApproval(Resource):
+    @ns.expect(needs_approval_args)
+    @ns.marshal_with(needs_approval_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = needs_approval_args.parse_args(strict=True)
+        w = NeedsApproval(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/check_images",
+    doc={
+        "description": """
+## Description
+Get relation between images and binary packages:
+- if some packages from a task are in images, they will be in **in_images** list.
+- if some packages from a task aren't in any image, they will be in **not_in_images** list.
+
+## Arguments
+- Allowed task's states: **EPERM**, **TESTED** or **DONE**.
+- If parameter **packages_names** (list of binary packages names) is set, it will show only specified binary packages.
+- You can provide multiple filters for images. If an image matches at least one filter, it will be shown.
+
+## Examples
+Show information about all of the binary packages inside images:
+```json
+{
+    "task_id": 327143
+}
+```
+Show information about all of the binary packages inside images which edition is 'alt-kworkstation', type is 'iso' and version is '10.1.*':
+```json
+{
+    "task_id": 327143,
+    "filters": [
+        {
+            "editions": ["alt-kworkstation"],
+            "types": ["iso"],
+            "versions": ["10.1"]
+        }
+    ]
+}
+```
+Show information about **liblash** binary package inside images which edition is 'alt-kworkstation' with version '10.1.*' or edition 'slinux' with version '10.2.*'.
+```json
+{
+    "task_id": 312990,
+    "packages_names": [
+        "liblash"
+    ],
+    "filters": [
+        {
+            "editions": ["alt-kworkstation"],
+            "versions": ["10.1"]
+        },
+        {
+            "editions": ["slinux"],
+            "versions": ["10.2"]
+        }
+    ]
+}
+```
+        """,
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeCheckImages(Resource):
+    @ns.expect(check_images_input_model)
+    @ns.marshal_with(check_images_output_model)
+    def post(self):
+        url_logging(logger, g.url)
+        args = {}
+        w = CheckImages(g.connection, json_data=ns.payload)
+        return run_worker(worker=w, args=args, run_method=w.post, ok_code=200)

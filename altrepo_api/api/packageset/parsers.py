@@ -14,7 +14,14 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from altrepo_api.api.parser import parser, branch_name_type, arch_name_type, uuid_type
+from altrepo_api.api.parser import (
+    parser,
+    branch_name_type,
+    arch_name_type,
+    uuid_type,
+    arch_component_name_type,
+    repo_component_type,
+)
 
 # register parser items
 branch = parser.register_item(
@@ -69,9 +76,24 @@ uuid = parser.register_item(
     help="packageset component UUID",
     location="args",
 )
+arch = parser.register_item(
+    "arch",
+    type=arch_component_name_type,
+    required=True,
+    help="architecture name",
+    location="args",
+)
+component = parser.register_item(
+    "component",
+    type=repo_component_type,
+    required=True,
+    help="component name",
+    location="args",
+)
 
 # build parsers
 pkgset_compare_args = parser.build_parser(packageset_1, packageset_2)
 pkgset_packages_args = parser.build_parser(branch, package_type_opt, arch_list_opt)
 repository_statistics_args = parser.build_parser(branch_opt)
 packages_by_uuid_args = parser.build_parser(uuid)
+packages_by_component_args = parser.build_parser(branch, arch, component)

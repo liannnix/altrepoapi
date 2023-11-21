@@ -192,3 +192,14 @@ POST_RESPONSES_400_404 = {
     400: "Request parameters validation error",
     404: "Requested data not found in database",
 }
+
+POST_RESPONSES_401 = {
+    200: "Success",
+    401: "Unauthorized",
+}
+
+POST_RESPONSES_401_403 = {
+    200: "Success",
+    401: "Unauthorized",
+    403: "Forbidden",
+}

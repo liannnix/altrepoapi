@@ -14,7 +14,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from collections import namedtuple
+from datetime import datetime
+from typing import NamedTuple
 
 from altrepo_api.utils import (
     datetime_to_iso,
@@ -51,27 +52,26 @@ class LastTaskPackages(APIWorker):
             return True
 
     def get(self):
-        self.branch = self.args["branch"]
-        self.tasks_limit = self.args["tasks_limit"]
-        self.task_owner = self.args["task_owner"]
+        branch = self.args["branch"]
+        task_owner = self.args["task_owner"]
+        tasks_limit = self.args["tasks_limit"]
 
-        if self.task_owner is not None:
-            task_owner_sub = "AND task_owner = %(task_owner)s"
+        if task_owner is not None:
+            last_tasks_preselect = (
+                self.sql.get_last_subtasks_maintainer_preselect.format(
+                    branch=branch, task_owner=task_owner, limit=tasks_limit
+                )
+            )
         else:
-            self.task_owner = ""
-            task_owner_sub = ""
+            last_tasks_preselect = self.sql.get_last_subtasks_branch_preselect.format(
+                branch=branch, limit=tasks_limit
+            )
 
         response = self.send_sql_request(
             (
                 self.sql.get_last_subtasks_from_tasks.format(
-                    task_owner_sub=task_owner_sub
-                ),
-                {
-                    "branch": self.branch,
-                    "task_owner": self.task_owner,
-                    "limit": self.tasks_limit,
-                    "limit2": (self.tasks_limit * 10),
-                },
+                    last_tasks_preselect=last_tasks_preselect
+                )
             )
         )
         if not self.sql_status:
@@ -84,26 +84,22 @@ class LastTaskPackages(APIWorker):
                 }
             )
 
-        TasksMeta = namedtuple(
-            "TasksMeta",
-            [
-                "task_id",
-                "subtask_id",
-                "task_owner",
-                "task_changed",
-                "subtask_userid",
-                "subtask_type",
-                "subtask_package",
-                "subtask_srpm_name",
-                "subtask_pkg_from",
-                "titer_srcrpm_hash",
-                "task_message",
-            ],
-        )
+        class Subtask(NamedTuple):
+            task_id: int
+            subtask_id: int
+            task_owner: str
+            task_changed: datetime
+            subtask_userid: str
+            subtask_type: str
+            subtask_package: str
+            subtask_srpm_name: str
+            subtask_pkg_from: str
+            titer_srcrpm_hash: int
+            task_message: str
 
-        tasks = [TasksMeta(*el)._asdict() for el in response]
+        subtasks = [Subtask(*el) for el in response]
 
-        src_pkg_hashes = {t["titer_srcrpm_hash"] for t in tasks}
+        src_pkg_hashes = {t.titer_srcrpm_hash for t in subtasks}
 
         # create temporary table for source package hashes
         tmp_table = make_tmp_table_name("srcpkg_hashes")
@@ -140,59 +136,50 @@ class LastTaskPackages(APIWorker):
                 }
             )
 
-        PkgMeta = namedtuple(
-            "PkgMeta",
-            [
-                "pkg_name",
-                "pkg_version",
-                "pkg_release",
-                "pkg_buildtime",
-                "pkg_summary",
-                "changelog_name",
-                "changelog_date",
-                "changelog_text",
-            ],
-        )
+        class Package(NamedTuple):
+            pkg_name: str
+            pkg_version: str
+            pkg_release: str
+            pkg_buildtime: int
+            pkg_summary: str
+            changelog_name: str
+            changelog_date: str
+            changelog_text: str
 
-        packages = {el[0]: PkgMeta(*el[1:])._asdict() for el in response}
+        packages: dict[int, Package] = {el[0]: Package(*el[1:]) for el in response}
 
         retval = {}
 
-        for subtask in tasks:
-            task_id = subtask["task_id"]
+        for subtask in subtasks:
+            task_id = subtask.task_id
             if task_id not in retval:
                 retval[task_id] = {
-                    "task_owner": subtask["task_owner"],
-                    "task_changed": datetime_to_iso(subtask["task_changed"]),
-                    "task_message": subtask["task_message"],
+                    "task_owner": subtask.task_owner,
+                    "task_changed": datetime_to_iso(subtask.task_changed),
+                    "task_message": subtask.task_message,
                     "packages": [],
                 }
 
             pkg_info = {
-                "subtask_id": subtask["subtask_id"],
-                "subtask_userid": subtask["subtask_userid"],
+                "subtask_id": subtask.subtask_id,
+                "subtask_userid": subtask.subtask_userid,
             }
 
-            if subtask["subtask_type"] in ("gear", "srpm"):
+            if subtask.subtask_type in ("gear", "srpm"):
                 pkg_info["subtask_type"] = "build"
-            elif subtask["subtask_type"] == "rebuild":
+            elif subtask.subtask_type == "rebuild":
                 # if task rebuilt from another branch then change type to 'build'
-                if subtask["subtask_pkg_from"] != self.branch:
+                if subtask.subtask_pkg_from != branch:
                     pkg_info["subtask_type"] = "build"
                 else:
                     pkg_info["subtask_type"] = "rebuild"
             else:
-                pkg_info["subtask_type"] = subtask["subtask_type"]
+                pkg_info["subtask_type"] = subtask.subtask_type
 
-            if subtask["titer_srcrpm_hash"] != 0:
-                pkg_info["pkg_hash"] = str(subtask["titer_srcrpm_hash"])
+            if subtask.titer_srcrpm_hash != 0:
+                pkg_info["pkg_hash"] = str(subtask.titer_srcrpm_hash)
                 try:
-                    pkg_info.update(
-                        {
-                            k: v
-                            for k, v in packages[subtask["titer_srcrpm_hash"]].items()
-                        }
-                    )
+                    pkg_info.update(packages[subtask.titer_srcrpm_hash]._asdict())
                 except KeyError:
                     # skip task with packages not inserted from table buffers
                     self.logger.warning(f"No package info. Skip task {task_id}")
@@ -204,8 +191,9 @@ class LastTaskPackages(APIWorker):
             else:
                 pkg_info["pkg_hash"] = ""
                 for k in ("subtask_package", "subtask_srpm_name"):
-                    if subtask[k] != "":
-                        pkg_info["pkg_name"] = subtask[k]
+                    value = getattr(subtask, k, None)
+                    if value != "":
+                        pkg_info["pkg_name"] = value
                         break
                 # skip tasks with task iterations not inserted from table buffers
                 if "pkg_name" not in pkg_info:
@@ -218,9 +206,9 @@ class LastTaskPackages(APIWorker):
         last_branch_task = 0
         last_branch_date = ""
 
-        if self.branch not in lut.taskless_branches:
+        if branch not in lut.taskless_branches:
             response = self.send_sql_request(
-                self.sql.get_last_branch_task_and_date.format(branch=self.branch)
+                self.sql.get_last_branch_task_and_date.format(branch=branch)
             )
             if not self.sql_status:
                 return self.error

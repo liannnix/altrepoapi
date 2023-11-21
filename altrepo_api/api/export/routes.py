@@ -23,19 +23,21 @@ from altrepo_api.utils import (
     response_error_parser,
     send_file_compat,
 )
-from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
+from altrepo_api.api.base import run_worker, GET_RESPONSES_404, GET_RESPONSES_400_404
 
 from .namespace import get_namespace
 from .endpoints.repology import RepologyExport
 from .endpoints.sitemap import SitemapPackages
 from .endpoints.packageset import PackageSetBinaries
 from .endpoints.translation import TranslationExport
+from .endpoints.branch_tree import BranchTreeExport
 
 from .parsers import pkgset_packages_args, translation_export_args
 from .serializers import (
     repology_export_model,
     sitemap_packages_export_model,
     pkgset_packages_export_model,
+    branch_tree_model,
 )
 
 ns = get_namespace()
@@ -134,3 +136,20 @@ class routeTranslationExport(Resource):
             mimetype="application/zip",
             attachment_filename=file_name,
         )
+
+
+@ns.route(
+    "/branch_tree",
+    doc={
+        "description": "Branch tree info export",
+        "responses": GET_RESPONSES_404,
+    },
+)
+class routeBranchTreeExport(Resource):
+    # @ns.expect(xxx_args)
+    @ns.marshal_with(branch_tree_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = {}
+        w = BranchTreeExport(g.connection, **args)
+        return run_worker(worker=w, args=args)

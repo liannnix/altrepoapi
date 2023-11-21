@@ -129,3 +129,51 @@ pkgset_packages_export_model = ns.model(
         ),
     },
 )
+
+
+branch_tree_task_model = ns.model(
+    "BranchTreeTaskModel",
+    {
+        "id": fields.Integer(description="task ID"),
+        "prev": fields.Integer(description="previous task ID"),
+        "branch": fields.String(description="task branch name"),
+        "date": fields.String(description="task build time"),
+    },
+)
+branch_tree_branch_commit_model = ns.model(
+    "BranchTreeBranchCommitModel",
+    {
+        "name": fields.String(description="branch name"),
+        "date": fields.String(description="branch commit date"),
+        "task": fields.Integer(description="task ID"),
+    },
+)
+branch_tree_branch_point_model = ns.model(
+    "BranchTreeBranchPointModel",
+    {
+        "branch": fields.String(description="branch name"),
+        "task": fields.Nested(branch_tree_task_model, description="first branch' task"),
+        "from_task": fields.Nested(
+            branch_tree_task_model, description="task from parent branch"
+        ),
+    },
+)
+branch_tree_model = ns.model(
+    "BranchTreeModel",
+    {
+        "branches": fields.List(fields.String, description="list of branches"),
+        "tasks": fields.Nested(
+            branch_tree_task_model, description="branches tasks list", as_list=True
+        ),
+        "branch_commits": fields.Nested(
+            branch_tree_branch_commit_model,
+            description="branches commits list",
+            as_list=True,
+        ),
+        "branch_points": fields.Nested(
+            branch_tree_branch_point_model,
+            description="branch points list",
+            as_list=True,
+        ),
+    },
+)

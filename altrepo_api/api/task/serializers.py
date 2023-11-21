@@ -460,3 +460,182 @@ find_images_by_task_model = ns.model(
         ),
     },
 )
+
+task_packages_package_el_model = ns.model(
+    "TaskPackagesPackageElementModel",
+    {
+        "name": fields.String(description="package name"),
+        "epoch": fields.Integer(description="package epoch"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "disttag": fields.String(description="package disttag"),
+        "buildtime": fields.DateTime(description="package build time"),
+        "arch": fields.String(description="package architecture"),
+    },
+)
+task_packages_subtask_el_model = ns.model(
+    "TaskPackagesSubtaskElementModel",
+    {
+        "subtask": fields.Integer(description="subtask id"),
+        "source": fields.Nested(
+            task_packages_package_el_model, description="source package"
+        ),
+        "binaries": fields.Nested(
+            task_packages_package_el_model, description="binary packages", as_list=True
+        ),
+    },
+)
+task_packages_model = ns.model(
+    "TaskPackagesModel",
+    {
+        "id": fields.Integer(description="task id"),
+        "repo": fields.String(description="task repo"),
+        "owner": fields.String(description="task owner"),
+        "state": fields.String(description="task state"),
+        "testonly": fields.Integer(description="task is test-only"),
+        "try": fields.Integer(description="task last try"),
+        "iter": fields.Integer(description="task last iteration"),
+        "message": fields.String(description="task message"),
+        "dependencies": fields.List(fields.Integer(description="task dependencies")),
+        "length": fields.Integer(description="number of subtasks found"),
+        "subtasks": fields.Nested(
+            task_packages_subtask_el_model,
+            description="subtask packages",
+            as_list=True,
+        ),
+        "arepo": fields.Nested(
+            task_packages_package_el_model, description="arepo packages", as_list=True
+        ),
+    },
+)
+
+needs_approval_subtask_el_model = ns.model(
+    "NeedsApprovalSubtaskElementModel",
+    {
+        "id": fields.Integer(description="subtask id"),
+        "type": fields.String(description="subtask type"),
+        "package": fields.String(description="subtask package"),
+        "userid": fields.String(description="subtask userid"),
+        "dir": fields.String(description="subtask dir"),
+        "sid": fields.String(description="subtask sid"),
+        "pkg_from": fields.String(description="subtask package from"),
+        "tag_author": fields.String(description="subtask tag author"),
+        "tag_id": fields.String(description="subtask tag id"),
+        "tag_name": fields.String(description="subtask tag name"),
+        "srpm": fields.String(description="subtask srpm"),
+        "srpm_name": fields.String(description="subtask srpm name"),
+        "srpm_evr": fields.String(description="subtask evr"),
+        "last_changed": fields.DateTime(description="subtask last changed"),
+        "source_package": fields.Nested(
+            task_info_package_model,
+        ),
+    },
+)
+needs_approval_task_el_model = ns.model(
+    "NeedsApprovalTaskElementModel",
+    {
+        "id": fields.Integer(description="task id"),
+        "state": fields.String(description="task state"),
+        "runby": fields.String(description="task runby"),
+        "try": fields.Integer(description="task last try"),
+        "iter": fields.Integer(description="task last iteration"),
+        "failearly": fields.Boolean(description="task failearly"),
+        "shared": fields.Boolean(description="task shared"),
+        "depends": fields.List(fields.Integer(description="task dependencies")),
+        "testonly": fields.Boolean(description="task testonly"),
+        "message": fields.String(description="task message"),
+        "version": fields.String(description="task version"),
+        "prev": fields.Integer(description="previous task"),
+        "last_changed": fields.DateTime(description="task last changed"),
+        "branch": fields.String(description="task branch"),
+        "user": fields.String(description="task user"),
+        "subtasks": fields.Nested(
+            needs_approval_subtask_el_model,
+            description="list of subtasks",
+            as_list=True,
+        ),
+    },
+)
+needs_approval_model = ns.model(
+    "NeedsApprovalModel",
+    {
+        "length": fields.Integer(description="number of tasks found"),
+        "tasks": fields.Nested(
+            needs_approval_task_el_model,
+            description="list of tasks",
+            as_list=True,
+        ),
+    },
+)
+check_images_input_filter_model = ns.model(
+    "CheckImagesInputFilterModel",
+    {
+        "editions": fields.List(fields.String(description="image edition")),
+        "releases": fields.List(fields.String(description="image release")),
+        "versions": fields.List(fields.String(description="image version")),
+        "archs": fields.List(fields.String(description="image architecture")),
+        "variants": fields.List(fields.String(description="image variant")),
+        "types": fields.List(fields.String(description="image type")),
+    },
+)
+check_images_input_model = ns.model(
+    "CheckImagesInputModel",
+    {
+        "task_id": fields.Integer(description="task id"),
+        "binpkgs_names": fields.List(fields.String(description="binary package name")),
+        "filters": fields.Nested(
+            check_images_input_filter_model, description="list of filters", as_list=True
+        ),
+    },
+)
+
+
+check_images_output_package_model = ns.model(
+    "CheckImagesOutputPackageModel",
+    {
+        "status": fields.String(description="binary package status"),
+        "from_subtask": fields.Integer(description="subtask id"),
+        "srcpkg_name": fields.String(description="source package name"),
+        "binpkg_name": fields.String(description="binary package name"),
+        "binpkg_arch": fields.String(description="binary package architecture"),
+    },
+)
+check_images_output_image_model = ns.model(
+    "CheckImagesOutputImageModel",
+    {
+        "file": fields.String(description="image file"),
+        "branch": fields.String(description="image branch"),
+        "edition": fields.String(description="image edition"),
+        "flavor": fields.String(description="image flavor"),
+        "platform": fields.String(description="image platform"),
+        "release": fields.String(description="image release"),
+        "major_version": fields.Integer(description="image major version"),
+        "minor_version": fields.Integer(description="image minor version"),
+        "sub_version": fields.Integer(description="image sub version"),
+        "arch": fields.String(description="image arch"),
+        "variant": fields.String(description="image variant"),
+        "type": fields.String(description="image type"),
+        "buildtime": fields.DateTime(description="image built date in ISO8601 format"),
+        "packages": fields.Nested(
+            check_images_output_package_model,
+            description="list of binary packages",
+            as_list=True,
+        ),
+    },
+)
+check_images_output_model = ns.model(
+    "CheckImagesOutputModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "in_images": fields.Nested(
+            check_images_output_image_model,
+            description="list of images with binary packages",
+            as_list=True,
+        ),
+        "not_in_images": fields.Nested(
+            check_images_output_package_model,
+            description="list of binary packages which doesn't belong to any image",
+            as_list=True,
+        ),
+    },
+)

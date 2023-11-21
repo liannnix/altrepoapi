@@ -18,13 +18,9 @@ from collections import namedtuple
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
+from altrepo_api.utils import sort_branches, dp_flags_decode, make_tmp_table_name
+
 from ..sql import sql
-from altrepo_api.utils import (
-    sort_branches,
-    tuplelist_to_dict,
-    dp_flags_decode,
-    make_tmp_table_name,
-)
 
 
 class DependsBinPackage(APIWorker):
@@ -67,33 +63,10 @@ class DependsBinPackage(APIWorker):
         if not self.sql_status:
             return self.error
 
-        # get package versions
-        pkg_versions = []
-        response = self.send_sql_request(
-            self.sql.get_pkg_binary_versions.format(
-                name=response[0][0], arch=response[0][1]  # type: ignore
-            )
-        )
-        if not self.sql_status:
-            return self.error
-
-        PkgVersions = namedtuple(
-            "PkgVersions", ["branch", "version", "release", "pkghash"]
-        )
-
-        # sort package versions by branch
-        pkg_branches = sort_branches([el[0] for el in response])  # type: ignore
-        pkg_versions = tuplelist_to_dict(response, 3)  # type: ignore
-
-        pkg_versions = [
-            PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
-        ]
-
         res = {
             "request_args": str(self.pkghash),
             "length": len(pkg_dependencies),
             "dependencies": pkg_dependencies,
-            "versions": pkg_versions,
         }
         return res, 200
 

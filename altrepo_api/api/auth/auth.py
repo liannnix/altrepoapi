@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2023 BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -15,31 +15,87 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import hashlib
-import base64
-from collections import namedtuple
+import ldap
+
+from typing import Any, NamedTuple
+
+from .token.token import parse_basic_auth_token
 
 from altrepo_api.settings import namespace
 from altrepo_api.utils import get_logger
 
 logger = get_logger(__name__)
 
-AuthCheckResult = namedtuple("AuthCheckResult", ["verified", "error", "value"])
+
+class AuthCheckResult(NamedTuple):
+    verified: bool
+    error: str
+    value: dict[str, Any]
 
 
-def check_auth(token):
+def check_auth(token: str, ldap_groups: list[str]) -> AuthCheckResult:
     try:
-        token = token.split()[1].strip()
-        user, password = base64.b64decode(token).decode("utf-8").split(":")
-        passwd_hash = hashlib.sha512(password.encode("utf-8")).hexdigest()
-
-        logger.info(f"User '{user}' attempt to authorize")
-
-        if user == namespace.ADMIN_USER and passwd_hash == namespace.ADMIN_PASSWORD:
-            logger.info(f"User '{user}' successfully authorized")
-            return AuthCheckResult(True, "OK", {"user": user})
-        else:
-            logger.warning(f"User '{user}' authorization failed")
-            return AuthCheckResult(False, "authorization failed", {})
-    except Exception:
+        credentials = parse_basic_auth_token(token)
+    except ValueError:
         logger.error("Authorization token validation error")
         return AuthCheckResult(False, "token validation error", {})
+
+    logger.info(f"User '{credentials.user}' attempt to authorize")
+
+    if ldap_groups:
+        return check_auth_ldap(credentials.user, credentials.password, ldap_groups)
+    else:
+        return check_auth_basic(credentials.user, credentials.password)
+
+
+def check_auth_basic(user: str, password: str) -> AuthCheckResult:
+    passwd_hash = hashlib.sha512(password.encode("utf-8")).hexdigest()
+
+    if user == namespace.ADMIN_USER and passwd_hash == namespace.ADMIN_PASSWORD:
+        logger.info(f"User '{user}' successfully authorized")
+        return AuthCheckResult(True, "OK", {"user": user})
+    else:
+        logger.warning(f"User '{user}' authorization failed")
+        return AuthCheckResult(False, "authorization failed", {})
+
+
+def check_auth_ldap(
+    user: str, password: str, ldap_groups: list[str]
+) -> AuthCheckResult:
+    try:
+        # build a client
+        ldap_client = ldap.initialize(namespace.LDAP_SERVER_URI, bytes_mode=False)
+    except ldap.SERVER_DOWN:  # type: ignore
+        return AuthCheckResult(False, "LDAP server connection failed", {})
+
+    def is_memeber_of_ldap_group(group: str) -> bool:
+        # Returns True if the group requirement (AUTH_LDAP_REQUIRE_GROUP) is met
+        return ldap_client.compare_s(
+            namespace.LDAP_REQUIRE_GROUP % {"group": group},
+            "member",
+            namespace.LDAP_USER_SEARCH % {"user": user},
+        )
+
+    try:
+        # binds to the LDAP server with the user's DN and password
+        ldap_client.simple_bind_s(namespace.LDAP_USER_SEARCH % {"user": user}, password)
+    except ldap.INVALID_CREDENTIALS:  # type: ignore
+        logger.warning(f"User '{user}' LDAP authentication failed")
+        return AuthCheckResult(False, "LDAP authentication failed", {})
+    else:
+        # checks whether user a memberof any groups provided
+        user_groups = []
+        for group in ldap_groups:
+            try:
+                if is_memeber_of_ldap_group(group):
+                    user_groups.append(group)
+            except (ldap.NO_SUCH_OBJECT, ldap.PROTOCOL_ERROR):  # type: ignore
+                logger.info(f"No such group `{group}` found for `{user}`")
+                pass
+
+        if user_groups:
+            logger.info(f"User '{user}' successfully authorized with LDAP")
+            return AuthCheckResult(True, "OK", {"user": user, "groups": user_groups})
+        else:
+            logger.warning(f"User '{user}' LDAP authorization failed")
+            return AuthCheckResult(False, "LDAP authorization failed", {})

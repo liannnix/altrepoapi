@@ -1,13 +1,16 @@
 import pytest
 
+from typing import Any
+
 from altrepo_api.libs.librpm_functions import (
     compare_versions,
     check_dependency_overlap,
     Dependency,
+    VersionCompareResult,
 )
 
 
-def _repack_version_kwargs(kwargs: dict, suffix: str) -> dict:
+def _repack_version_kwargs(kwargs: dict[str, Any], suffix: str) -> dict[str, Any]:
     return {(k + suffix): v for k, v in kwargs.items()}
 
 
@@ -17,37 +20,37 @@ def _repack_version_kwargs(kwargs: dict, suffix: str) -> dict:
         (
             {"epoch": 0, "version": "6.04.pre3", "release": "alt2"},
             {"epoch": 0, "version": "6.04.pre3", "release": "alt2"},
-            0,
+            VersionCompareResult.EQUAL,
         ),
         (
             {"version": "6.04.pre3", "release": "alt2"},
             {"version": "6.04.pre3", "release": "alt2"},
-            0,
+            VersionCompareResult.EQUAL,
         ),
         (
             {"epoch": 1, "version": "5.04", "release": "alt2"},
             {"version": "6.04.pre3", "release": "alt2"},
-            1,
+            VersionCompareResult.GREATER_THAN,
         ),
         (
             {"epoch": 0, "version": "5.04.pre3", "release": "alt2"},
             {"epoch": 0, "version": "6.04.pre3", "release": "alt2"},
-            -1,
+            VersionCompareResult.LESS_THAN,
         ),
         (
             {"epoch": 0, "version": "6.04.pre3", "release": "alt2"},
             {"epoch": 0, "version": "6.04.pre3", "release": "alt1"},
-            1,
+            VersionCompareResult.GREATER_THAN,
         ),
         (
             {"epoch": 1, "version": "6.04.pre3", "release": "alt2"},
             {"epoch": 0, "version": "6.04.pre3", "release": "alt2"},
-            1,
+            VersionCompareResult.GREATER_THAN,
         ),
         (
             {"epoch": 0, "version": "6.04.pre3", "release": "alt2"},
             {"epoch": 1, "version": "6.04.pre3", "release": "alt2"},
-            -1,
+            VersionCompareResult.LESS_THAN,
         ),
         (
             {
@@ -56,12 +59,12 @@ def _repack_version_kwargs(kwargs: dict, suffix: str) -> dict:
                 "disttag": "sisyphus+284514.100.1.1",
             },
             {"version": "6.04.pre3", "release": "alt2"},
-            1,
+            VersionCompareResult.GREATER_THAN,
         ),
         (
             {"version": "6.04.pre3", "release": "alt2"},
             {"version": "6.04.pre3", "release": "alt2", "disttag": "p9+299000.100.1.1"},
-            -1,
+            VersionCompareResult.LESS_THAN,
         ),
         (
             {
@@ -74,7 +77,7 @@ def _repack_version_kwargs(kwargs: dict, suffix: str) -> dict:
                 "release": "alt2",
                 "disttag": "p10+288000.100.1.1",
             },
-            1,
+            VersionCompareResult.GREATER_THAN,
         ),
     ],
 )

@@ -996,7 +996,7 @@ WHERE pkg_name IN {pkgs}
 INSERT INTO PackagesRepocop (*) VALUES
 """
 
-    get_out_repocop = """
+    get_last_repocop_results = """
 SELECT
     pkg_name,
     pkg_version,
@@ -1008,8 +1008,8 @@ SELECT
     argMax(rc_test_message, rc_test_date),
     max(rc_test_date)
 FROM PackagesRepocop
-WHERE pkgset_name = '{branch}'
-    {pkgs}
+WHERE {pkgs}
+    AND pkgset_name = '{branch}'
     {srcpkg_version}
     {srcpkg_release}
     {arch}

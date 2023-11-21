@@ -13,8 +13,10 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 from altrepo_api.api.base import APIWorker
 from altrepo_api.utils import sort_branches
+
 from ..sql import sql
 from ...misc import lut
 

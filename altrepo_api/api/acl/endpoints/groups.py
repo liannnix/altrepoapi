@@ -57,3 +57,40 @@ class AclGroups(APIWorker):
         res = {"request_args": self.args, "length": len(res), "groups": res}
 
         return res, 200
+
+
+class MaintainerGroups(APIWorker):
+    """List the ACL groups that the given user belongs to."""
+
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        return True
+
+    def get(self):
+        branches = self.args["branch"]
+        nickname = self.args["nickname"]
+
+        branches_clause = ""
+        if branches:
+            branches_clause = f"AND (acl_branch IN {tuple(branches)})"
+
+        response = self.send_sql_request(
+            self.sql.get_groups_by_nickname.format(
+                nickname=nickname, branches_clause=branches_clause
+            ),
+        )
+        if not self.sql_status:
+            return self.error
+
+        result = {
+            "nickname": nickname,
+            "branches": [{"name": name, "groups": groups} for name, groups in response],
+        }
+
+        return result, 200

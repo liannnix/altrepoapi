@@ -22,8 +22,7 @@ import time
 
 from collections import defaultdict
 from dataclasses import dataclass
-from flask import send_file, __version__ as FLASK_VERSION
-from flask.wrappers import Response
+from flask import Response, send_file, __version__ as FLASK_VERSION
 from logging import handlers
 from packaging import version
 from typing import Any, Iterable, Union
@@ -215,7 +214,7 @@ def datetime_to_iso(dt: datetime.datetime) -> str:
     return dt.isoformat()
 
 
-def sort_branches(branches: Iterable[str]) -> tuple[str]:
+def sort_branches(branches: Iterable[str]) -> tuple[str, ...]:
     """Use predefined sort list order for branch sorting."""
     res = []
     branches = set(branches)
@@ -233,6 +232,8 @@ def sort_branches(branches: Iterable[str]) -> tuple[str]:
         "p7",
         "p6",
         "p5",
+        "c10f2",
+        "c10f1",
         "c9f2",
         "c9f1",
         "c9m2",
@@ -402,4 +403,3 @@ def arch_sort_index(arch: str) -> int:
         "e2kv6": -12,
         "x86_64-i586": -13,
     }.get(arch, -100)
-

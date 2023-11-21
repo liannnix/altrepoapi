@@ -16,11 +16,7 @@
 
 from collections import namedtuple
 
-from altrepo_api.utils import (
-    tuplelist_to_dict,
-    sort_branches,
-    bytes2human,
-)
+from altrepo_api.utils import bytes2human
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
 
@@ -260,28 +256,6 @@ class PackageDownloadLinks(FindBuildSubtaskMixin, APIWorker):
             for arch in [x for x in archs if x in bin_pkgs and x != src_arch]:
                 bin_pkgs[arch] = [x for x in bin_pkgs[arch] if x != h]
 
-        # get package versions
-        pkg_versions = []
-
-        response = self.send_sql_request(
-            self.sql.get_pkg_versions_by_hash.format(pkghash=self.pkghash)
-        )
-        if not self.sql_status:
-            return self.error
-
-        PkgVersions = namedtuple(
-            "PkgVersions", ["branch", "version", "release", "pkghash"]
-        )
-
-        # sort package versions by branch
-        pkg_branches = sort_branches([el[0] for el in response])  # type: ignore
-        pkg_versions = tuplelist_to_dict(response, 3)  # type: ignore
-
-        # workaround for multiple versions of returned for certain branch
-        pkg_versions = [
-            PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
-        ]
-
         res = {}
 
         if use_task:
@@ -418,7 +392,6 @@ class PackageDownloadLinks(FindBuildSubtaskMixin, APIWorker):
             "downloads": [
                 {"arch": k, "packages": v} for k, v in res.items() if len(v) > 0
             ],
-            "versions": pkg_versions,
         }
 
         return res, 200
@@ -502,7 +475,7 @@ class BinaryPackageDownloadLinks(APIWorker):
             # get package hashes and archs from last_packages
             response = self.send_sql_request(
                 self.sql.get_bin_pkg_from_last.format(
-                    pkghash=self.pkghash, branch=self.branch, arch=self.arch
+                    pkghash=self.pkghash, branch=self.branch
                 )
             )
             if not self.sql_status:
@@ -533,30 +506,6 @@ class BinaryPackageDownloadLinks(APIWorker):
             )
 
         md5_sum = response[0][1]  # type: ignore
-
-        # get package versions
-        pkg_versions = []
-
-        response = self.send_sql_request(
-            self.sql.get_bin_pkg_versions_by_hash.format(
-                pkghash=self.pkghash, arch=self.arch
-            )
-        )
-        if not self.sql_status:
-            return self.error
-
-        PkgVersions = namedtuple(
-            "PkgVersions", ["branch", "version", "release", "pkghash", "arch"]
-        )
-
-        # sort package versions by branch
-        pkg_branches = sort_branches([el[0] for el in response])  # type: ignore
-        pkg_versions = tuplelist_to_dict(response, 4)  # type: ignore
-
-        # workaround for multiple versions of returned for certain branch
-        pkg_versions = [
-            PkgVersions(*(b, *pkg_versions[b][-4:]))._asdict() for b in pkg_branches
-        ]
 
         res = {}
 
@@ -638,7 +587,6 @@ class BinaryPackageDownloadLinks(APIWorker):
             "downloads": [
                 {"arch": k, "packages": v} for k, v in res.items() if len(v) > 0
             ],
-            "versions": pkg_versions,
         }
 
         return res, 200

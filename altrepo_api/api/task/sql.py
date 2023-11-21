@@ -844,12 +844,14 @@ WITH editions_status AS (
     FROM ImageStatus
     WHERE img_branch = '{branch}'
     GROUP BY img_edition
+    HAVING edition_show = 'show'
 ),
 tags_status AS (
     SELECT img_tag,
            argMax(img_show, ts) AS tag_show
     FROM ImageTagStatus
     GROUP BY img_tag
+    HAVING tag_show = 'show'
 )
 SELECT DISTINCT
     img_file,
@@ -862,15 +864,383 @@ SELECT DISTINCT
     pkg_arch,
     pkg_hash
 FROM lv_all_image_packages
-WHERE (pkg_hash IN (
-    SELECT DISTINCT pkg_hash
-    FROM Packages
-    WHERE (pkg_name IN (SELECT pkg_name FROM {tmp_table}))
-    AND (pkg_sourcepackage = 0)
-))
+WHERE pkg_name IN (SELECT pkg_name FROM {tmp_table})
 AND (img_branch = '{branch}')
-AND img_edition IN (select img_edition FROM editions_status WHERE edition_show = 'show')
-AND img_tag IN (select img_tag FROM tags_status WHERE tag_show = 'show')
+AND img_edition IN (select img_edition FROM editions_status)
+AND img_tag IN (select img_tag FROM tags_status)
+"""
+
+    get_task_subtasks_packages_hashes = """
+SELECT
+    subtask_id,
+    titer_srcrpm_hash,
+    groupArray(titer_pkgs_hash)
+FROM TaskIterations
+ARRAY JOIN titer_pkgs_hash
+WHERE (task_id = {task_id})
+    AND (task_try = {task_try})
+    AND (task_iter = {task_iter})
+    AND (titer_pkgs_hash != 0)
+GROUP BY
+    subtask_id,
+    titer_srcrpm_hash
+"""
+
+    get_task_arepo_packages_hashes = """
+SELECT pkgh_mmh
+FROM PackageHash
+WHERE pkgh_sha256 IN
+(
+    SELECT tplan_sha256
+    FROM TaskPlanPkgHash
+    WHERE tplan_hash IN murmurHash3_64('{task_id}{task_try}{task_iter}x86_64-i586')
+        AND (tplan_action = 'add')
+)
+"""
+
+    get_packages_by_hashes = """
+SELECT
+    argMax(pkg_hash, pkg_buildtime),
+    pkg_name,
+    pkg_epoch,
+    pkg_version,
+    pkg_release,
+    pkg_disttag,
+    toDateTime(max(pkg_buildtime)),
+    IF(pkg_sourcepackage, '', pkg_arch)
+FROM Packages
+WHERE pkg_hash IN (SELECT pkg_hash FROM {tmp_table})
+GROUP BY
+    pkg_name,
+    pkg_epoch,
+    pkg_version,
+    pkg_release,
+    pkg_disttag,
+    pkg_sourcepackage,
+    pkg_arch
+"""
+
+    get_groups_memberships = """
+SELECT
+    acl_for,
+    acl_branch,
+    argMax(acl_list, acl_date),
+    max(acl_date)
+FROM Acl
+WHERE acl_branch IN {branches}
+    AND acl_for IN {groups}
+GROUP BY acl_for, acl_branch
+"""
+
+    get_all_eperm_tasks_with_subtasks = """
+SELECT
+    task_id,
+    task_repo,
+    task_owner,
+    any(task_changed),
+    groupArray(subtask_id)
+FROM (
+    SELECT
+        task_id,
+        task_repo,
+        task_owner,
+        subtask_id,
+        task_changed
+    FROM Tasks
+    WHERE (task_id, task_changed) IN (
+        SELECT task_id, last_changed FROM (
+            SELECT
+                task_id,
+                argMax(task_state, task_changed) AS last_state,
+                argMax(task_testonly, task_changed) AS last_testonly,
+                max(task_changed) AS last_changed
+            FROM TaskStates
+            GROUP BY task_id
+            HAVING last_state='EPERM' AND last_testonly=0
+        )
+    )
+        AND task_repo IN {branches}
+        AND subtask_deleted=0
+)
+GROUP BY
+    task_id,
+    task_repo,
+    task_owner
+"""
+
+    get_all_approvals_for_tasks = """
+SELECT
+    task_id,
+    groupArray((subtask_id, max_tapp_type, tapp_name))
+FROM (
+    SELECT
+        task_id,
+        subtask_id,
+        argMax(tapp_type, ts) AS max_tapp_type,
+        argMax(tapp_revoked, ts) AS max_tapp_revoked,
+        tapp_name
+    FROM TaskApprovals
+    WHERE task_id IN (
+        SELECT task_id FROM {tmp_table}
+    )
+    GROUP BY
+        task_id,
+        subtask_id,
+        tapp_name
+    HAVING max_tapp_revoked=0
+)
+GROUP BY task_id
+"""
+
+    get_tasks_short_info = """
+SELECT DISTINCT
+    task_id,
+    task_state,
+    task_runby,
+    task_try,
+    task_iter,
+    task_failearly,
+    task_shared,
+    task_depends,
+    task_testonly,
+    task_message,
+    task_version,
+    task_prev,
+    task_changed
+FROM TaskStates
+INNER JOIN
+(
+    SELECT
+        task_id,
+        task_try,
+        task_iter,
+        task_changed
+    FROM TaskIterations
+    WHERE (task_id, task_changed) IN (
+        SELECT task_id, task_changed FROM {tmp_table}
+    )
+) AS IT USING (task_id, task_changed)
+"""
+
+    get_subtasks_short_info = """
+SELECT
+    task_id,
+    groupArray(
+        (
+            pkg_name,
+            pkg_version,
+            pkg_release,
+            pkg_filename,
+            subtask_id,
+            subtask_type,
+            subtask_package,
+            subtask_userid,
+            subtask_dir,
+            subtask_sid,
+            subtask_pkg_from,
+            subtask_tag_author,
+            subtask_tag_id,
+            subtask_tag_name,
+            subtask_srpm,
+            subtask_srpm_name,
+            subtask_srpm_evr,
+            subtask_changed
+        )
+    )
+FROM
+(
+    SELECT DISTINCT *
+    FROM Tasks
+    WHERE (task_id, task_changed) IN (
+        SELECT task_id, task_changed FROM {tmp_table}
+    ) AND subtask_deleted = 0
+) AS TS
+LEFT JOIN
+(
+    SELECT
+        task_id,
+        subtask_id,
+        pkg_name,
+        pkg_version,
+        pkg_release,
+        pkg_filename
+    FROM Packages
+    INNER JOIN
+    (
+        SELECT DISTINCT
+            task_id,
+            subtask_id,
+            argMax(titer_srcrpm_hash, task_changed) AS pkg_hash
+        FROM TaskIterations
+        WHERE (task_id, task_changed) IN (
+            SELECT task_id, task_changed FROM {tmp_table}
+        )
+        GROUP BY
+            task_id,
+            subtask_id
+    ) AS TI USING (pkg_hash)
+) AS TP USING (task_id, subtask_id)
+GROUP BY task_id
+"""
+
+    prepare_packages_temporary_table = """
+CREATE TEMPORARY TABLE {tmp_table} AS
+WITH TaskPackages AS
+(
+    SELECT
+        if(act = 2, 'built', 'deleted') AS action,
+        srcpkg_hash,
+        pkg_name AS srcpkg_name,
+        binpkg_name,
+        S.pkg_arch AS binpkg_arch
+    FROM Packages
+    RIGHT JOIN
+    (
+        SELECT
+            max(action) AS act,
+            argMax(pkg_srcrpm_hash, action) AS srcpkg_hash,
+            pkg_name AS binpkg_name,
+            if(pkg_sourcepackage, 'src', pkg_arch) AS pkg_arch
+        FROM Packages
+        RIGHT JOIN
+        (
+            SELECT
+                pkgh_mmh AS pkg_hash,
+                if(tplan_action = 'add', 2, 1) AS action
+            FROM PackageHash AS H
+            RIGHT JOIN
+            (
+                SELECT
+                    tplan_sha256,
+                    tplan_action
+                FROM TaskPlanPkgHash
+                WHERE tplan_hash IN {tplan_hashes}
+            ) AS P ON H.pkgh_sha256 = P.tplan_sha256
+        ) AS P USING (pkg_hash)
+        GROUP BY
+            pkg_name,
+            pkg_arch
+    ) AS S ON pkg_hash = S.srcpkg_hash
+)
+SELECT
+    subtask_id,
+    action,
+    srcpkg_name,
+    binpkg_name,
+    binpkg_arch
+FROM TaskPackages
+LEFT JOIN
+(
+    SELECT DISTINCT
+        task_id,
+        subtask_id,
+        titer_srcrpm_hash AS srcpkg_hash
+    FROM TaskIterations
+    WHERE ((task_id, task_changed) = ({task_id}, '{task_changed}'))
+        AND (titer_status != 'deleted')
+) AS T USING (srcpkg_hash)
+WHERE ((subtask_id = 0) AND (srcpkg_name = '')) OR (subtask_id != 0)
+    AND binpkg_name NOT LIKE '%-debuginfo'
+UNION ALL
+SELECT
+    subtask_id,
+    action,
+    srcpkg_name,
+    binpkg_name,
+    binpkg_arch
+FROM TaskPackages
+INNER JOIN
+(
+    SELECT
+        task_id,
+        subtask_id,
+        subtask_package AS srcpkg_name
+    FROM Tasks
+    WHERE (subtask_type = 'delete')
+        AND (subtask_deleted = 0)
+        AND ((task_id, task_changed) = ({task_id}, '{task_changed}'))
+) AS T USING (srcpkg_name)
+WHERE binpkg_name NOT LIKE '%-debuginfo'
+"""
+
+    get_packages_in_images = """
+WITH editions_status AS
+(
+    SELECT
+        img_edition,
+        argMax(img_show, ts) AS edition_show
+    FROM ImageStatus
+    GROUP BY img_edition
+    HAVING edition_show = 1
+    UNION ALL
+    SELECT
+        '' AS img_edtion,
+        1 AS edition_show
+),
+tags_status AS
+(
+    SELECT
+        img_tag,
+        argMax(img_show, ts) AS tag_show
+    FROM ImageTagStatus
+    GROUP BY img_tag
+    HAVING (tag_show = 1)
+        AND (
+            arrayReduce(
+                'sum',
+                arrayMap(
+                    curr -> match(img_tag, curr),
+                    (
+                        SELECT groupUniqArray(tagpattern)
+                        FROM {tagpatterns_tmp_table}
+                    )
+                )
+            ) > 0
+        )
+    UNION ALL
+    SELECT
+        '' AS img_tag,
+        1 AS tag_show
+),
+uuid_with_package AS
+(
+    SELECT
+        pkgset_uuid,
+        img_file,
+        subtask_id,
+        action,
+        P.srcpkg_name,
+        P.binpkg_name AS binpkg_name,
+        P.binpkg_arch AS binpkg_arch
+    FROM {packages_tmp_table} AS P
+    LEFT JOIN (
+        SELECT *
+        FROM lv_all_image_packages
+        WHERE img_edition IN (SELECT img_edition FROM editions_status)
+            AND img_tag IN (SELECT img_tag FROM tags_status)
+    ) AS I ON I.pkg_name=P.binpkg_name AND I.pkg_arch=P.binpkg_arch
+)
+SELECT DISTINCT
+    img_branch,
+    img_edition,
+    img_flavor,
+    img_platform,
+    img_release,
+    img_version_major,
+    img_version_minor,
+    img_version_sub,
+    img_arch,
+    img_variant,
+    img_type,
+    img_file,
+    pkgset_date,
+    subtask_id,
+    action,
+    srcpkg_name,
+    binpkg_name,
+    binpkg_arch
+FROM ImagePackageSetName
+RIGHT JOIN uuid_with_package AS U USING pkgset_uuid
 """
 
 

@@ -4,3 +4,6 @@ flask-restx
 gunicorn
 clickhouse-driver
 packaging
+pyjwt
+redis-py
+python-ldap

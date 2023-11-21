@@ -21,10 +21,14 @@ from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
 
 from .namespace import get_namespace
-from .endpoints.groups import AclGroups
+from .endpoints.groups import AclGroups, MaintainerGroups
 from .endpoints.packages import AclByPackages
-from .parsers import acl_groups_args, acl_by_packages_args
-from .serializers import acl_groups_model, acl_by_packages_model
+from .parsers import acl_groups_args, acl_by_packages_args, acl_maintainer_groups_args
+from .serializers import (
+    acl_groups_model,
+    acl_by_packages_model,
+    acl_maintainer_groups_model,
+)
 
 ns = get_namespace()
 
@@ -58,4 +62,19 @@ class routeAclByPackages(Resource):
         url_logging(logger, g.url)
         args = acl_by_packages_args.parse_args(strict=True)
         w = AclByPackages(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route("/maintainer_groups")
+@ns.doc(
+    description="List the ACL groups that the given user belongs to",
+    responses=GET_RESPONSES_400_404,
+)
+class routeMaintainerGroups(Resource):
+    @ns.expect(acl_maintainer_groups_args)
+    @ns.marshal_list_with(acl_maintainer_groups_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = acl_maintainer_groups_args.parse_args(strict=True)
+        w = MaintainerGroups(g.connection, **args)
         return run_worker(worker=w, args=args)

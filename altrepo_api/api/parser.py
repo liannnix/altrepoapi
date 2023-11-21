@@ -53,6 +53,7 @@ parser = ParserFactory()
 # lookup tables
 # __pkg_groups = set(lut.pkg_groups)
 __known_archs = set(lut.known_archs)
+__known_repo_components = set(lut.known_repo_components)
 __known_states = set(lut.known_states)
 __known_branches = set(lut.known_branches)
 __known_img_archs = set(lut.known_image_archs)
@@ -91,6 +92,18 @@ __license_id_match = re.compile(r"^[A-Za-z0-9\-\.\+]+$")
 __acl_group_match = re.compile(r"^@?[a-z0-9\_]+$")
 # task search
 __task_search_match = re.compile(r"^(@?[\w\.\+\-\_]{2,},?)+$")
+# file search
+__file_search_match = re.compile(r"^[\w\/\.\+\- $#%:=@\{\}]{3,}$")
+# vulnerabilities
+__cve_id_match = re.compile(r"^CVE-\d{4}-\d{4,}$")
+__cve_id_list_match = re.compile(r"^(CVE-\d{4}-\d{4,},?)+$")
+__bdu_id_match = re.compile(r"^BDU:\d{4}-\d{5}$")
+__bdu_id_list_match = re.compile(r"^(BDU:\d{4}-\d{5},?)+$")
+__errata_id_match = re.compile(r"^ALT-[A-Z]+-2\d{3}-\d{4,}-\d{1,}$")
+__errata_search_match = re.compile(r"^([\w\.\+\-\_:]{2,},?)+$")
+__password_match = re.compile(r"^([\w|\W]+)$")
+# input
+__positive_integer = re.compile(r"^(?<![-.])\b[0-9]+\b(?!\.[0-9])$")
 
 
 # custom validators
@@ -174,6 +187,20 @@ def arch_name_type(value: Any) -> str:
 
 
 arch_name_type.__schema__ = {"type": "string"}
+
+
+def arch_component_name_type(value: Any) -> str:
+    """Architecture name validator for component."""
+
+    value = __get_string(value)
+    archs = __known_archs.copy()
+    archs.add("srpm")
+    if value not in archs:
+        raise ValueError("Invalid architecture name: {0}".format(value))
+    return value
+
+
+arch_component_name_type.__schema__ = {"type": "string"}
 
 
 def pkg_groups_type(value: Any) -> str:
@@ -509,3 +536,133 @@ def task_state_type(value: Any) -> str:
 
 
 task_state_type.__schema__ = {"type": "string"}
+
+
+def file_search_type(value: Any) -> str:
+    """File search validator."""
+
+    value = __get_string(value)
+    if not __file_search_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+file_search_type.__schema__ = {"type": "string", "pattern": __file_search_match.pattern}
+
+
+def repo_component_type(value: Any) -> str:
+    """Repository component validator."""
+
+    value = __get_string(value)
+    if value not in __known_repo_components:
+        raise ValueError("Invalid architecture name: {0}".format(value))
+    return value
+
+
+repo_component_type.__schema__ = {"type": "string"}
+
+
+def cve_id_type(value: Any) -> str:
+    """CVE id validator."""
+
+    value = __get_string(value)
+    if not __cve_id_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+cve_id_type.__schema__ = {"type": "string", "pattern": __cve_id_match.pattern}
+
+
+def cve_id_list_type(value: Any) -> str:
+    """CVE id list validator."""
+
+    value = __get_string(value)
+    if not __cve_id_list_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+cve_id_list_type.__schema__ = {"type": "string", "pattern": __cve_id_list_match.pattern}
+
+
+def bdu_id_type(value: Any) -> str:
+    """BDU id validator."""
+
+    value = __get_string(value)
+    if not __bdu_id_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+bdu_id_type.__schema__ = {"type": "string", "pattern": __bdu_id_match.pattern}
+
+
+def bdu_id_list_type(value: Any) -> str:
+    """BDU id list validator."""
+
+    value = __get_string(value)
+    if not __bdu_id_list_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+bdu_id_list_type.__schema__ = {"type": "string", "pattern": __bdu_id_list_match.pattern}
+
+
+def errata_id_type(value: Any) -> str:
+    """Errata id validator."""
+
+    value = __get_string(value)
+    if not __errata_id_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+errata_id_type.__schema__ = {"type": "string", "pattern": __errata_id_match.pattern}
+
+
+def errata_search_type(value: Any) -> str:
+    """Errata search validator."""
+
+    value = __get_string(value)
+    if not __errata_search_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+errata_search_type.__schema__ = {
+    "type": "string",
+    "pattern": __errata_search_match.pattern,
+}
+
+
+def password_type(value: Any) -> str:
+    """Password validator."""
+
+    value = __get_string(value)
+    if not __password_match.search(value):
+        raise ValueError("Invalid password: {0}".format(value))
+    return value
+
+
+password_type.__schema__ = {
+    "type": "string",
+    "pattern": __password_match.pattern,
+    "format": "password",
+}
+
+
+def positive_integer_type(value: Any) -> str:
+    """Positive integer validator."""
+
+    value = __get_string(value)
+    if not __positive_integer.search(value):
+        raise ValueError("Invalid positive integer: {0}".format(value))
+    return value
+
+
+positive_integer_type.__schema__ = {
+    "type": "string",
+    "pattern": __positive_integer.pattern,
+}

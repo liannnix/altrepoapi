@@ -91,7 +91,6 @@ def test_binary_package_dependencies(client, kwargs):
         assert data != {}
         assert data["length"] != 0
         assert data["dependencies"] != []
-        assert data["versions"] != []
 
 
 @pytest.mark.parametrize(
@@ -121,3 +120,87 @@ def test_source_package_dependencies(client, kwargs):
         assert data["package_info"] != {}
         assert data["dependencies"] != []
         assert data["provided_by_src"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "from_branch": "sisyphus",
+            "into_branch": "p10",
+            "packages_names": ["curl"],
+            "dp_type": "both",
+            "archs": ["x86_64"],
+            "status_code": 200,
+        },
+        {
+            "from_branch": "p10",
+            "into_branch": "c9f2",
+            "packages_names": ["python3"],
+            "dp_type": "binary",
+            "archs": ["x86_64"],
+            "status_code": 200,
+        },
+        {
+            "from_branch": "p10",
+            "into_branch": "c9f2",
+            "packages_names": ["python3"],
+            "dp_type": "binary",
+            "archs": [],
+            "status_code": 200,
+        },
+        {
+            "from_branch": "p10",
+            "into_branch": "c9f2",
+            "packages_names": ["this-package-doesn't-exist"],
+            "dp_type": "binary",
+            "archs": ["x86_64"],
+            "status_code": 400,
+        },
+        {
+            "from_branch": "p10",
+            "into_branch": "p7",
+            "packages_names": ["curl"],
+            "dp_type": "source",
+            "archs": ["x86_64"],
+            "status_code": 400,
+        },
+        {
+            "from_branch": "p10",
+            "into_branch": "sisyphus",
+            "packages_names": ["python3"],
+            "dp_type": "binary",
+            "archs": ["x86_64"],
+            "status_code": 400,
+        },
+    ],
+)
+def test_backport_helper(client, kwargs):
+    url = url_for("api.dependencies_route_backport_helper")
+    params = {}
+    for keyword, value in kwargs.items():
+        if keyword != "status_code":
+            params[keyword] = value
+
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["count"] >= 0
+        assert data["maxdepth"] >= 0
+
+        if data["dependencies"]:
+            for level in data["dependencies"]:
+                assert level["depth"] != 0
+                assert level["packages"] != []
+                for package in level["packages"]:
+                    assert package["srpm"] != ""
+                    assert package["name"] != ""
+                    assert package["epoch"] >= 0
+                    assert package["version"] != ""
+                    assert package["release"] != ""
+                    assert package["arch"] != "" and package["arch"] in (
+                        (kwargs["archs"] if kwargs["archs"] else ["x86_64"])
+                        + ["noarch"]
+                    )

@@ -14,9 +14,26 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
 import logging
+import os
+
 from dataclasses import dataclass
+from enum import Enum, auto
+
+
+class AccessGroups(Enum):
+    API_ADMIN = auto()
+    API_USER = auto()
+    CVE_ADMIN = auto()
+    CVE_USER = auto()
+
+
+AG_ALL = [
+    AccessGroups.API_ADMIN,
+    AccessGroups.API_USER,
+    AccessGroups.CVE_ADMIN,
+    AccessGroups.CVE_USER,
+]
 
 
 @dataclass
@@ -51,8 +68,21 @@ class BasePathNamespace:
     DEPENDENCY_MAX_DEPTH = 5
     # API admin credentials
     ADMIN_USER = "admin"
-    # echo -n "SuperSecretPa\$\$w0rd" | sha512sum   # !! '$' symbol should be escaped in echo with backslash !!
-    ADMIN_PASSWORD = ""
+    ADMIN_PASSWORD = ""  # XXX: echo -n "SuperSecretPa\$\$w0rd" | sha512sum   # !! '$' symbol should be escaped in echo with backslash !!
+    # authentication using LDAP server
+    LDAP_SERVER_URI = ""
+    LDAP_USER_SEARCH = ""
+    LDAP_REQUIRE_GROUP = ""
+    # LDAP access groups
+    AG = AccessGroups  # used in tests only
+    ACCESS_GROUPS = {g: "" for g in AccessGroups}
+    # authentication token settings
+    TOKEN_STORAGE = "file"  # {file | redis}
+    EXPIRES_ACCESS_TOKEN = 60 * 5  # access token storage time in seconds
+    EXPIRES_REFRESH_TOKEN = 60 * 60 * 12  # refresh token storage time in seconds
+    MAX_REFRESH_SESSIONS_COUNT = 2
+    # redis
+    REDIS_URL = ""
 
 
 namespace = BasePathNamespace()

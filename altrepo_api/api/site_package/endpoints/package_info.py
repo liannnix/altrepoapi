@@ -35,12 +35,6 @@ from .common import FindBuildTaskMixixn, SQLRequestError, NoDataFoundInDB
 class PackageInfo(FindBuildTaskMixixn, APIWorker):
     """Retrieves package info from DB."""
 
-    class SQLRequestError(SQLRequestError):
-        pass
-
-    class NoDataFoundInDB(NoDataFoundInDB):
-        pass
-
     def __init__(self, connection, pkghash, **kwargs):
         self.pkghash = pkghash
         self.conn = connection
@@ -78,19 +72,13 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
         packager_nickname: str
         category: str
 
-    class PackageVersion(NamedTuple):
-        branch: str
-        version: str
-        release: str
-        pkghash: int
-
     def maintainers(self) -> list[str]:
         maintainers = []
         response = self.send_sql_request(
             self.sql.get_pkg_maintainers.format(pkghash=self.pkghash)
         )
         if not self.sql_status:
-            raise self.SQLRequestError
+            raise SQLRequestError
 
         for el in response[0][0]:
             if "altlinux" in el:
@@ -105,28 +93,9 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
             self.sql.get_pkg_acl.format(name=self.pkg_info.name, branch=self.branch)
         )
         if not self.sql_status:
-            raise self.SQLRequestError
+            raise SQLRequestError
 
         return response[0][0] if response else []
-
-    def package_versions(self) -> list[PackageVersion]:
-        if self.is_src:
-            request_line = self.sql.get_pkg_versions.format(name=self.pkg_info.name)
-        else:
-            request_line = self.sql.get_pkg_binary_versions.format(
-                name=self.pkg_info.name, arch=self.pkg_info.arch
-            )
-
-        response = self.send_sql_request(request_line)
-        if not self.sql_status:
-            raise self.SQLRequestError
-
-        # sort package versions by branch
-        branches = sort_branches([el[0] for el in response])
-        versions = tuplelist_to_dict(response, 3)
-
-        # XXX: workaround for multiple versions of returned for certain branch
-        return [self.PackageVersion(*(b, *versions[b][-3:])) for b in branches]
 
     def dependencies(self) -> list[dict[str, Any]]:
         PkgDeps = namedtuple("PkgDeps", ["name", "version", "flag"])
@@ -137,7 +106,7 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
                 self.sql.get_pkg_dependencies.format(pkghash=self.pkghash)
             )
             if not self.sql_status:
-                raise self.SQLRequestError
+                raise SQLRequestError
 
             dependencies = [PkgDeps(*el)._asdict() for el in response]
 
@@ -158,9 +127,9 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
             )
         )
         if not self.sql_status:
-            raise self.SQLRequestError
+            raise SQLRequestError
         if not response:
-            raise self.NoDataFoundInDB
+            raise NoDataFoundInDB
 
         return [Changelog(datetime_to_iso(el[1]), *el[2:])._asdict() for el in response]
 
@@ -176,13 +145,12 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
 
         # get last beehive errors by package hash
         response = self.send_sql_request(
-            (
-                self.sql.get_last_bh_rebuild_status_by_hsh,
-                {"pkghash": self.pkghash, "branch": self.branch},
+            self.sql.get_last_bh_rebuild_status_by_hsh.format(
+                branch=self.branch, pkghash=self.pkghash
             )
         )
         if not self.sql_status:
-            raise self.SQLRequestError
+            raise SQLRequestError
 
         bh_status = [BeehiveStatus(*el)._asdict() for el in response]
 
@@ -221,10 +189,54 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
         lp.parse_license()
 
         if not lp.status:
-            raise self.SQLRequestError("Failed to get license tokens", error=lp.error)
+            raise SQLRequestError("Failed to get license tokens", error=lp.error)
         if not lp.tokens:
             return []
         return [{"token": k, "license": v} for k, v in lp.tokens.items()]
+
+    def new_package_version(self) -> dict[str, Any]:
+        ver_in_repo = None
+
+        PackageVR = namedtuple("PackageVR", ["version", "release"])
+
+        response = self.send_sql_request(
+            self.sql.get_current_pkg_version.format(
+                name=self.pkg_info.name, branch=self.branch, is_src=self.is_src
+            )
+        )
+        if not self.sql_status:
+            raise SQLRequestError
+
+        if response:
+            ver_in_repo = PackageVR(*response[0])
+
+        if ver_in_repo is not None:
+            NewPackageVersion = namedtuple(
+                "NewPackageVersion",
+                ["task_id", "date", "pkghash", "version", "release"],
+            )
+            pkg_arch = (
+                f"AND pkg_arch = '{self.pkg_info.arch}'" if self.is_src == 0 else ""
+            )
+            pkg_src_or_bin = f"AND pkg_sourcepackage = {self.is_src}"
+            response = self.send_sql_request(
+                self.sql.get_new_pkg_version.format(
+                    pkg_name=self.pkg_info.name,
+                    branch=self.branch,
+                    source=pkg_src_or_bin,
+                    arch=pkg_arch,
+                    ver=ver_in_repo.version,
+                    rel=ver_in_repo.release,
+                    cur_ver=self.pkg_info.version,
+                    cur_rel=self.pkg_info.release,
+                ),
+            )
+            if not self.sql_status:
+                raise SQLRequestError
+            if response:
+                return NewPackageVersion(*response[0])._asdict()
+
+        return {}
 
     def get(self):
         self.branch = self.args["branch"]
@@ -270,8 +282,8 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
             pkg_maintainers = self.maintainers()
             # get package ACLs
             pkg_acl = self.acl()
-            # get package versions
-            pkg_versions = self.package_versions()
+            # get package newest versions from DONE tasks
+            new_evr = self.new_package_version()
             # get package dependencies
             pkg_dependencies = self.dependencies()
             # get package changelog
@@ -280,11 +292,11 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
             bh_status = self.beehive_status()
             # get package license tokens
             license_tokens = self.license_tokens()
-        except self.SQLRequestError as e:
+        except SQLRequestError as e:
             if e.error:
                 return e.error
             return self.error
-        except self.NoDataFoundInDB:
+        except NoDataFoundInDB:
             return self.store_error(
                 {
                     "message": f"No data found in DB for package {self.pkghash}",
@@ -296,29 +308,43 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
         package_archs = {}
         if not (pkg_task and pkg_subtask):
             if self.is_src:
-                request_line = self.sql.get_binary_pkgs.format(
-                    pkghash=self.pkghash, branch=self.branch
+                response = self.send_sql_request(
+                    self.sql.get_binary_pkgs_from_last_pkgs.format(
+                        pkghash=self.pkghash, branch=self.branch, bin_pkg_clause=""
+                    )
                 )
+                if not response:
+                    response = self.send_sql_request(
+                        self.sql.get_binary_pkgs.format(
+                            pkghash=self.pkghash, branch=self.branch
+                        )
+                    )
             else:
-                request_line = self.sql.get_source_pkgs.format(pkghash=self.pkghash)
+                response = self.send_sql_request(
+                    self.sql.get_source_pkgs.format(pkghash=self.pkghash)
+                )
         else:
             # (bug: #45195)
             if self.is_src:
-                request_line = self.sql.get_binaries_from_task.format(
-                    taskid=pkg_task, subtaskid=pkg_subtask, changed=pkg_task_date
+                response = self.send_sql_request(
+                    self.sql.get_binaries_from_task.format(
+                        taskid=pkg_task, subtaskid=pkg_subtask, changed=pkg_task_date
+                    )
                 )
             else:
-                request_line = self.sql.get_source_pkgs.format(pkghash=self.pkghash)
+                response = self.send_sql_request(
+                    self.sql.get_source_pkgs.format(pkghash=self.pkghash)
+                )
 
-        response = self.send_sql_request(request_line)
         if not self.sql_status:
             return self.error
 
         if response:
             if self.is_src:
-                # FIXME: (bug #41537) some binaries built from old source package
+                # (bug #41537) some binaries built from old source package
                 # in not 'DONE' tasks leads to misleading build time
                 self.pkg_info = self.pkg_info._replace(buildtime=response[0][2])
+
                 # find appropriate hash for 'noarch' packages using build task
                 # and architecture precedence
                 _bin_pkgs_arch_hshs_from_task = {}
@@ -411,7 +437,7 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
             "changelog": changelog_list,
             "maintainers": pkg_maintainers,
             "acl": pkg_acl,
-            "versions": [p._asdict() for p in pkg_versions],
+            "new_version": [new_evr] if new_evr else [],
             "beehive": bh_status,
             "dependencies": pkg_dependencies,
             "license_tokens": license_tokens,
@@ -723,5 +749,58 @@ class PackageNVRByHash(APIWorker):
             "release": pkg_info.release,
             "is_source": bool(pkg_info.is_source),
         }
+
+        return res, 200
+
+
+class PackageNameFromRepology(APIWorker):
+    """Retrieves source package name from repology."""
+
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        self.validation_results = []
+
+        if (
+            self.args["branch"] == ""
+            or self.args["branch"] not in lut.repology_export_branches
+        ):
+            self.validation_results.append(
+                f"unknown package set name : {self.args['branch']}"
+            )
+            self.validation_results.append(
+                f"allowed package set names are : {lut.repology_export_branches}"
+            )
+
+        if self.validation_results != []:
+            return False
+        else:
+            return True
+
+    def get(self):
+        branch = lut.repology_cpe_branch_map[self.args["branch"]]
+        pkg_name = self.args["name"]
+
+        response = self.send_sql_request(
+            self.sql.get_converted_pkg_name.format(branch=branch, pkg_name=pkg_name)
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error(
+                {
+                    "message": f"No packages found in DB with name {pkg_name}",
+                    "args": self.args,
+                }
+            )
+
+        PkgNameRepology = namedtuple("PkgNameRepology", ["name", "repo"])
+
+        res = {"request_args": self.args, **PkgNameRepology(*response[0])._asdict()}
 
         return res, 200

@@ -160,6 +160,7 @@ watch_by_maintainer_el_model = ns.model(
         "pkg_name": fields.String(description="package name"),
         "old_version": fields.String(description="old package version"),
         "new_version": fields.String(description="new package version"),
+        "repology_name": fields.String(description="package name from repology"),
         "url": fields.String(description="url for download src"),
         "date_update": fields.String(description="Watch update date"),
     },

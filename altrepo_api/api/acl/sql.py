@@ -66,5 +66,18 @@ GROUP BY
     acl_branch
 """
 
+    get_groups_by_nickname = """
+SELECT DISTINCT
+    acl_branch,
+    groupArray(acl_for) AS acl_groups
+FROM last_acl
+ARRAY JOIN acl_list
+WHERE (acl_for LIKE '@%')
+    AND (acl_list = '{nickname}')
+    {branches_clause}
+GROUP BY
+    acl_branch
+"""
+
 
 sql = SQL()

@@ -13,15 +13,16 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 from collections import namedtuple
 
 from altrepo_api.api.base import APIWorker
 from ..sql import sql
 
 
-class PackagesByUuid(APIWorker):
+class PackagesByFile(APIWorker):
     """
-    Get packages from database by packageset component UUID.
+    Find packages by file name.
     """
 
     def __init__(self, connection, **kwargs):
@@ -31,44 +32,43 @@ class PackagesByUuid(APIWorker):
         super().__init__()
 
     def get(self):
-        uuid = self.args["uuid"]
+        file_name = self.args["file_name"].replace("_", r"\_")
+        branch = self.args["branch"]
+
+        pkg_hshs = self.send_sql_request(
+            self.sql.find_pkg_hshs_by_file.format(branch=branch, file_name=file_name)
+        )
+        if not self.sql_status:
+            return self.error
+        if not pkg_hshs:
+            return self.store_error(
+                {"message": "No data not found in database"},
+            )
+
+        _tmp_table = "tmp_pkghash"
 
         response = self.send_sql_request(
-            self.sql.get_packages_by_uuid.format(uuid=uuid),
+            self.sql.get_packages.format(branch=branch, tmp_table=_tmp_table),
+            external_tables=[
+                {
+                    "name": _tmp_table,
+                    "structure": [
+                        ("pkg_hash", "UInt64"),
+                    ],
+                    "data": pkg_hshs,
+                }
+            ],
         )
         if not self.sql_status:
             return self.error
         if not response:
             return self.store_error(
-                {
-                    "message": "No data found in database",
-                    "args": self.args,
-                }
+                {"message": "No data not found in database"},
             )
 
-        PkgMeta = namedtuple(
-            "PkgMeta",
-            [
-                "hash",
-                "pkg_name",
-                "pkg_version",
-                "pkg_release",
-                "pkg_arch",
-                "sourcerpm",
-                "pkg_summary",
-                "pkg_buildtime",
-                "changelog_date",
-                "changelog_name",
-                "changelog_evr",
-                "changelog_text",
-            ],
-        )
+        PkgMeta = namedtuple("PkgMeta", ["hash", "name", "version", "release", "arch"])
 
-        retval = [PkgMeta(*el)._asdict() for el in response]
+        packages = [PkgMeta(*el)._asdict() for el in response]
 
-        res = {
-            "request_args": self.args,
-            "length": len(retval),
-            "packages": retval,
-        }
+        res = {"request_args": self.args, "length": len(packages), "packages": packages}
         return res, 200

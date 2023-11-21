@@ -146,7 +146,7 @@ class routePackagesetFastPackagesSearch(Resource):
     @ns.marshal_with(fast_pkgs_search_model)
     def get(self):
         url_logging(logger, g.url)
-        args = pkgs_by_name_args.parse_args(strict=True)
+        args = pkgs_search_by_name_args.parse_args(strict=True)
         w = FastPackagesSearchLookup(g.connection, **args)
         return run_worker(worker=w, args=args)
 

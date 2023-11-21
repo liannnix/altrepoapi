@@ -31,6 +31,8 @@ class LookupTables:
         "c8.1",
         "c9f1",
         "c9f2",
+        "c10f1",
+        "c10f2",
         "p5",
         "p6",
         "p7",
@@ -56,8 +58,28 @@ class LookupTables:
         "p9_e2k",
         "p10_e2k",
     ]
+    oval_export_branches = ["p9", "p10", "c9f2", "c10f1"]
+    oval_export_branches_map = {"p9": "1", "p10": "2", "c9f2": "3", "c10f1": "4"}
     no_downloads_branches = ["sisyphus_e2k", "p9_e2k", "p10_e2k"]
     repology_export_branches = ["sisyphus", "p9", "p10"]
+    repology_cpe_branch_map = {
+        # P9
+        "p9": "alt_p9",
+        "c9f1": "alt_p9",
+        "c9f2": "alt_p9",
+        "p9_e2k": "alt_p9",
+        "p9_mipsel": "alt_p9",
+        # P10
+        "p10": "alt_p10",
+        "c10f1": "alt_p10",
+        "c10f2": "alt_p10",
+        "p10_e2k": "alt_p10",
+        # Sisyphus
+        "sisyphus": "altsisyphus",
+        "sisyphus_e2k": "altsisyphus",
+        "sisyphus_mipsel": "altsisyphus",
+        "sisyphus_riscv64": "altsisyphus",
+    }
     known_archs = [
         "noarch",
         "i586",
@@ -72,6 +94,13 @@ class LookupTables:
         "e2kv4",
         "e2kv5",
         "e2kv6",
+    ]
+    known_repo_components = [
+        "debuginfo",
+        "classic",
+        "srpm",
+        "checkinstall",
+        "gostcrypto",
     ]
     default_archs = ["x86_64", "i586", "aarch64", "armh", "ppc64le", "noarch"]
     package_params = [
@@ -288,6 +317,10 @@ class LookupTables:
     packages_base = "https://packages.altlinux.org/en"
     bugzilla_base = "https://bugzilla.altlinux.org"
     public_ftp_base = "http://ftp.altlinux.org/pub/distributions/ALTLinux"
+    errata_base = "https://errata.altlinux.org"
+    nvd_cve_base = "https://nvd.nist.gov/vuln/detail"
+    fstec_bdu_base = "https://bdu.fstec.ru/vul"
+    mfsa_base = "https://www.mozilla.org/en-US/security/advisories"
 
     rpmsense_flags = [
         "RPMSENSE_ANY",
@@ -336,6 +369,69 @@ class LookupTables:
         "SWEPT",
         "FAILURE",
     ]
+
+    known_approvers = {
+        "p10": ["@maint", "@tester"],
+        "p9": ["@maint", "@tester"],
+        "p8": ["snowmix", "amakeenk", "jenya"],
+        "c10f2": ["@maint", "@tester"],
+        "c10f1": ["@maint", "@tester"],
+        "c9f2": ["@maint", "@tester"],
+        "c9f1": ["@maint", "@tester"],
+    }
+
+    branch_tree_branches = [
+        "sisyphus",
+        "p10",
+        "p9",
+        "p8",
+        "p7",
+        "c10f2",
+        "c10f1",
+        "c9f2",
+        "c9f1",
+        "c8.1",
+        "c8",
+        "c7.1",
+        "c7",
+    ]
+
+    cpe_branch_map = {
+        # P9
+        "p9": "alt_p9",
+        "c9f1": "alt_p9",
+        "c9f2": "alt_p9",
+        "p9_e2k": "alt_p9",
+        "p9_mipsel": "alt_p9",
+        # P10
+        "p10": "alt_p10",
+        "c10f1": "alt_p10",
+        "c10f2": "alt_p10",
+        "p10_e2k": "alt_p10",
+        # Sisyphus
+        "sisyphus": "altsisyphus",
+        "sisyphus_e2k": "altsisyphus",
+        "sisyphus_mipsel": "altsisyphus",
+        "sisyphus_riscv64": "altsisyphus",
+    }
+
+    branch_inheritance = {
+        "c10f2": ["c10f1", "p10", "sisyphus"],
+        "c10f1": ["p10", "sisyphus"],
+        "c9f2": ["c9f1", "p9", "sisyphus"],
+        "c9f1": ["p9", "sisyphus"],
+        # "c8.1": ["c8", "p8", "sisyphus"],
+        # "c8": ["p8", "sisyphus"],
+        # "c7.1": ["c7", "p7", "sisyphus"],
+        # "c7": ["p7", "sisyphus"],
+        "p10": ["sisyphus"],
+        "p9": ["sisyphus"],
+        # "p8": ["sisyphus"],
+        # "p7": ["sisyphus"],
+        "sisyphus": ["sisyphus"],
+    }
+
+    known_errata_type = {"packages": ["branch", "task"], "repository": ["bulletin"]}
 
 
 lut = LookupTables()

@@ -16,11 +16,6 @@
 
 from collections import namedtuple
 
-from altrepo_api.utils import (
-    tuplelist_to_dict,
-    sort_branches,
-)
-
 from altrepo_api.api.base import APIWorker
 from ..sql import sql
 
@@ -59,28 +54,8 @@ class BinaryPackageScripts(APIWorker):
         if not self.sql_status:
             return self.error
 
-        # get package versions
-        pkg_versions = []
         pkg_name = response[0][0]  # type: ignore
         pkg_arch = response[0][1]  # type: ignore
-
-        response = self.send_sql_request(
-            self.sql.get_pkg_binary_versions.format(name=pkg_name, arch=pkg_arch)
-        )
-        if not self.sql_status:
-            return self.error
-
-        PkgVersions = namedtuple(
-            "PkgVersions", ["branch", "version", "release", "pkghash"]
-        )
-
-        # sort package versions by branch
-        pkg_branches = sort_branches([el[0] for el in response])  # type: ignore
-        pkg_versions = tuplelist_to_dict(response, 3)  # type: ignore
-
-        pkg_versions = [
-            PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
-        ]
 
         res = {
             "request_args": self.pkghash,
@@ -88,6 +63,5 @@ class BinaryPackageScripts(APIWorker):
             "pkg_arch": pkg_arch,
             "length": len(pkg_scripts),
             "scripts": pkg_scripts,
-            "versions": pkg_versions,
         }
         return res, 200

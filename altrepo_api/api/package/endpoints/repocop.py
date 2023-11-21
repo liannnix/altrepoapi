@@ -87,7 +87,14 @@ class Repocop(APIWorker):
         release_cond = ""
         arch_cond = ""
         if source == 1:
-            name_cond = f"AND rc_srcpkg_name = '{self.args['package_name']}'"
+            name_cond = f"""
+pkg_name IN (
+    SELECT pkg_name
+    FROM PackagesRepocop
+    WHERE rc_srcpkg_name = '{self.args['package_name']}'
+)
+"""
+
             if self.args["package_version"] is not None:
                 version_cond = (
                     f"AND rc_srcpkg_version = '{self.args['package_version']}'"
@@ -98,7 +105,8 @@ class Repocop(APIWorker):
                     f"AND rc_srcpkg_release = '{self.args['package_release']}'"
                 )
         else:
-            name_cond = f"AND pkg_name = '{self.args['package_name']}'"
+            name_cond = f"pkg_name = '{self.args['package_name']}'"
+
             if self.args["package_version"] is not None:
                 version_cond = f"AND pkg_version = '{self.args['package_version']}'"
 
@@ -109,7 +117,7 @@ class Repocop(APIWorker):
             arch_cond = f"AND pkg_arch = '{self.args['bin_package_arch']}'"
 
         response = self.send_sql_request(
-            self.sql.get_out_repocop.format(
+            self.sql.get_last_repocop_results.format(
                 pkgs=name_cond,
                 srcpkg_version=version_cond,
                 srcpkg_release=release_cond,

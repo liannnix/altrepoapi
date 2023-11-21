@@ -13,9 +13,11 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 from dataclasses import asdict
 
 from altrepo_api.api.base import APIWorker
+
 from ..sql import sql
 from ..dto import TaskMeta, TaskApprovalMeta, SubtaskMeta, SubtaskArchsMeta
 
@@ -139,7 +141,6 @@ class LastTasks(APIWorker):
                     "data": [
                         {"task_id": el[0], "subtask_id": el[1]}
                         for el in subtasks.keys()
-                        if tasks[el[0]].task_state in ("BUILDING", "FAILED", "FAILING")
                     ],
                 }
             ],

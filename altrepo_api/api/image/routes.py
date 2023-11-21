@@ -26,7 +26,12 @@ from altrepo_api.api.base import (
     POST_RESPONSES_400_404,
 )
 from .endpoints.find_image_by_package import FindImagesByPackageName
-from .endpoints.image_status import ImageStatus, ImageTagStatus, ActiveImages
+from .endpoints.image_status import (
+    ImageStatus,
+    ImageTagStatus,
+    ActiveImages,
+    ImagePackageSet,
+)
 
 from .namespace import get_namespace
 from .endpoints.image_info import (
@@ -64,6 +69,7 @@ from .serializers import (
     last_packages_image_model,
     active_images_model,
     find_images_by_pkg_model,
+    image_packageset_model,
 )
 
 ns = get_namespace()
@@ -147,7 +153,7 @@ class routeImageStatus(Resource):
     )
     @ns.expect(img_json_model)
     @ns.doc(security="BasicAuth")
-    @auth_required
+    @auth_required(admin_only=True)
     def post(self):
         url_logging(logger, g.url)
         args = {}
@@ -180,7 +186,7 @@ class routeImageTagStatus(Resource):
     )
     @ns.expect(img_tag_json_model)
     @ns.doc(security="BasicAuth")
-    @auth_required
+    @auth_required(admin_only=True)
     def post(self):
         url_logging(logger, g.url)
         args = {}
@@ -328,4 +334,20 @@ class routeFindImagesByPackage(Resource):
         url_logging(logger, g.url)
         args = find_images_args.parse_args(strict=True)
         w = FindImagesByPackageName(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/image_packageset",
+    doc={
+        "description": ("Get a list of package sets which has an active images."),
+        "responses": GET_RESPONSES_404,
+    },
+)
+class routeImagePackageSet(Resource):
+    @ns.marshal_with(image_packageset_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = {}
+        w = ImagePackageSet(g.connection, **args)
         return run_worker(worker=w, args=args)

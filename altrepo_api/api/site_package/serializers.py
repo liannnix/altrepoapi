@@ -105,6 +105,16 @@ package_info_archs_el_model = ns.model(
         ),
     },
 )
+package_new_version_el_model = ns.model(
+    "SitePackageNewVersionModel",
+    {
+        "task_id": fields.Integer(description="task id"),
+        "date": fields.DateTime(description="task build date"),
+        "pkghash": fields.String(description="package hash UInt64 as string"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+    },
+)
 package_info_model = ns.model(
     "SitePackageInfoModel",
     {
@@ -142,8 +152,10 @@ package_info_model = ns.model(
             as_list=True,
             description="package changelog",
         ),
-        "versions": fields.Nested(
-            package_versions_el_model, as_list=True, description="all package versions"
+        "new_version": fields.Nested(
+            package_new_version_el_model,
+            as_list=True,
+            description="new package version",
         ),
         "beehive": fields.Nested(
             package_beehive_el_model, as_list=True, description="Beehive rebuild status"
@@ -264,11 +276,6 @@ package_downloads_model = ns.model(
             description="Packages downloads",
             as_list=True,
         ),
-        "versions": fields.Nested(
-            package_versions_el_model,
-            description="Packages downloads",
-            as_list=True,
-        ),
     },
 )
 
@@ -321,9 +328,6 @@ depends_packages_model = ns.model(
             description="unpackaged directories information",
             as_list=True,
         ),
-        "versions": fields.Nested(
-            package_versions_el_model, as_list=True, description="all package versions"
-        ),
     },
 )
 
@@ -363,5 +367,41 @@ pkg_nvr_by_hash_model = ns.model(
         "version": fields.String(description="package version"),
         "release": fields.String(description="package release"),
         "is_source": fields.Boolean(description="is source package"),
+    },
+)
+
+misconflict_pkg_by_src_el_model = ns.model(
+    "PackageMisconflictBySrcElementModel",
+    {
+        "input_package": fields.String(description="package name"),
+        "input_archs": fields.List(fields.String, description="input package archs"),
+        "conflict_package": fields.String(description="package name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "epoch": fields.Integer(description="package epoch"),
+        "archs": fields.List(fields.String, description="package archs"),
+        "files_with_conflict": fields.List(
+            fields.String, description="conflict files", default=[]
+        ),
+        "explicit": fields.Boolean(default=False),
+    },
+)
+misconflict_pkgs_by_src_model = ns.model(
+    "PackageMisconflictBySrcModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "conflicts": fields.Nested(
+            misconflict_pkg_by_src_el_model, description="conflicts", as_list=True
+        ),
+    },
+)
+
+package_name_from_repology_model = ns.model(
+    "PackageNameFromRepologyModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "name": fields.String(description="package name from repology"),
+        "repo": fields.String(description="repository name from repology"),
     },
 )

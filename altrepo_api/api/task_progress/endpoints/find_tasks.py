@@ -13,10 +13,12 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 from dataclasses import asdict
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
+
 from ..sql import sql
 from ..dto import (
     FastSearchTaskMeta,
@@ -173,6 +175,7 @@ class FindTasks(APIWorker):
 
     def get(self):
         input_val: list[str] = self.args["input"][:] if self.args["input"] else []
+        by_pkg = self.args["by_package"]
         branch = self.args["branch"]
         state = tuple(self.args["state"] if self.args["state"] else [])
         owner = self.args["owner"]
@@ -226,8 +229,21 @@ class FindTasks(APIWorker):
         for v in input_val:
             # escape '_' symbol as it matches any symbol in SQL
             v = v.replace("_", r"\_")
-            # XXX: use case insensitive 'ILIKE' here
-            where_clause2 += f"AND search ILIKE '%{v}%' "
+            if by_pkg is True:
+                where_clause2 += (
+                    "AND task_id IN ("
+                    "SELECT DISTINCT task_id "
+                    "FROM TaskIterations "
+                    "WHERE titer_srcrpm_hash IN ("
+                    "SELECT pkg_hash "
+                    "FROM Packages "
+                    f"WHERE (pkg_name = '{v}') "
+                    "AND (pkg_sourcepackage = 1)"
+                    "))"
+                )
+            else:
+                # XXX: use case insensitive 'ILIKE' here
+                where_clause2 += f"AND search ILIKE '%{v}%' "
 
         if tasks_limit:
             limit_clause = f"LIMIT {tasks_limit}"
@@ -339,8 +355,6 @@ class FindTasks(APIWorker):
                         "data": [
                             {"task_id": el[0], "subtask_id": el[1]}
                             for el in subtasks.keys()
-                            if tasks[el[0]].task_state
-                            in ("BUILDING", "FAILED", "FAILING")
                         ],
                     }
                 ],

@@ -39,28 +39,40 @@ class WatchByMaintainer(APIWorker):
 
         MaintainerWatch = namedtuple(
             "MaintainerWatch",
-            ["pkg_name", "old_version", "new_version", "url", "date_update"],
+            [
+                "pkg_name",
+                "old_version",
+                "new_version",
+                "url",
+                "date_update",
+                "repology_name",
+            ],
         )
 
         if self.args["by_acl"] == "by_nick_leader_and_group":
             request_line = self.sql.get_watch_by_last_acl_with_group.format(
-                maintainer_nickname=maintainer_nickname
+                maintainer_nickname=maintainer_nickname,
+                last_repology_pnc=self.sql.last_repology_name_conversion,
             )
         if self.args["by_acl"] == "by_nick_leader":
             request_line = self.sql.get_watch_by_last_acl.format(
-                maintainer_nickname=maintainer_nickname
+                maintainer_nickname=maintainer_nickname,
+                last_repology_pnc=self.sql.last_repology_name_conversion,
             )
         if self.args["by_acl"] == "by_nick":
             request_line = self.sql.get_watch_by_nick_acl.format(
-                maintainer_nickname=maintainer_nickname
+                maintainer_nickname=maintainer_nickname,
+                last_repology_pnc=self.sql.last_repology_name_conversion,
             )
         if self.args["by_acl"] == "by_nick_or_group":
             request_line = self.sql.get_watch_by_nick_or_group_acl.format(
-                maintainer_nickname=maintainer_nickname
+                maintainer_nickname=maintainer_nickname,
+                last_repology_pnc=self.sql.last_repology_name_conversion,
             )
         if self.args["by_acl"] == "none":
             request_line = self.sql.get_watch_by_packager.format(
-                maintainer_nickname=maintainer_nickname
+                maintainer_nickname=maintainer_nickname,
+                last_repology_pnc=self.sql.last_repology_name_conversion,
             )
 
         response = self.send_sql_request(request_line)

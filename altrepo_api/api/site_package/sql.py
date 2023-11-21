@@ -202,6 +202,16 @@ WHERE pkg_name = '{name}'
     AND pkg_sourcepackage = 0
 """
 
+    get_current_pkg_version = """
+SELECT DISTINCT
+    pkg_version,
+    pkg_release
+FROM static_last_packages
+WHERE pkg_name = '{name}'
+    AND pkgset_name = '{branch}'
+    AND pkg_sourcepackage = {is_src}
+"""
+
     get_pkg_dependencies = """
 SELECT
     dp_name,
@@ -226,6 +236,35 @@ WHERE (pkg_srcrpm_hash = {pkghash})
         FROM lv_pkgset_stat
         WHERE pkgset_name = '{branch}'
     )
+GROUP BY pkg_name
+ORDER BY pkg_name ASC
+"""
+
+    get_binary_pkgs_from_last_pkgs = """
+WITH bin_pkgs as (
+SELECT DISTINCT
+    pkg_name,
+    pkg_hash
+FROM Packages
+WHERE pkg_srcrpm_hash = {pkghash}
+{bin_pkg_clause}
+)
+SELECT DISTINCT
+    pkg_name,
+    arrayReverseSort(groupUniqArray((pkg_arch, pkg_hash))),
+    max(pkg_buildtime)
+FROM Packages
+WHERE (pkg_srcrpm_hash = {pkghash})
+AND pkg_hash IN (
+    SELECT pkg_hash FROM static_last_packages
+    WHERE pkgset_name = '{branch}'
+        AND (pkg_name, pkg_hash) IN (
+            SELECT pkg_name, pkg_hash
+            FROM bin_pkgs
+        )
+    AND pkg_sourcepackage = 0
+)
+AND (pkg_sourcepackage = 0)
 GROUP BY pkg_name
 ORDER BY pkg_name ASC
 """
@@ -264,19 +303,6 @@ WHERE pkg_hash IN (
 """
 
     get_last_bh_rebuild_status_by_hsh = """
-WITH
-last_bh_updated AS
-(
-    SELECT
-        pkgset_name,
-        bh_arch as arch,
-        max(bh_updated) AS updated
-    FROM BeehiveStatus
-    WHERE pkgset_name = %(branch)s
-    GROUP BY
-        pkgset_name,
-        bh_arch
-)
 SELECT
     bh_arch,
     bh_status,
@@ -284,11 +310,13 @@ SELECT
     bh_updated,
     bh_ftbfs_since
 FROM BeehiveStatus
-WHERE pkgset_name = %(branch)s
-    AND pkg_hash = %(pkghash)s
-    AND (bh_arch, bh_updated) IN
-    (
-        SELECT arch, updated FROM last_bh_updated
+WHERE pkgset_name = '{branch}'
+    AND pkg_hash = {pkghash}
+    AND (bh_arch, bh_updated) IN (
+        SELECT bh_arch, max(bh_updated)
+        FROM BeehiveStatus
+        WHERE pkgset_name = '{branch}'
+        GROUP BY bh_arch
     )
 """
 
@@ -296,7 +324,7 @@ WHERE pkgset_name = %(branch)s
 SELECT
     task_id,
     any(subtask_id),
-    max(task_changed),
+    max(task_changed) AS changed,
     any(task_owner),
     any(subtask_userid)
 FROM Tasks
@@ -311,6 +339,7 @@ WHERE subtask_deleted = 0
         WHERE task_state = 'DONE'
     )
 GROUP BY task_id
+ORDER BY changed DESC
 """
 
     get_deleted_package_task_by_bin = """
@@ -329,7 +358,7 @@ WITH
 SELECT
     task_id,
     any(subtask_id),
-    max(task_changed),
+    max(task_changed) AS changed,
     any(task_owner),
     any(subtask_userid)
 FROM Tasks
@@ -344,6 +373,7 @@ WHERE subtask_deleted = 0
         WHERE task_state = 'DONE'
     )
 GROUP BY task_id
+ORDER BY changed DESC
 """
 
     get_delete_task_from_branch_history = """
@@ -628,7 +658,6 @@ SELECT DISTINCT
 FROM last_packages
 WHERE pkg_hash = {pkghash}
     AND pkgset_name = '{branch}'
-    AND pkg_arch = '{arch}'
 """
 
     get_pkgs_md5_by_hshs = """
@@ -755,6 +784,130 @@ SELECT DISTINCT
     pkg_sourcepackage
 FROM Packages
 WHERE pkg_hash = {pkghash}
+"""
+
+    get_new_pkg_version = """
+SELECT *
+FROM (
+    SELECT
+        argMax(task_id, task_changed) as task_id,
+        max(task_changed) as changed,
+        argMax(pkg_hash, task_changed) as pkghash,
+        argMax(pkg_version, task_changed) as version,
+        argMax(pkg_release, task_changed) as release
+    FROM BranchPackageHistory
+    WHERE pkg_name = '{pkg_name}'
+        AND tplan_action = 'add'
+        AND pkgset_name = '{branch}'
+        {source}
+        {arch}
+)
+WHERE (version, release) != ('{ver}', '{rel}')
+    AND (version, release) != ('{cur_ver}', '{cur_rel}')
+    AND task_id != 0
+"""
+
+    get_conflicts_pkg_hshs = """
+SELECT DISTINCT
+    sel.pkg_hash AS input_hash,
+    sel.arch AS input_arch,
+    TT.pkg_name AS conf_name,
+    TT.pkg_version AS version,
+    TT.pkg_release AS release,
+    TT.pkg_epoch AS epoch,
+    sel.dp_name AS dp_name,
+    sel.dp_version AS dp_version,
+    sel.dp_flag AS dp_flag,
+    TT.pkg_hash AS conf_hash,
+    TT.pkg_arch AS conf_arch
+FROM (
+    SELECT DISTINCT
+        pkg_hash,
+        TMP.arch AS arch,
+        dp_name,
+        dp_version,
+        dp_flag
+    FROM Depends
+    LEFT JOIN (
+        SELECT pkg_hash, arch FROM {tmp_table}
+    ) AS TMP ON TMP.pkg_hash = Depends.pkg_hash
+    WHERE pkg_hash IN (SELECT pkg_hash FROM {tmp_table})
+    AND dp_type = 'conflict'
+) AS sel
+INNER JOIN (
+    SELECT
+        pkg_hash,
+        pkg_name,
+        pkg_arch,
+        pkg_epoch,
+        pkg_version,
+        pkg_release
+    FROM last_packages
+    WHERE pkgset_name = '{branch}'
+) AS TT ON (TT.pkg_name = sel.dp_name AND TT.pkg_arch = sel.arch)
+    OR (TT.pkg_name = sel.dp_name AND TT.pkg_arch = 'noarch')
+"""
+
+    get_conflict_files = """
+WITH
+pkg_files AS (
+    SELECT
+        pkg_hash AS input_hash,
+        arch,
+        TT.pkg_hash AS conf_hash,
+        file_hashname
+    FROM (
+        SELECT DISTINCT
+            pkg_hash,
+            TT.arch AS arch,
+            file_hashname
+        FROM Files
+        LEFT JOIN (
+            SELECT input_hash, arch FROM {tmp_table}
+        ) AS TT ON TT.input_hash = pkg_hash
+        WHERE pkg_hash IN (SELECT input_hash FROM {tmp_table})
+        AND file_class != 'directory'
+    ) AS inpt_files
+    INNER JOIN (
+        SELECT DISTINCT
+            pkg_hash,
+            file_hashname
+        FROM Files
+        WHERE pkg_hash IN (SELECT conf_hash FROM {tmp_table})
+        AND file_class != 'directory'
+    ) AS TT ON TT.file_hashname = inpt_files.file_hashname
+)
+SELECT input_hash, arch, groupUniqArray(filename) AS filenames
+FROM (
+    SELECT
+        PF.input_hash AS input_hash,
+        PF.arch AS arch,
+        FN.fn_name AS filename
+    FROM
+    (SELECT * FROM pkg_files WHERE conf_hash != input_hash) AS PF
+    LEFT JOIN
+    (
+        SELECT DISTINCT
+            fn_hash,
+            fn_name
+        FROM FileNames
+        WHERE fn_hash IN
+        (SELECT file_hashname FROM pkg_files)
+    ) AS FN ON FN.fn_hash = PF.file_hashname
+    ORDER BY filename
+)
+GROUP BY input_hash, arch
+"""
+
+    get_converted_pkg_name = """
+SELECT DISTINCT
+    pnc_result,
+    pnc_type
+FROM PackagesNameConversion
+WHERE pkg_name = '{pkg_name}'
+AND pnc_type = '{branch}'
+AND pnc_source = 'repology'
+AND pnc_state = 'active'
 """
 
 

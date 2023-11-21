@@ -21,3 +21,23 @@ LOG_LEVEL = 4     # 0 : critical, 1 : error, 2 : warning, 3 : info, 4 : debug
 SQL_DEBUG = false
 LOG_TO_FILE = false
 LOG_TO_SYSLOG = false
+
+[LDAP]
+LDAP_SERVER_URI = ldap://127.0.0.1:33389/
+LDAP_USER_SEARCH = uid=%%(user)s,ou=people,o=test
+LDAP_REQUIRE_GROUP = cn=%%(group)s,ou=groups,o=test
+
+[GROUPS]
+API_ADMIN =
+API_USER =
+CVE_ADMIN =
+CVE_USER =
+
+[AUTHENTICATION]
+TOKEN_STORAGE = file
+EXPIRES_ACCESS_TOKEN = 60
+EXPIRES_REFRESH_TOKEN = 300
+MAX_REFRESH_SESSIONS_COUNT = 3
+
+[REDIS]
+REDIS_URL =

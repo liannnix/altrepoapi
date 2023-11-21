@@ -16,6 +16,7 @@
 
 import ctypes
 
+from enum import IntEnum
 from typing import NamedTuple, Union
 
 LIBRPM_SO = "librpm.so.7"
@@ -71,6 +72,12 @@ class struct_Dependency(NamedTuple):
     name: bytes
     version: bytes
     flags: int
+
+
+class VersionCompareResult(IntEnum):
+    LESS_THAN = -1
+    EQUAL = 0
+    GREATER_THAN = 1
 
 
 def _make_dependency_tuple(name: str, version: str, flags: int) -> struct_Dependency:
@@ -142,9 +149,22 @@ def compare_versions(
     release2: str = "",
     disttag2: str = "",
     buildtime2: Union[int, None] = None
-) -> int:
+) -> VersionCompareResult:
     """Compare package versions using librpm `rpmEVRDTCompare` function."""
-    return _compare_versions(
-        _make_rpm_evrdt_struct(epoch1, version1, release1, disttag1, buildtime1),
-        _make_rpm_evrdt_struct(epoch2, version2, release2, disttag2, buildtime2),
+    return VersionCompareResult(
+        _compare_versions(
+            _make_rpm_evrdt_struct(epoch1, version1, release1, disttag1, buildtime1),
+            _make_rpm_evrdt_struct(epoch2, version2, release2, disttag2, buildtime2),
+        )
     )
+
+
+def version_less_or_equal(
+    version1: str, version2: str, strictly_less: bool = False
+) -> bool:
+    """Simple version comparison without additional field (epoch, release, disttag,...)."""
+    eq = compare_versions(version1=version1, version2=version2)
+    if strictly_less:
+        return eq < VersionCompareResult.EQUAL
+    else:
+        return eq < VersionCompareResult.GREATER_THAN

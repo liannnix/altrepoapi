@@ -22,6 +22,7 @@ import configparser
 from .settings import namespace as settings
 
 
+ACCESS_GROUPS_SECTION = "GROUPS"
 # dictionary of config arguments
 PARAMS = {
     "database": {
@@ -41,6 +42,7 @@ PARAMS = {
     "other": {
         "admin_user": ("ADMIN_USER", "str"),
         "admin_password": ("ADMIN_PASSWORD", "str"),
+        "admin_ldap_group": ("ADMIN_LDAP_GROUP", "str"),
         "log_file": ("LOG_FILE", "str"),
         "log_level": ("LOG_LEVEL", "log_level"),
         "sql_debug": ("SQL_DEBUG", "bool"),
@@ -48,6 +50,18 @@ PARAMS = {
         "log_to_syslog": ("LOG_TO_SYSLOG", "bool"),
         "log_to_console": ("LOG_TO_CONSOLE", "bool"),
     },
+    "ldap": {
+        "ldap_server_uri": ("LDAP_SERVER_URI", "str"),
+        "ldap_user_search": ("LDAP_USER_SEARCH", "str"),
+        "ldap_require_group": ("LDAP_REQUIRE_GROUP", "str"),
+    },
+    "authentication": {
+        "token_storage": ("TOKEN_STORAGE", "str"),
+        "expires_access_token": ("EXPIRES_ACCESS_TOKEN", "int"),
+        "expires_refresh_token": ("EXPIRES_REFRESH_TOKEN", "int"),
+        "max_refresh_sessions_count": ("MAX_REFRESH_SESSIONS_COUNT", "int"),
+    },
+    "redis": {"redis_url": ("REDIS_URL", "str")},
 }
 
 
@@ -83,6 +97,19 @@ def read_config(config_file: str, params: dict, namespace: object) -> bool:
 
     # update settings with values from config file
     for section in config.sections():
+        # handle access groups section
+        if section.upper() == ACCESS_GROUPS_SECTION:
+            for option in config.options(section):
+                key = None
+                try:
+                    key = namespace.AG[option.upper()]  # type: ignore
+                except KeyError:
+                    continue
+                val = config.get(section, option)
+                if key is not None and val:
+                    namespace.ACCESS_GROUPS[key] = val  # type: ignore
+            continue
+        # handle other configuration sections
         for option in config.options(section):
             param = params.get(section.lower(), {}).get(option, None)
             if param is None:

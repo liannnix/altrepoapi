@@ -29,16 +29,6 @@ all_pkgsets_el_model = ns.model(
     },
 )
 
-package_versions_el_model = ns.model(
-    "DependenciesPackageVersionsElementModel",
-    {
-        "branch": fields.String(description="package set name"),
-        "version": fields.String(description="package version"),
-        "release": fields.String(description="package release"),
-        "pkghash": fields.String(description="package hash UInt64 as string"),
-    },
-)
-
 package_dependencies_el_model = ns.model(
     "DependenciesPackageDependenciesElementModel",
     {
@@ -60,9 +50,6 @@ package_dependencies_model = ns.model(
             package_dependencies_el_model,
             description="package dependencies list",
             as_list=True,
-        ),
-        "versions": fields.Nested(
-            package_versions_el_model, as_list=True, description="all package versions"
         ),
     },
 )
@@ -137,6 +124,42 @@ package_build_deps_model = ns.model(
         "provided_by_src": fields.Nested(
             package_info_el_model,
             description="list of source packages of binary packages that provides required dependencies",
+            as_list=True,
+        ),
+    },
+)
+
+backport_helper_el_model = ns.model(
+    "BackportHelperBinaryElementModel",
+    {
+        "srpm": fields.String(description="package srpm"),
+        "name": fields.String(description="package name"),
+        "epoch": fields.Integer(description="package epoch"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "arch": fields.String(description="packages arch"),
+    },
+)
+backport_helper_depth_el_model = ns.model(
+    "BackportHelperBinaryDepthElementModel",
+    {
+        "depth": fields.Integer(description="dependency depth"),
+        "packages": fields.Nested(
+            backport_helper_el_model,
+            description="packages dependencies list",
+            as_list=True,
+        ),
+    },
+)
+backport_helper_model = ns.model(
+    "BackportHelperModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "count": fields.Integer(description="number of packages found"),
+        "maxdepth": fields.Integer(description="maxium depth reached"),
+        "dependencies": fields.Nested(
+            backport_helper_depth_el_model,
+            description="packages dependencies list by depth",
             as_list=True,
         ),
     },

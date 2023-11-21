@@ -37,6 +37,7 @@ class SubtaskMeta(NamedTuple):
     package: str
     pkg_from: str
     changed: datetime
+    srpm: str = ""
 
 
 class TaskMeta(NamedTuple):
@@ -67,6 +68,23 @@ def _build_gear_link(
             return evr.split(":")[-1]
         return evr
 
+    def fix_srpm_name_evr():
+        if subtask.srpm.endswith(".src.rpm"):
+            pkg_name = subtask.srpm.replace(".src.rpm", "")
+        else:
+            return subtask
+
+        evr = pkg_name.split("-")[-2:]
+        if len(evr) == 2 and evr[1].startswith("alt"):
+            version, release = evr
+        else:
+            return subtask
+
+        return subtask._replace(
+            srpm_name=pkg_name.replace(f"-{version}-{release}", ""),
+            srpm_evr=f"{delete_epoch(version)}-{release}",
+        )
+
     type_ = ""
     link_ = ""
     if subtask.type == "copy":
@@ -91,8 +109,12 @@ def _build_gear_link(
         link_ = git_base_url + subtask.dir
         if subtask.tag_id != "":
             link_ += f"?a=tree;hb={subtask.tag_id}"
-    elif subtask.srpm_name != "" or subtask.type == "srpm":
+    elif subtask.srpm_name != "" or subtask.type == "srpm" or subtask.srpm != "":
         # 'srpm' and 'rebuild' + 'unknown' with srpm
+        if subtask.srpm_name == "":
+            # handle data from TaskSubtaskProgress with empty `srpm_name` and `srpm_evr`
+            subtask = fix_srpm_name_evr()
+
         type_ = "srpm"
         link_ = f"{git_base_url}/srpms/{subtask.srpm_name[0]}/{subtask.srpm_name}.git"
         if subtask.srpm_evr != "":
