@@ -173,6 +173,17 @@ package_info_model = ns.model(
     },
 )
 
+brief_package_info_model = ns.model(
+    "SitePackageInfoModel",
+    {
+        "name": fields.String(description="package name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "arch": fields.String(description="package arch"),
+        "summary": fields.String(description="package summary"),
+        "type": fields.String(description="package type (source | binary)"),
+    },
+)
 
 package_chlog_el_model = ns.model(
     "SiteChangelogElementModel",

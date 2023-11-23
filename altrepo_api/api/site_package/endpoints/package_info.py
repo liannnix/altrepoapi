@@ -804,3 +804,34 @@ class PackageNameFromRepology(APIWorker):
         res = {"request_args": self.args, **PkgNameRepology(*response[0])._asdict()}
 
         return res, 200
+
+
+class BriefPackageInfo(APIWorker):
+    def __init__(self, connection, pkghash, **kwargs):
+        self.pkghash = pkghash
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def get(self):
+        response = self.send_sql_request(
+            self.sql.get_brief_pkg_info.format(pkghash=self.pkghash)
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error(
+                {
+                    "message": (
+                        f"No information was found in the database "
+                        f"about the package with hash {self.pkghash}."
+                    ),
+                    "args": self.args,
+                }
+            )
+        PkgInfoMeta = namedtuple(
+            "PkgInfoMeta",
+            ["name", "version", "release", "arch", "type", "summary"],
+        )
+        return PkgInfoMeta(*response[0])._asdict(), 200
