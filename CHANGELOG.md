@@ -1,6 +1,16 @@
 # Changelog
 ALTrepo API changelog
 
+## [1.15.19] - 2023-11-23
+
+Regular API code updates and fixes.
+
+### Added
+- `site_package/package_info_brief` route
+### Changed
+- `task_progress/taskinfo`: force to use task progress as a source for tasks in 'FAILED' state
+### Fixed
+
 ## [1.15.18] - 2023-11-21
 
 Regular API code updates and fixes.

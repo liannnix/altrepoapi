@@ -89,6 +89,18 @@ WHERE pkg_hash = {pkghash}
     {source}
 """
 
+    get_brief_pkg_info = """
+SELECT
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    if(pkg_sourcepackage = 1, 'srpm', pkg_arch) AS arch,
+    if(pkg_sourcepackage = 1, 'source', 'binary') AS sourcepackage,
+    pkg_summary
+FROM Packages
+WHERE pkg_hash = {pkghash}    
+"""
+
     get_package_build_tasks = """
 SELECT
     pkgset_name,

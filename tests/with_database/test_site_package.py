@@ -106,6 +106,22 @@ def test_package_info(client, kwargs):
 @pytest.mark.parametrize(
     "kwargs",
     [
+        {"pkghash": SRC_PKG_HASH_IN_DB, "status_code": 200},
+        {"pkghash": BIN_PKG_HASH_IN_DB, "status_code": 200},
+        {"pkghash": PKG_HASH_NOT_IN_DB, "status_code": 404},
+    ],
+)
+def test_brief_package_info(client, kwargs):
+    url = url_for("api.site_route_brief_package_info", **{"pkghash": kwargs["pkghash"]})
+    response = client.get(url)
+    data = response.json
+    assert data != {}
+    assert response.status_code == kwargs["status_code"]
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
         {"branch": BRANCH_IN_DB, "name": BIN_PACKAGE_IN_DB, "status_code": 200},
         {"branch": BRANCH_IN_DB, "name": PACKAGE_NOT_IN_DB, "status_code": 404},
         {"branch": BRANCH_NOT_IN_DB, "name": BIN_PACKAGE_IN_DB, "status_code": 400},
