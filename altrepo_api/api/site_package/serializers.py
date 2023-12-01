@@ -174,7 +174,7 @@ package_info_model = ns.model(
 )
 
 brief_package_info_model = ns.model(
-    "SitePackageInfoModel",
+    "SiteBriefPackageInfoModel",
     {
         "name": fields.String(description="package name"),
         "version": fields.String(description="package version"),
