@@ -73,7 +73,19 @@ class VulnerablePackageByCve(APIWorker):
 
     def _find_vulnerable_packages(self, cve_ids: list[str]) -> None:
         # 1. get list of errata by CVE to Errata references matching
-        get_errata_by_cve_ids(self, cve_ids)
+        get_errata_by_cve_ids(self, cve_ids, use_branch_inheritance=False)
+        # XXX: do  not fail on 'self.status' here due to get errata for cls.branch only
+        if not self.status:
+            self.result_message.extend(
+                [
+                    f"No erratas found in DB for {cve_id} in branch {self.branch}"
+                    for cve_id in cve_ids
+                ]
+            )
+        if not self.sql_status:
+            return
+
+        package_names = {e.pkg_name for e in self.erratas}
 
         # 2. get CVE information
         get_cve_info(self, cve_ids, False)
@@ -101,9 +113,7 @@ class VulnerablePackageByCve(APIWorker):
             ]
         )
 
-        # # if there is no data about CVE(s) found in DB at all use Errata as a source
-        package_names: set[str] = {e.pkg_name for e in self.erratas}
-
+        # if there is no data about CVE(s) found in DB at all use Errata as a source
         if not self.cve_info or not self.cve_cpems:
             self.result_message.append(
                 f"Using errata history as a data source for {cve_ids}"
@@ -118,6 +128,19 @@ class VulnerablePackageByCve(APIWorker):
 
             package_names.update(get_matched_packages_names(self))
 
+        # 4.5 last try to get affected packages names from existing erratas
+        if not package_names:
+            if self.branch in lut.branch_inheritance:
+                get_errata_by_cve_ids(self, cve_ids, use_branch_inheritance=True)
+                if not self.status:
+                    return
+                package_names = {e.pkg_name for e in self.erratas}
+            else:
+                self.store_error(
+                    {"message": f"No errata records found in DB for {cve_ids}"}
+                )
+                return
+
         # 5. get last packages versions
         get_last_packages_versions(self, package_names)
         if not self.status:
@@ -129,8 +152,9 @@ class VulnerablePackageByCve(APIWorker):
             return
 
         # 7. get erratas by collected package names including tasks by branch inheritance
-        pkg_names = {p.name for p in self.packages_vulnerabilities if p.vulnerable}
-        get_errata_by_pkg_names(self, pkg_names)
+        get_errata_by_pkg_names(self, package_names)
+        if not self.sql_status:
+            return
         deduplicate_erratas(self)
 
         # 8. check if there any buld tasks that fixes vulnerable packages

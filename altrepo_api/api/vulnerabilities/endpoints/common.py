@@ -602,10 +602,15 @@ def _get_task_history(
     for package, _tasks in tasks.items():
         if not _tasks:
             continue
-
-        _branch = _tasks[0].branch
-        tasks[package] = [t for t in _tasks if t.id in branch_history[_branch]]
-
+        # build task history using branch inheritance order
+        _all_pkg_task_branches = {t.branch for t in _tasks}
+        for _branch in lut.branch_inheritance[cls.branch]:
+            # skip if there is no tasks found for branch
+            if _branch not in _all_pkg_task_branches:
+                continue
+            # found first matched branch form branch inheritance list
+            tasks[package] = [t for t in _tasks if t.id in branch_history[_branch]]
+            break
     cls.status = True
     return tasks
 
@@ -691,9 +696,18 @@ def deduplicate_packages_vulnerabilities(
     cls.packages_vulnerabilities = list(set(cls.packages_vulnerabilities))
 
 
-def get_errata_by_cve_ids(cls: _pGetErratasCompatible, cve_ids: Iterable[str]) -> None:
+def get_errata_by_cve_ids(
+    cls: _pGetErratasCompatible, cve_ids: Iterable[str], use_branch_inheritance: bool
+) -> None:
+    branches = [cls.branch]
+    # add branches from branch inhertance LUT
+    if use_branch_inheritance:
+        if cls.branch in lut.branch_inheritance:
+            branches += lut.branch_inheritance[cls.branch]
+
     where_clause = (
-        f"AND pkgset_name = '{cls.branch}'" f"AND hasAny(eh_references.link, {cve_ids})"
+        # f"AND pkgset_name = '{cls.branch}' AND hasAny(eh_references.link, {cve_ids})"
+        f"AND pkgset_name IN {branches} AND hasAny(eh_references.link, {cve_ids})"
     )
     return _get_erratas(cls, where_clause)
 
