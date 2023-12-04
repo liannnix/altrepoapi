@@ -120,10 +120,14 @@ class TranslationExport(APIWorker):
 
     def get(self):
         branches = tuple(self.args["branches"])
+        from_date = self.args["from_date"]
 
-        response = self.send_sql_request(
-            self.sql.get_packages_descriptions.format(branches=branches)
-        )
+        response = ""
+        if from_date:
+            response = self.send_sql_request(self.sql.get_packages_descriptions_from_date.format(branches=branches, from_date=from_date))
+        else:
+            response = self.send_sql_request(self.sql.get_packages_descriptions.format(branches=branches))
+
         if not self.sql_status:
             return self.error
         if not response:
