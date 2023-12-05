@@ -46,6 +46,7 @@ class LookupTables:
         "sisyphus_mipsel",
         "sisyphus_riscv64",
         "sisyphus_e2k",
+        "sisyphus_loongarch64",
         "t6",
         "t7",
         "icarus",
@@ -54,6 +55,7 @@ class LookupTables:
         "p9_mipsel",
         "sisyphus_mipsel",
         "sisyphus_riscv64",
+        "sisyphus_loongarch64",
         "sisyphus_e2k",
         "p9_e2k",
         "p10_e2k",
@@ -85,6 +87,7 @@ class LookupTables:
         "sisyphus_e2k": "altsisyphus",
         "sisyphus_mipsel": "altsisyphus",
         "sisyphus_riscv64": "altsisyphus",
+        "sisyphus_loongarch64": "altsisyphus",
     }
     known_archs = [
         "noarch",
@@ -95,6 +98,7 @@ class LookupTables:
         "aarch64",
         "ppc64le",
         "riscv64",
+        "loongarch64",
         "mipsel",
         "e2k",
         "e2kv4",
@@ -117,6 +121,8 @@ class LookupTables:
         "p9_mipsel": ["noarch", "mipsel"],
         # E2K
         "sisyphus_e2k": ["noarch", "e2k", "e2kv4", "e2kv5", "e2kv6"],
+        # LOONGARCH
+        "sisyphus_loongarch64": ["noarch", "loongarch64"],
         "p10_e2k": ["noarch", "e2k", "e2kv4", "e2kv5", "e2kv6"],
         "p9_e2k": ["noarch", "e2k", "e2kv4", "e2kv5", "e2kv6"],
         # MAIN
@@ -432,6 +438,7 @@ class LookupTables:
         "sisyphus_e2k": "altsisyphus",
         "sisyphus_mipsel": "altsisyphus",
         "sisyphus_riscv64": "altsisyphus",
+        "sisyphus_loongarch64": "altsisyphus",
     }
 
     branch_inheritance = {
