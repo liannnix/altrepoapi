@@ -1,6 +1,16 @@
 # Changelog
 ALTrepo API changelog
 
+## [1.15.21] - 2023-12-06
+
+Regular API code updates and fixes.
+
+### Added
+- `export/translation`: add `from_date` optional argument support
+- support for `loongarch64` architecture
+### Changed
+### Fixed
+
 ## [1.15.20] - 2023-12-01
 
 Regular API code updates and fixes.
