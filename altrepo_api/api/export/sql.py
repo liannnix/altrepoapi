@@ -173,6 +173,37 @@ WHERE pkgset_name IN {branches}
 ORDER BY pkg_name
 """
 
+    get_packages_descriptions_from_date = """
+WITH
+pkgset_roots AS (
+    SELECT pkgset_uuid
+    FROM PackageSetName
+    WHERE pkgset_depth = 0
+        AND pkgset_nodename IN {branches}
+        AND pkgset_date >= '{from_date}'
+),
+pkgset_uuids AS (
+    SELECT pkgset_uuid
+    FROM PackageSetName
+    WHERE pkgset_ruuid IN pkgset_roots
+        AND (
+            (pkgset_depth = 1 AND pkgset_nodename = 'srpm') OR
+            (pkgset_depth = 2 AND pkgset_nodename != 'debuginfo')
+        )
+)
+SELECT DISTINCT
+    pkg_name,
+    pkg_url,
+    pkg_summary,
+    pkg_description,
+    arrayStringConcat(arrayPopBack(arrayPopBack(splitByChar('-', pkg_sourcerpm))), '-') AS src_pkg_name
+FROM Packages
+WHERE pkg_hash IN (
+    SELECT DISTINCT pkg_hash from PackageSet WHERE pkgset_uuid IN pkgset_uuids
+)
+ORDER BY pkg_name;
+"""
+
     get_done_tasks = """
 WITH task_and_repo AS (
     SELECT DISTINCT
