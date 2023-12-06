@@ -14,7 +14,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from altrepo_api.api.parser import parser, arch_name_type, branch_name_type, date_string_type
+from altrepo_api.api.parser import (
+    parser,
+    arch_name_type,
+    branch_name_type,
+    date_string_type,
+)
 
 # register parser items
 arch_opt = parser.register_item(
@@ -38,7 +43,7 @@ from_date_opt = parser.register_item(
     type=date_string_type,
     default=None,
     required=False,
-    help="take packages from date (YYYY-MM-DD)",
+    help="take packages of branch states from date (YYYY-MM-DD)",
     location="args",
 )
 
