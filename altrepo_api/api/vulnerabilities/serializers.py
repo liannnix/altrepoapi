@@ -130,6 +130,47 @@ cve_packages_model = ns.model(
 )
 
 
+vuln_pkg_last_version_model = ns.model(
+    "VulnPackageLastVersionModel",
+    {
+        "pkghash": fields.String(description="package hash UInt64 as string"),
+        "name": fields.String(description="package name"),
+        "branch": fields.String(description="package set name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+    }
+)
+vuln_fixes_el_model = ns.model(
+    "VulnFixesPackagesElementModel",
+    {
+        "pkghash": fields.String(description="package hash UInt64 as string"),
+        "name": fields.String(description="package name"),
+        "branch": fields.String(description="package set name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "errata_id": fields.String(description="errata ID"),
+        "task_id": fields.Integer(description="task ID"),
+        "task_state": fields.String(description="task state"),
+        "last_version": fields.Nested(
+            vuln_pkg_last_version_model,
+            description="last package version and release from repository"
+        )
+    }
+)
+vuln_fixes_model = ns.model(
+    "VulnFixesPackagesModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "packages": fields.Nested(
+            vuln_fixes_el_model,
+            description="vulnerable packages information",
+            as_list=True,
+        ),
+    }
+)
+
+
 cve_task_package_vulns_el_model = ns.model(
     "CveTaskPackageVulnerableElementModel",
     {

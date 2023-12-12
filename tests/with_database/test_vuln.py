@@ -287,3 +287,51 @@ def test_vuln_task(client, kwargs):
             assert data["packages"] != []
             for pkg in data["packages"]:
                 assert pkg["vulnerabilities"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"vuln_id": CVE_IN_DB, "status_code": 200},
+        {"vuln_id": CVE_NOT_IN_DB, "status_code": 404},
+        {"vuln_id": BAD_CVE_ID, "status_code": 400},
+    ],
+)
+def test_vuln_cve_fixes(client, kwargs):
+    url = url_for("api.vuln_route_vulnerable_cve_fixes")
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("status_code",):
+            continue
+        if v is not None:
+            params[k] = v
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["packages"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"vuln_id": BDU_IN_DB, "status_code": 200},
+        {"vuln_id": BDU_NOT_IN_DB, "status_code": 404},
+        {"vuln_id": BAD_BDU_ID, "status_code": 400},
+    ],
+)
+def test_vuln_bdu_fixes(client, kwargs):
+    url = url_for("api.vuln_route_vulnerable_bdu_fixes")
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("status_code",):
+            continue
+        if v is not None:
+            params[k] = v
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["packages"] != []
