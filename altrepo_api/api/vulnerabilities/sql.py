@@ -148,6 +148,31 @@ WHERE pkg_sourcepackage = 1
     AND pkgset_name IN {branches}
 """
 
+    get_packages_versions_for_show_branches = """
+SELECT DISTINCT
+    toString(pkg_hash),
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkgset_name
+FROM static_last_packages
+WHERE pkg_sourcepackage = 1
+    AND pkg_name IN (
+        SELECT * FROM {tmp_table}
+    )
+    AND pkgset_name IN (
+        SELECT pkgset_name
+        FROM (
+            SELECT
+                pkgset_name,
+                argMax(rs_show, ts) AS show
+            FROM RepositoryStatus
+            GROUP BY pkgset_name
+        )
+        WHERE show = 1
+    )
+"""
+
     get_erratas = """
 SELECT
     errata_id,
@@ -335,6 +360,20 @@ SELECT DISTINCT
 FROM BranchPackageHistory
 WHERE pkgset_name in {branches}
     AND pkg_name IN {tmp_table}
+    AND pkg_sourcepackage = 1
+    AND tplan_action = 'add'
+ORDER BY task_changed DESC
+"""
+
+    get_done_tasks_by_packages_and_branches = """
+SELECT DISTINCT
+    task_id,
+    pkgset_name,
+    pkg_name
+FROM BranchPackageHistory
+WHERE (pkg_name, pkgset_name) IN (
+        SELECT pkg_name, pkgset_name FROM {tmp_table}
+    )
     AND pkg_sourcepackage = 1
     AND tplan_action = 'add'
 ORDER BY task_changed DESC

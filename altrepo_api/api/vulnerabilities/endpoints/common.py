@@ -708,6 +708,13 @@ def get_errata_by_cve_ids(
     return _get_erratas(cls, where_clause)
 
 
+def get_errata_by_cve_id(cls: _pGetErratasCompatible, cve_id: str) -> None:
+    where_clause = (
+        f"AND has(eh_references.link, '{cve_id}')"
+    )
+    return _get_erratas(cls, where_clause)
+
+
 def get_errata_by_pkg_names(
     cls: _pGetErratasCompatible, pkg_names: Iterable[str]
 ) -> None:

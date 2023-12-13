@@ -19,6 +19,7 @@ from flask_restx import Resource
 
 from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
+from .endpoints.fixes import VulnFixes
 from .endpoints.tasks import TaskVulnerabilities
 
 from .namespace import get_namespace
@@ -36,6 +37,7 @@ from .serializers import (
     cve_packages_model,
     cve_task_model,
     branch_cve_packages_model,
+    vuln_fixes_model,
 )
 from .endpoints.vuln import VulnInfo
 from .endpoints.cve import VulnerablePackageByCve
@@ -84,6 +86,24 @@ class routeVulnerablePackageByCve(Resource):
 
 
 @ns.route(
+    "/cve/fixes",
+    doc={
+        "description": "Get a list of packages in which "
+                       "the specified CVE vulnerability is closed.",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeVulnerableCveFixes(Resource):
+    @ns.expect(cve_info_args)
+    @ns.marshal_with(vuln_fixes_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = cve_info_args.parse_args(strict=True)
+        w = VulnFixes(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
     "/bdu/packages",
     doc=False,  # XXX: hide from Swagger UI
     # doc={
@@ -99,6 +119,24 @@ class routeVulnerablePackageByBdu(Resource):
         args = bdu_vulnerable_packages_args.parse_args(strict=True)
         w = VulnerablePackageByCve(g.connection, **args)
         return run_worker(worker=w, run_method=w.get_by_bdu, args=args)
+
+
+@ns.route(
+    "/bdu/fixes",
+    doc={
+        "description": "Get a list of packages in which "
+                       "the specified BDU vulnerability is closed.",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeVulnerableBduFixes(Resource):
+    @ns.expect(bdu_info_args)
+    @ns.marshal_with(vuln_fixes_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = bdu_info_args.parse_args(strict=True)
+        w = VulnFixes(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(
