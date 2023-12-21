@@ -88,8 +88,10 @@ class routeVulnerablePackageByCve(Resource):
 @ns.route(
     "/cve/fixes",
     doc={
-        "description": "Get a list of packages in which "
-                       "the specified CVE vulnerability is closed.",
+        "description": (
+            "Get a list of packages in which "
+            "the specified CVE vulnerability is closed."
+        ),
         "responses": GET_RESPONSES_400_404,
     },
 )
@@ -124,8 +126,10 @@ class routeVulnerablePackageByBdu(Resource):
 @ns.route(
     "/bdu/fixes",
     doc={
-        "description": "Get a list of packages in which "
-                       "the specified BDU vulnerability is closed.",
+        "description": (
+            "Get a list of packages in which "
+            "the specified BDU vulnerability is closed."
+        ),
         "responses": GET_RESPONSES_400_404,
     },
 )
