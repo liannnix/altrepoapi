@@ -288,3 +288,52 @@ errata_change_history_model = ns.model(
         ),
     },
 )
+
+cpe_package_el_model = ns.model(
+    "CpePackageElementModel",
+    {
+        "name": fields.String(description="package name"),
+        "branch": fields.String(description="package set name"),
+    },
+)
+cpe_records_model = ns.model(
+    "CpePackagesModel",
+    {
+        "cpe": fields.String(description="CPE match string"),
+        "state": fields.String(description="CPE match state"),
+        "project_name": fields.String(
+            attribute="repology_name",
+            description="Repology' common project package name",
+        ),
+        "packages": fields.Nested(
+            cpe_package_el_model,
+            description="matching packages list",
+            as_list=True,
+        ),
+    },
+)
+
+cpe_candidates_response_model = ns.model(
+    "CpeCandidatesResponseModel",
+    {
+        "length": fields.Integer(description="number of CPE matches found"),
+        "cpes": fields.Nested(
+            cpe_records_model,
+            description="list of CPE match candidates",
+            as_list=True,
+        ),
+    },
+)
+cpe_manage_get_response_model = ns.model(
+    "CpeManageGet_responseModel",
+    {
+        "length": fields.Integer(description="number of CPE matches found"),
+        "name": fields.String(description="input package name"),
+        "branch": fields.String(description="input package set name"),
+        "cpes": fields.Nested(
+            cpe_records_model,
+            description="list of CPE match candidates",
+            as_list=True,
+        ),
+    },
+)

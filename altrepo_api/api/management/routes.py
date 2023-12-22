@@ -19,6 +19,7 @@ from flask_restx import Resource
 
 from altrepo_api.api.base import (
     run_worker,
+    GET_RESPONSES_404,
     GET_RESPONSES_400_404,
     POST_RESPONSES_400_404,
 )
@@ -28,11 +29,12 @@ from altrepo_api.api.auth.decorators import token_required
 from .endpoints.change_history import ErrataChangeHistory
 
 from .namespace import get_namespace
+from .endpoints.cpe import CPECandidates, ManageCpe
 from .endpoints.manage import ManageErrata
 from .endpoints.task_info import TaskInfo
 from .endpoints.task_list import TaskList
 from .endpoints.vulns_info import VulnsInfo
-from .parsers import task_list_args, errata_manage_get_args
+from .parsers import task_list_args, errata_manage_get_args, cpe_manage_get_args
 from .serializers import (
     task_list_model,
     task_info_model,
@@ -42,6 +44,8 @@ from .serializers import (
     errata_manage_response_model,
     errata_manage_get_response_model,
     errata_change_history_model,
+    cpe_candidates_response_model,
+    cpe_manage_get_response_model,
 )
 
 
@@ -125,7 +129,7 @@ RESPONSES_400_404_409 = {
     404: "Requested data not found in database",
     409: "Requests payload inconsistent with DB contents",
 }
-RESPONSES_GET_400_404_409 = {
+GET_RESPONSES_400_404_409 = {
     200: "OK",
     400: "Request arguments validation error",
     404: "Requested data not found in database",
@@ -137,7 +141,7 @@ RESPONSES_GET_400_404_409 = {
 class routeManageErrata(Resource):
     @ns.doc(
         description="Get errata info.",
-        responses=RESPONSES_GET_400_404_409,
+        responses=GET_RESPONSES_400_404_409,
         security="Bearer",
     )
     @ns.expect(errata_manage_get_args)
@@ -214,4 +218,39 @@ class routeErrataChangeHistory(Resource):
         url_logging(logger, g.url)
         args = errata_manage_get_args.parse_args(strict=True)
         w = ErrataChangeHistory(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route("/cpe/candidates")
+class routeCpeCandidates(Resource):
+    ns.doc(
+        description="Get CPE candidates",
+        responses=GET_RESPONSES_404,
+        security="Bearer",
+    )
+
+    # @ns.expect()
+    @ns.marshal_with(cpe_candidates_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = {}
+        w = CPECandidates(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route("/cpe/manage")
+class routeManageCpe(Resource):
+    @ns.doc(
+        description="Get CPE info.",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(cpe_manage_get_args)
+    @ns.marshal_with(cpe_manage_get_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = cpe_manage_get_args.parse_args(strict=True)
+        w = ManageCpe(g.connection, payload={}, **args)
         return run_worker(worker=w, args=args)

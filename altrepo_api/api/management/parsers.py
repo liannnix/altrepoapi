@@ -19,6 +19,7 @@ from altrepo_api.api.parser import (
     parser,
     branch_name_type,
     errata_id_type,
+    packager_name_type,
     positive_integer_type,
     task_search_type,
 )
@@ -59,8 +60,16 @@ is_errata_opt = parser.register_item(
     help="is errata",
     location="args",
 )
+pkg_name = parser.register_item(
+    "name",
+    type=packager_name_type,
+    required=True,
+    help="source package name",
+    location="args",
+)
 
 task_list_args = parser.build_parser(
     input_val_opt, branch_name_opt, is_errata_opt, page_opt, limit_opt
 )
 errata_manage_get_args = parser.build_parser(errata_id)
+cpe_manage_get_args = parser.build_parser(pkg_name, branch_name_opt)
