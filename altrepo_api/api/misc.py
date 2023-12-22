@@ -126,7 +126,7 @@ class LookupTables:
         "p10_e2k": ["noarch", "e2k", "e2kv4", "e2kv5", "e2kv6"],
         "p9_e2k": ["noarch", "e2k", "e2kv4", "e2kv5", "e2kv6"],
         # MAIN
-        "default": ["noarch", "x86_64"]
+        "default": ["noarch", "x86_64"],
     }
     package_params = [
         "pkg_cs",
@@ -439,6 +439,21 @@ class LookupTables:
         "sisyphus_mipsel": "altsisyphus",
         "sisyphus_riscv64": "altsisyphus",
         "sisyphus_loongarch64": "altsisyphus",
+    }
+
+    cpe_reverse_branch_map = {
+        # P9
+        "alt_p9": ("p9", "c9f1", "c9f2", "p9_e2k", "p9_mipsel"),
+        # P10
+        "alt_p10": ("p10", "c10f1", "c10f2", "p10_e2k"),
+        # Sisyphus
+        "altsisyphus": (
+            "sisyphus",
+            "sisyphus_e2k",
+            "sisyphus_mipsel",
+            "sisyphus_riscv64",
+            "sisyphus_loongarch64",
+        ),
     }
 
     branch_inheritance = {
