@@ -65,7 +65,6 @@ __known_img_components = set(lut.known_image_components)
 __known_img_platforms = set(lut.known_image_platform)
 __known_img_types = set(lut.known_image_types)
 
-
 # regex patterns
 __pkg_cs_match = re.compile(r"^[a-fA-F0-9]+$")
 __pkg_name_match = re.compile(r"^[\w\.\+\-]{2,}$")
@@ -105,6 +104,7 @@ __errata_search_match = re.compile(r"^([\w\.\+\-\_:]{2,},?)+$")
 __password_match = re.compile(r"^([\w|\W]+)$")
 # input
 __positive_integer = re.compile(r"^(?<![-.])\b[0-9]+\b(?!\.[0-9])$")
+__sort_match = re.compile(r"^-?([a-z\_]{2,},?)+$")
 
 
 # custom validators
@@ -693,4 +693,19 @@ def positive_integer_type(value: Any) -> str:
 positive_integer_type.__schema__ = {
     "type": "string",
     "pattern": __positive_integer.pattern,
+}
+
+
+def sort_type(value: Any) -> str:
+    """Sort validator."""
+
+    value = __get_string(value)
+    if not __sort_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+sort_type.__schema__ = {
+    "type": "string",
+    "pattern": __sort_match.pattern,
 }

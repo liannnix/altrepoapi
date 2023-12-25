@@ -23,6 +23,9 @@ from altrepo_api.api.parser import (
     branch_name_type,
     errata_search_type,
     positive_integer_type,
+    uuid_type,
+    img_component_type,
+    sort_type,
 )
 
 package_name_opt = parser.register_item(
@@ -49,6 +52,9 @@ errata_id_opt = parser.register_item(
 )
 branch_name_opt = parser.register_item(
     "branch", type=branch_name_type, required=False, help="branch name", location="args"
+)
+branch = parser.register_item(
+    "branch", type=branch_name_type, required=True, help="branch name", location="args"
 )
 errata_pkg_name_opt = parser.register_item(
     "name",
@@ -98,6 +104,32 @@ page_opt = parser.register_item(
     help="number page",
     location="args",
 )
+is_discarded = parser.register_item(
+    "is_discarded",
+    type=inputs.boolean,
+    default=False,
+    required=False,
+    help="is errata discarded",
+    location="args",
+)
+img_uuid = parser.register_item(
+    "uuid", type=uuid_type, required=True, help="Image UUID", location="args"
+)
+img_component_opt = parser.register_item(
+    "component",
+    type=img_component_type,
+    required=False,
+    help="Image component",
+    location="args",
+)
+sort_opt = parser.register_item(
+    "sort",
+    type=sort_type,
+    action="split",
+    required=False,
+    help="sort arguments",
+    location="args",
+)
 
 oval_export_args = parser.build_parser(package_name_opt, one_file_opt)
 errata_search_args = parser.build_parser(
@@ -105,4 +137,15 @@ errata_search_args = parser.build_parser(
 )
 find_erratas_args = parser.build_parser(
     input_val_opt, branch_name_opt, errata_type_opt, page_opt, limit_opt
+)
+find_img_erratas_args = parser.build_parser(
+    img_uuid,
+    branch,
+    img_component_opt,
+    input_val_opt,
+    errata_type_opt,
+    page_opt,
+    limit_opt,
+    is_discarded,
+    sort_opt,
 )
