@@ -160,7 +160,6 @@ errata_branches_updates_model = ns.model(
     },
 )
 
-
 errata_ids_model = ns.model(
     "ErrataIdsListModel",
     {"errata_ids": fields.List(fields.String, description="errata ids list")},
@@ -219,11 +218,59 @@ errata_last_changed_model = ns.model(
     },
 )
 
-
 errata_branches_model = ns.model(
     "ErrataBranchesModel",
     {
         "length": fields.Integer(description="number of branches"),
         "branches": fields.List(fields.String, description="list of branches"),
+    },
+)
+
+image_errata_el_model = ns.model(
+    "ImageErrataElementModel",
+    {
+        "img_hash": fields.String(
+            attribute="img_pkg_hash",
+            description="package hash UInt64 as string in the image",
+        ),
+        "img_version": fields.String(
+            attribute="img_pkg_version", description="package version in the image"
+        ),
+        "img_release": fields.String(
+            attribute="img_pkg_release", description="package release in the image"
+        ),
+        "pkg_name": fields.String(description="binary package name"),
+        "pkg_arch": fields.String(description="package architecture in the repository"),
+        "pkg_hash": fields.String(
+            description="package hash UInt64 as string in the repository",
+        ),
+        "pkg_version": fields.String(description="package version in the repository"),
+        "pkg_release": fields.String(description="package release in the repository"),
+        "summary": fields.String(description="package summary"),
+        "errata_id": fields.String(description="errata ID"),
+        "eh_type": fields.String(description="errata type"),
+        "task_id": fields.Integer(description="task ID"),
+        "changed": fields.DateTime(description="changed"),
+        "branch": fields.String(description="package set name"),
+        "is_discarded": fields.Boolean(
+            description="is errata discarded", default=False
+        ),
+        "vulnerabilities": fields.Nested(
+            vulns_el_model,
+            description="fixed vulnerabilities list",
+            as_list=True,
+        ),
+    },
+)
+image_errata_model = ns.model(
+    "ImageErrataModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of erratas"),
+        "erratas": fields.Nested(
+            image_errata_el_model,
+            description="image errata list",
+            as_list=True,
+        ),
     },
 )

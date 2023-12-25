@@ -12,10 +12,12 @@ BRANCH_IN_DB_NO_ERRATA = "4.0"
 ERRATA_TYPES_IN_DB = ["packages", "repository"]
 
 PKG_NAME_IN_DB = "curl"
+PKG_NAME_IN_DB2 = "libcurl"
 PKG_NAME_NOT_IN_DB = "fakepackage"
 
 PU_ERRATA_ID_IN_DB_1 = "ALT-PU-2023-2000-1"
 PU_ERRATA_ID_IN_DB_2 = "ALT-PU-2013-1000-1"
+PU_ERRATA_ID_IN_DB_3 = "ALT-PU-2023-6266-2"
 PU_ERRATA_ID_NOT_IN_DB = "ALT-PU-2999-1000-1"
 PU_ERRATA_ID_NOT_VALID_1 = "ALT-PU-123-1000-1"
 PU_ERRATA_ID_NOT_VALID_2 = "ALT-XX-2000-9999-9"
@@ -28,12 +30,18 @@ BU_ERRATA_ID_NOT_VALID_1 = "ALT-BU-123-1000-1"
 BU_ERRATA_ID_NOT_VALID_2 = "ALT-XX-2000-9999-9"
 
 VUILN_ID_CVE_IN_DB = "CVE-2022-22576"
+VUILN_ID_CVE_IN_DB2 = "CVE-2023-38039"
 VUILN_ID_BDU_IN_DB = "BDU:2022-03036"
+VUILN_ID_BDU_IN_DB2 = "BDU:2023-04304"
 VUILN_ID_BUG_IN_DB = "45281"
+VUILN_ID_BUG_IN_DB2 = "47760"
 VULN_ID_BAD = "ABC-123"
 
 BUG_IN_ERRATA = "46487"
 BUG_NOT_IN_ERRATA = "11111"
+
+IMG_UUID_IN_DB = "4c27ea7d-cea7-4a8e-8fb3-452e680a3aca"
+IMG_UUID_NOT_IN_DB = "4624e687-0ddb-4cbd-933a-111111111111"
 
 
 def test_errata_ids(client):
@@ -339,3 +347,107 @@ def test_find_erratas(client, kwargs):
                     assert elem["eh_type"] in ("branch", "task")
                 elif kwargs.get("type") == ERRATA_TYPES_IN_DB[1]:
                     assert elem["eh_type"] in ("bulletin",)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"uuid": IMG_UUID_IN_DB, "branch": BRANCH_IN_DB2, "status_code": 200},
+        {
+            "uuid": IMG_UUID_IN_DB,
+            "branch": BRANCH_IN_DB2,
+            "limit": 10,
+            "status_code": 200,
+        },
+        {
+            "uuid": IMG_UUID_IN_DB,
+            "branch": BRANCH_IN_DB2,
+            "input": PKG_NAME_IN_DB2,
+            "status_code": 200,
+        },
+        {
+            "uuid": IMG_UUID_IN_DB,
+            "branch": BRANCH_IN_DB2,
+            "input": VUILN_ID_CVE_IN_DB2,
+            "status_code": 200,
+        },
+        {
+            "uuid": IMG_UUID_IN_DB,
+            "branch": BRANCH_IN_DB2,
+            "input": VUILN_ID_BDU_IN_DB2,
+            "status_code": 200,
+        },
+        {
+            "uuid": IMG_UUID_IN_DB,
+            "branch": BRANCH_IN_DB2,
+            "input": VUILN_ID_BUG_IN_DB2,
+            "status_code": 200,
+        },
+        {
+            "uuid": IMG_UUID_IN_DB,
+            "branch": BRANCH_IN_DB2,
+            "input": PU_ERRATA_ID_IN_DB_3,
+            "status_code": 200,
+        },
+        {
+            "uuid": IMG_UUID_IN_DB,
+            "branch": BRANCH_IN_DB2,
+            "type": ERRATA_TYPES_IN_DB[1],
+            "status_code": 404,
+        },
+        {
+            "uuid": IMG_UUID_IN_DB,
+            "branch": BRANCH_IN_DB2,
+            "input": PKG_NAME_NOT_IN_DB,
+            "status_code": 404,
+        },
+        {
+            "uuid": IMG_UUID_IN_DB,
+            "branch": BRANCH_IN_DB2,
+            "page": 1,
+            "limit": -1,
+            "status_code": 400,
+        },
+        {
+            "uuid": IMG_UUID_IN_DB,
+            "branch": BRANCH_IN_DB2,
+            "page": -1,
+            "limit": 10,
+            "status_code": 400,
+        },
+        {"uuid": IMG_UUID_IN_DB, "branch": BRANCH_IN_DB, "status_code": 404},
+        {"uuid": IMG_UUID_IN_DB, "branch": BRANCH_IN_DB, "status_code": 404},
+        {"uuid": IMG_UUID_NOT_IN_DB, "branch": BRANCH_IN_DB2, "status_code": 404},
+    ],
+)
+def test_find_image_erratas(client, kwargs):
+    url = url_for("api.errata_route_find_image_erratas")
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("status_code",):
+            continue
+        if v is not None:
+            params[k] = v
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data["erratas"] != []
+
+        for elem in data["erratas"]:
+            if kwargs.get("input"):
+                res = [elem["errata_id"].lower(), elem["pkg_name"].lower()] + [
+                    vuln["id"].lower() for vuln in elem["vulnerabilities"]
+                ]
+                assert kwargs["input"].lower() in res
+
+            assert kwargs["branch"] == elem["branch"]
+
+            if kwargs.get("type"):
+                if kwargs.get("type") == ERRATA_TYPES_IN_DB[0]:
+                    assert elem["eh_type"] in ("branch", "task")
+                elif kwargs.get("type") == ERRATA_TYPES_IN_DB[1]:
+                    assert elem["eh_type"] in ("bulletin",)
+
+            if kwargs.get("limit"):
+                assert len(data["erratas"]) <= kwargs.get("limit")

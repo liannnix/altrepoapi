@@ -31,7 +31,7 @@ from altrepo_api.utils import (
 )
 
 from .endpoints.oval import OvalBranches, OvalExport
-from .endpoints.search import Search, ErrataIds, FindErratas
+from .endpoints.search import Search, ErrataIds, FindErratas, FindImageErratas
 from .endpoints.package import PackagesUpdates
 from .endpoints.branch import BranchesUpdates, ErrataBranches
 from .namespace import get_namespace
@@ -39,6 +39,7 @@ from .parsers import (
     errata_search_args,
     oval_export_args,
     find_erratas_args,
+    find_img_erratas_args,
 )
 from .serializers import (
     erratas_ids_json_list_model,
@@ -49,6 +50,7 @@ from .serializers import (
     oval_branches_model,
     errata_last_changed_model,
     errata_branches_model,
+    image_errata_model,
 )
 
 ns = get_namespace()
@@ -206,4 +208,21 @@ class routeFindErratas(Resource):
         url_logging(logger, g.url)
         args = find_erratas_args.parse_args(strict=True)
         w = FindErratas(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/find_image_erratas",
+    doc={
+        "description": "Find errata by image UUID.",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeFindImageErratas(Resource):
+    @ns.expect(find_img_erratas_args)
+    @ns.marshal_with(image_errata_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = find_img_erratas_args.parse_args(strict=True)
+        w = FindImageErratas(g.connection, **args)
         return run_worker(worker=w, args=args)

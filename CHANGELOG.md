@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+## [1.15.23] - 2023-12-25
+
+Regular API code updates and fixes.
+
+### Added
+- `errat/find_image_erratas` route
+### Changed
+### Fixed
+
 ## [1.15.22] - 2023-12-13
 
 Regular API code updates and fixes.

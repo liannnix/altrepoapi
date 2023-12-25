@@ -358,5 +358,132 @@ LEFT JOIN (
 ORDER BY changed DESC
 """
 
+    tmp_last_image_cmp_pkg_diff = """
+CREATE TEMPORARY TABLE {tmp_table} {columns} AS
+SELECT pkg_srcrpm_hash, pkg_hash, pkg_name
+FROM Packages
+WHERE pkg_hash IN (
+    SELECT DISTINCT pkg_hash
+    FROM PackageSet
+    WHERE pkgset_uuid IN (
+        SELECT pkgset_uuid
+        FROM PackageSetName
+        WHERE pkgset_ruuid = '{uuid}'
+        AND has(pkgset_kv.v, '{branch}')
+        {component}
+    )
+)
+AND pkg_sourcepackage = 0
+ORDER BY pkg_srcrpm_hash ASC;
+"""
+
+    get_last_image_pkgs_info = """
+SELECT * FROM
+(
+    SELECT
+        pkg_hash,
+        pkg_summary,
+        pkg_name,
+        pkg_arch,
+        pkg_version,
+        pkg_release
+    FROM Packages
+    WHERE pkg_hash IN {tmp_table}
+) AS PKG
+LEFT JOIN (
+    SELECT pkg_hash,
+           pkg_version,
+           pkg_release,
+           pkg_name,
+           pkg_arch
+    FROM last_packages
+    WHERE pkgset_name = '{branch}'
+    AND pkg_sourcepackage = 0
+) AS TT ON (TT.pkg_name, TT.pkg_arch) = (PKG.pkg_name, PKG.pkg_arch)
+"""
+
+    find_imgs_erratas = """
+WITH errata_tasks AS (
+    SELECT
+        errata_id,
+        argMax(eh_type, ts)  AS type,
+        argMax(task_id, ts) AS tsk_id,
+        argMax(pkgset_name, ts) AS branch,
+        argMax(pkg_hash, ts) AS hash,
+        argMax(pkg_name, ts) AS name,
+        argMax(pkg_version, ts) AS ver,
+        argMax(pkg_release, ts) AS rel,
+        argMax(eh_references.link, ts) AS refs_links,
+        argMax(eh_references.type, ts) AS refs_types,
+        max(eh_updated) AS changed
+    FROM ErrataHistory
+    WHERE eh_type = 'task' AND errata_id IN (
+        SELECT eid
+        FROM (
+            SELECT
+                errata_id_noversion,
+                argMax(errata_id, errata_id_version) AS eid
+            FROM ErrataHistory
+            WHERE task_state = 'DONE' AND pkgset_name != 'icarus'
+            AND pkgset_name = '{branch}'
+            GROUP BY errata_id_noversion
+        )
+    )
+    GROUP BY errata_id
+),
+errata_branches AS (
+    SELECT
+        errata_id,
+        argMax(eh_type, ts)  AS type,
+        argMax(task_id, ts) AS tsk_id,
+        argMax(pkgset_name, ts) AS branch,
+        argMax(pkg_hash, ts) AS hash,
+        argMax(pkg_name, ts) AS name,
+        argMax(pkg_version, ts) AS ver,
+        argMax(pkg_release, ts) AS rel,
+        argMax(eh_references.link, ts) AS refs_links,
+        argMax(eh_references.type, ts) AS refs_types,
+        max(eh_updated) AS changed
+    FROM ErrataHistory
+    WHERE errata_id IN (
+        SELECT eid
+        FROM (
+            SELECT
+                errata_id_noversion,
+                argMax(errata_id, errata_id_version) AS eid
+            FROM ErrataHistory
+            WHERE eh_type = 'branch' AND pkgset_name != 'icarus'
+            AND pkgset_name = '{branch}'
+            GROUP BY errata_id_noversion
+        )
+    )
+    GROUP BY errata_id
+)
+SELECT 
+    HSH.pkg_hash, 
+    HSH.pkg_name AS bin_pkg_name, 
+    ER.*, 
+    if(DE.discarded_id != '', 1, 0) AS discard 
+FROM (
+    SELECT * FROM errata_tasks
+    UNION ALL
+    SELECT * FROM errata_branches
+) AS ER
+LEFT JOIN (
+    SELECT errata_id AS discarded_id
+    FROM last_discarded_erratas
+) AS DE ON ER.errata_id = DE.discarded_id
+LEFT JOIN (
+    SELECT pkg_srcrpm_hash, pkg_hash, pkg_name
+    FROM {tmp_table}
+) AS HSH ON HSH.pkg_srcrpm_hash = ER.hash
+WHERE hash in (
+    SELECT pkg_srcrpm_hash
+    FROM {tmp_table}
+)
+{where_clause}
+ORDER BY changed DESC
+"""
+
 
 sql = SQL()
