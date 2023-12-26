@@ -21,9 +21,9 @@ from altrepo_api.api.base import APIWorker
 
 from .tools.base import Errata, TaskInfo, UserInfo
 from .tools.constants import (
-    ERRATA_CHANGE_ACTION_CREATE,
-    ERRATA_CHANGE_ACTION_DISCARD,
-    ERRATA_CHANGE_ACTION_UPDATE,
+    CHANGE_ACTION_CREATE,
+    CHANGE_ACTION_DISCARD,
+    CHANGE_ACTION_UPDATE,
     ERRATA_PACKAGE_UPDATE_PREFIX,
     ERRATA_PACKAGE_UPDATE_SOURCES,
     ERRATA_PACKAGE_UPDATE_TYPES,
@@ -156,7 +156,7 @@ class ManageErrata(APIWorker):
                 "API requests supports only package update errata records."
             )
 
-        if not self.action == ERRATA_CHANGE_ACTION_UPDATE:
+        if not self.action == CHANGE_ACTION_UPDATE:
             self.validation_results.append("Errata change action validation error")
 
         if self.errata.created <= DT_NEVER or self.errata.updated <= DT_NEVER:
@@ -172,7 +172,7 @@ class ManageErrata(APIWorker):
             return False
 
         # validate request payload contents for particular HTTP method
-        if not self.action == ERRATA_CHANGE_ACTION_CREATE:
+        if not self.action == CHANGE_ACTION_CREATE:
             self.validation_results.append("Errata change action validation error")
 
         if self.errata.id is not None:
@@ -188,7 +188,7 @@ class ManageErrata(APIWorker):
             return False
 
         # validate request payload contents for particular HTTP method
-        if not self.action == ERRATA_CHANGE_ACTION_DISCARD:
+        if not self.action == CHANGE_ACTION_DISCARD:
             self.validation_results.append("Errata change action validation error")
 
         if self.errata.created <= DT_NEVER or self.errata.updated <= DT_NEVER:
@@ -240,7 +240,7 @@ class ManageErrata(APIWorker):
     def put(self):
         """Handles errata record update.
         Returns:
-            - 200 (OK) if errata record version updated or no changes found to be made
+            - 200 (OK) if errata record version was updated or no changes found to be made
             - 400 (Bad request) on paload validation errors
             - 404 (Not found) if errata discarded already or does not exists
             - 409 (Conflict) if errata version update failed due to outdated version
@@ -351,7 +351,7 @@ class ManageErrata(APIWorker):
         Returns:
             - 200 (OK) if errata record created successfully
             - 400 (Bad request) on paload validation errors
-            - 409 (Conflict) if such errata exists already or dtat inconsistent with DB
+            - 409 (Conflict) if such errata exists already or data is inconsistent with DB
         """
 
         # FIXME: how to validate taskless branch package update errata contents?

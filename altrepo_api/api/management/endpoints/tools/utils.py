@@ -23,7 +23,7 @@ from altrepo_api.utils import get_logger
 from .base import Reference
 from .constants import (
     DT_NEVER,
-    ERRATA_CHANGE_ACTIONS,
+    CHANGE_ACTIONS,
     ERRATA_VALID_SOURCES,
     ERRATA_VALID_TYPES,
     SUPPORTED_BRANCHES,
@@ -58,7 +58,7 @@ _TZ_LOCAL = datetime.now().astimezone(None).tzinfo
 
 
 def validate_action(action: str) -> bool:
-    return action in ERRATA_CHANGE_ACTIONS
+    return action in CHANGE_ACTIONS
 
 
 def validate_type(value: str) -> bool:

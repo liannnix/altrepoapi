@@ -25,9 +25,9 @@ from .base import (
     Errata,
     ErrataID,
     ErrataChange,
-    ErrataChangeOrigin,
-    ErrataChangeSource,
-    ErrataChangeType,
+    ChangeOrigin,
+    ChangeSource,
+    ChangeType,
     ErrataManageError,
     UserInfo,
 )
@@ -81,9 +81,9 @@ def _build_errata_change(
     ec_id: ErrataIDServiceResult,
     errata: ErrataID,
     user_unfo: UserInfo,
-    type: ErrataChangeType,
-    source: ErrataChangeSource,
-    origin: ErrataChangeOrigin,
+    type: ChangeType,
+    source: ChangeSource,
+    origin: ChangeOrigin,
 ):
     logger.info(
         f"Build errata change history record: {ec_id.id} => {errata.id} "
@@ -227,8 +227,8 @@ class Transaction:
             ec_id=_ec_id,
             user_unfo=self._user_info,
             errata=self._errata_history_records[ErrataType.PACKAGE].id,  # type: ignore
-            source=ErrataChangeSource.MANUAL,
-            origin=ErrataChangeOrigin.PARENT,
+            source=ChangeSource.MANUAL,
+            origin=ChangeOrigin.PARENT,
         )
 
         def stub_fn(*args, **kwargs) -> ErrataChange:
@@ -240,27 +240,27 @@ class Transaction:
                 ec_id=_ec_id,
                 user_unfo=self._user_info,
                 errata=self._errata_history_records[ErrataType.BULLETIN].id,  # type: ignore
-                source=ErrataChangeSource.AUTO,
-                origin=ErrataChangeOrigin.CHILD,
+                source=ChangeSource.AUTO,
+                origin=ChangeOrigin.CHILD,
             )
         else:
             bu_ec_fn = stub_fn
 
         # add errata change history record for package update
         if self.errata_action == ErrataAction.CREATE:
-            self._errata_change_records.append(pu_ec_fn(type=ErrataChangeType.CREATE))
+            self._errata_change_records.append(pu_ec_fn(type=ChangeType.CREATE))
         elif self.errata_action == ErrataAction.UPDATE:
-            self._errata_change_records.append(pu_ec_fn(type=ErrataChangeType.UPDATE))
+            self._errata_change_records.append(pu_ec_fn(type=ChangeType.UPDATE))
         elif self.errata_action == ErrataAction.DISCARD:
-            self._errata_change_records.append(pu_ec_fn(type=ErrataChangeType.DISCARD))
+            self._errata_change_records.append(pu_ec_fn(type=ChangeType.DISCARD))
 
         # add errata change history record for package update
         if self.bulletin_action == ErrataAction.CREATE:
-            self._errata_change_records.append(bu_ec_fn(type=ErrataChangeType.CREATE))
+            self._errata_change_records.append(bu_ec_fn(type=ChangeType.CREATE))
         elif self.bulletin_action == ErrataAction.UPDATE:
-            self._errata_change_records.append(bu_ec_fn(type=ErrataChangeType.UPDATE))
+            self._errata_change_records.append(bu_ec_fn(type=ChangeType.UPDATE))
         elif self.bulletin_action == ErrataAction.DISCARD:
-            self._errata_change_records.append(bu_ec_fn(type=ErrataChangeType.DISCARD))
+            self._errata_change_records.append(bu_ec_fn(type=ChangeType.DISCARD))
         # if no bulletin was registered: self.bulletin_action = ErrataAction.NONE
 
     def _handle_errata_create(self):

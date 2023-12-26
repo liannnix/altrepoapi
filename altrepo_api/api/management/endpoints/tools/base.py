@@ -17,9 +17,14 @@
 from datetime import datetime
 from enum import IntEnum
 from typing import Any, NamedTuple, Union
+from uuid import UUID
 
 
 class ErrataManageError(Exception):
+    pass
+
+
+class PncManageError(Exception):
     pass
 
 
@@ -171,7 +176,7 @@ class Errata(NamedTuple):
         return str(self.asdict())
 
 
-class ErrataChangeType(IntEnum):
+class ChangeType(IntEnum):
     CREATE = 0
     UPDATE = 1
     DISCARD = 2
@@ -179,12 +184,12 @@ class ErrataChangeType(IntEnum):
     SHOW = 4
 
 
-class ErrataChangeSource(IntEnum):
+class ChangeSource(IntEnum):
     AUTO = 0
     MANUAL = 1
 
 
-class ErrataChangeOrigin(IntEnum):
+class ChangeOrigin(IntEnum):
     PARENT = 0
     CHILD = 1
 
@@ -196,9 +201,9 @@ class ErrataChange(NamedTuple):
     user: str
     user_ip: str
     reason: str
-    type: ErrataChangeType
-    source: ErrataChangeSource
-    origin: ErrataChangeOrigin
+    type: ChangeType
+    source: ChangeSource
+    origin: ChangeOrigin
     errata_id: ErrataID
 
     def asdict(self) -> dict[str, Any]:
@@ -210,4 +215,35 @@ class ErrataChange(NamedTuple):
         res["type"] = self.type.name
         res["source"] = self.source.name
         res["origin"] = self.origin.name
+        return res
+
+
+class PncRecord(NamedTuple):
+    pkg_name: str
+    pnc_state: str
+    pnc_result: str
+    pnc_type: str
+    pnc_source: str
+
+    def asdict(self) -> dict[str, str]:
+        return self._asdict()
+
+
+class PncChangeRecord(NamedTuple):
+    id: UUID
+    user: str
+    user_ip: str
+    reason: str
+    type: ChangeType
+    source: ChangeSource
+    origin: ChangeOrigin
+    pnc: PncRecord
+
+    def asdict(self) -> dict[str, Any]:
+        res = self._asdict()
+        res["id"] = str(self.id)
+        res["type"] = self.type.name
+        res["source"] = self.source.name
+        res["origin"] = self.origin.name
+        res["pnc"] = self.pnc._asdict()
         return res
