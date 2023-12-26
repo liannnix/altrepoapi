@@ -17,13 +17,51 @@
 from flask import request
 from typing import Any, NamedTuple
 
+from altrepodb_libs import (
+    PackageCVEMatcher,
+    PackageCveMatch,
+    PackageCpePair,
+    DatabaseConfig,
+    LogLevel,
+)
+
+from altrepo_api.settings import namespace as settings
+
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
 from altrepo_api.api.vulnerabilities.endpoints.common import CPE
 
-from .tools.base import UserInfo
+from .tools.base import ChangeSource, PncRecord, UserInfo
+from .tools.constants import (
+    CHANGE_ACTION_CREATE,
+    CHANGE_ACTION_DISCARD,
+    CHANGE_ACTION_UPDATE,
+    PNC_STATES,
+    PNC_STATE_ACTIVE,
+    PNC_STATE_INACTIVE,
+    PNC_STATE_CANDIDATE,
+)
+from .tools.cpe_transaction import Transaction, PncType
+from .tools.helpers import (
+    get_related_packages_by_project_name,
+    store_pnc_records,
+    store_pnc_change_records,
+)
 from .tools.utils import validate_action, validate_branch_with_tatsks
 from ..sql import sql
+
+
+class CpeRecord(NamedTuple):
+    cpe: CPE
+    state: str
+    project_name: str
+
+    def asdict(self) -> dict[str, str]:
+        return {
+            "cpe": str(self.cpe),
+            "state": self.state,
+            "project_name": self.project_name,
+        }
 
 
 class CpeRaw(NamedTuple):
@@ -32,6 +70,35 @@ class CpeRaw(NamedTuple):
     repology_name: str
     repology_branch: str
     cpe: str
+
+
+def cpe_record2pnc_record(cpe: CpeRecord) -> PncRecord:
+    return PncRecord(
+        pkg_name=cpe.project_name,
+        pnc_state=cpe.state,
+        pnc_result=str(cpe.cpe),
+        pnc_type="cpe",
+        pnc_source="manage",
+    )
+
+
+def compare_pnc_records(a: PncRecord, b: PncRecord) -> bool:
+    return (a.pkg_name, a.pnc_state, a.pnc_result, a.pnc_type) == (
+        b.pkg_name,
+        b.pnc_state,
+        b.pnc_result,
+        b.pnc_type,
+    )
+
+
+def pcm2json(pcm: PackageCveMatch) -> dict[str, Any]:
+    return {
+        "pkg_hash": str(pcm.pkg_hash),
+        "pkg_name": pcm.pkg_name,
+        "pkg_cpe": pcm.pkg_cpe,
+        "vuln_id": pcm.vuln_id,
+        "is_vulnerable": pcm.is_vulnerable,
+    }
 
 
 class CPECandidates(APIWorker):
@@ -54,7 +121,7 @@ class CPECandidates(APIWorker):
             self.sql.get_cpes.format(
                 cpe_branches=tuple(set(lut.cpe_reverse_branch_map.keys())),
                 pkg_name_conversion_clause="",
-                cpe_states=("candidate",),
+                cpe_states=(PNC_STATE_CANDIDATE,),
             )
         )
         if not self.sql_status:
@@ -105,6 +172,11 @@ class ManageCpe(APIWorker):
         self.conn = connection
         self.args = kwargs
         self.sql = sql
+        self.trx = Transaction(source=ChangeSource.MANUAL)
+        # values set in self.check_params_xxx() call
+        self.user_info: UserInfo
+        self.action: str
+        self.cpes: list[CpeRecord] = []
         super().__init__()
 
     def _valiadte_and_parse(self):
@@ -122,12 +194,38 @@ class ManageCpe(APIWorker):
             self.validation_results.append("User name should be specified")
 
         if not self.user_info.reason:
-            self.validation_results.append("Errata change reason should be specified")
+            self.validation_results.append("CPE change reason should be specified")
 
         if not validate_action(self.action):
             self.validation_results.append(
-                f"Errata change action '{self.action}' not supported"
+                f"CPE change action '{self.action}' not supported"
             )
+
+        cpes: list[dict[str, str]] = self.payload.get("cpes", [])
+        if not cpes:
+            self.validation_results.append("No CPE records objects found")
+            return
+        else:
+            for el in cpes:
+                try:
+                    cpe = CpeRecord(
+                        cpe=CPE(el["cpe"]),
+                        state=el["state"],
+                        project_name=el["project_name"],
+                    )
+
+                    if not cpe.project_name or not cpe.state:
+                        raise ValueError("Required fields values are empty")
+
+                    if cpe.state not in PNC_STATES:
+                        raise ValueError(f"Invalid CPE record state: {cpe.state}")
+
+                    self.cpes.append(cpe)
+                except Exception as e:
+                    self.validation_results.append(
+                        f"Failed to parse CPE record objects {el}: {e}"
+                    )
+                    return
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
@@ -136,6 +234,36 @@ class ManageCpe(APIWorker):
             self.validation_results.append(f"Invalid branch: {self.args['branch']}")
             return False
 
+        return True
+
+    def check_params_put(self) -> bool:
+        self._valiadte_and_parse()
+
+        if not self.action == CHANGE_ACTION_UPDATE:
+            self.validation_results.append("Change action validation error")
+
+        if self.validation_results != []:
+            return False
+        return True
+
+    def check_params_post(self) -> bool:
+        self._valiadte_and_parse()
+
+        if not self.action == CHANGE_ACTION_CREATE:
+            self.validation_results.append("Change action validation error")
+
+        if self.validation_results != []:
+            return False
+        return True
+
+    def check_params_delete(self) -> bool:
+        self._valiadte_and_parse()
+
+        if not self.action == CHANGE_ACTION_DISCARD:
+            self.validation_results.append("Change action validation error")
+
+        if self.validation_results != []:
+            return False
         return True
 
     def get(self):
@@ -157,7 +285,7 @@ class ManageCpe(APIWorker):
             self.sql.get_cpes.format(
                 cpe_branches=cpe_branches,
                 pkg_name_conversion_clause=f"AND alt_name = '{pkg_name}'",
-                cpe_states=("active", "candidate"),
+                cpe_states=(PNC_STATE_ACTIVE, PNC_STATE_CANDIDATE, PNC_STATE_INACTIVE),
             )
         )
         if not self.sql_status:
@@ -201,11 +329,123 @@ class ManageCpe(APIWorker):
             ],
         }, 200
 
-    def post(self):
-        return "NotImplemented", 400
+    # FIXME: remove `commit` flag in release version
+    def post(self, commit=True):
+        """Handles CPE records create.
+        Returns:
+            - 200 (OK) if CPE record created successfully
+            - 400 (Bad request) on paload validation errors
+            - 409 (Conflict) if such CPE record exists already in DB
+        """
+        # get CPE match records by `project_name`
+        db_cpes: dict[str, list[PncRecord]] = {}
+        response = self.send_sql_request(
+            self.sql.get_cpes_by_project_names.format(
+                project_names=tuple({cpe.project_name for cpe in self.cpes}),
+                cpe_states=(PNC_STATE_ACTIVE, PNC_STATE_CANDIDATE, PNC_STATE_INACTIVE),
+            )
+        )
+        if not self.sql_status:
+            return self.error
+        if response:
+            for p in (PncRecord(*el) for el in response):
+                db_cpes.setdefault(p.pkg_name, []).append(p)
+
+        # check if any records already exists in DB
+        if db_cpes:
+            for cpe in self.cpes:
+                _pncr = cpe_record2pnc_record(cpe)
+                for p in db_cpes.get(cpe.project_name, []):
+                    if compare_pnc_records(_pncr, p):
+                        return self.store_error(
+                            {
+                                "message": f"CPE record already exists in DB: {p}.",
+                            },
+                            http_code=409,
+                        )
+
+        # check if there is any packages that affected by added CPE records in branches
+        related_packages = get_related_packages_by_project_name(
+            self, list({c.project_name for c in self.cpes})
+        )
+        if not self.status:
+            return self.error
+
+        # create and store new CPE match records
+        for cpe in self.cpes:
+            self.trx.register_pnc_create(
+                pnc=cpe_record2pnc_record(cpe), pnc_type=PncType.CPE
+            )
+
+        self.trx.commit(self.user_info)
+
+        related_cve_ids: list[str] = []
+        packages_cve_matches: list[PackageCveMatch] = []
+
+        if related_packages:
+            # update PackagesCveMatch table
+            pkg_cpe_pairs = [
+                PackageCpePair(name=cpe.project_name, cpe=str(cpe.cpe))
+                for cpe in self.cpes
+            ]
+            matcher = PackageCVEMatcher(
+                db_config=DatabaseConfig(
+                    host=settings.DATABASE_HOST,
+                    port=settings.DATABASE_PORT,
+                    dbname=settings.DATABASE_NAME,
+                    user=settings.DATABASE_USER,
+                    password=settings.DATABASE_PASS,
+                ),
+                # log_level=LogLevel.ERROR,
+                log_level=LogLevel.INFO,
+            )
+            matcher.match_cpe_add(pkg_cpe_pairs)
+
+            packages_cve_matches = matcher.packages_cve_matches
+
+            if commit:
+                matcher.store()
+
+            matcher.free(full=True)
+            del matcher
+
+            related_cve_ids = sorted({m.vuln_id for m in packages_cve_matches})
+
+            # update or create erratas
+            pass
+
+        # store PNC and PNC change records
+        if commit:
+            store_pnc_records(self, self.trx.pnc_records)
+            store_pnc_change_records(self, self.trx.pnc_change_records)
+
+        return {
+            "action": self.action,
+            "message": "OK",
+            "cpes": [c.asdict() for c in self.cpes],
+            "related_packages": related_packages,
+            "related_cve_ids": related_cve_ids,
+            "cpe_records": [r.asdict() for r in self.trx.pnc_records],
+            "cpe_change_records": [r.asdict() for r in self.trx.pnc_change_records],
+            "packages_cve_matches": [
+                pcm2json(p) for p in packages_cve_matches if p.is_vulnerable
+            ],
+        }, 200
 
     def put(self):
+        """Handles CPE record update.
+        Returns:
+            - 200 (OK) if CPE record was updated or no changes found to be made
+            - 400 (Bad request) on paload validation errors
+            - 404 (Not found) if CPE record does not exists
+        """
         return "NotImplemented", 400
 
     def delete(self):
+        """Handles CPE record discard.
+        Returns:
+            - 200 (OK) if CPE record discarded successfully
+            - 400 (Bad request) on paload validation errors
+            - 404 (Not found) if CPE record is discarded already or does not exists
+        """
         return "NotImplemented", 400

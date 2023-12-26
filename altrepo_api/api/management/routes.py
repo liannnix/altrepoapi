@@ -44,6 +44,7 @@ from .serializers import (
     errata_manage_response_model,
     errata_manage_get_response_model,
     errata_change_history_model,
+    cpe_manage_model,
     cpe_candidates_response_model,
     cpe_manage_get_response_model,
 )
@@ -221,14 +222,15 @@ class routeErrataChangeHistory(Resource):
         return run_worker(worker=w, args=args)
 
 
-@ns.route("/cpe/candidates")
+@ns.route(
+    "/cpe/candidates",
+    doc={
+        "description": "Get CPE candidates",
+        "responses": GET_RESPONSES_404,
+        "security": "Bearer",
+    },
+)
 class routeCpeCandidates(Resource):
-    ns.doc(
-        description="Get CPE candidates",
-        responses=GET_RESPONSES_404,
-        security="Bearer",
-    )
-
     # @ns.expect()
     @ns.marshal_with(cpe_candidates_response_model)
     @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
@@ -242,7 +244,7 @@ class routeCpeCandidates(Resource):
 @ns.route("/cpe/manage")
 class routeManageCpe(Resource):
     @ns.doc(
-        description="Get CPE info.",
+        description="Get CPE records info.",
         responses=GET_RESPONSES_400_404,
         security="Bearer",
     )
@@ -254,3 +256,51 @@ class routeManageCpe(Resource):
         args = cpe_manage_get_args.parse_args(strict=True)
         w = ManageCpe(g.connection, payload={}, **args)
         return run_worker(worker=w, args=args)
+
+    @ns.doc(
+        description="Update CPE records.",
+        responses=RESPONSES_400_404_409,
+        security="Bearer",
+    )
+    @ns.expect(cpe_manage_model)
+    @ns.marshal_with(cpe_manage_get_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    def put(self):
+        url_logging(logger, g.url)
+        w = ManageCpe(g.connection, payload=ns.payload)
+        return run_worker(
+            worker=w, run_method=w.put, check_method=w.check_params_put, ok_code=200
+        )
+
+    @ns.doc(
+        description="Register new CPE records.",
+        responses=RESPONSES_400_409,
+        security="Bearer",
+    )
+    @ns.expect(cpe_manage_model)
+    # @ns.marshal_with(cpe_manage_get_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    def post(self):
+        url_logging(logger, g.url)
+        w = ManageCpe(g.connection, payload=ns.payload)
+        return run_worker(
+            worker=w, run_method=w.post, check_method=w.check_params_post, ok_code=200
+        )
+
+    @ns.doc(
+        description="Discard CPE records.",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(cpe_manage_model)
+    @ns.marshal_with(cpe_manage_get_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    def delete(self):
+        url_logging(logger, g.url)
+        w = ManageCpe(g.connection, payload=ns.payload)
+        return run_worker(
+            worker=w,
+            run_method=w.delete,
+            check_method=w.check_params_delete,
+            ok_code=200,
+        )

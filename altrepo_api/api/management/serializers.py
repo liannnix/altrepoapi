@@ -337,3 +337,27 @@ cpe_manage_get_response_model = ns.model(
         ),
     },
 )
+
+cpe_manage_cpe_model = ns.model(
+    "CpeManageCpeModel",
+    {
+        "cpe": fields.String(description="CPE match string"),
+        "state": fields.String(description="CPE match state"),
+        "project_name": fields.String(
+            description="Repology' common project package name"
+        ),
+    },
+)
+cpe_manage_model = ns.model(
+    "CpeManageModel",
+    {
+        "user": fields.String(description="CPE change originator"),
+        "action": fields.String(description="CPE manage action"),
+        "reason": fields.String(description="CPE change reason"),
+        "cpes": fields.Nested(
+            cpe_manage_cpe_model,
+            description="list of CPE match records",
+            as_list=True,
+        ),
+    },
+)

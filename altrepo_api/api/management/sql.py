@@ -676,5 +676,46 @@ INNER JOIN repology_names AS EN ON EN.repology_name = cpe_pkg_name
 ORDER BY state, repology_name, pkg_name, repology_branch, cpe
 """
 
+    get_cpes_by_project_names = """
+SELECT
+    pkg_name,
+    state,
+    cpe,
+    'cpe' AS type,
+    source
+FROM (
+    SELECT
+        pkg_name,
+        argMax(pnc_result, ts) AS cpe,
+        argMax(pnc_state, ts) AS state,
+        any(pnc_source) AS source
+    FROM PackagesNameConversion
+    WHERE pnc_type = 'cpe'
+    GROUP BY pkg_name, pnc_result
+) WHERE state IN {cpe_states}
+    AND pkg_name IN {project_names}
+"""
+
+    get_packages_by_project_names = """
+SELECT DISTINCT alt_name
+FROM (
+    SELECT
+        pkg_name AS alt_name,
+        pnc_result AS repology_name,
+        argMax(pnc_state, ts) AS state
+    FROM PackagesNameConversion
+    WHERE pnc_type IN {cpe_branches}
+    GROUP BY pkg_name, pnc_result, pnc_type
+) WHERE state = 'active' AND repology_name in {tmp_table}
+"""
+
+    store_pnc_records = """
+INSERT INTO PackagesNameConversion VALUES
+"""
+
+    store_pnc_change_records = """
+INSERT INTO PncChangeHistory (* EXCEPT ts) VALUES
+"""
+
 
 sql = SQL()
