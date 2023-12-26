@@ -31,6 +31,8 @@ from .base import (
     Task,
     TaskInfo,
     Reference,
+    PncRecord,
+    PncChangeRecord,
 )
 from .errata_id import ErrataIDService, check_errata_id
 from .utils import convert_dt_to_timezone_aware
@@ -653,3 +655,74 @@ def collect_errata_vulnerabilities_info(cls: _pManageErrata):
 
     cls.status = True
     return [vuln for vuln in vulns.values()]
+
+
+def get_related_packages_by_project_name(
+    cls: _pAPIWorker, project_names: list[str]
+) -> list[str]:
+    cls.status = False
+    res = []
+
+    tmp_table = make_tmp_table_name("project_names")
+
+    response = cls.send_sql_request(
+        cls.sql.get_packages_by_project_names.format(
+            tmp_table=tmp_table,
+            cpe_branches=tuple(set(lut.cpe_reverse_branch_map.keys())),
+        ),
+        external_tables=[
+            {
+                "name": tmp_table,
+                "structure": [("pkg_name", "String")],
+                "data": [{"pkg_name": n} for n in project_names],
+            },
+        ],
+    )
+    if not cls.sql_status:
+        return []
+    if response:
+        res = [el[0] for el in response]
+
+    cls.status = True
+    return res
+
+
+def store_pnc_records(cls: _pAPIWorker, pnc_records: list[PncRecord]) -> None:
+    cls.status = False
+
+    _ = cls.send_sql_request(
+        (cls.sql.store_pnc_records, (pnc.asdict() for pnc in pnc_records))
+    )
+    if not cls.sql_status:
+        return None
+
+    cls.status = True
+    return
+
+
+def store_pnc_change_records(
+    cls: _pAPIWorker, pnc_change_records: list[PncChangeRecord]
+) -> None:
+    def pnc_change_records_gen():
+        for pncc in pnc_change_records:
+            res = {
+                "pncc_uuid": str(pncc.id),
+                "pncc_user": pncc.user,
+                "pncc_user_ip": pncc.user_ip,
+                "pncc_reason": pncc.reason,
+                "pncc_type": pncc.type.value,
+                "pncc_source": pncc.source.value,
+                "pncc_origin": pncc.origin.value,
+            }
+            res.update(**pncc.pnc.asdict())
+            yield res
+
+    cls.status = False
+
+    _ = cls.send_sql_request(
+        (cls.sql.store_pnc_change_records, pnc_change_records_gen())
+    )
+    if not cls.sql_status:
+        return None
+
+    cls.status = True
