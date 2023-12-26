@@ -29,6 +29,7 @@ ACCESS_GROUPS_SECTION = "GROUPS"
 PARAMS = {
     "database": {
         "host": ("DATABASE_HOST", "str"),
+        "port": ("DATABASE_PORT", "int"),
         "name": ("DATABASE_NAME", "str"),
         "try_numbers": ("TRY_CONNECTION_NUMBER", "int"),
         "try_timeout": ("TRY_TIMEOUT", "int"),
