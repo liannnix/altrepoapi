@@ -45,6 +45,7 @@ from .serializers import (
     errata_manage_get_response_model,
     errata_change_history_model,
     cpe_manage_model,
+    cpe_manage_response_model,
     cpe_candidates_response_model,
     cpe_manage_get_response_model,
 )
@@ -119,6 +120,11 @@ class routeVulnsInfo(Resource):
         )
 
 
+RESPONSES_400_404 = {
+    200: "Data loaded",
+    400: "Request payload validation error",
+    404: "Requested data not found in database",
+}
 RESPONSES_400_409 = {
     200: "Data loaded",
     400: "Request payload validation error",
@@ -259,11 +265,11 @@ class routeManageCpe(Resource):
 
     @ns.doc(
         description="Update CPE records.",
-        responses=RESPONSES_400_404_409,
+        responses=RESPONSES_400_404,
         security="Bearer",
     )
     @ns.expect(cpe_manage_model)
-    @ns.marshal_with(cpe_manage_get_response_model)
+    @ns.marshal_with(cpe_manage_response_model)
     @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
     def put(self):
         url_logging(logger, g.url)
@@ -278,7 +284,7 @@ class routeManageCpe(Resource):
         security="Bearer",
     )
     @ns.expect(cpe_manage_model)
-    # @ns.marshal_with(cpe_manage_get_response_model)
+    @ns.marshal_with(cpe_manage_response_model)
     @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
     def post(self):
         url_logging(logger, g.url)
@@ -289,11 +295,11 @@ class routeManageCpe(Resource):
 
     @ns.doc(
         description="Discard CPE records.",
-        responses=GET_RESPONSES_400_404,
+        responses=GET_RESPONSES_400_404_409,
         security="Bearer",
     )
     @ns.expect(cpe_manage_model)
-    @ns.marshal_with(cpe_manage_get_response_model)
+    @ns.marshal_with(cpe_manage_response_model)
     @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
     def delete(self):
         url_logging(logger, g.url)

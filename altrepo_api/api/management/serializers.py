@@ -342,12 +342,36 @@ cpe_manage_cpe_model = ns.model(
     "CpeManageCpeModel",
     {
         "cpe": fields.String(description="CPE match string"),
-        "state": fields.String(description="CPE match state"),
         "project_name": fields.String(
             description="Repology' common project package name"
         ),
+        "state": fields.String(description="CPE match state"),
     },
 )
+cpe_manage_pnc_record_model = ns.model(
+    "CpeManagePncRecordModel",
+    {
+        "pkg_name": fields.String(description="package name"),
+        "pnc_result": fields.String(description="package name comversion"),
+        "pnc_type": fields.String(description="package name comversion type"),
+        "pnc_state": fields.String(description="package name comversion status"),
+        "pnc_source": fields.String(description="package name comversion source"),
+    },
+)
+cpe_manage_pnc_change_record_model = ns.model(
+    "CpeManagePncChangeRecordModel",
+    {
+        "id": fields.String(description="PNC change record identifier"),
+        "user": fields.String(description="errata change user"),
+        "reason": fields.String(description="errata change reason"),
+        "type": fields.String(description="errata change type"),
+        "pnc": fields.Nested(
+            cpe_manage_pnc_record_model,
+            description="list of modified CPE match records",
+        ),
+    },
+)
+
 cpe_manage_model = ns.model(
     "CpeManageModel",
     {
@@ -358,6 +382,43 @@ cpe_manage_model = ns.model(
             cpe_manage_cpe_model,
             description="list of CPE match records",
             as_list=True,
+        ),
+    },
+)
+
+cpe_manage_response_model = ns.model(
+    "CpeManageResponseModel",
+    {
+        "user": fields.String(description="CPE change originator"),
+        "action": fields.String(description="CPE manage action"),
+        "reason": fields.String(description="CPE change reason"),
+        "message": fields.String(description="API response message"),
+        "cpes": fields.Nested(
+            cpe_manage_cpe_model,
+            description="list of CPE match records",
+            as_list=True,
+        ),
+        "related_packages": fields.List(
+            fields.String,
+            description="packages names are related to modified CPE records",
+        ),
+        "related_cve_ids": fields.List(
+            fields.String,
+            description="CVE IDs are related to modified CPE records",
+        ),
+        "cpe_records": fields.Nested(
+            cpe_manage_pnc_record_model,
+            description="list of modified CPE match records",
+            as_list=True,
+        ),
+        "cpe_change_records": fields.Nested(
+            cpe_manage_pnc_change_record_model,
+            description="list of CPE match change records",
+            as_list=True,
+        ),
+        "packages_cve_matches": fields.List(
+            fields.Raw(description="Package CVE match record"),
+            description="list of updated packages' CVE match records found to be vulnerable",
         ),
     },
 )
