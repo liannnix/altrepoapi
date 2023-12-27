@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from flask import request
-from typing import Any, NamedTuple
+from typing import Any, Iterator, NamedTuple
 
 from altrepodb_libs import (
     PackageCVEMatcher,
@@ -52,6 +52,7 @@ from ..sql import sql
 
 # FIXME: remove in release!
 COMMIT_CHANGES_TO_DB = False
+RETUNRN_VULNERABLE_ONLY_PCMS = False
 
 
 class CpeRecord(NamedTuple):
@@ -101,14 +102,51 @@ def compare_pnc_records(a: PncRecord, b: PncRecord, *, include_state: bool) -> b
         )
 
 
-def pcm2json(pcm: PackageCveMatch) -> dict[str, Any]:
-    return {
-        "pkg_hash": str(pcm.pkg_hash),
-        "pkg_name": pcm.pkg_name,
-        "pkg_cpe": pcm.pkg_cpe,
-        "vuln_id": pcm.vuln_id,
-        "is_vulnerable": pcm.is_vulnerable,
-    }
+def uniq_pcm_records(
+    pcms: list[PackageCveMatch], vulnerable_only: bool
+) -> list[dict[str, Any]]:
+    """Collects unique packages' CVE matches records in sorted
+    serialisable representation."""
+
+    class PCM(NamedTuple):
+        pkg_hash: int
+        pkg_name: str
+        pkg_cpe: str
+        vuln_id: str
+        is_vulnerable: bool
+
+        def asdict(self) -> dict[str, Any]:
+            return {
+                "pkg_hash": str(self.pkg_hash),
+                "pkg_name": self.pkg_name,
+                "pkg_cpe": self.pkg_cpe,
+                "vuln_id": self.vuln_id,
+                "is_vulnerable": self.is_vulnerable,
+            }
+
+    def predicate_is_vulnerable(pcm: PCM) -> bool:
+        return pcm.is_vulnerable
+
+    def predicate_dummy(pcm: PCM) -> bool:
+        return True
+
+    predicate_fx = predicate_is_vulnerable if vulnerable_only else predicate_dummy
+
+    def pcm_gen() -> Iterator[PCM]:
+        for pcm in pcms:
+            yield PCM(
+                pcm.pkg_hash, pcm.pkg_name, pcm.pkg_cpe, pcm.vuln_id, pcm.is_vulnerable
+            )
+
+    def sorting_order_key(pcm: PCM) -> tuple[Any, ...]:
+        return (not pcm.is_vulnerable, pcm.pkg_name, pcm.vuln_id, pcm.pkg_hash)
+
+    return list(
+        x.asdict()
+        for x in sorted(
+            {pcm for pcm in pcm_gen() if predicate_fx(pcm)}, key=sorting_order_key
+        )
+    )
 
 
 class CPECandidates(APIWorker):
@@ -444,9 +482,9 @@ class ManageCpe(APIWorker):
             "related_cve_ids": related_cve_ids,
             "cpe_records": [r.asdict() for r in self.trx.pnc_records],
             "cpe_change_records": [r.asdict() for r in self.trx.pnc_change_records],
-            "packages_cve_matches": [
-                pcm2json(p) for p in packages_cve_matches if p.is_vulnerable
-            ],
+            "packages_cve_matches": uniq_pcm_records(
+                packages_cve_matches, vulnerable_only=RETUNRN_VULNERABLE_ONLY_PCMS
+            ),
         }, 200
 
     def put(self):
@@ -592,9 +630,9 @@ class ManageCpe(APIWorker):
             "related_cve_ids": related_cve_ids,
             "cpe_records": [r.asdict() for r in self.trx.pnc_records],
             "cpe_change_records": [r.asdict() for r in self.trx.pnc_change_records],
-            "packages_cve_matches": [
-                pcm2json(p) for p in packages_cve_matches if p.is_vulnerable
-            ],
+            "packages_cve_matches": uniq_pcm_records(
+                packages_cve_matches, vulnerable_only=RETUNRN_VULNERABLE_ONLY_PCMS
+            ),
         }, 200
 
     def delete(self):
