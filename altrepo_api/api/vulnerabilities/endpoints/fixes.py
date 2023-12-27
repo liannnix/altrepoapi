@@ -20,6 +20,7 @@ from typing import Union, Any, Iterable, NamedTuple
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
+from altrepo_api.libs.librpm_functions import compare_versions, VersionCompareResult
 from altrepo_api.utils import make_tmp_table_name, sort_branches
 
 from .common import (
@@ -73,7 +74,7 @@ class VulnFixes(APIWorker):
         self.sql = sql
         super().__init__()
         self.erratas: list[Errata] = []
-        self.packages_versions: list[PackageVersion] = []
+        self.packages_versions: dict[tuple[str, str], PackageVersion] = {}
         self.erratas_packages: dict[tuple[str, str], PackageScheme] = {}
 
     @staticmethod
@@ -133,7 +134,9 @@ class VulnFixes(APIWorker):
             _ = self.store_error({"message": "No packages data found in DB"})
             return None
 
-        self.packages_versions = [PackageVersion(*el) for el in response]
+        self.packages_versions = {
+            (el[1], el[-1]): PackageVersion(*el) for el in response
+        }
         self.status = True
 
     def _get_done_tasks(
@@ -299,13 +302,46 @@ class VulnFixes(APIWorker):
                         prev_package = self.erratas_packages.get(
                             (package.name, tasks[package][-1].branch)
                         )
-                        if prev_package:
-                            self.erratas_packages[package] = PackageScheme(
-                                **asdict(prev_package)
-                            )
-                            self.erratas_packages[package].branch = package.branch
+                        if (
+                            prev_package
+                            and (package.name, package.branch) in self.packages_versions
+                        ):
+                            if compare_versions(
+                                version1=self.packages_versions[
+                                    (package.name, package.branch)
+                                ].version,
+                                release1=self.packages_versions[
+                                    (package.name, package.branch)
+                                ].release,
+                                version2=prev_package.version,
+                                release2=prev_package.release,
+                            ) in (
+                                VersionCompareResult.EQUAL,
+                                VersionCompareResult.GREATER_THAN,
+                            ):
+                                self.erratas_packages[package] = PackageScheme(
+                                    **asdict(prev_package)
+                                )
+                                self.erratas_packages[package].branch = package.branch
+                            else:
+                                break
                 break
         self.status = True
+
+    def _sort_erratas(self):
+        """
+        Sort the Erratas list by task state.
+        """
+        def _task_state_index(state: str) -> int:
+            return {
+                "DONE": 0,
+                "EPERM": -1,
+                "TESTED": -2,
+            }.get(state, -100)
+
+        self.erratas = sorted(
+            self.erratas, key=lambda k: _task_state_index(k.task_state)
+        )
 
     def get(self):
         vuln_id = self.args["vuln_id"]
@@ -314,6 +350,7 @@ class VulnFixes(APIWorker):
         get_errata_by_cve_id(self, vuln_id)
         if not self.status:
             return self.error
+        self._sort_erratas()
 
         self.erratas_packages = {
             (el.pkg_name, el.branch): PackageScheme(
@@ -340,16 +377,14 @@ class VulnFixes(APIWorker):
             return self.error
 
         self._get_task_history(package_names)
-        for pkg in self.packages_versions:
-            if (pkg.name, pkg.branch) in self.erratas_packages:
-                self.erratas_packages[
-                    (pkg.name, pkg.branch)
-                ].last_version = PackageMeta(
-                    pkghash=pkg.hash,
-                    name=pkg.name,
-                    branch=pkg.branch,
-                    version=pkg.version,
-                    release=pkg.release,
+        for pkg, pkg_inf in self.packages_versions.items():
+            if pkg in self.erratas_packages:
+                self.erratas_packages[pkg].last_version = PackageMeta(
+                    pkghash=pkg_inf.hash,
+                    name=pkg_inf.name,
+                    branch=pkg_inf.branch,
+                    version=pkg_inf.version,
+                    release=pkg_inf.release,
                 )
 
         packages = [
