@@ -27,6 +27,7 @@ from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.settings import namespace as settings
 from altrepo_api.api.auth.decorators import token_required
 from .endpoints.change_history import ErrataChangeHistory
+from .endpoints.packages_open_vulns import PackagesOpenVulns
 
 from .namespace import get_namespace
 from .endpoints.cpe import CPECandidates, ManageCpe
@@ -35,6 +36,7 @@ from .endpoints.task_info import TaskInfo
 from .endpoints.task_list import TaskList
 from .endpoints.vulns_info import VulnsInfo
 from .parsers import task_list_args, errata_manage_get_args, cpe_manage_get_args
+from .parsers import task_list_args, errata_manage_get_args, pkgs_open_vulns_args
 from .serializers import (
     task_list_model,
     task_info_model,
@@ -48,8 +50,8 @@ from .serializers import (
     cpe_manage_response_model,
     cpe_candidates_response_model,
     cpe_manage_get_response_model,
+    pkg_open_vulns,
 )
-
 
 ns = get_namespace()
 
@@ -310,3 +312,25 @@ class routeManageCpe(Resource):
             check_method=w.check_params_delete,
             ok_code=200,
         )
+
+
+@ns.route(
+    "/packages/open_vulns",
+    doc={
+        "description": (
+            "Get a list of all repository packages "
+            "containing unpatched vulnerabilities"
+        ),
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routePackagesOpenVulns(Resource):
+    @ns.expect(pkgs_open_vulns_args)
+    @ns.marshal_with(pkg_open_vulns)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = pkgs_open_vulns_args.parse_args(strict=True)
+        w = PackagesOpenVulns(g.connection, **args)
+        return run_worker(worker=w, args=args)

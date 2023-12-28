@@ -94,6 +94,8 @@ __acl_group_match = re.compile(r"^@?[a-z0-9\_]+$")
 __task_search_match = re.compile(r"^(@?[\w\.\+\-\_:#]{2,},?)+$")
 # file search
 __file_search_match = re.compile(r"^[\w\/\.\+\- $#%:=@\{\}]{3,}$")
+# package vulnerabilities
+__pkgs_open_vulns_search_match = re.compile(r"^([\w\.\+\-\_:]{2,},?)+$")
 # vulnerabilities
 __cve_id_match = re.compile(r"^CVE-\d{4}-\d{4,}$")
 __cve_id_list_match = re.compile(r"^(CVE-\d{4}-\d{4,},?)+$")
@@ -708,4 +710,19 @@ def sort_type(value: Any) -> str:
 sort_type.__schema__ = {
     "type": "string",
     "pattern": __sort_match.pattern,
+}
+
+
+def open_vulns_search_type(value: Any) -> str:
+    """Validator for searching packages with open vulnerabilities."""
+
+    value = __get_string(value)
+    if not __pkgs_open_vulns_search_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+open_vulns_search_type.__schema__ = {
+    "type": "string",
+    "pattern": __pkgs_open_vulns_search_match.pattern,
 }

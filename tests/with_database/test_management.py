@@ -405,3 +405,116 @@ def test_errata_change_history(client, kwargs, mocked_check_access_token):
     if response.status_code == 200:
         assert data != {}
         assert data["history"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "status_code": 200,
+            "limit": 10,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "is_images": "true",
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "limit": 10,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "severity": "HIGH",
+            "limit": 10,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": VULN_IN_DB,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": VULN_IN_DB2,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": PACKAGE_IN_DB,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": VULN_NOT_IN_DB,
+            "status_code": 404,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": VULN_NOT_IN_DB2,
+            "status_code": 404,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": PACKAGE_NOT_IN_DB,
+            "status_code": 404,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": BRANCH_NOT_IN_DB,
+            "status_code": 404,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "severity": "test",
+            "status_code": 400,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "by_acl": "test",
+            "status_code": 400,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "status_code": 401,
+            "headers": {"Authorization": INVALID_ACCESS_TOKEN},
+        },
+        {
+            "status_code": 401,
+        },
+    ],
+)
+def test_packages_open_vulns(client, kwargs, mocked_check_access_token):
+    params = {k: v for k, v in kwargs.items() if k not in ("status_code", "headers")}
+    url = url_for("manage.manage_route_packages_open_vulns")
+    mocked_check_access_token.headers = kwargs.get("headers", {})
+    mocked_check_access_token.status_code = kwargs["status_code"]
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["packages"] != []
+        for pkg in data["packages"]:
+            assert pkg["vulns"] != []
+            if params.get("is_images") == "true":
+                assert pkg["images"] != []
+            if params.get("branch"):
+                assert params.get("branch") == pkg["branch"]
+            if params.get("input") == PACKAGE_IN_DB:
+                assert params.get("input") in pkg["pkg_name"]
+            if params.get("input") == VULN_IN_DB:
+                assert params.get("input") in [el["id"] for el in pkg["vulns"]]
+            if params.get("input") == VULN_IN_DB2:
+                assert params.get("input") in [el["id"] for el in pkg["vulns"]]
+            if params.get("severity"):
+                assert params.get("severity") in [el["severity"] for el in pkg["vulns"]]
+
+        if params.get("limit", ""):
+            assert params["limit"] <= data["length"]

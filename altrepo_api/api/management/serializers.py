@@ -422,3 +422,51 @@ cpe_manage_response_model = ns.model(
         ),
     },
 )
+
+pkg_open_vuln_info_el_model = ns.model(
+    "PackageOpenVulnInfoElementModel",
+    {
+        "id": fields.String(description="vulnerability ID"),
+        "type": fields.String(description="vulnerability type"),
+        "severity": fields.String(description="vulnerability severity"),
+    },
+)
+pkg_imgs_el_model = ns.model(
+    "PackageImagesElementModel",
+    {
+        "tag": fields.String(description="Image package set tag"),
+        "file": fields.String(description="Image file name"),
+    }
+)
+pkg_open_vulns_el_vulns = ns.model(
+    "PackageOpenVulnsElementModel",
+    {
+        "pkghash": fields.String(description="package hash UInt64 as string"),
+        "pkg_name": fields.String(description="package name"),
+        "pkg_version": fields.String(description="package version"),
+        "pkg_release": fields.String(description="package release"),
+        "branch": fields.String(description="package set name"),
+        "vulns": fields.Nested(
+            pkg_open_vuln_info_el_model,
+            description="list of open package vulnerabilities",
+            as_list=True,
+        ),
+        "images": fields.Nested(
+            pkg_imgs_el_model,
+            description="images of what the package includes",
+            as_list=True
+        ),
+    },
+)
+pkg_open_vulns = ns.model(
+    "PackageOpenVulnsModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "packages": fields.Nested(
+            pkg_open_vulns_el_vulns,
+            description="list of packages with open vulnerabilities",
+            as_list=True,
+        ),
+    },
+)
