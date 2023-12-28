@@ -371,6 +371,21 @@ cpe_manage_pnc_change_record_model = ns.model(
         ),
     },
 )
+cpe_manage_pkg_cve_match_el_model = ns.model(
+    "CpeManagePackageCveMatchElementModel",
+    {
+        "vuln_id": fields.String(description="CVE ID"),
+        "cpe": fields.String(description="CVE ID", attribute="pkg_cpe"),
+        "is_vulnerable": fields.Boolean(description="package is vulnerable"),
+        "pkg_hash": fields.String(description="package hash"),
+        "pkg_name": fields.String(description="package name"),
+        "pkg_version": fields.String(description="package version"),
+        "pkg_release": fields.String(description="package release"),
+        "branches": fields.List(
+            fields.String(), attribute="branch", description="package in branches"
+        ),
+    },
+)
 
 cpe_manage_model = ns.model(
     "CpeManageModel",
@@ -416,9 +431,10 @@ cpe_manage_response_model = ns.model(
             description="list of CPE match change records",
             as_list=True,
         ),
-        "packages_cve_matches": fields.List(
-            fields.Raw(description="Package CVE match record"),
-            description="list of updated packages' CVE match records found to be vulnerable",
+        "packages_cve_matches": fields.Nested(
+            cpe_manage_pkg_cve_match_el_model,
+            description="list of updated packages' CVE match records",
+            as_list=True,
         ),
     },
 )

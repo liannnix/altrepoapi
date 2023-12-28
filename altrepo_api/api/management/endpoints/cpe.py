@@ -44,6 +44,7 @@ from .tools.constants import (
 from .tools.cpe_transaction import Transaction, PncType
 from .tools.helpers import (
     get_related_packages_by_project_name,
+    get_pkgs_branch_and_evr_by_hashes,
     store_pnc_records,
     store_pnc_change_records,
 )
@@ -139,7 +140,7 @@ def uniq_pcm_records(
             )
 
     def sorting_order_key(pcm: PCM) -> tuple[Any, ...]:
-        return (not pcm.is_vulnerable, pcm.pkg_name, pcm.vuln_id, pcm.pkg_hash)
+        return (not pcm.is_vulnerable, pcm.vuln_id, pcm.pkg_name, pcm.pkg_hash)
 
     return list(
         x.asdict()
@@ -275,6 +276,20 @@ class ManageCpe(APIWorker):
                     )
                     return
 
+    def _collect_packages_cve_match_info(
+        self, pcms: list[PackageCveMatch]
+    ) -> list[dict[str, Any]]:
+        pcm_info_records = uniq_pcm_records(
+            pcms, vulnerable_only=RETUNRN_VULNERABLE_ONLY_PCMS
+        )
+
+        pkgs_info = get_pkgs_branch_and_evr_by_hashes(self, {m.pkg_hash for m in pcms})
+
+        for p in pcm_info_records:
+            p.update(**pkgs_info.get(p["pkg_hash"], {}))
+
+        return pcm_info_records
+
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
         branch = self.args.get("branch", None)
@@ -282,6 +297,22 @@ class ManageCpe(APIWorker):
             self.validation_results.append(f"Invalid branch: {self.args['branch']}")
             return False
 
+        return True
+
+    def check_params_post(self) -> bool:
+        self._valiadte_and_parse()
+
+        if not self.action == CHANGE_ACTION_CREATE:
+            self.validation_results.append("Change action validation error")
+
+        for cpe in self.cpes:
+            if cpe.state in (PNC_STATE_INACTIVE, PNC_STATE_CANDIDATE):
+                self.validation_results.append(
+                    f"Invalid CPE match record state: {cpe.asdict()}"
+                )
+
+        if self.validation_results != []:
+            return False
         return True
 
     def check_params_put(self) -> bool:
@@ -300,21 +331,17 @@ class ManageCpe(APIWorker):
             return False
         return True
 
-    def check_params_post(self) -> bool:
-        self._valiadte_and_parse()
-
-        if not self.action == CHANGE_ACTION_CREATE:
-            self.validation_results.append("Change action validation error")
-
-        if self.validation_results != []:
-            return False
-        return True
-
     def check_params_delete(self) -> bool:
         self._valiadte_and_parse()
 
         if not self.action == CHANGE_ACTION_DISCARD:
             self.validation_results.append("Change action validation error")
+
+        for cpe in self.cpes:
+            if cpe.state != PNC_STATE_INACTIVE:
+                self.validation_results.append(
+                    f"Invalid CPE match record state: {cpe.asdict()}"
+                )
 
         if self.validation_results != []:
             return False
@@ -433,7 +460,7 @@ class ManageCpe(APIWorker):
         self.trx.commit(self.user_info)
 
         related_cve_ids: list[str] = []
-        packages_cve_matches: list[PackageCveMatch] = []
+        packages_cve_matches: list[dict[str, Any]] = []
 
         if related_packages:
             # update PackagesCveMatch table
@@ -454,7 +481,8 @@ class ManageCpe(APIWorker):
             )
             matcher.match_cpe_add(pkg_cpe_pairs)
 
-            packages_cve_matches = matcher.packages_cve_matches
+            pcms = matcher.packages_cve_matches
+            related_cve_ids = sorted({m.vuln_id for m in pcms})
 
             if COMMIT_CHANGES_TO_DB:
                 matcher.store()
@@ -462,9 +490,10 @@ class ManageCpe(APIWorker):
             matcher.free(full=True)
             del matcher
 
-            related_cve_ids = sorted({m.vuln_id for m in packages_cve_matches})
+            # collect packages info from latest branch states
+            packages_cve_matches = self._collect_packages_cve_match_info(pcms)
 
-            # update or create erratas
+            # FIXME: update or create erratas
             pass
 
         # store PNC and PNC change records
@@ -482,9 +511,7 @@ class ManageCpe(APIWorker):
             "related_cve_ids": related_cve_ids,
             "cpe_records": [r.asdict() for r in self.trx.pnc_records],
             "cpe_change_records": [r.asdict() for r in self.trx.pnc_change_records],
-            "packages_cve_matches": uniq_pcm_records(
-                packages_cve_matches, vulnerable_only=RETUNRN_VULNERABLE_ONLY_PCMS
-            ),
+            "packages_cve_matches": packages_cve_matches,
         }, 200
 
     def put(self):
@@ -581,7 +608,7 @@ class ManageCpe(APIWorker):
         self.trx.commit(self.user_info)
 
         related_cve_ids: list[str] = []
-        packages_cve_matches: list[PackageCveMatch] = []
+        packages_cve_matches: list[dict[str, Any]] = []
 
         if related_packages:
             # update PackagesCveMatch table
@@ -602,7 +629,8 @@ class ManageCpe(APIWorker):
             )
             matcher.match_cpe_add(pkg_cpe_pairs)
 
-            packages_cve_matches = matcher.packages_cve_matches
+            pcms = matcher.packages_cve_matches
+            related_cve_ids = sorted({m.vuln_id for m in pcms})
 
             if COMMIT_CHANGES_TO_DB:
                 matcher.store()
@@ -610,9 +638,10 @@ class ManageCpe(APIWorker):
             matcher.free(full=True)
             del matcher
 
-            related_cve_ids = sorted({m.vuln_id for m in packages_cve_matches})
+            # collect packages info from latest branch states
+            packages_cve_matches = self._collect_packages_cve_match_info(pcms)
 
-            # update or create erratas
+            # FIXME: update or create erratas
             pass
 
         # store PNC and PNC change records
@@ -630,9 +659,7 @@ class ManageCpe(APIWorker):
             "related_cve_ids": related_cve_ids,
             "cpe_records": [r.asdict() for r in self.trx.pnc_records],
             "cpe_change_records": [r.asdict() for r in self.trx.pnc_change_records],
-            "packages_cve_matches": uniq_pcm_records(
-                packages_cve_matches, vulnerable_only=RETUNRN_VULNERABLE_ONLY_PCMS
-            ),
+            "packages_cve_matches": packages_cve_matches,
         }, 200
 
     def delete(self):
@@ -642,4 +669,143 @@ class ManageCpe(APIWorker):
             - 400 (Bad request) on paload validation errors
             - 404 (Not found) if CPE record is discarded already or does not exists
         """
-        return "NotImplemented", 400
+        # get CPE match records by `project_name`
+        db_cpes: dict[str, list[PncRecord]] = {}
+        response = self.send_sql_request(
+            self.sql.get_cpes_by_project_names.format(
+                project_names=tuple({cpe.project_name for cpe in self.cpes}),
+                cpe_states=(PNC_STATE_ACTIVE, PNC_STATE_CANDIDATE, PNC_STATE_INACTIVE),
+            )
+        )
+        if not self.sql_status:
+            return self.error
+        if response:
+            for p in (PncRecord(*el) for el in response):
+                db_cpes.setdefault(p.pkg_name, []).append(p)
+
+        # check if any records are doesn't exists in DB
+        if not db_cpes:
+            return self.store_error(
+                {
+                    "message": "no corresponding CPE match records found in DB to be updated"
+                },
+                http_code=404,
+            )
+        else:
+            found_missing = False
+
+            for cpe in self.cpes:
+                pncr = cpe_record2pnc_record(cpe)
+                found_missing = True
+
+                for p in db_cpes.get(cpe.project_name, []):
+                    if compare_pnc_records(pncr, p, include_state=False):
+                        found_missing = False
+                        break
+
+                if found_missing:
+                    return self.store_error(
+                        {
+                            "message": f"CPE match record not found in DB to be updated: {cpe}.",
+                        },
+                        http_code=404,
+                    )
+
+        # check if any updates are ever exists
+        # copy CPE objects list here
+        cpes_copy = self.cpes[:]
+
+        # remove CPE records that already exists in DB
+        for cpe in self.cpes:
+            pncr = cpe_record2pnc_record(cpe)
+            for p in db_cpes.get(cpe.project_name, []):
+                if compare_pnc_records(pncr, p, include_state=True):
+                    try:
+                        cpes_copy.remove(cpe)
+                        break
+                    except ValueError:
+                        pass
+
+            if not cpes_copy:
+                return {
+                    "user": self.user_info.name,
+                    "action": self.action,
+                    "reason": self.user_info.reason,
+                    "message": "No changes found to be stored to DB",
+                    "cpes": [c.asdict() for c in self.cpes],
+                    "related_packages": [],
+                    "related_cve_ids": [],
+                    "cpe_records": [],
+                    "cpe_change_records": [],
+                    "packages_cve_matches": [],
+                }, 200
+
+        # check if there is any packages that affected by added CPE records in branches
+        related_packages = get_related_packages_by_project_name(
+            self, list({c.project_name for c in cpes_copy})
+        )
+        if not self.status:
+            return self.error
+
+        # create and store new CPE match records
+        for cpe in cpes_copy:
+            self.trx.register_pnc_discard(
+                pnc=cpe_record2pnc_record(cpe), pnc_type=PncType.CPE
+            )
+
+        self.trx.commit(self.user_info)
+
+        related_cve_ids: list[str] = []
+        packages_cve_matches: list[dict[str, Any]] = []
+
+        if related_packages:
+            # update PackagesCveMatch table
+            pkg_cpe_pairs = [
+                PackageCpePair(name=cpe.project_name, cpe=str(cpe.cpe))
+                for cpe in cpes_copy
+            ]
+            matcher = PackageCVEMatcher(
+                db_config=DatabaseConfig(
+                    host=settings.DATABASE_HOST,
+                    port=settings.DATABASE_PORT,
+                    dbname=settings.DATABASE_NAME,
+                    user=settings.DATABASE_USER,
+                    password=settings.DATABASE_PASS,
+                ),
+                # log_level=LogLevel.ERROR,
+                log_level=LogLevel.INFO,
+            )
+            matcher.match_cpe_delete(pkg_cpe_pairs)
+
+            pcms = matcher.packages_cve_matches
+            related_cve_ids = sorted({m.vuln_id for m in pcms})
+
+            if COMMIT_CHANGES_TO_DB:
+                matcher.store()
+
+            matcher.free(full=True)
+            del matcher
+
+            # collect packages info from latest branch states
+            packages_cve_matches = self._collect_packages_cve_match_info(pcms)
+
+            # FIXME: update or create erratas
+            pass
+
+        # store PNC and PNC change records
+        if COMMIT_CHANGES_TO_DB:
+            store_pnc_records(self, self.trx.pnc_records)
+            store_pnc_change_records(self, self.trx.pnc_change_records)
+
+        return {
+            "user": self.user_info.name,
+            "action": self.action,
+            "reason": self.user_info.reason,
+            "message": "OK",
+            "cpes": [c.asdict() for c in self.cpes],
+            "related_packages": related_packages,
+            "related_cve_ids": related_cve_ids,
+            "cpe_records": [r.asdict() for r in self.trx.pnc_records],
+            "cpe_change_records": [r.asdict() for r in self.trx.pnc_change_records],
+            "packages_cve_matches": packages_cve_matches,
+        }, 200
