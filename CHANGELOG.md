@@ -1,6 +1,16 @@
 # Changelog
 ALTrepo API changelog
 
+## [1.15.24] - 2023-12-28
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `/vuln/cve/fixes`: fix task history handling
+- `/vuln/bdu/fixes`: fix task history handling
+
 ## [1.15.23] - 2023-12-25
 
 Regular API code updates and fixes.
