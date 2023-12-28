@@ -29,12 +29,7 @@ from .base import (
     ChangeType,
     UserInfo,
 )
-from .constants import (
-    PNC_STATE_ACTIVE,
-    # PNC_STATE_INACTIVE,
-    PNC_STATE_CANDIDATE,
-    PNC_STATES,
-)
+from .constants import PNC_STATE_ACTIVE, PNC_STATE_INACTIVE, PNC_STATE_CANDIDATE
 
 
 logger = get_logger(__name__)
@@ -101,21 +96,21 @@ class Transaction:
         return self._pnc_change_records
 
     def register_pnc_create(self, pnc: PncRecord, pnc_type: PncType) -> None:
-        if pnc.pnc_state != PNC_STATE_ACTIVE:
+        if pnc.pnc_state not in (PNC_STATE_ACTIVE, PNC_STATE_CANDIDATE):
             raise PncManageError(f"Invalid record' `state`: {pnc.pnc_state}")
         self._pnc_updates.append(
             PncUpdate(pnc=pnc, type=pnc_type, action=PncAction.CREATE)
         )
 
     def register_pnc_update(self, pnc: PncRecord, pnc_type: PncType) -> None:
-        if pnc.pnc_state not in PNC_STATES:
+        if pnc.pnc_state != PNC_STATE_ACTIVE:
             raise PncManageError(f"Invalid record' `state`: {pnc.pnc_state}")
         self._pnc_updates.append(
             PncUpdate(pnc=pnc, type=pnc_type, action=PncAction.UPDATE)
         )
 
     def register_pnc_discard(self, pnc: PncRecord, pnc_type: PncType) -> None:
-        if pnc.pnc_state not in (PNC_STATE_ACTIVE, PNC_STATE_CANDIDATE):
+        if pnc.pnc_state != PNC_STATE_INACTIVE:
             raise PncManageError(f"Invalid record' `state`: {pnc.pnc_state}")
         self._pnc_updates.append(
             PncUpdate(pnc=pnc, type=pnc_type, action=PncAction.DISCARD)
