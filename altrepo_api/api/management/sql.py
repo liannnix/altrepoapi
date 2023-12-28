@@ -717,5 +717,16 @@ INSERT INTO PackagesNameConversion VALUES
 INSERT INTO PncChangeHistory (* EXCEPT ts) VALUES
 """
 
+    get_packages_info_by_hashes = """
+SELECT DISTINCT
+    toString(pkg_hash),
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkgset_name
+FROM static_last_packages
+WHERE pkg_hash IN {tmp_table}
+"""
+
 
 sql = SQL()

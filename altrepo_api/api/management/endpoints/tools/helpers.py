@@ -726,3 +726,41 @@ def store_pnc_change_records(
         return None
 
     cls.status = True
+
+
+def get_pkgs_branch_and_evr_by_hashes(
+    cls: _pAPIWorker, hashes: Iterable[int]
+) -> dict[str, dict[str, str]]:
+    class PkgInfo(NamedTuple):
+        pkg_hash: str
+        pkg_name: str
+        pkg_version: str
+        pkg_release: str
+        branch: str
+
+    cls.status = False
+    res = {}
+
+    tmp_table = make_tmp_table_name("pkg_hashes")
+
+    response = cls.send_sql_request(
+        cls.sql.get_packages_info_by_hashes.format(tmp_table=tmp_table),
+        external_tables=[
+            {
+                "name": tmp_table,
+                "structure": [("pkg_hash", "UInt64")],
+                "data": [{"pkg_hash": n} for n in hashes],
+            },
+        ],
+    )
+    if not cls.sql_status:
+        return {}
+    for p in (PkgInfo(*el) for el in response):
+        if p.pkg_hash not in res:
+            res[p.pkg_hash] = p._asdict()
+            res[p.pkg_hash]["branch"] = [res[p.pkg_hash]["branch"],]
+        else:
+            res[p.pkg_hash]["branch"].append(p.branch)
+
+    cls.status = True
+    return res
