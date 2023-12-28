@@ -28,6 +28,11 @@ RUN \
         python3-module-flask-cors \
         python3-module-requests \
         tzdata \
+    # install altrepodb_libs module from tasks
+        apt-repo \
+    && apt-repo add 302527 \
+    && apt-get update \
+    && yes | apt-get install python3-module-altrepodb_libs \
     # clean-up Apt caches
     && rm -f /var/cache/apt/archives/*.rpm \
         /var/cache/apt/*.bin \
