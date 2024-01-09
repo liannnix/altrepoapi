@@ -436,7 +436,7 @@ pkg_imgs_el_model = ns.model(
     {
         "tag": fields.String(description="Image package set tag"),
         "file": fields.String(description="Image file name"),
-    }
+    },
 )
 pkg_open_vulns_el_vulns = ns.model(
     "PackageOpenVulnsElementModel",
@@ -454,7 +454,7 @@ pkg_open_vulns_el_vulns = ns.model(
         "images": fields.Nested(
             pkg_imgs_el_model,
             description="images of what the package includes",
-            as_list=True
+            as_list=True,
         ),
     },
 )
@@ -468,5 +468,13 @@ pkg_open_vulns = ns.model(
             description="list of packages with open vulnerabilities",
             as_list=True,
         ),
+    },
+)
+
+supported_branches_model = ns.model(
+    "SupportedBranchesModel",
+    {
+        "length": fields.Integer(description="number of supported branches found"),
+        "branches": fields.List(fields.String, description="supported branches list"),
     },
 )

@@ -21,7 +21,7 @@ from altrepo_api.api.base import APIWorker
 from altrepo_api.libs.oval.altlinux_errata import CVE_ID_TYPE
 from altrepo_api.libs.pagination import Paginator
 from altrepo_api.libs.sorting import rich_sort
-from altrepo_api.utils import make_tmp_table_name
+from altrepo_api.utils import make_tmp_table_name, sort_branches
 
 from ..sql import sql
 
@@ -436,3 +436,20 @@ class PackagesOpenVulns(APIWorker):
                 "X-Total-Count": int(paginator.count),
             },
         )
+
+
+class PackagesSupportedBranches(APIWorker):
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.sql = sql
+        super().__init__()
+
+    def get(self):
+        response = self.send_sql_request(self.sql.supported_branches.format(branch=""))
+        if not self.sql_status:
+            return None
+        if not response:
+            return self.store_error({"message": "No supported branches found"})
+        res = {"branches": sort_branches([el[0] for el in response])}
+        res["length"] = len(res["branches"])  # type: ignore
+        return res, 200

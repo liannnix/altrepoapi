@@ -27,7 +27,7 @@ from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.settings import namespace as settings
 from altrepo_api.api.auth.decorators import token_required
 from .endpoints.change_history import ErrataChangeHistory
-from .endpoints.packages_open_vulns import PackagesOpenVulns
+from .endpoints.packages_open_vulns import PackagesOpenVulns, PackagesSupportedBranches
 
 from .namespace import get_namespace
 from .endpoints.cpe import CPECandidates, ManageCpe
@@ -51,6 +51,7 @@ from .serializers import (
     cpe_candidates_response_model,
     cpe_manage_get_response_model,
     pkg_open_vulns,
+    supported_branches_model,
 )
 
 ns = get_namespace()
@@ -333,4 +334,23 @@ class routePackagesOpenVulns(Resource):
         url_logging(logger, g.url)
         args = pkgs_open_vulns_args.parse_args(strict=True)
         w = PackagesOpenVulns(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/packages/supported_branches",
+    doc={
+        "description": "Get a list of supported branches.",
+        "responses": GET_RESPONSES_404,
+        "security": "Bearer",
+    },
+)
+class routePackagesSupportedBranches(Resource):
+    # @ns.expect()
+    @ns.marshal_with(supported_branches_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = {}
+        w = PackagesSupportedBranches(g.connection, **args)
         return run_worker(worker=w, args=args)
