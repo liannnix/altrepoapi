@@ -25,7 +25,8 @@ from altrepo_api.api.parser import (
     task_search_type,
     pkg_name_type,
     packager_nick_type,
-    sort_type, open_vulns_search_type,
+    sort_type,
+    open_vulns_search_type,
 )
 
 task_input_val_opt = parser.register_item(
@@ -146,3 +147,4 @@ pkgs_open_vulns_args = parser.build_parser(
     sort_opt,
 )
 cpe_manage_get_args = parser.build_parser(pkg_name, branch_name_opt)
+maintainer_list_args = parser.build_parser(branch_name_opt, page_opt, limit_opt)

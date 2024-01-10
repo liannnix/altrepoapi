@@ -518,3 +518,49 @@ def test_packages_open_vulns(client, kwargs, mocked_check_access_token):
 
         if params.get("limit", ""):
             assert params["limit"] <= data["length"]
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "status_code": 200,
+            "limit": 10,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": BRANCH_NOT_IN_DB,
+            "status_code": 400,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "status_code": 401,
+            "headers": {"Authorization": INVALID_ACCESS_TOKEN},
+        },
+        {
+            "status_code": 401,
+        },
+    ],
+)
+def test_packages_maintainer_list(client, kwargs, mocked_check_access_token):
+    params = {k: v for k, v in kwargs.items() if k not in ("status_code", "headers")}
+    url = url_for("manage.manage_route_packages_maintainer_list")
+    mocked_check_access_token.headers = kwargs.get("headers", {})
+    mocked_check_access_token.status_code = kwargs["status_code"]
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["maintainers"] != []
+        if params.get("limit", ""):
+            assert params["limit"] <= data["length"]

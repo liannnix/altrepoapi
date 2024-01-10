@@ -478,3 +478,23 @@ supported_branches_model = ns.model(
         "branches": fields.List(fields.String, description="supported branches list"),
     },
 )
+
+maintainer_list_el_model = ns.model(
+    "MaintainerListElementModel",
+    {
+        "name": fields.String(description="maintainer name"),
+        "nickname": fields.String(description="maintainer nickname"),
+    },
+)
+maintainer_list_model = ns.model(
+    "MaintainerListModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of maintainers found"),
+        "maintainers": fields.Nested(
+            maintainer_list_el_model,
+            description="maintainers list",
+            as_list=True,
+        ),
+    },
+)

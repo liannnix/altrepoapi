@@ -453,3 +453,43 @@ class PackagesSupportedBranches(APIWorker):
         res = {"branches": sort_branches([el[0] for el in response])}
         res["length"] = len(res["branches"])  # type: ignore
         return res, 200
+
+
+class PackagesMaintainerList(APIWorker):
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def get(self):
+        branch_clause = (
+            f"AND pkgset_name = '{self.args['branch']}'" if self.args["branch"] else ""
+        )
+        response = self.send_sql_request(
+            self.sql.get_all_maintainers.format(branch=branch_clause)
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error(
+                {"message": "No data not found in database", "args": self.args},
+            )
+        maintainers = [{"name": el[0], "nickname": el[1]} for el in response]
+
+        paginator = Paginator(maintainers, self.args["limit"])
+        page_obj = paginator.get_page(self.args["page"])
+
+        res: dict[str, Any] = {
+            "request_args": self.args,
+            "length": len(page_obj),
+            "maintainers": page_obj,
+        }
+        return (
+            res,
+            200,
+            {
+                "Access-Control-Expose-Headers": "X-Total-Count",
+                "X-Total-Count": int(paginator.count),
+            },
+        )

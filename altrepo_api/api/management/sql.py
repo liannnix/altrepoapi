@@ -37,6 +37,27 @@ WHERE rs_end_date > today()
 {branch}
 """
 
+    get_all_maintainers = """
+SELECT
+    argMax(pkg_packager, cnt) AS name,
+    argMax(packager_nick, cnt) AS nick,
+    sum(cnt) AS count
+FROM
+(
+    SELECT DISTINCT
+        pkg_packager,
+        substring(pkg_packager_email, 1, position(pkg_packager_email, '@') - 1) AS packager_nick,
+        countDistinct(pkg_hash) AS cnt
+    FROM last_packages
+    WHERE pkg_sourcepackage = 1
+    {branch}
+    GROUP BY
+        pkg_packager,
+        packager_nick
+)
+GROUP BY packager_nick ORDER BY lower(name)
+"""
+
     get_task_list = """
 WITH global_search AS (
     SELECT
