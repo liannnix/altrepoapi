@@ -19,11 +19,43 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class SQL:
+    drop_tmp_table = """
+DROP TABLE {tmp_table}
+"""
+
     check_task = """
 SELECT count(task_id)
 FROM TaskStates
 WHERE task_id = {id}
 AND task_state = 'DONE'
+"""
+
+    supported_branches = """
+SELECT DISTINCT pkgset_name
+FROM RepositoryStatus
+WHERE rs_end_date > today()
+{branch}
+"""
+
+    get_all_maintainers = """
+SELECT
+    argMax(pkg_packager, cnt) AS name,
+    argMax(packager_nick, cnt) AS nick,
+    sum(cnt) AS count
+FROM
+(
+    SELECT DISTINCT
+        pkg_packager,
+        substring(pkg_packager_email, 1, position(pkg_packager_email, '@') - 1) AS packager_nick,
+        countDistinct(pkg_hash) AS cnt
+    FROM last_packages
+    WHERE pkg_sourcepackage = 1
+    {branch}
+    GROUP BY
+        pkg_packager,
+        packager_nick
+)
+GROUP BY packager_nick ORDER BY lower(name)
 """
 
     get_task_list = """
@@ -715,6 +747,276 @@ INSERT INTO PackagesNameConversion VALUES
 
     store_pnc_change_records = """
 INSERT INTO PncChangeHistory (* EXCEPT ts) VALUES
+"""
+
+    tmp_maintainer_pkg_by_nick_acl = """
+CREATE TEMPORARY TABLE {tmp_table} AS
+SELECT pkg_hash, pkgset_name, pkg_version, pkg_release FROM (
+    SELECT DISTINCT pkg_hash, pkgset_name, pkg_version, pkg_release
+    FROM static_last_packages
+    WHERE pkg_sourcepackage = 1
+          AND pkgset_name IN ({branches})
+          AND pkg_name IN (
+            SELECT acl_for
+            FROM last_acl_stage1
+            WHERE acl_branch = 'sisyphus'
+              AND has(acl_list, '{maintainer_nickname}')
+    )
+)
+"""
+
+    tmp_maintainer_pkg_by_nick_leader_acl = """
+CREATE TEMPORARY TABLE {tmp_table} AS
+SELECT pkg_hash, pkgset_name, pkg_version, pkg_release FROM (
+    SELECT DISTINCT pkg_hash, pkgset_name, pkg_version, pkg_release
+    FROM static_last_packages
+    WHERE pkg_sourcepackage = 1
+          AND pkgset_name IN ({branches})
+          AND pkg_name IN (
+            SELECT pkgname
+            FROM last_acl_with_groups
+            WHERE acl_branch = 'sisyphus'
+              AND acl_user = '{maintainer_nickname}'
+              AND order_u = 1
+              AND order_g = 0
+        )
+)
+"""
+
+    tmp_maintainer_pkg_by_nick_or_group_acl = """
+CREATE TEMPORARY TABLE {tmp_table} AS
+SELECT pkg_hash, pkgset_name, pkg_version, pkg_release FROM (
+    WITH
+    (
+        SELECT groupUniqArray(acl_for)
+        FROM last_acl_stage1
+        WHERE has(acl_list, '{maintainer_nickname}')
+            AND acl_for LIKE ('@%')
+            AND acl_branch = 'sisyphus'
+    ) AS acl_group
+    SELECT DISTINCT pkg_hash, pkgset_name, pkg_version, pkg_release
+    FROM static_last_packages
+    WHERE pkg_sourcepackage = 1
+          AND pkgset_name IN ({branches})
+          AND pkg_name IN (
+            SELECT acl_for
+            FROM last_acl_stage1
+            WHERE acl_branch = 'sisyphus'
+              AND (has(acl_list, '{maintainer_nickname}')
+              OR hasAny(acl_list, acl_group))
+        )
+)
+"""
+
+    tmp_maintainer_pkg_by_nick_leader_and_group_acl = """
+CREATE TEMPORARY TABLE {tmp_table} AS
+SELECT pkg_hash, pkgset_name, pkg_version, pkg_release FROM (
+    SELECT DISTINCT pkg_hash, pkgset_name, pkg_version, pkg_release
+    FROM static_last_packages
+    WHERE pkg_sourcepackage = 1
+          AND pkgset_name IN ({branches})
+          AND pkg_name IN (
+            SELECT pkgname
+            FROM last_acl_with_groups
+            WHERE acl_user = '{maintainer_nickname}'
+                AND acl_branch = 'sisyphus'
+                AND order_u = 1
+    )
+)
+"""
+
+    tmp_maintainer_pkg = """
+CREATE TEMPORARY TABLE {tmp_table} AS
+SELECT pkg_hash, pkgset_name, pkg_version, pkg_release FROM (
+    SELECT DISTINCT pkg_hash, pkgset_name, pkg_version, pkg_release
+    FROM last_packages
+    WHERE pkg_sourcepackage = 1
+        AND pkgset_name IN ({branches})
+        AND pkg_packager_email LIKE '{maintainer_nickname}@%'
+)
+"""
+
+    get_maintainer_open_vulns = """
+WITH vulns AS (
+    SELECT pkg_hash,
+           pkg_name,
+           TT.pkgset_name AS branch,
+           TT.pkg_version AS version,
+           TT.pkg_release AS release,
+           vuln_id,
+           vuln_hash
+    FROM (
+        SELECT pkg_name,
+               vuln_id,
+               pkg_hash,
+               argMax(is_vulnerable, ts) AS is_vulnerable,
+               argMax(vuln_hash, ts) AS vuln_hash
+        FROM PackagesCveMatch
+        GROUP BY pkg_name, vuln_id, pkg_hash
+    ) AS ES
+     LEFT JOIN (
+        SELECT pkg_hash, pkgset_name, pkg_version, pkg_release
+        FROM {tmp_table}
+    ) AS TT ON TT.pkg_hash == ES.pkg_hash
+    WHERE pkg_hash IN (
+        SELECT pkg_hash FROM {tmp_table}
+    ) AND is_vulnerable = 1
+    GROUP BY pkg_name, pkg_hash, vuln_id, vuln_hash, branch, version, release
+)
+SELECT * FROM (
+    SELECT pkg_hash,
+           pkg_name,
+           version,
+           release,
+           branch,
+           groupUniqArray((vuln_id, VUL.vuln_type, VUL.vuln_severity)) AS vulns
+    FROM vulns
+    LEFT JOIN (
+        SELECT
+            vuln_id,
+            vuln_hash,
+            vuln_type,
+            vuln_severity
+        FROM Vulnerabilities
+    ) AS VUL ON VUL.vuln_id = vulns.vuln_id AND VUL.vuln_hash = vulns.vuln_hash
+    GROUP BY pkg_name, pkg_hash, branch, version, release
+)
+{where_clause}
+"""
+
+    get_all_open_vulns = """
+WITH vulns AS (
+    SELECT pkg_name,
+           pkg_hash,
+           TT.pkgset_name AS branch,
+           TT.pkg_version AS version,
+           TT.pkg_release AS release,
+           vuln_id,
+           vuln_hash
+    FROM (
+        SELECT pkg_name,
+               vuln_id,
+               pkg_hash,
+               argMax(is_vulnerable, ts) AS is_vulnerable,
+               argMax(vuln_hash, ts) AS vuln_hash
+        FROM PackagesCveMatch
+        GROUP BY pkg_name, vuln_id, pkg_hash
+    ) AS ES
+     LEFT JOIN (
+        SELECT pkg_hash, pkgset_name, pkg_version, pkg_release
+        FROM static_last_packages
+    ) AS TT ON TT.pkg_hash == ES.pkg_hash
+    WHERE is_vulnerable = 1
+    AND pkgset_name IN ({branches})
+    GROUP BY pkg_name, pkg_hash, vuln_id, vuln_hash, branch, version, release
+)
+SELECT * FROM (
+    SELECT pkg_hash,
+           pkg_name,
+           version,
+           release,
+           branch,
+           groupUniqArray((vuln_id, VUL.vuln_type, VUL.vuln_severity)) AS vulns
+    FROM vulns
+    LEFT JOIN (
+        SELECT
+            vuln_id,
+            vuln_hash,
+            vuln_type,
+            vuln_severity
+        FROM Vulnerabilities
+    ) AS VUL ON VUL.vuln_id = vulns.vuln_id AND VUL.vuln_hash = vulns.vuln_hash
+    GROUP BY pkg_name, pkg_hash, branch, version, release
+)
+{where_clause}
+"""
+
+    get_errata_packages = """
+SELECT * FROM (
+    SELECT
+        errata_id,
+        argMax(pkg_hash, ts) AS hash,
+        argMax(pkgset_name, ts) AS branch,
+        argMax(eh_references.link, ts) AS refs_links
+    FROM ErrataHistory
+    WHERE eh_type != 'bulletin' AND errata_id IN (
+        SELECT eid
+        FROM (
+            SELECT
+                errata_id_noversion,
+                argMax(errata_id, errata_id_version) AS eid
+            FROM ErrataHistory
+            WHERE task_state NOT IN ('EPERM', 'TESTED') AND pkgset_name != 'icarus'
+            GROUP BY errata_id_noversion
+        )
+        WHERE eid NOT IN (
+            SELECT errata_id FROM last_discarded_erratas
+        )
+    )
+    GROUP BY errata_id
+) WHERE hash IN (SELECT pkg_hash FROM {tmp_table})
+"""
+
+    get_pkg_images = """
+WITH pkgs AS (
+    SELECT pkg_hash, pkg_srcrpm_hash
+    FROM Packages
+    WHERE pkg_hash IN (
+        SELECT DISTINCT pkg_hash
+        FROM Packages
+        WHERE pkg_srcrpm_hash IN {tmp_table}
+          AND (pkg_sourcepackage = 0)
+    )
+)
+SELECT DISTINCT
+    TT.pkg_srcrpm_hash AS src_hash,
+    img_branch,
+    groupUniqArray((img_tag, img_file)) tags
+FROM lv_all_image_packages
+LEFT JOIN (
+    SELECT DISTINCT pkg_hash, pkg_srcrpm_hash FROM pkgs
+) AS TT ON TT.pkg_hash = lv_all_image_packages.pkg_hash
+WHERE pkg_hash IN (
+    SELECT DISTINCT pkg_hash
+    FROM pkgs
+)
+AND img_tag IN (
+    SELECT img_tag FROM (
+          SELECT
+            argMax(img_tag, ts) as img_tag,
+            argMax(img_version_major, ts),
+            argMax(img_version_minor, ts),
+            argMax(img_version_sub, ts),
+            img_edition,
+            img_branch,
+            img_arch,
+            img_flavor,
+            img_platform,
+            img_release,
+            img_variant,
+            img_type
+          FROM ImagePackageSetName
+          GROUP BY
+            img_edition,
+            img_branch,
+            img_arch,
+            img_flavor,
+            img_platform,
+            img_release,
+            img_variant,
+            img_type
+             )
+    WHERE img_tag IN (
+        SELECT img_tag
+        FROM (
+              SELECT img_tag,
+                     argMax(img_show, ts) AS img_show
+              FROM ImageTagStatus
+              GROUP BY img_tag
+                 )
+        WHERE img_show = 'show'
+    )
+) GROUP BY src_hash, img_branch
 """
 
     get_packages_info_by_hashes = """
