@@ -683,17 +683,17 @@ password_type.__schema__ = {
 }
 
 
-def positive_integer_type(value: Any) -> str:
+def positive_integer_type(value: Any) -> int:
     """Positive integer validator."""
 
     value = __get_string(value)
     if not __positive_integer.search(value):
         raise ValueError("Invalid positive integer: {0}".format(value))
-    return value
+    return int(value)
 
 
 positive_integer_type.__schema__ = {
-    "type": "string",
+    "type": "int",
     "pattern": __positive_integer.pattern,
 }
 
