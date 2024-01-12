@@ -236,7 +236,7 @@ class PackagesOpenVulns(APIWorker):
         if not response:
             _ = self.store_error(
                 {
-                    "message": f"No packages found with open vulnerabilities",
+                    "message": "No packages found with open vulnerabilities",
                     "args": self.args._asdict(),
                 }
             )
@@ -412,7 +412,7 @@ class PackagesOpenVulns(APIWorker):
         if not packages:
             return self.store_error(
                 {
-                    "message": f"No packages with open vulnerabilities found",
+                    "message": "No packages with open vulnerabilities found",
                     "args": self.args._asdict(),
                 }
             )
