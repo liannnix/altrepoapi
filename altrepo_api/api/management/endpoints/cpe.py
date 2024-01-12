@@ -31,6 +31,7 @@ from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
 from altrepo_api.api.vulnerabilities.endpoints.common import CPE
 
+from .errata_builder import ErrataBuilder, ErrataBuilderError
 from .tools.base import ChangeSource, PncRecord, UserInfo
 from .tools.constants import (
     CHANGE_ACTION_CREATE,
@@ -52,6 +53,8 @@ from .tools.utils import validate_action, validate_branch_with_tatsks
 from ..sql import sql
 
 # FIXME: remove in release!
+# MATCHER_LOG_LEVEL = LogLevel.ERROR
+MATCHER_LOG_LEVEL = LogLevel.INFO
 COMMIT_CHANGES_TO_DB = False
 RETUNRN_VULNERABLE_ONLY_PCMS = False
 
@@ -222,6 +225,9 @@ class ManageCpe(APIWorker):
         self.args = kwargs
         self.sql = sql
         self.trx = Transaction(source=ChangeSource.MANUAL)
+        self.eb = ErrataBuilder(
+            connection=connection, branches=lut.errata_manage_branches_with_tasks
+        )
         # values set in self.check_params_xxx() call
         self.user_info: UserInfo
         self.action: str
@@ -476,8 +482,7 @@ class ManageCpe(APIWorker):
                     user=settings.DATABASE_USER,
                     password=settings.DATABASE_PASS,
                 ),
-                # log_level=LogLevel.ERROR,
-                log_level=LogLevel.INFO,
+                log_level=MATCHER_LOG_LEVEL,
             )
             matcher.match_cpe_add(pkg_cpe_pairs)
 
@@ -494,7 +499,15 @@ class ManageCpe(APIWorker):
             packages_cve_matches = self._collect_packages_cve_match_info(pcms)
 
             # FIXME: update or create erratas
-            pass
+            try:
+                erratas = self.eb.get_related_errata_records(
+                    packages=related_packages, cve_ids=related_cve_ids
+                )
+                x = self.eb.get_related_packages_tasks(pcms)
+            except ErrataBuilderError:
+                return self.eb.error
+
+            # print("DBG", erratas)
 
         # store PNC and PNC change records
         if COMMIT_CHANGES_TO_DB:
@@ -624,8 +637,7 @@ class ManageCpe(APIWorker):
                     user=settings.DATABASE_USER,
                     password=settings.DATABASE_PASS,
                 ),
-                # log_level=LogLevel.ERROR,
-                log_level=LogLevel.INFO,
+                log_level=MATCHER_LOG_LEVEL,
             )
             matcher.match_cpe_add(pkg_cpe_pairs)
 
@@ -642,7 +654,13 @@ class ManageCpe(APIWorker):
             packages_cve_matches = self._collect_packages_cve_match_info(pcms)
 
             # FIXME: update or create erratas
-            pass
+            try:
+                erratas = self.eb.get_related_errata_records(
+                    packages=related_packages, cve_ids=related_cve_ids
+                )
+                x = self.eb.get_related_packages_tasks(pcms)
+            except ErrataBuilderError:
+                return self.eb.error
 
         # store PNC and PNC change records
         if COMMIT_CHANGES_TO_DB:
@@ -772,8 +790,7 @@ class ManageCpe(APIWorker):
                     user=settings.DATABASE_USER,
                     password=settings.DATABASE_PASS,
                 ),
-                # log_level=LogLevel.ERROR,
-                log_level=LogLevel.INFO,
+                log_level=MATCHER_LOG_LEVEL,
             )
             matcher.match_cpe_delete(pkg_cpe_pairs)
 
