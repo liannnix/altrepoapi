@@ -758,7 +758,7 @@ def get_pkgs_branch_and_evr_by_hashes(
     for p in (PkgInfo(*el) for el in response):
         if p.pkg_hash not in res:
             res[p.pkg_hash] = p._asdict()
-            res[p.pkg_hash]["branch"] = [res[p.pkg_hash]["branch"],]
+            res[p.pkg_hash]["branch"] = [res[p.pkg_hash]["branch"]]
         else:
             res[p.pkg_hash]["branch"].append(p.branch)
 
