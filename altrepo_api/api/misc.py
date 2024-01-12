@@ -471,6 +471,7 @@ class LookupTables:
         # "p7": ["sisyphus"],
         "sisyphus": ["sisyphus"],
     }
+    branch_inheritance_root = "sisyphus"
 
     known_errata_type = {"packages": ["branch", "task"], "repository": ["bulletin"]}
 

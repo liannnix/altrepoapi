@@ -37,7 +37,7 @@ from ..sql import SQL
 logger = logging.getLogger(__name__)
 
 
-ROOT_BRANCH = "sisyphus"
+ROOT_BRANCH = lut.branch_inheritance_root
 CVE_MATCHER_MAX_CPU = 4  # running more than 4 processes is inefficient
 CVE_MATCHER_CHUNK_SIZE = 1000  # optimal chunk size is around 500-1000
 BDU_ID_TYPE = "BDU"
