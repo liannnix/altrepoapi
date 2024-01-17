@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from enum import Enum
 from functools import partial
 from typing import Union
+from uuid import UUID, uuid4
 
 from altrepo_api.utils import get_logger
 
@@ -84,6 +85,7 @@ def _build_errata_change(
     type: ChangeType,
     source: ChangeSource,
     origin: ChangeOrigin,
+    transaction_id: UUID,
 ):
     logger.info(
         f"Build errata change history record: {ec_id.id} => {errata.id} "
@@ -100,11 +102,14 @@ def _build_errata_change(
         source=source,
         origin=origin,
         errata_id=errata,
+        transaction_id=transaction_id,
     )
 
 
 class Transaction:
-    def __init__(self, eid_service: ErrataIDService) -> None:
+    def __init__(
+        self, eid_service: ErrataIDService, transaction_id: Union[str, None] = None
+    ) -> None:
         self.eid_service = eid_service
         self._user_info: UserInfo
         self._errata_update: ErrataUpdate
@@ -112,6 +117,7 @@ class Transaction:
         self._errata_history_records: dict[ErrataType, Errata] = dict()
         self._errata_change_records: list[ErrataChange] = list()
         self._ec_id: Union[str, None] = None
+        self._id = UUID(transaction_id) if transaction_id is not None else uuid4()
 
     @property
     def new_errata(self) -> Errata:
@@ -209,6 +215,7 @@ class Transaction:
         self._handle_errata_change_history()
 
     def rollback(self):
+        # FIXME: delete DB records by transaction ID here!
         logger.warning("Errata manage transaction rollback")
         raise NotImplementedError
 
@@ -229,6 +236,7 @@ class Transaction:
             errata=self._errata_history_records[ErrataType.PACKAGE].id,  # type: ignore
             source=ChangeSource.MANUAL,
             origin=ChangeOrigin.PARENT,
+            transaction_id=self._id,
         )
 
         def stub_fn(*args, **kwargs) -> ErrataChange:
@@ -242,6 +250,7 @@ class Transaction:
                 errata=self._errata_history_records[ErrataType.BULLETIN].id,  # type: ignore
                 source=ChangeSource.AUTO,
                 origin=ChangeOrigin.CHILD,
+                transaction_id=self._id,
             )
         else:
             bu_ec_fn = stub_fn

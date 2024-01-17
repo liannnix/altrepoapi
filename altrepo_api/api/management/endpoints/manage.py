@@ -34,6 +34,7 @@ from .tools.constants import (
     CHECK_ERRATA_CONTENT_ON_CREATE,
     CHECK_ERRATA_CONTENT_ON_UPDATE,
     CHECK_ERRATA_CONTENT_ON_DISCARD,
+    TRANSACTION_ID_KEY,
 )
 from .tools.errata import json2errata, build_stub_errata
 from .tools.errata_id import get_errataid_service
@@ -55,7 +56,7 @@ from .tools.helpers import (
     collect_errata_vulnerabilities_info,
 )
 from .tools.utils import validate_action, validate_branch, validate_branch_with_tatsks
-from .tools.transaction import Transaction
+from .tools.errata_transaction import Transaction
 from ..sql import sql
 
 
@@ -68,7 +69,10 @@ class ManageErrata(APIWorker):
         self.args = kwargs
         self.sql = sql
         self.eid_service = get_errataid_service()
-        self.trx = Transaction(self.eid_service)
+        self.trx = Transaction(
+            eid_service=self.eid_service,
+            transaction_id=self.args.get(TRANSACTION_ID_KEY, None),
+        )
         # values set in self.check_params_xxx() call
         self.user_info: UserInfo
         self.action: str

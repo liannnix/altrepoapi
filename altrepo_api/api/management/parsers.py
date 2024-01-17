@@ -23,10 +23,10 @@ from altrepo_api.api.parser import (
     packager_name_type,
     positive_integer_type,
     task_search_type,
-    pkg_name_type,
     packager_nick_type,
     sort_type,
     open_vulns_search_type,
+    uuid_type,
 )
 
 task_input_val_opt = parser.register_item(
@@ -130,10 +130,18 @@ sort_opt = parser.register_item(
     help="sort arguments",
     location="args",
 )
+transaction_id_opt = parser.register_item(
+    "transaction_id",
+    type=uuid_type,
+    required=False,
+    help="transaction id (UUID)",
+    location="args",
+)
 
 task_list_args = parser.build_parser(
     task_input_val_opt, branch_name_opt, is_errata_opt, page_opt, limit_opt
 )
+errata_manage_args = parser.build_parser(transaction_id_opt)
 errata_manage_get_args = parser.build_parser(errata_id)
 pkgs_open_vulns_args = parser.build_parser(
     package_input_val,

@@ -205,6 +205,7 @@ class ErrataChange(NamedTuple):
     source: ChangeSource
     origin: ChangeOrigin
     errata_id: ErrataID
+    transaction_id: UUID
 
     def asdict(self) -> dict[str, Any]:
         res = self._asdict()
