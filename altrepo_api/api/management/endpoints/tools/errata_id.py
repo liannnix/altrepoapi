@@ -14,7 +14,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Optional
+from datetime import datetime
+from typing import Optional, Protocol
 
 from altrepo_api.api.misc import lut
 from altrepo_api.settings import namespace
@@ -26,22 +27,70 @@ from altrepo_api.libs.errata_service import (
 from altrepo_api.utils import get_logger
 
 from .base import ErrataID, ErrataManageError
+from .constants import DT_NEVER
 
 logger = get_logger(__name__)
 
 
-def get_errataid_service() -> ErrataIDService:
+class ErrataIDServiceProtocol(Protocol):
+    def __init__(self, url: str) -> None:
+        ...
+
+    def register(self, prefix: str, year: Optional[int]) -> ErrataIDServiceResult:
+        ...
+
+    def check(self, id: str) -> ErrataIDServiceResult:
+        ...
+
+    def update(self, id: str) -> ErrataIDServiceResult:
+        ...
+
+
+class stubErrataIDService:
+    def __init__(self, url: str) -> None:
+        self.eid = ErrataIDService(url)
+        self.counter = 0
+
+    @property
+    def count(self):
+        self.counter += 1
+        return self.counter
+
+    def register(self, prefix: str, year: Optional[int]) -> ErrataIDServiceResult:
+        dt = datetime.now()
+        _year = year if year is not None else dt.year
+        id = f"{prefix}-{_year}-{self.count:04d}-1"
+        logger.info(f"DRY_RUN: Registered new Errata ID {id}")
+        return ErrataIDServiceResult(id, dt, dt)
+
+    def check(self, id: str) -> ErrataIDServiceResult:
+        return self.eid.check(id)
+
+    def update(self, id: str) -> ErrataIDServiceResult:
+        dt = datetime.now()
+        parts = id.split("-")
+        v = str(int(parts[-1]) + 1)
+        _id = "-".join(parts[:-1] + [v])
+        logger.info(f"DRY_RUN: Updated Errata ID {id} -> {_id}")
+        return ErrataIDServiceResult(_id, DT_NEVER, dt)
+
+
+def get_errataid_service(dry_run: bool) -> ErrataIDServiceProtocol:
     """Returns ErrataID service interface class instance using URL from API
     configuration namespace."""
 
+    Service = stubErrataIDService if dry_run else ErrataIDService
+
     try:
-        return ErrataIDService(url=namespace.ERRATA_ID_URL)
+        return Service(url=namespace.ERRATA_ID_URL)
     except ErrataIDServiceError as e:
         logger.error(f"Failed to connect to ErrataID service: {e}")
         raise ErrataManageError("error: %s" % e)
 
 
-def _check_errata_id(eid_service: ErrataIDService, id: str) -> ErrataIDServiceResult:
+def _check_errata_id(
+    eid_service: ErrataIDServiceProtocol, id: str
+) -> ErrataIDServiceResult:
     try:
         logger.debug(f"Check errata ID latest version for {id}")
         return eid_service.check(id)
@@ -50,13 +99,13 @@ def _check_errata_id(eid_service: ErrataIDService, id: str) -> ErrataIDServiceRe
         raise ErrataManageError("error: %s" % e)
 
 
-def check_errata_id(eid_service: ErrataIDService, eid: ErrataID) -> ErrataID:
+def check_errata_id(eid_service: ErrataIDServiceProtocol, eid: ErrataID) -> ErrataID:
     """Returns latest errata id version from ErrataID service."""
     return ErrataID.from_id(_check_errata_id(eid_service, eid.id).id)
 
 
 def _reister_errata_id(
-    eid_service: ErrataIDService, prefix: str, year: Optional[int]
+    eid_service: ErrataIDServiceProtocol, prefix: str, year: Optional[int]
 ) -> ErrataIDServiceResult:
     try:
         logger.debug(f"Register new errata ID for {prefix}-{year}")
@@ -67,7 +116,7 @@ def _reister_errata_id(
 
 
 def register_package_update_id(
-    eid_service: ErrataIDService, year: int
+    eid_service: ErrataIDServiceProtocol, year: int
 ) -> ErrataIDServiceResult:
     """Registers new package update identificator in ErrataID service."""
     return _reister_errata_id(
@@ -76,7 +125,7 @@ def register_package_update_id(
 
 
 def register_branch_update_id(
-    eid_service: ErrataIDService, year: int
+    eid_service: ErrataIDServiceProtocol, year: int
 ) -> ErrataIDServiceResult:
     """Registers new branch update identificator in ErrataID service."""
     return _reister_errata_id(
@@ -84,14 +133,18 @@ def register_branch_update_id(
     )
 
 
-def register_errata_change_id(eid_service: ErrataIDService) -> ErrataIDServiceResult:
+def register_errata_change_id(
+    eid_service: ErrataIDServiceProtocol,
+) -> ErrataIDServiceResult:
     """Registers new errata change identificator in ErrataID service."""
     return _reister_errata_id(
         eid_service=eid_service, prefix=lut.errata_change_prefix, year=None
     )
 
 
-def update_errata_id(eid_service: ErrataIDService, id: str) -> ErrataIDServiceResult:
+def update_errata_id(
+    eid_service: ErrataIDServiceProtocol, id: str
+) -> ErrataIDServiceResult:
     """Updates errata identificator version in ErrataID service."""
 
     try:
