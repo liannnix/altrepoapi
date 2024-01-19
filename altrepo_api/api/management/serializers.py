@@ -431,6 +431,16 @@ cpe_manage_response_model = ns.model(
             description="list of CPE match change records",
             as_list=True,
         ),
+        "errata_records": fields.Nested(
+            errata_manage_errata_model,
+            description="modified errata records contents",
+            as_list=True,
+        ),
+        "errata_change_records": fields.Nested(
+            errata_manage_errata_change_model,
+            description="errata change records contents",
+            as_list=True,
+        ),
         "packages_cve_matches": fields.Nested(
             cpe_manage_pkg_cve_match_el_model,
             description="list of updated packages' CVE match records",
