@@ -29,6 +29,8 @@ from altrepo_api.api.parser import (
     uuid_type,
 )
 
+from .endpoints.tools.constants import DRY_RUN_KEY
+
 task_input_val_opt = parser.register_item(
     "input",
     type=task_search_type,
@@ -137,6 +139,14 @@ transaction_id_opt = parser.register_item(
     help="transaction id (UUID)",
     location="args",
 )
+dry_run = parser.register_item(
+    DRY_RUN_KEY,
+    type=inputs.boolean,
+    default=True,
+    required=True,
+    help="do not commit changes to DB",
+    location="args",
+)
 
 task_list_args = parser.build_parser(
     task_input_val_opt, branch_name_opt, is_errata_opt, page_opt, limit_opt
@@ -154,5 +164,6 @@ pkgs_open_vulns_args = parser.build_parser(
     limit_opt,
     sort_opt,
 )
+cpe_manage_args = parser.build_parser(dry_run)
 cpe_manage_get_args = parser.build_parser(pkg_name, branch_name_opt)
 maintainer_list_args = parser.build_parser(branch_name_opt, page_opt, limit_opt)

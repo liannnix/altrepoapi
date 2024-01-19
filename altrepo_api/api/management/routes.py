@@ -43,6 +43,7 @@ from .parsers import (
     task_list_args,
     errata_manage_args,
     errata_manage_get_args,
+    cpe_manage_args,
     cpe_manage_get_args,
     pkgs_open_vulns_args,
     maintainer_list_args,
@@ -184,7 +185,7 @@ class routeManageErrata(Resource):
     @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
     def put(self):
         url_logging(logger, g.url)
-        args = errata_manage_args.parse_args(strict=True)
+        args = errata_manage_args.parse_args(strict=False)
         w = ManageErrata(g.connection, payload=ns.payload, **args)
         return run_worker(
             worker=w, run_method=w.put, check_method=w.check_params_put, ok_code=200
@@ -200,7 +201,7 @@ class routeManageErrata(Resource):
     @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
     def post(self):
         url_logging(logger, g.url)
-        args = errata_manage_args.parse_args(strict=True)
+        args = errata_manage_args.parse_args(strict=False)
         w = ManageErrata(g.connection, payload=ns.payload, **args)
         return run_worker(
             worker=w, run_method=w.post, check_method=w.check_params_post, ok_code=200
@@ -216,7 +217,7 @@ class routeManageErrata(Resource):
     @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
     def delete(self):
         url_logging(logger, g.url)
-        args = errata_manage_args.parse_args(strict=True)
+        args = errata_manage_args.parse_args(strict=False)
         w = ManageErrata(g.connection, payload=ns.payload, **args)
         return run_worker(
             worker=w,
@@ -285,12 +286,13 @@ class routeManageCpe(Resource):
         responses=RESPONSES_400_404,
         security="Bearer",
     )
-    @ns.expect(cpe_manage_model)
+    @ns.expect(cpe_manage_model, cpe_manage_args)
     @ns.marshal_with(cpe_manage_response_model)
     @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
     def put(self):
         url_logging(logger, g.url)
-        w = ManageCpe(g.connection, payload=ns.payload)
+        args = cpe_manage_args.parse_args(strict=False)
+        w = ManageCpe(g.connection, payload=ns.payload, **args)
         return run_worker(
             worker=w, run_method=w.put, check_method=w.check_params_put, ok_code=200
         )
@@ -300,12 +302,13 @@ class routeManageCpe(Resource):
         responses=RESPONSES_400_409,
         security="Bearer",
     )
-    @ns.expect(cpe_manage_model)
+    @ns.expect(cpe_manage_model, cpe_manage_args)
     @ns.marshal_with(cpe_manage_response_model)
     @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
     def post(self):
         url_logging(logger, g.url)
-        w = ManageCpe(g.connection, payload=ns.payload)
+        args = cpe_manage_args.parse_args(strict=False)
+        w = ManageCpe(g.connection, payload=ns.payload, **args)
         return run_worker(
             worker=w, run_method=w.post, check_method=w.check_params_post, ok_code=200
         )
@@ -315,12 +318,13 @@ class routeManageCpe(Resource):
         responses=GET_RESPONSES_400_404_409,
         security="Bearer",
     )
-    @ns.expect(cpe_manage_model)
+    @ns.expect(cpe_manage_model, cpe_manage_args)
     @ns.marshal_with(cpe_manage_response_model)
     @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
     def delete(self):
         url_logging(logger, g.url)
-        w = ManageCpe(g.connection, payload=ns.payload)
+        args = cpe_manage_args.parse_args(strict=False)
+        w = ManageCpe(g.connection, payload=ns.payload, **args)
         return run_worker(
             worker=w,
             run_method=w.delete,
