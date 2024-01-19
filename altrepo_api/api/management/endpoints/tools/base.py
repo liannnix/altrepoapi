@@ -16,8 +16,10 @@
 
 from datetime import datetime
 from enum import IntEnum
-from typing import Any, NamedTuple, Union
+from typing import Any, NamedTuple, Protocol, Union
 from uuid import UUID
+
+from .constants import CHANGE_SOURCE_AUTO, CHANGE_SOURCE_MANUAL
 
 
 class ErrataManageError(Exception):
@@ -26,6 +28,13 @@ class ErrataManageError(Exception):
 
 class PncManageError(Exception):
     pass
+
+
+class DBTransactionRollback(Protocol):
+    """Callback that rolls back DB changes using list transaction IDs."""
+
+    def __call__(self, transaction_ids: list[UUID]) -> bool:
+        ...
 
 
 class Task(NamedTuple):
@@ -187,6 +196,14 @@ class ChangeType(IntEnum):
 class ChangeSource(IntEnum):
     AUTO = 0
     MANUAL = 1
+
+    @staticmethod
+    def from_string(v: str) -> "ChangeSource":
+        if v == CHANGE_SOURCE_AUTO:
+            return ChangeSource.AUTO
+        if v == CHANGE_SOURCE_MANUAL:
+            return ChangeSource.MANUAL
+        return ChangeSource.MANUAL
 
 
 class ChangeOrigin(IntEnum):
