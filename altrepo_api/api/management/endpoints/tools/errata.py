@@ -25,7 +25,11 @@ from .constants import (
     ERRATA_REFERENCE_TYPE,
     DT_NEVER,
 )
-from .errata_id import ErrataIDService, update_errata_id, register_branch_update_id
+from .errata_id import (
+    ErrataIDServiceProtocol,
+    update_errata_id,
+    register_branch_update_id,
+)
 from .utils import dt_from_iso, re_errata_id
 
 
@@ -85,7 +89,7 @@ def build_stub_errata(errata_id: str) -> Errata:
 
 
 def build_new_bulletin(
-    eid_service: ErrataIDService, errata: Errata, branch_state: Branch
+    eid_service: ErrataIDServiceProtocol, errata: Errata, branch_state: Branch
 ) -> Errata:
     """Builds new bulletin errata record object from errata
     and registers new errata ID for it."""
@@ -112,7 +116,7 @@ def build_new_bulletin(
 
 
 def build_errata_with_id_version_updated(
-    eid_service: ErrataIDService, errata: Errata
+    eid_service: ErrataIDServiceProtocol, errata: Errata
 ) -> Errata:
     """Registers new errata id version and returns updated errata object."""
 
@@ -121,7 +125,7 @@ def build_errata_with_id_version_updated(
 
 
 def _do_bulletin_update(
-    eid_service: ErrataIDService,
+    eid_service: ErrataIDServiceProtocol,
     bulletin: Errata,
     errata: Union[Errata, None],
     new_errata: Union[Errata, None],
@@ -157,7 +161,7 @@ def _do_bulletin_update(
 
 def update_bulletin_by_errata_update(
     *,
-    eid_service: ErrataIDService,
+    eid_service: ErrataIDServiceProtocol,
     bulletin: Errata,
     errata: Errata,
     new_errata: Errata,
@@ -170,7 +174,7 @@ def update_bulletin_by_errata_update(
 
 def update_bulletin_by_errata_discard(
     *,
-    eid_service: ErrataIDService,
+    eid_service: ErrataIDServiceProtocol,
     bulletin: Errata,
     errata: Errata,
 ) -> Errata:
@@ -182,7 +186,7 @@ def update_bulletin_by_errata_discard(
 
 def update_bulletin_by_errata_add(
     *,
-    eid_service: ErrataIDService,
+    eid_service: ErrataIDServiceProtocol,
     bulletin: Errata,
     new_errata: Errata,
 ) -> Errata:
