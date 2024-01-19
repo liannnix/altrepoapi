@@ -19,7 +19,7 @@ from typing import Any
 
 from altrepo_api.api.base import APIWorker
 
-from .tools.base import Errata, TaskInfo, UserInfo
+from .tools.base import Errata, ChangeSource, TaskInfo, UserInfo
 from .tools.constants import (
     CHANGE_ACTION_CREATE,
     CHANGE_ACTION_DISCARD,
@@ -31,6 +31,9 @@ from .tools.constants import (
     TASK_PACKAGE_ERRATA_TYPE,
     TASK_STATE_DONE,
     DT_NEVER,
+    DRY_RUN_KEY,
+    CHANGE_SOURCE_KEY,
+    CHANGE_SOURCE_MANUAL,
     CHECK_ERRATA_CONTENT_ON_CREATE,
     CHECK_ERRATA_CONTENT_ON_UPDATE,
     CHECK_ERRATA_CONTENT_ON_DISCARD,
@@ -56,7 +59,7 @@ from .tools.helpers import (
     collect_errata_vulnerabilities_info,
 )
 from .tools.utils import validate_action, validate_branch, validate_branch_with_tatsks
-from .tools.errata_transaction import Transaction
+from .tools.errata_transaction import Transaction, parse_uuid
 from ..sql import sql
 
 
@@ -65,13 +68,19 @@ class ManageErrata(APIWorker):
 
     def __init__(self, connection, payload, **kwargs):
         self.payload: dict[str, Any] = payload
+        self.dry_run = kwargs.get(DRY_RUN_KEY, False)
+        self.change_source = ChangeSource.from_string(
+            kwargs.get(CHANGE_SOURCE_KEY, CHANGE_SOURCE_MANUAL)
+        )
         self.conn = connection
         self.args = kwargs
         self.sql = sql
-        self.eid_service = get_errataid_service()
+        self.eid_service = get_errataid_service(self.dry_run)
         self.trx = Transaction(
             eid_service=self.eid_service,
-            transaction_id=self.args.get(TRANSACTION_ID_KEY, None),
+            transaction_id=parse_uuid(self.args.get(TRANSACTION_ID_KEY, None)),
+            dry_run=self.dry_run,
+            change_source=self.change_source,
         )
         # values set in self.check_params_xxx() call
         self.user_info: UserInfo
@@ -333,13 +342,15 @@ class ManageErrata(APIWorker):
         else:
             self.trx.commit(self.user_info, None)
 
-        # 6. store new errata and errata change records to DB
-        store_errata_history_records(self, self.trx.errata_history_records)
-        if not self.sql_status:
-            return self.error
-        store_errata_change_records(self, self.trx.errata_change_records)
-        if not self.sql_status:
-            return self.error
+        if not self.dry_run:
+            # 6. store new errata and errata change records to DB
+            # FIXME: implement and call DB rollback here!
+            store_errata_history_records(self, self.trx.errata_history_records)
+            if not self.sql_status:
+                return self.error
+            store_errata_change_records(self, self.trx.errata_change_records)
+            if not self.sql_status:
+                return self.error
 
         # 7. build API response that includes newest versions for package update errata,
         # branch update errata and errata change records
@@ -443,23 +454,22 @@ class ManageErrata(APIWorker):
         if not self.sql_status or not self.status:
             return self.error
         should_has_bulletin = True if branch_state is not None else False
-
         # XXX: check if task is 'DONE' and ahead of last commited branch state
         if branch_state is None:
             branch_state = get_last_branch_state(self)
             if not self.sql_status or not self.status or branch_state is None:
                 return self.error
-        if task_changed < branch_state.date:
-            # XXX: shouldn't ever happen
-            return self.store_error(
-                {"message": "Inconsistent data in DB: "},
-                http_code=500,
-                severity=self.LL.CRITICAL,
+            if task_changed < branch_state.date:
+                # XXX: shouldn't ever happen
+                return self.store_error(
+                    {"message": "Inconsistent data in DB: "},
+                    http_code=500,
+                    severity=self.LL.CRITICAL,
+                )
+            self.logger.info(
+                f"Task {self.errata.task_id} has no committed brunch state yet"
             )
-        self.logger.info(
-            f"Task {self.errata.task_id} has no committed brunch state yet"
-        )
-        should_has_bulletin = False
+            should_has_bulletin = False
 
         # 5.create and register new package update errata
         self.trx.register_errata_create(self.errata, task_changed.year)
@@ -479,13 +489,15 @@ class ManageErrata(APIWorker):
         # 7. commit errata registration transaction
         self.trx.commit(self.user_info, None)
 
-        # 8. store new errata and errata change records to DB
-        store_errata_history_records(self, self.trx.errata_history_records)
-        if not self.sql_status:
-            return self.error
-        store_errata_change_records(self, self.trx.errata_change_records)
-        if not self.sql_status:
-            return self.error
+        if not self.dry_run:
+            # 8. store new errata and errata change records to DB
+            # FIXME: implement and call DB rollback here!
+            store_errata_history_records(self, self.trx.errata_history_records)
+            if not self.sql_status:
+                return self.error
+            store_errata_change_records(self, self.trx.errata_change_records)
+            if not self.sql_status:
+                return self.error
 
         # 9. build API response that includes newest versions for package update errata,
         # branch update errata and errata change records
@@ -587,13 +599,15 @@ class ManageErrata(APIWorker):
         else:
             self.trx.commit(self.user_info, None)
 
-        # 7. store new errata and errata change records to DB
-        store_errata_history_records(self, self.trx.errata_history_records)
-        if not self.sql_status:
-            return self.error
-        store_errata_change_records(self, self.trx.errata_change_records)
-        if not self.sql_status:
-            return self.error
+        if not self.dry_run:
+            # 7. store new errata and errata change records to DB
+            # FIXME: implement and call DB rollback here!
+            store_errata_history_records(self, self.trx.errata_history_records)
+            if not self.sql_status:
+                return self.error
+            store_errata_change_records(self, self.trx.errata_change_records)
+            if not self.sql_status:
+                return self.error
 
         # 8. build API response
         return {
