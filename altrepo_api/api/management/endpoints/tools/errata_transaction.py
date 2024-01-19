@@ -31,6 +31,7 @@ from .base import (
     ChangeType,
     ErrataManageError,
     UserInfo,
+    DBTransactionRollback,
 )
 from .constants import DT_NEVER
 
@@ -41,12 +42,12 @@ from .errata import (
     update_bulletin_by_errata_discard,
 )
 from .errata_id import (
-    ErrataIDService,
+    ErrataIDServiceProtocol,
     ErrataIDServiceResult,
     # check_errata_id,
     update_errata_id,
     register_package_update_id,
-    register_errata_change_id,
+    register_errata_change_id
 )
 from .helpers import Branch
 
@@ -106,18 +107,32 @@ def _build_errata_change(
     )
 
 
+def parse_uuid(u: Union[UUID, str, None]) -> UUID:
+    if isinstance(u, UUID):
+        return u
+    if isinstance(u, str):
+        return UUID(u)
+    return uuid4()
+
+
 class Transaction:
     def __init__(
-        self, eid_service: ErrataIDService, transaction_id: Union[str, None] = None
+        self,
+        eid_service: ErrataIDServiceProtocol,
+        transaction_id: UUID,
+        dry_run: bool,
+        change_source: ChangeSource
     ) -> None:
         self.eid_service = eid_service
+        self.dry_run = dry_run
         self._user_info: UserInfo
         self._errata_update: ErrataUpdate
         self._bulletin_update: Union[ErrataUpdate, None] = None
         self._errata_history_records: dict[ErrataType, Errata] = dict()
         self._errata_change_records: list[ErrataChange] = list()
         self._ec_id: Union[str, None] = None
-        self._id = UUID(transaction_id) if transaction_id is not None else uuid4()
+        self._id = transaction_id
+        self._change_source = change_source
 
     @property
     def new_errata(self) -> Errata:
@@ -214,10 +229,14 @@ class Transaction:
         # build errata change history records
         self._handle_errata_change_history()
 
-    def rollback(self):
-        # FIXME: delete DB records by transaction ID here!
+    def rollback(self, sql_callback: DBTransactionRollback) -> bool:
+        # XXX: delete DB records by transaction ID here!
+        # FIXME: need to handle ErrataID service records rollback as well
+        if self.dry_run:
+            logger.warning("DRY_RUN: Errata manage transaction rollback")
+            return True
         logger.warning("Errata manage transaction rollback")
-        raise NotImplementedError
+        return sql_callback([self._id])
 
     def _handle_errata_change_history(self):
         # get new errata change ID if not provided
@@ -234,7 +253,7 @@ class Transaction:
             ec_id=_ec_id,
             user_unfo=self._user_info,
             errata=self._errata_history_records[ErrataType.PACKAGE].id,  # type: ignore
-            source=ChangeSource.MANUAL,
+            source=self._change_source,
             origin=ChangeOrigin.PARENT,
             transaction_id=self._id,
         )
@@ -279,7 +298,9 @@ class Transaction:
             )
 
         # build new errata
-        _eid = register_package_update_id(self.eid_service, self._errata_update.year)
+        _eid = register_package_update_id(
+            self.eid_service, self._errata_update.year
+        )
         new_errata = self._errata_update.errata.update(
             id=_eid.id, created=_eid.created, updated=_eid.updated
         )
