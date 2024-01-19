@@ -28,6 +28,7 @@ from .base import (
     ChangeSource,
     ChangeType,
     UserInfo,
+    DBTransactionRollback,
 )
 from .constants import PNC_STATE_ACTIVE, PNC_STATE_INACTIVE, PNC_STATE_CANDIDATE
 
@@ -123,9 +124,10 @@ class Transaction:
         # build errata history records
         self._handle_pnc_records()
 
-    def rollback(self):
+    def rollback(self, sql_callback: DBTransactionRollback) -> bool:
+        # XXX: delete all related DB records using transaction UUID here!
         logger.warning("PNC manage transaction rollback")
-        raise NotImplementedError
+        return sql_callback([self._id])
 
     def _handle_pnc_create(self, pnc_update: PncUpdate) -> None:
         self._pnc_change_records.append(

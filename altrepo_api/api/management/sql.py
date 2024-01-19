@@ -1030,5 +1030,21 @@ FROM static_last_packages
 WHERE pkg_hash IN {tmp_table}
 """
 
+    get_pkg_cve_matches_by_hashes = """
+SELECT DISTINCT
+    pkg_hash,
+    pkg_name,
+    pkg_cpe,
+    pkg_cpe_hash,
+    vuln_id,
+    vuln_hash,
+    cpm_cpe,
+    cpm_cpe_hash,
+    cpm_version_hash,
+    is_vulnerable
+FROM PackagesCveMatch
+WHERE key_hash IN {tmp_table}
+"""
+
 
 sql = SQL()

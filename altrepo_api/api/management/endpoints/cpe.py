@@ -22,7 +22,7 @@ from altrepodb_libs import (
     PackageCveMatch,
     PackageCpePair,
     DatabaseConfig,
-    LogLevel,
+    convert_log_level,
 )
 
 from altrepo_api.settings import namespace as settings
@@ -30,13 +30,17 @@ from altrepo_api.settings import namespace as settings
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
 from altrepo_api.api.vulnerabilities.endpoints.common import CPE
+from altrepo_api.utils import make_tmp_table_name
 
-from .errata_builder import ErrataBuilder, ErrataBuilderError
+from .errata_builder import ErrataBuilder, ErrataBuilderError, ErrataHandler
 from .tools.base import ChangeSource, PncRecord, UserInfo
 from .tools.constants import (
     CHANGE_ACTION_CREATE,
     CHANGE_ACTION_DISCARD,
     CHANGE_ACTION_UPDATE,
+    # CHANGE_SOURCE_KEY,
+    # CHANGE_SOURCE_MANUAL,
+    DRY_RUN_KEY,
     PNC_STATES,
     PNC_STATE_ACTIVE,
     PNC_STATE_INACTIVE,
@@ -52,10 +56,7 @@ from .tools.helpers import (
 from .tools.utils import validate_action, validate_branch_with_tatsks
 from ..sql import sql
 
-# FIXME: remove in release!
-# MATCHER_LOG_LEVEL = LogLevel.ERROR
-MATCHER_LOG_LEVEL = LogLevel.INFO
-COMMIT_CHANGES_TO_DB = False
+MATCHER_LOG_LEVEL = convert_log_level(settings.LOG_LEVEL)
 RETUNRN_VULNERABLE_ONLY_PCMS = False
 
 
@@ -221,6 +222,12 @@ class ManageCpe(APIWorker):
 
     def __init__(self, connection, payload, **kwargs):
         self.payload: dict[str, Any] = payload
+        self.dry_run = kwargs.get(DRY_RUN_KEY, False)
+        # FIXME: change_source set to 'AUTO' to be used during Erratas updates
+        # self.change_source = ChangeSource.from_string(
+        #     kwargs.get(CHANGE_SOURCE_KEY, CHANGE_SOURCE_MANUAL)
+        # )
+        self.change_source = ChangeSource.AUTO
         self.conn = connection
         self.args = kwargs
         self.sql = sql
@@ -295,6 +302,29 @@ class ManageCpe(APIWorker):
             p.update(**pkgs_info.get(p["pkg_hash"], {}))
 
         return pcm_info_records
+
+    def _get_pkgss_cve_matches_by_hashes(
+        self, match_hashes: list[int]
+    ) -> list[PackageCveMatch]:
+        self.status = False
+
+        tmp_table = make_tmp_table_name("pkgs_match_hashes")
+
+        response = self.send_sql_request(
+            self.sql.get_pkg_cve_matches_by_hashes.format(tmp_table=tmp_table),
+            external_tables=[
+                {
+                    "name": tmp_table,
+                    "structure": [("key_hash", "UInt64")],
+                    "data": [{"key_hash": h} for h in match_hashes],
+                },
+            ],
+        )
+        if not self.sql_status or not response:
+            return []
+
+        self.status = True
+        return [PackageCveMatch(*el) for el in response]
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
@@ -467,6 +497,7 @@ class ManageCpe(APIWorker):
 
         related_cve_ids: list[str] = []
         packages_cve_matches: list[dict[str, Any]] = []
+        eh = ErrataHandler(self.conn, self.user_info, self.trx._id, self.dry_run)
 
         if related_packages:
             # update PackagesCveMatch table
@@ -489,7 +520,7 @@ class ManageCpe(APIWorker):
             pcms = matcher.packages_cve_matches
             related_cve_ids = sorted({m.vuln_id for m in pcms})
 
-            if COMMIT_CHANGES_TO_DB:
+            if not self.dry_run:
                 matcher.store()
 
             matcher.free(full=True)
@@ -499,20 +530,16 @@ class ManageCpe(APIWorker):
             packages_cve_matches = self._collect_packages_cve_match_info(pcms)
 
             # FIXME: update or create erratas
-            try:
-                erratas = self.eb.get_related_errata_records(
-                    packages=related_packages, cve_ids=related_cve_ids
-                )
-                x = self.eb.get_related_packages_tasks(pcms)
-            except ErrataBuilderError:
-                return self.eb.error
-
-            # print("DBG", erratas)
+            raise NotImplementedError("Errata processing not implemented")
 
         # store PNC and PNC change records
-        if COMMIT_CHANGES_TO_DB:
+        if not self.dry_run:
             store_pnc_records(self, self.trx.pnc_records)
+            if not self.sql_status:
+                return self.error
             store_pnc_change_records(self, self.trx.pnc_change_records)
+            if not self.sql_status:
+                return self.error
 
         return {
             "user": self.user_info.name,
@@ -524,6 +551,8 @@ class ManageCpe(APIWorker):
             "related_cve_ids": related_cve_ids,
             "cpe_records": [r.asdict() for r in self.trx.pnc_records],
             "cpe_change_records": [r.asdict() for r in self.trx.pnc_change_records],
+            "errata_records": eh.errata_records,
+            "errata_change_records": eh.errata_change_records,
             "packages_cve_matches": packages_cve_matches,
         }, 200
 
@@ -622,6 +651,7 @@ class ManageCpe(APIWorker):
 
         related_cve_ids: list[str] = []
         packages_cve_matches: list[dict[str, Any]] = []
+        eh = ErrataHandler(self.conn, self.user_info, self.trx._id, self.dry_run)
 
         if related_packages:
             # update PackagesCveMatch table
@@ -642,9 +672,20 @@ class ManageCpe(APIWorker):
             matcher.match_cpe_add(pkg_cpe_pairs)
 
             pcms = matcher.packages_cve_matches
+            # XXX: if all packages' CVE matches already loaded use hashes from matcher
+            if not pcms:
+                self.logger.info(
+                    "Got no new packages' CVE matches, use existing hashes"
+                )
+                pcms = self._get_pkgss_cve_matches_by_hashes(
+                    matcher.packages_cve_match_hashes
+                )
+                if not self.status:
+                    return self.error
+
             related_cve_ids = sorted({m.vuln_id for m in pcms})
 
-            if COMMIT_CHANGES_TO_DB:
+            if not self.dry_run:
                 matcher.store()
 
             matcher.free(full=True)
@@ -653,19 +694,25 @@ class ManageCpe(APIWorker):
             # collect packages info from latest branch states
             packages_cve_matches = self._collect_packages_cve_match_info(pcms)
 
-            # FIXME: update or create erratas
+            # XXX: update or create erratas
             try:
-                erratas = self.eb.get_related_errata_records(
-                    packages=related_packages, cve_ids=related_cve_ids
-                )
-                x = self.eb.get_related_packages_tasks(pcms)
+                erratas = self.eb.build_erratas_on_cpe_add(pcms)
             except ErrataBuilderError:
                 return self.eb.error
 
+            try:
+                eh.commit(*erratas)
+            except ErrataBuilderError:
+                return eh.error
+
         # store PNC and PNC change records
-        if COMMIT_CHANGES_TO_DB:
+        if not self.dry_run:
             store_pnc_records(self, self.trx.pnc_records)
+            if not self.sql_status:
+                return self.error
             store_pnc_change_records(self, self.trx.pnc_change_records)
+            if not self.sql_status:
+                return self.error
 
         return {
             "user": self.user_info.name,
@@ -677,6 +724,8 @@ class ManageCpe(APIWorker):
             "related_cve_ids": related_cve_ids,
             "cpe_records": [r.asdict() for r in self.trx.pnc_records],
             "cpe_change_records": [r.asdict() for r in self.trx.pnc_change_records],
+            "errata_records": eh.errata_records,
+            "errata_change_records": eh.errata_change_records,
             "packages_cve_matches": packages_cve_matches,
         }, 200
 
@@ -775,6 +824,7 @@ class ManageCpe(APIWorker):
 
         related_cve_ids: list[str] = []
         packages_cve_matches: list[dict[str, Any]] = []
+        eh = ErrataHandler(self.conn, self.user_info, self.trx._id, self.dry_run)
 
         if related_packages:
             # update PackagesCveMatch table
@@ -797,7 +847,7 @@ class ManageCpe(APIWorker):
             pcms = matcher.packages_cve_matches
             related_cve_ids = sorted({m.vuln_id for m in pcms})
 
-            if COMMIT_CHANGES_TO_DB:
+            if not self.dry_run:
                 matcher.store()
 
             matcher.free(full=True)
@@ -807,12 +857,16 @@ class ManageCpe(APIWorker):
             packages_cve_matches = self._collect_packages_cve_match_info(pcms)
 
             # FIXME: update or create erratas
-            pass
+            raise NotImplementedError("Errata processing not implemented")
 
         # store PNC and PNC change records
-        if COMMIT_CHANGES_TO_DB:
+        if not self.dry_run:
             store_pnc_records(self, self.trx.pnc_records)
+            if not self.sql_status:
+                return self.error
             store_pnc_change_records(self, self.trx.pnc_change_records)
+            if not self.sql_status:
+                return self.error
 
         return {
             "user": self.user_info.name,
@@ -824,5 +878,7 @@ class ManageCpe(APIWorker):
             "related_cve_ids": related_cve_ids,
             "cpe_records": [r.asdict() for r in self.trx.pnc_records],
             "cpe_change_records": [r.asdict() for r in self.trx.pnc_change_records],
+            "errata_records": eh.errata_records,
+            "errata_change_records": eh.errata_change_records,
             "packages_cve_matches": packages_cve_matches,
         }, 200
