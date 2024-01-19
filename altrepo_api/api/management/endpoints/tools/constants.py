@@ -20,6 +20,11 @@ from altrepo_api.api.misc import lut
 
 DT_NEVER = datetime.fromtimestamp(0, tz=timezone.utc)
 
+DRY_RUN_KEY = "dry_run"
+CHANGE_SOURCE_KEY = "change_source"
+CHANGE_SOURCE_AUTO = "auto"
+CHANGE_SOURCE_MANUAL = "manual"
+
 BUG_REFERENCE_TYPE = "bug"
 VULN_REFERENCE_TYPE = "vuln"
 ERRATA_REFERENCE_TYPE = "errata"
