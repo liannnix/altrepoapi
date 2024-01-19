@@ -34,7 +34,7 @@ from .base import (
     PncRecord,
     PncChangeRecord,
 )
-from .errata_id import ErrataIDService, check_errata_id
+from .errata_id import ErrataIDServiceProtocol, check_errata_id
 from .utils import convert_dt_to_timezone_aware
 from .constants import (
     DT_NEVER,
@@ -72,7 +72,7 @@ class _pHasErrataID(_pAPIWorker, Protocol):
 
 
 class _pHasErrataIDService(_pAPIWorker, Protocol):
-    eid_service: ErrataIDService
+    eid_service: ErrataIDServiceProtocol
 
 
 class _pManageErrata(_pHasErrataIDService, _pHasErrataID, Protocol):
@@ -400,6 +400,7 @@ def store_errata_change_records(
                 "ec_source": errata.source.value,
                 "ec_origin": errata.origin.value,
                 "errata_id": str(errata.errata_id),
+                "transaction_id": str(errata.transaction_id),
             }
 
     cls.status = False
@@ -691,13 +692,12 @@ def store_pnc_records(cls: _pAPIWorker, pnc_records: list[PncRecord]) -> None:
     cls.status = False
 
     _ = cls.send_sql_request(
-        (cls.sql.store_pnc_records, (pnc.asdict() for pnc in pnc_records))
+        (cls.sql.store_pnc_records, [pnc.asdict() for pnc in pnc_records])
     )
     if not cls.sql_status:
         return None
 
     cls.status = True
-    return
 
 
 def store_pnc_change_records(
@@ -706,7 +706,7 @@ def store_pnc_change_records(
     def pnc_change_records_gen():
         for pncc in pnc_change_records:
             res = {
-                "pncc_uuid": str(pncc.id),
+                "transaction_id": str(pncc.id),
                 "pncc_user": pncc.user,
                 "pncc_user_ip": pncc.user_ip,
                 "pncc_reason": pncc.reason,
