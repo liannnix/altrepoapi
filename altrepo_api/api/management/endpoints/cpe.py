@@ -673,7 +673,7 @@ class ManageCpe(APIWorker):
 
             pcms = matcher.packages_cve_matches
             # XXX: if all packages' CVE matches already loaded use hashes from matcher
-            if not pcms:
+            if not pcms and matcher.packages_cve_match_hashes:
                 self.logger.info(
                     "Got no new packages' CVE matches, use existing hashes"
                 )
