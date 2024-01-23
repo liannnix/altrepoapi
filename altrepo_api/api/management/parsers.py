@@ -27,6 +27,7 @@ from altrepo_api.api.parser import (
     sort_type,
     open_vulns_search_type,
     uuid_type,
+    cpe_search_type,
 )
 
 from .endpoints.tools.constants import DRY_RUN_KEY
@@ -44,6 +45,13 @@ package_input_val = parser.register_item(
     type=open_vulns_search_type,
     required=False,
     help="source package name or vulnerability number",
+    location="args",
+)
+cpe_input_val = parser.register_item(
+    "input",
+    type=cpe_search_type,
+    required=False,
+    help="package name, project name or vulnerability number",
     location="args",
 )
 branch_name_opt = parser.register_item(
@@ -147,6 +155,14 @@ dry_run = parser.register_item(
     help="do not commit changes to DB",
     location="args",
 )
+is_cpe_discarded_opt = parser.register_item(
+    "is_discarded",
+    type=inputs.boolean,
+    default=False,
+    required=False,
+    help="show discarded CPE records",
+    location="args",
+)
 
 task_list_args = parser.build_parser(
     task_input_val_opt, branch_name_opt, is_errata_opt, page_opt, limit_opt
@@ -167,3 +183,6 @@ pkgs_open_vulns_args = parser.build_parser(
 cpe_manage_args = parser.build_parser(dry_run)
 cpe_manage_get_args = parser.build_parser(pkg_name, branch_name_opt)
 maintainer_list_args = parser.build_parser(branch_name_opt, page_opt, limit_opt)
+cpe_list_args = parser.build_parser(
+    cpe_input_val, page_opt, limit_opt, sort_opt, is_cpe_discarded_opt
+)

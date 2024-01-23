@@ -33,6 +33,9 @@ BU_ERRATA_ID_NOT_IN_DB = "ALT-BU-2999-1000-1"
 VALID_ACCESS_TOKEN = "valid_token"
 INVALID_ACCESS_TOKEN = "invalid_token"
 
+CPE_IN_DB = "cpe:2.3:a:curl:curl:*:*:*:*:*:*:*:*"
+CPE_NOT_IN_DB = "cpe:2.3:a:test:test:*:*:*:*:*:*:*:*"
+
 
 @pytest.mark.parametrize(
     "kwargs",
@@ -564,3 +567,66 @@ def test_packages_maintainer_list(client, kwargs, mocked_check_access_token):
         assert data["maintainers"] != []
         if params.get("limit", ""):
             assert params["limit"] <= data["length"]
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": PACKAGE_IN_DB,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": CPE_IN_DB,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "status_code": 200,
+            "limit": 10,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": PACKAGE_NOT_IN_DB,
+            "status_code": 404,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": CPE_NOT_IN_DB,
+            "status_code": 404,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "status_code": 401,
+            "headers": {"Authorization": INVALID_ACCESS_TOKEN},
+        },
+        {
+            "status_code": 401,
+        },
+    ],
+)
+def test_cpe_list(client, kwargs, mocked_check_access_token):
+    params = {k: v for k, v in kwargs.items() if k not in ("status_code", "headers")}
+    url = url_for("manage.manage_route_cpe_list")
+    mocked_check_access_token.headers = kwargs.get("headers", {})
+    mocked_check_access_token.status_code = kwargs["status_code"]
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["cpes"] != []
+        if params.get("limit", ""):
+            assert params["limit"] <= data["length"]
+
+        for el in data["cpes"]:
+            if params.get("input", "") == PACKAGE_IN_DB:
+                for pkg in el["packages"]:
+                    assert params["input"] in pkg["name"]
+            if params.get("input", "") == CPE_IN_DB:
+                assert params["input"] in el["cpe"]

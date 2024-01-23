@@ -14,8 +14,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from functools import cached_property
 from flask import request
-from typing import Any
+from typing import Any, Iterator, NamedTuple, Union
 
 from altrepodb_libs import (
     PackageCVEMatcher,
@@ -25,6 +26,8 @@ from altrepodb_libs import (
     convert_log_level,
 )
 
+from altrepo_api.libs.pagination import Paginator
+from altrepo_api.libs.sorting import rich_sort
 from altrepo_api.settings import namespace as settings
 
 from altrepo_api.api.base import APIWorker
@@ -802,3 +805,106 @@ class ManageCpe(APIWorker):
 
     def _rollback_on_failuer(self, eb: ErrataBuilder, eh: ErrataHandler):
         pass
+
+
+class CPEListArgs(NamedTuple):
+    input: Union[str, None]
+    is_discarded: bool
+    limit: Union[int, None]
+    page: Union[int, None]
+    sort: Union[list[str], None]
+
+
+class CPEList(APIWorker):
+    """Retrieves CPE records."""
+
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = CPEListArgs(**kwargs)
+        self.sql = sql
+        super().__init__()
+
+    def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        return True
+
+    @cached_property
+    def _where_condition(self) -> str:
+        if self.args.input.startswith("CVE-"):
+            response = self.send_sql_request(
+                self.sql.get_cpes_by_vulns.format(cves=[self.args.input])
+            )
+            return f"WHERE cpe IN {[el[0] for el in response]}"
+
+        return (
+            f"WHERE pkg_name ILIKE '%{self.args.input}%' "
+            f"OR repology_name ILIKE '%{self.args.input}%' "
+            f"OR cpe ILIKE '%{self.args.input}%'"
+        )
+
+    def get(self):
+        cpes: dict[tuple[str, str], Any] = {}
+        state = "WHERE state = 'inactive'" if self.args.is_discarded else ""
+
+        response = self.send_sql_request(
+            self.sql.find_cpe.format(
+                where=self._where_condition if self.args.input else "",
+                state=state
+            )
+        )
+        if not self.sql_status:
+            return None
+        if not response:
+            return self.store_error(
+                {
+                    "message": "No data found in database for given parameters",
+                    "args": self.args,
+                }
+            )
+
+        for el in response:
+            try:
+                cpe_raw = CpeRaw(*el)
+
+                branch = lut.cpe_reverse_branch_map[cpe_raw.repology_branch][0]
+                cpe = CPE(cpe_raw.cpe)
+                cpe_s = str(cpe)
+
+                if cpe.vendor == "*" or cpe.product == "*":
+                    self.logger.info(f"Skip malformed CPE candidate: {el}")
+                    continue
+
+                if (cpe_s, cpe_raw.repology_name) not in cpes:
+                    cpes[(cpe_s, cpe_raw.repology_name)] = {
+                        "state": cpe_raw.state,
+                        "packages": [{"name": cpe_raw.name, "branch": branch}],
+                    }
+                else:
+                    cpes[(cpe_s, cpe_raw.repology_name)]["packages"].append(
+                        {"name": cpe_raw.name, "branch": branch}
+                    )
+            except (TypeError, ValueError):
+                self.logger.info(f"Failed to parse CPE from {el}")
+                continue
+
+        result = [{"cpe": k[0], "repology_name": k[1], **v} for k, v in cpes.items()]
+        if self.args.sort:
+            result = rich_sort(result, self.args.sort)
+
+        paginator = Paginator(result, self.args.limit)
+        page_obj = paginator.get_page(self.args.page)
+
+        res: dict[str, Any] = {
+            "request_args": self.args._asdict(),
+            "length": len(page_obj),
+            "cpes": page_obj,
+        }
+
+        return (
+            res,
+            200,
+            {
+                "Access-Control-Expose-Headers": "X-Total-Count",
+                "X-Total-Count": int(paginator.count),
+            },
+        )

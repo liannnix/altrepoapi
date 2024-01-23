@@ -104,6 +104,7 @@ __bdu_id_list_match = re.compile(r"^(BDU:\d{4}-\d{5},?)+$")
 __errata_id_match = re.compile(r"^ALT-[A-Z]+-2\d{3}-\d{4,}-\d{1,}$")
 __errata_search_match = re.compile(r"^([\w\.\+\-\_:]{2,},?)+$")
 __password_match = re.compile(r"^([\w|\W]+)$")
+__cpe_search_match = re.compile(r"^([\w\.\+\-\_:*]{2,},?)+$")
 # input
 __positive_integer = re.compile(r"^(?<![-.])\b[0-9]+\b(?!\.[0-9])$")
 __sort_match = re.compile(r"^-?([a-z\_]{2,},?)+$")
@@ -725,4 +726,19 @@ def open_vulns_search_type(value: Any) -> str:
 open_vulns_search_type.__schema__ = {
     "type": "string",
     "pattern": __pkgs_open_vulns_search_match.pattern,
+}
+
+
+def cpe_search_type(value: Any) -> str:
+    """Validator for searching cpes."""
+
+    value = __get_string(value)
+    if not __cpe_search_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+cpe_search_type.__schema__ = {
+    "type": "string",
+    "pattern": __cpe_search_match.pattern,
 }
