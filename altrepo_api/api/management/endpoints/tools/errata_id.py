@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from datetime import datetime
+from random import randint
 from typing import Optional, Protocol
 
 from altrepo_api.api.misc import lut
@@ -52,7 +53,8 @@ class ErrataIDServiceProtocol(Protocol):
 class stubErrataIDService:
     def __init__(self, url: str) -> None:
         self.eid = ErrataIDService(url)
-        self.counter = 0
+        # XXX: double `randint` gives a little bit less repetitions
+        self.counter = randint(0, 9) * 100 + randint(0, 9) * 10
 
     @property
     def count(self):
