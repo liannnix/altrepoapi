@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2024  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -144,6 +144,15 @@ class ErrataIDService:
 
     def update(self, id: str) -> ErrataIDServiceResult:
         url = self.url + "update"
+        try:
+            response = self.session.post(url, params={"name": id})
+            response.raise_for_status()
+            return _result(response.json())
+        except Exception as e:
+            raise ErrataIDServiceError("Failed on %s: %s" % (url, e)) from e
+
+    def discard(self, id: str) -> ErrataIDServiceResult:
+        url = self.url + "discard"
         try:
             response = self.session.post(url, params={"name": id})
             response.raise_for_status()

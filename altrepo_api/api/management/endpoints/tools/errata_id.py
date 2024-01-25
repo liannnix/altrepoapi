@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2024  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -45,6 +45,9 @@ class ErrataIDServiceProtocol(Protocol):
     def update(self, id: str) -> ErrataIDServiceResult:
         ...
 
+    def discard(self, id: str) -> ErrataIDServiceResult:
+        ...
+
 
 class stubErrataIDService:
     def __init__(self, url: str) -> None:
@@ -73,6 +76,10 @@ class stubErrataIDService:
         _id = "-".join(parts[:-1] + [v])
         logger.info(f"DRY_RUN: Updated Errata ID {id} -> {_id}")
         return ErrataIDServiceResult(_id, DT_NEVER, dt)
+
+    def discard(self, id: str) -> ErrataIDServiceResult:
+        dt = datetime.now()
+        return ErrataIDServiceResult(id, DT_NEVER, dt)
 
 
 def get_errataid_service(dry_run: bool) -> ErrataIDServiceProtocol:

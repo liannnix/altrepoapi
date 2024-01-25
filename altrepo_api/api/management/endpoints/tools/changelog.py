@@ -47,7 +47,7 @@ def _mentioned_vulns(chagelog: str) -> list[str]:
     return sorted({m.upper() for m in VULN_RE.findall(chagelog)})
 
 
-def vulns_from_pkg_changelog(package_changelog: PackageChangelog) -> list[list[str]]:
+def vulns_from_package_changelog(package_changelog: PackageChangelog) -> list[list[str]]:
     return [_mentioned_vulns(c.text) for c in package_changelog.changelog]
 
 

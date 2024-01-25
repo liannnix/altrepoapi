@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from flask import request
-from typing import Any, Iterator, NamedTuple
+from typing import Any
 
 from altrepodb_libs import (
     PackageCVEMatcher,
@@ -29,10 +29,17 @@ from altrepo_api.settings import namespace as settings
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
-from altrepo_api.api.vulnerabilities.endpoints.common import CPE
 from altrepo_api.utils import make_tmp_table_name
 
-from .errata_builder import ErrataBuilder, ErrataBuilderError, ErrataHandler
+from .processing import ErrataBuilder, ErrataBuilderError, ErrataHandler, ErrataHandlerError
+from .processing.base import (
+    CPE,
+    CpeRaw,
+    CpeRecord,
+    compare_pnc_records,
+    cpe_record2pnc_record,
+    uniq_pcm_records,
+)
 from .tools.base import ChangeSource, PncRecord, UserInfo
 from .tools.constants import (
     CHANGE_ACTION_CREATE,
@@ -58,100 +65,6 @@ from ..sql import sql
 
 MATCHER_LOG_LEVEL = convert_log_level(settings.LOG_LEVEL)
 RETUNRN_VULNERABLE_ONLY_PCMS = False
-
-
-class CpeRecord(NamedTuple):
-    cpe: CPE
-    state: str
-    project_name: str
-
-    def asdict(self) -> dict[str, str]:
-        return {
-            "cpe": str(self.cpe),
-            "state": self.state,
-            "project_name": self.project_name,
-        }
-
-
-class CpeRaw(NamedTuple):
-    state: str
-    name: str
-    repology_name: str
-    repology_branch: str
-    cpe: str
-
-
-def cpe_record2pnc_record(cpe: CpeRecord) -> PncRecord:
-    return PncRecord(
-        pkg_name=cpe.project_name,
-        pnc_state=cpe.state,
-        pnc_result=str(cpe.cpe),
-        pnc_type="cpe",
-        pnc_source="manage",
-    )
-
-
-def compare_pnc_records(a: PncRecord, b: PncRecord, *, include_state: bool) -> bool:
-    if include_state:
-        return (a.pkg_name, a.pnc_state, a.pnc_result, a.pnc_type) == (
-            b.pkg_name,
-            b.pnc_state,
-            b.pnc_result,
-            b.pnc_type,
-        )
-    else:
-        return (a.pkg_name, a.pnc_result, a.pnc_type) == (
-            b.pkg_name,
-            b.pnc_result,
-            b.pnc_type,
-        )
-
-
-def uniq_pcm_records(
-    pcms: list[PackageCveMatch], vulnerable_only: bool
-) -> list[dict[str, Any]]:
-    """Collects unique packages' CVE matches records in sorted
-    serialisable representation."""
-
-    class PCM(NamedTuple):
-        pkg_hash: int
-        pkg_name: str
-        pkg_cpe: str
-        vuln_id: str
-        is_vulnerable: bool
-
-        def asdict(self) -> dict[str, Any]:
-            return {
-                "pkg_hash": str(self.pkg_hash),
-                "pkg_name": self.pkg_name,
-                "pkg_cpe": self.pkg_cpe,
-                "vuln_id": self.vuln_id,
-                "is_vulnerable": self.is_vulnerable,
-            }
-
-    def predicate_is_vulnerable(pcm: PCM) -> bool:
-        return pcm.is_vulnerable
-
-    def predicate_dummy(pcm: PCM) -> bool:
-        return True
-
-    predicate_fx = predicate_is_vulnerable if vulnerable_only else predicate_dummy
-
-    def pcm_gen() -> Iterator[PCM]:
-        for pcm in pcms:
-            yield PCM(
-                pcm.pkg_hash, pcm.pkg_name, pcm.pkg_cpe, pcm.vuln_id, pcm.is_vulnerable
-            )
-
-    def sorting_order_key(pcm: PCM) -> tuple[Any, ...]:
-        return (not pcm.is_vulnerable, pcm.vuln_id, pcm.pkg_name, pcm.pkg_hash)
-
-    return list(
-        x.asdict()
-        for x in sorted(
-            {pcm for pcm in pcm_gen() if predicate_fx(pcm)}, key=sorting_order_key
-        )
-    )
 
 
 class CPECandidates(APIWorker):
@@ -697,12 +610,10 @@ class ManageCpe(APIWorker):
             # XXX: update or create erratas
             try:
                 erratas = self.eb.build_erratas_on_cpe_add(pcms)
-            except ErrataBuilderError:
-                return self.eb.error
-
-            try:
                 eh.commit(*erratas)
             except ErrataBuilderError:
+                return self.eb.error
+            except ErrataHandlerError:
                 return eh.error
 
         # store PNC and PNC change records

@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2024  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -14,345 +14,36 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from dataclasses import dataclass
-from datetime import datetime
-from typing import Any, Iterable, NamedTuple, Optional, Union
-from uuid import UUID
+from typing import Iterable
 
-from altrepodb_libs import (
-    PackageCveMatch,
-    VersionCompareResult,
-    version_compare,
-    version_less_or_equal,
-)
+from altrepodb_libs import PackageCveMatch, VersionCompareResult
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.misc import lut
-from altrepo_api.api.vulnerabilities.endpoints.common import CpeMatchVersions
-
 from altrepo_api.utils import make_tmp_table_name
 
-from .manage import ManageErrata
-from .tools.base import Errata, ErrataID, Reference, UserInfo
-from .tools.constants import (
-    CHANGE_ACTION_CREATE,
-    CHANGE_ACTION_UPDATE,
-    CHANGE_SOURCE_KEY,
-    CHANGE_SOURCE_AUTO,
-    CVE_ID_TYPE,
-    DT_NEVER,
-    DRY_RUN_KEY,
-    TASK_STATE_DONE,
-    TASK_PACKAGE_ERRATA_TYPE,
-    TASK_PACKAGE_ERRATA_SOURCE,
-    VULN_REFERENCE_TYPE,
+from .base import (
+    ErrataBuilderError,
+    CpeMatchVersions,
+    CveVersionsMatch,
+    CveCpmHashes,
+    ErrataPoint,
+    PackageTask,
+    PackageVersion,
+    cve_in_errata_references,
+    collect_erratas,
+    find_errata_by_package_task,
+    get_closest_task,
+    package_is_vulnerable,
+    version_release_compare,
 )
-from .tools.changelog import (
+from .sql import sql
+from ..tools.base import Errata, ErrataID, Reference
+from ..tools.changelog import (
     ChangelogRecord,
     PackageChangelog,
     split_evr,
-    vulns_from_pkg_changelog,
+    vulns_from_package_changelog,
 )
-from .tools.errata import errata_hash
-
-
-ERRATA_MANAGE_RESPONSE_ERRATA_FIELD = "errata"
-ERRATA_MANAGE_RESPONSE_ERRATA_CHANGE_FIELD = "errata_change"
-
-
-class ErrataBuilderError(Exception):
-    pass
-
-
-@dataclass(frozen=True)
-class SQL:
-    get_erratas_by_pkgs_names = """
-SELECT EI.*, DE.discarded_id as discarded_id
-FROM (
-    SELECT *
-    FROM ErrataHistory
-    WHERE errata_id IN (
-        SELECT eid
-        FROM (
-            SELECT
-                errata_id_noversion,
-                argMax(errata_id, errata_id_version) AS eid
-            FROM ErrataHistory
-            WHERE eh_type = 'task' AND task_state = 'DONE'
-                AND pkgset_name IN {branches}
-                AND pkg_name IN {tmp_table}
-            GROUP BY errata_id_noversion
-        )
-    )
-) AS EI
-LEFT JOIN (
-    SELECT errata_id AS discarded_id
-    FROM last_discarded_erratas
-) AS DE ON errata_id = DE.discarded_id
-"""
-
-    get_erratas_by_cve_ids = """
-WITH
-(
-    SELECT groupUniqArray(cve_id) FROM {tmp_table}
-) AS cve_ids
-SELECT EI.*, DE.discarded_id as discarded_id
-FROM (
-    SELECT *
-    FROM ErrataHistory
-    WHERE errata_id IN (
-        SELECT eid
-        FROM (
-            SELECT
-                errata_id_noversion,
-                argMax(errata_id, errata_id_version) AS eid
-            FROM ErrataHistory
-            WHERE eh_type = 'task' AND task_state = 'DONE'
-                AND pkgset_name IN {branches}
-                AND hasAny(eh_references.link, cve_ids)
-            GROUP BY errata_id_noversion
-        )
-    )
-) AS EI
-LEFT JOIN (
-    SELECT errata_id AS discarded_id
-    FROM last_discarded_erratas
-) AS DE ON errata_id = DE.discarded_id
-"""
-
-    get_packages_versions = """
-SELECT DISTINCT
-    pkg_hash,
-    pkg_name,
-    pkg_version,
-    pkg_release,
-    pkgset_name
-FROM static_last_packages
-WHERE pkg_hash IN {tmp_table}
-    AND pkg_sourcepackage = 1
-"""
-
-    get_packages_changelogs = """
-WITH package_changelog AS
-    (
-        SELECT
-            pkg_hash,
-            pkg_changelog.date AS date,
-            pkg_changelog.name as name,
-            pkg_changelog.evr AS evr,
-            pkg_changelog.hash AS hash
-        FROM Packages
-ARRAY JOIN pkg_changelog
-        PREWHERE pkg_hash IN (SELECT * FROM {tmp_table})
-    )
-SELECT DISTINCT
-    pkg_hash,
-    date,
-    name,
-    evr,
-    Chg.chlog_text as text
-FROM package_changelog
-LEFT JOIN
-(
-    SELECT DISTINCT
-        chlog_hash AS hash,
-        chlog_text
-    FROM Changelog
-    WHERE chlog_hash IN (
-        SELECT hash
-        FROM package_changelog
-    )
-) AS Chg ON Chg.hash = package_changelog.hash
-"""
-
-    get_done_tasks = """
-WITH
-tasks_history AS (
-    SELECT DISTINCT
-        task_id,
-        task_changed,
-        pkgset_name,
-        pkg_hash,
-        pkg_name,
-        pkg_version,
-        pkg_release
-    FROM BranchPackageHistory
-    {where_clause}
-    ORDER BY task_changed DESC
-)
-SELECT DISTINCT
-    task_id,
-    subtask_id,
-    pkgset_name,
-    pkg_hash,
-    pkg_name,
-    pkg_version,
-    pkg_release,
-    task_changed
-FROM tasks_history
-LEFT JOIN (
-    SELECT
-        task_id,
-        subtask_id,
-        titer_srcrpm_hash AS pkg_hash
-    FROM TaskIterations
-    WHERE (task_id, task_changed, pkg_hash) IN (
-        SELECT task_id, task_changed, pkg_hash FROM tasks_history
-    )
-) AS subtasks USING (task_id, pkg_hash)
-"""
-
-    get_done_tasks_by_packages_clause = """
-WHERE pkgset_name in {branches}
-    AND pkg_name IN {tmp_table}
-    AND pkg_sourcepackage = 1
-    AND tplan_action = 'add'
-"""
-
-    get_done_tasks_by_nevr_cluse = """
-WHERE pkgset_name in {branches}
-    AND pkg_name = '{name}'
-    AND pkg_epoch = {epoch}
-    AND pkg_version = '{version}'
-    AND pkg_release = '{release}'
-    AND pkg_sourcepackage = 1
-    AND tplan_action = 'add'
-"""
-
-    get_cve_versions_matches = """
-SELECT
-    vuln_id,
-    vuln_hash,
-    cpe_hash,
-    cpm_version_hash,
-    cpm_version_start,
-    cpm_version_end,
-    cpm_version_start_excluded,
-    cpm_version_end_excluded
-FROM CpeMatch
-WHERE (vuln_hash, cpe_hash, cpm_version_hash) IN {tmp_table}
-"""
-
-    get_bdus_by_cves = """
-SELECT
-    vuln_id,
-    vuln_references.type,
-    vuln_references.link
-FROM Vulnerabilities
-WHERE (vuln_id, vuln_hash) IN (
-    SELECT
-        vuln_id,
-        argMax(vuln_hash, ts)
-    FROM Vulnerabilities
-    WHERE vuln_id IN (
-        SELECT vuln_id
-        FROM Vulnerabilities
-        WHERE arrayExists(x -> (x IN {tmp_table}), `vuln_references.link`)
-    )
-    GROUP BY vuln_id
-)
-"""
-
-
-class PackageVersion(NamedTuple):
-    hash: int
-    name: str
-    version: str
-    release: str
-    branch: str
-
-
-class PackageTask(NamedTuple):
-    task_id: int
-    subtask_id: int
-    branch: str
-    hash: int
-    name: str
-    version: str
-    release: str
-    changed: datetime
-
-
-class CveCpmHashes(NamedTuple):
-    vuln_hash: int
-    cpe_hash: int
-    cpm_version_hash: int
-
-
-class CveVersionsMatch(NamedTuple):
-    id: str
-    hashes: CveCpmHashes
-    versions: CpeMatchVersions
-
-
-class ErrataPoint(NamedTuple):
-    task: PackageTask
-    prev_task: Union[PackageTask, None]
-    cvm: CveVersionsMatch
-
-
-def branch_inheritance_list(b: str) -> dict[str, int]:
-    if b not in lut.branch_inheritance:
-        return {lut.branch_inheritance_root: 0}
-
-    if b == lut.branch_inheritance_root:
-        return {b: 0}
-
-    return {x: i for i, x in enumerate([b] + lut.branch_inheritance[b])}
-
-
-def collect_erratas(
-    task: PackageTask, erratas_by_package: dict[str, list[Errata]]
-) -> list[Errata]:
-    # filter out existing erratas by package name and branch using
-    # branch inheratance list
-    return [
-        e
-        for e in erratas_by_package.get(task.name, [])
-        if e.pkgset_name in branch_inheritance_list(task.branch)
-    ]
-
-
-def find_errata_by_pkg_task(t: PackageTask, erratas: list[Errata]) -> Optional[Errata]:
-    for e in erratas:
-        # got existing errata
-        if (e.task_id, e.pkg_version, e.pkg_release) == (
-            t.task_id,
-            t.version,
-            t.release,
-        ):
-            return e
-    return None
-
-
-def cve_in_errata_references(cve_id: str, e: Errata) -> bool:
-    return cve_id in (r.link for r in e.references)
-
-
-def get_closest_task(
-    branch: str, tasks: dict[str, list[PackageTask]]
-) -> Union[PackageTask, None]:
-    for b in branch_inheritance_list(branch).keys():
-        if b in tasks and tasks[b]:
-            return tasks[b][0]
-
-
-def pkg_is_vulnerable(pkg: PackageTask, cpm: CpeMatchVersions) -> bool:
-    return version_less_or_equal(
-        version1=pkg.version,
-        version2=cpm.version_end,
-        strictly_less=cpm.version_end_excluded,
-    ) and version_less_or_equal(
-        version1=cpm.version_start,
-        version2=pkg.version,
-        strictly_less=cpm.version_start_excluded,
-    )
-
-
-def version_release_compare(
-    *, v1: str, r1: str, v2: str, r2: str
-) -> VersionCompareResult:
-    return version_compare(version1=f"{v1}-{r1}", version2=f"{v2}-{r2}")
 
 
 class ErrataBuilder(APIWorker):
@@ -361,7 +52,7 @@ class ErrataBuilder(APIWorker):
     def __init__(self, connection, branches: tuple[str, ...]):
         self.branches = branches
         self.conn = connection
-        self.sql = SQL
+        self.sql = sql
         super().__init__()
 
     def _get_related_erratas_by_pkgs_names(
@@ -655,7 +346,7 @@ class ErrataBuilder(APIWorker):
                     vulnerable_found = False
                     for t in tasks[1:]:
                         # skip tasks with package version is not vulnerable
-                        if not pkg_is_vulnerable(t, cpm_ver.versions):
+                        if not package_is_vulnerable(t, cpm_ver.versions):
                             next_task = t
                             continue
                         # finally got vulnerable package version
@@ -727,7 +418,7 @@ class ErrataBuilder(APIWorker):
         for ep in possible_errata_points:
             # collect existing erratas by package name and branch
             existing_erratas = collect_erratas(ep.task, erratas_by_package)
-            exact_errata = find_errata_by_pkg_task(ep.task, existing_erratas)
+            exact_errata = find_errata_by_package_task(ep.task, existing_erratas)
             # got existing errata to be updated
             if exact_errata is not None:
                 # CVE ID already in existintg errata for given package
@@ -774,7 +465,7 @@ class ErrataBuilder(APIWorker):
             pkg_changelog = pkgs_changelogs[ep.task.hash]
 
             for chlog, vulns in zip(
-                pkg_changelog.changelog, vulns_from_pkg_changelog(pkg_changelog)
+                pkg_changelog.changelog, vulns_from_package_changelog(pkg_changelog)
             ):
                 # TODO: in fact there should be existing errata for CVEs that are closed by changelog
                 if ep.cvm.id in vulns:
@@ -800,217 +491,3 @@ class ErrataBuilder(APIWorker):
             erratas_for_create.append(ep)
 
         return erratas_for_create, erratas_for_update
-
-
-def build_em_payload(
-    user_info: UserInfo, action: str, errata: Errata, transaction_id: UUID
-) -> dict[str, Any]:
-    return {
-        "user": user_info.name,
-        "reason": f"Errata changed due to: {user_info.reason} [{transaction_id}]",
-        "action": action,
-        "errata": errata.asdict(),
-    }
-
-
-def build_validation_error_report(worker: APIWorker, args: Any) -> dict[str, Any]:
-    return {
-        "message": "Request parameters validation error",
-        "args": args,
-        "details": worker.validation_results,
-    }
-
-
-class ErrataHandler(APIWorker):
-    """Handles Errata records modification."""
-
-    def __init__(
-        self, connection, user_info: UserInfo, transaction_id: UUID, dry_run: bool
-    ):
-        self.transaction_id = transaction_id
-        self.user_info = user_info
-        self.dry_run = dry_run
-        self.conn = connection
-        self.sql = SQL
-        self.errata_records: list[dict[str, Any]] = []
-        self.errata_change_records: list[dict[str, Any]] = []
-        super().__init__()
-
-    def _get_bdus_by_cves(self, cve_ids: Iterable[str]) -> dict[str, set[str]]:
-        self.status = False
-        bdus_by_cve: dict[str, set[str]] = {}
-
-        tmp_table = make_tmp_table_name("cve_ids")
-
-        response = self.send_sql_request(
-            self.sql.get_bdus_by_cves.format(tmp_table=tmp_table),
-            external_tables=[
-                {
-                    "name": tmp_table,
-                    "structure": [("cve_id", "String")],
-                    "data": [{"cve_id": c} for c in cve_ids],
-                },
-            ],
-        )
-        if not self.sql_status:
-            return {}
-        for el in response:
-            bdu_id = el[0]
-            for reference in (Reference(t, l) for t, l in zip(el[1], el[2])):
-                if reference.type != CVE_ID_TYPE:
-                    continue
-                bdus_by_cve.setdefault(reference.link, set()).add(bdu_id)
-
-        self.status = True
-        return bdus_by_cve
-
-    def _build_erratas_update(
-        self,
-        erratas_for_update: list[tuple[Errata, str]],
-        bdus_by_cve: dict[str, set[str]],
-    ) -> list[Errata]:
-        # updates erratas with new CVE and related BDU IDs
-        erratas: dict[str, Errata] = {}
-
-        for errata, cve_id in erratas_for_update:
-            # update existing errata if several CVE ids are added to the same one
-            _errata_id = errata.id.id  # type: ignore
-            _errata = erratas.get(_errata_id, errata)
-            _references = _errata.references
-            _linked_vulns = {r.link for r in _references}
-
-            # append new CVE reference if not exists
-            if cve_id not in _linked_vulns:
-                _references.append(Reference(VULN_REFERENCE_TYPE, cve_id))
-            # append new BDU references if not exists
-            for bdu_id in bdus_by_cve.get(cve_id, set()):
-                if bdu_id not in _linked_vulns:
-                    _references.append(Reference(VULN_REFERENCE_TYPE, bdu_id))
-
-            _errata = _errata.update(references=sorted(_references))
-            erratas[_errata_id] = _errata.update(hash=errata_hash(_errata))
-
-        return list(erratas.values())
-
-    def _build_erratas_create(
-        self, erratas_for_create: list[ErrataPoint], bdus_by_cve: dict[str, set[str]]
-    ) -> list[Errata]:
-        erratas = []
-
-        for ep in erratas_for_create:
-            cve_id = ep.cvm.id
-            _references = [Reference(VULN_REFERENCE_TYPE, cve_id)]
-            for bdu_id in bdus_by_cve.get(cve_id, set()):
-                _references.append(Reference(VULN_REFERENCE_TYPE, bdu_id))
-
-            _references = sorted(_references)
-
-            errata = Errata(
-                id=None,
-                type=TASK_PACKAGE_ERRATA_TYPE,
-                source=TASK_PACKAGE_ERRATA_SOURCE,
-                created=DT_NEVER,
-                updated=DT_NEVER,
-                pkg_hash=ep.task.hash,
-                pkg_name=ep.task.name,
-                pkg_version=ep.task.version,
-                pkg_release=ep.task.release,
-                pkgset_name=ep.task.branch,
-                task_id=ep.task.task_id,
-                subtask_id=ep.task.subtask_id,
-                task_state=TASK_STATE_DONE,
-                references=_references,
-                hash=0,
-                is_discarded=False,
-            )
-            erratas.append(errata.update(hash=errata_hash(errata)))
-
-        return erratas
-
-    def _create_errata(self, errata: Errata) -> tuple[bool, dict[str, Any]]:
-        args = {
-            "payload": build_em_payload(
-                self.user_info, CHANGE_ACTION_CREATE, errata, self.transaction_id
-            ),
-            "transaction_id": self.transaction_id,
-            DRY_RUN_KEY: self.dry_run,
-            CHANGE_SOURCE_KEY: CHANGE_SOURCE_AUTO,
-        }
-        me = ManageErrata(connection=self.conn, **args)
-        # validate input
-        if not me.check_params_post():
-            return False, build_validation_error_report(me, args)
-        # process errata changes
-        response, http_code = me.post()
-        return http_code == 200, response
-
-    def _update_errata(self, errata: Errata) -> tuple[bool, dict[str, Any]]:
-        args = {
-            "payload": build_em_payload(
-                self.user_info, CHANGE_ACTION_UPDATE, errata, self.transaction_id
-            ),
-            "transaction_id": self.transaction_id,
-            DRY_RUN_KEY: self.dry_run,
-            CHANGE_SOURCE_KEY: CHANGE_SOURCE_AUTO,
-        }
-        me = ManageErrata(connection=self.conn, **args)
-        # validate input
-        if not me.check_params_put():
-            return False, build_validation_error_report(me, args)
-        # process errata changes
-        response, http_code = me.put()
-        return http_code == 200, response
-
-    def commit(
-        self,
-        erratas_for_create: list[ErrataPoint],
-        erratas_for_update: list[tuple[Errata, str]],
-    ) -> None:
-        # collect CVE to BDUs mapping
-        cve_ids = {cve_id for _, cve_id in erratas_for_update}
-        cve_ids.update({p.cvm.id for p in erratas_for_create})
-
-        bdus_by_cve = self._get_bdus_by_cves(cve_ids)
-        if not self.status:
-            raise ErrataBuilderError("Failed to get BDUs by CVEs")
-
-        for errata in self._build_erratas_update(erratas_for_update, bdus_by_cve):
-            status, result = self._update_errata(errata)
-            if not status:
-                self.store_error(
-                    {
-                        "message": f"Failed to update Errata in DB: {errata.id}",
-                        "details": result,
-                    },
-                    severity=self.LL.ERROR,
-                    http_code=400,
-                )
-                raise ErrataBuilderError("Failed to update Errata")
-            self.errata_records.extend(
-                result.get(ERRATA_MANAGE_RESPONSE_ERRATA_FIELD, [])
-            )
-            self.errata_change_records.extend(
-                result.get(ERRATA_MANAGE_RESPONSE_ERRATA_CHANGE_FIELD, [])
-            )
-
-        for errata in self._build_erratas_create(erratas_for_create, bdus_by_cve):
-            status, result = self._create_errata(errata)
-            if not status:
-                self.store_error(
-                    {
-                        "message": (
-                            "Failed to create Errata in DB for : "
-                            f"{errata.task_id}.{errata.subtask_id} : {errata.pkg_name}"
-                        ),
-                        "details": result,
-                    },
-                    severity=self.LL.ERROR,
-                    http_code=400,
-                )
-                raise ErrataBuilderError("Failed to update Errata")
-            self.errata_records.extend(
-                result.get(ERRATA_MANAGE_RESPONSE_ERRATA_FIELD, [])
-            )
-            self.errata_change_records.extend(
-                result.get(ERRATA_MANAGE_RESPONSE_ERRATA_CHANGE_FIELD, [])
-            )
