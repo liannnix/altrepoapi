@@ -41,7 +41,7 @@ from .tools.constants import (
 )
 from .tools.errata import json2errata, build_stub_errata
 from .tools.errata_id import get_errataid_service
-from .tools.helpers import (
+from .tools.helpers.errata import (
     get_errata_contents,
     get_bulletin_by_package_update,
     get_ec_id_by_package_update,
@@ -51,13 +51,15 @@ from .tools.helpers import (
     check_errata_is_discarded,
     check_errata_contents_is_changed,
     get_errata_by_task,
-    get_task_info,
     is_errata_equal,
+    get_bulletin_by_branch_date,
+)
+from .tools.helpers.branch import (
+    get_task_info,
     get_last_branch_state,
     find_closest_branch_state,
-    get_bulletin_by_branch_date,
-    collect_errata_vulnerabilities_info,
 )
+from .tools.helpers.vuln import collect_errata_vulnerabilities_info
 from .tools.utils import validate_action, validate_branch, validate_branch_with_tatsks
 from .tools.errata_transaction import Transaction, parse_uuid
 from ..sql import sql

@@ -14,8 +14,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from datetime import datetime
 from dataclasses import dataclass, field, asdict
+from datetime import datetime
 from typing import Any
 
 from altrepo_api.api.base import APIWorker
@@ -31,7 +31,7 @@ from .tools.constants import (
     OVE_ID_TYPE,
     DT_NEVER,
 )
-from .tools.helpers import Bug
+from .tools.helpers.vuln import Bug
 from .tools.utils import parse_vuln_id_list
 from ..sql import sql
 

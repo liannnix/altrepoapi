@@ -47,7 +47,7 @@ from .tools.constants import (
     PNC_STATE_CANDIDATE,
 )
 from .tools.cpe_transaction import Transaction, PncType
-from .tools.helpers import (
+from .tools.helpers.package import (
     get_related_packages_by_project_name,
     get_pkgs_branch_and_evr_by_hashes,
     store_pnc_records,
