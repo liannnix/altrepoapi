@@ -23,6 +23,7 @@ from uuid import UUID, uuid4
 from altrepo_api.utils import get_logger
 
 from .base import (
+    Branch,
     Errata,
     ErrataID,
     ErrataChange,
@@ -47,9 +48,8 @@ from .errata_id import (
     # check_errata_id,
     update_errata_id,
     register_package_update_id,
-    register_errata_change_id
+    register_errata_change_id,
 )
-from .helpers import Branch
 
 
 logger = get_logger(__name__)
@@ -121,7 +121,7 @@ class Transaction:
         eid_service: ErrataIDServiceProtocol,
         transaction_id: UUID,
         dry_run: bool,
-        change_source: ChangeSource
+        change_source: ChangeSource,
     ) -> None:
         self.eid_service = eid_service
         self.dry_run = dry_run
@@ -298,9 +298,7 @@ class Transaction:
             )
 
         # build new errata
-        _eid = register_package_update_id(
-            self.eid_service, self._errata_update.year
-        )
+        _eid = register_package_update_id(self.eid_service, self._errata_update.year)
         new_errata = self._errata_update.errata.update(
             id=_eid.id, created=_eid.created, updated=_eid.updated
         )
