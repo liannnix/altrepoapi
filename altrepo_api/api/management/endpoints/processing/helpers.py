@@ -23,12 +23,22 @@ from .base import (
     CpeMatchVersions,
     CveCpmHashes,
     CveVersionsMatch,
+    ErrataPoint,
     PackageTask,
     PackageVersion,
 )
 from .sql import SQL
 from ..tools.base import Errata, ErrataID, Reference
+from ..tools.constants import (
+    CVE_ID_TYPE,
+    DT_NEVER,
+    TASK_STATE_DONE,
+    TASK_PACKAGE_ERRATA_TYPE,
+    TASK_PACKAGE_ERRATA_SOURCE,
+    VULN_REFERENCE_TYPE,
+)
 from ..tools.changelog import ChangelogRecord, PackageChangelog, split_evr
+from ..tools.errata import errata_hash
 
 
 class _pAPIWorker(Protocol):
@@ -304,3 +314,99 @@ def get_cves_versions_matches(
 
     cls.status = True
     return res
+
+
+def get_bdus_by_cves(cls: _pAPIWorker, cve_ids: Iterable[str]) -> dict[str, set[str]]:
+    cls.status = False
+    bdus_by_cve: dict[str, set[str]] = {}
+
+    tmp_table = make_tmp_table_name("cve_ids")
+
+    response = cls.send_sql_request(
+        cls.sql.get_bdus_by_cves.format(tmp_table=tmp_table),
+        external_tables=[
+            {
+                "name": tmp_table,
+                "structure": [("cve_id", "String")],
+                "data": [{"cve_id": c} for c in cve_ids],
+            },
+        ],
+    )
+    if not cls.sql_status:
+        return {}
+    for el in response:
+        bdu_id = el[0]
+        for reference in (Reference(t, l) for t, l in zip(el[1], el[2])):
+            if reference.type != CVE_ID_TYPE:
+                continue
+            bdus_by_cve.setdefault(reference.link, set()).add(bdu_id)
+
+    cls.status = True
+    return bdus_by_cve
+
+
+def build_erratas_update(
+    cls: _pAPIWorker,
+    erratas_for_update: list[tuple[Errata, str]],
+    bdus_by_cve: dict[str, set[str]],
+) -> list[Errata]:
+    # updates erratas with new CVE and related BDU IDs
+    erratas: dict[str, Errata] = {}
+
+    for errata, cve_id in erratas_for_update:
+        # update existing errata if several CVE ids are added to the same one
+        _errata_id = errata.id.id  # type: ignore
+        _errata = erratas.get(_errata_id, errata)
+        _references = _errata.references
+        _linked_vulns = {r.link for r in _references}
+
+        # append new CVE reference if not exists
+        if cve_id not in _linked_vulns:
+            _references.append(Reference(VULN_REFERENCE_TYPE, cve_id))
+        # append new BDU references if not exists
+        for bdu_id in bdus_by_cve.get(cve_id, set()):
+            if bdu_id not in _linked_vulns:
+                _references.append(Reference(VULN_REFERENCE_TYPE, bdu_id))
+
+        _errata = _errata.update(references=sorted(_references))
+        erratas[_errata_id] = _errata.update(hash=errata_hash(_errata))
+
+    return list(erratas.values())
+
+
+def build_erratas_create(
+    cls: _pAPIWorker,
+    erratas_for_create: list[ErrataPoint],
+    bdus_by_cve: dict[str, set[str]],
+) -> list[Errata]:
+    erratas = []
+
+    for ep in erratas_for_create:
+        cve_id = ep.cvm.id
+        _references = [Reference(VULN_REFERENCE_TYPE, cve_id)]
+        for bdu_id in bdus_by_cve.get(cve_id, set()):
+            _references.append(Reference(VULN_REFERENCE_TYPE, bdu_id))
+
+        _references = sorted(_references)
+
+        errata = Errata(
+            id=None,
+            type=TASK_PACKAGE_ERRATA_TYPE,
+            source=TASK_PACKAGE_ERRATA_SOURCE,
+            created=DT_NEVER,
+            updated=DT_NEVER,
+            pkg_hash=ep.task.hash,
+            pkg_name=ep.task.name,
+            pkg_version=ep.task.version,
+            pkg_release=ep.task.release,
+            pkgset_name=ep.task.branch,
+            task_id=ep.task.task_id,
+            subtask_id=ep.task.subtask_id,
+            task_state=TASK_STATE_DONE,
+            references=_references,
+            hash=0,
+            is_discarded=False,
+        )
+        erratas.append(errata.update(hash=errata_hash(errata)))
+
+    return erratas

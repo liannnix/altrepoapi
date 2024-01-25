@@ -14,29 +14,22 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Any, Iterable
+from typing import Any
 from uuid import UUID
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.utils import make_tmp_table_name
 
 from .sql import sql
 from .base import ErrataHandlerError, ErrataPoint
-from ..tools.base import Errata, Reference, UserInfo
+from .helpers import get_bdus_by_cves, build_erratas_create, build_erratas_update
+from ..tools.base import Errata, UserInfo
 from ..tools.constants import (
     CHANGE_ACTION_CREATE,
     CHANGE_ACTION_UPDATE,
     CHANGE_SOURCE_KEY,
     CHANGE_SOURCE_AUTO,
-    CVE_ID_TYPE,
-    DT_NEVER,
     DRY_RUN_KEY,
-    TASK_STATE_DONE,
-    TASK_PACKAGE_ERRATA_TYPE,
-    TASK_PACKAGE_ERRATA_SOURCE,
-    VULN_REFERENCE_TYPE,
 )
-from ..tools.errata import errata_hash
 from ..manage import ManageErrata
 
 ERRATA_MANAGE_RESPONSE_ERRATA_FIELD = "errata"
@@ -77,97 +70,6 @@ class ErrataHandler(APIWorker):
         self.errata_change_records: list[dict[str, Any]] = []
         self.is_transaction_completed = False
         super().__init__()
-
-    def _get_bdus_by_cves(self, cve_ids: Iterable[str]) -> dict[str, set[str]]:
-        self.status = False
-        bdus_by_cve: dict[str, set[str]] = {}
-
-        tmp_table = make_tmp_table_name("cve_ids")
-
-        response = self.send_sql_request(
-            self.sql.get_bdus_by_cves.format(tmp_table=tmp_table),
-            external_tables=[
-                {
-                    "name": tmp_table,
-                    "structure": [("cve_id", "String")],
-                    "data": [{"cve_id": c} for c in cve_ids],
-                },
-            ],
-        )
-        if not self.sql_status:
-            return {}
-        for el in response:
-            bdu_id = el[0]
-            for reference in (Reference(t, l) for t, l in zip(el[1], el[2])):
-                if reference.type != CVE_ID_TYPE:
-                    continue
-                bdus_by_cve.setdefault(reference.link, set()).add(bdu_id)
-
-        self.status = True
-        return bdus_by_cve
-
-    def _build_erratas_update(
-        self,
-        erratas_for_update: list[tuple[Errata, str]],
-        bdus_by_cve: dict[str, set[str]],
-    ) -> list[Errata]:
-        # updates erratas with new CVE and related BDU IDs
-        erratas: dict[str, Errata] = {}
-
-        for errata, cve_id in erratas_for_update:
-            # update existing errata if several CVE ids are added to the same one
-            _errata_id = errata.id.id  # type: ignore
-            _errata = erratas.get(_errata_id, errata)
-            _references = _errata.references
-            _linked_vulns = {r.link for r in _references}
-
-            # append new CVE reference if not exists
-            if cve_id not in _linked_vulns:
-                _references.append(Reference(VULN_REFERENCE_TYPE, cve_id))
-            # append new BDU references if not exists
-            for bdu_id in bdus_by_cve.get(cve_id, set()):
-                if bdu_id not in _linked_vulns:
-                    _references.append(Reference(VULN_REFERENCE_TYPE, bdu_id))
-
-            _errata = _errata.update(references=sorted(_references))
-            erratas[_errata_id] = _errata.update(hash=errata_hash(_errata))
-
-        return list(erratas.values())
-
-    def _build_erratas_create(
-        self, erratas_for_create: list[ErrataPoint], bdus_by_cve: dict[str, set[str]]
-    ) -> list[Errata]:
-        erratas = []
-
-        for ep in erratas_for_create:
-            cve_id = ep.cvm.id
-            _references = [Reference(VULN_REFERENCE_TYPE, cve_id)]
-            for bdu_id in bdus_by_cve.get(cve_id, set()):
-                _references.append(Reference(VULN_REFERENCE_TYPE, bdu_id))
-
-            _references = sorted(_references)
-
-            errata = Errata(
-                id=None,
-                type=TASK_PACKAGE_ERRATA_TYPE,
-                source=TASK_PACKAGE_ERRATA_SOURCE,
-                created=DT_NEVER,
-                updated=DT_NEVER,
-                pkg_hash=ep.task.hash,
-                pkg_name=ep.task.name,
-                pkg_version=ep.task.version,
-                pkg_release=ep.task.release,
-                pkgset_name=ep.task.branch,
-                task_id=ep.task.task_id,
-                subtask_id=ep.task.subtask_id,
-                task_state=TASK_STATE_DONE,
-                references=_references,
-                hash=0,
-                is_discarded=False,
-            )
-            erratas.append(errata.update(hash=errata_hash(errata)))
-
-        return erratas
 
     def _create_errata(self, errata: Errata) -> tuple[bool, dict[str, Any]]:
         args = {
@@ -212,11 +114,11 @@ class ErrataHandler(APIWorker):
         cve_ids = {cve_id for _, cve_id in erratas_for_update}
         cve_ids.update({p.cvm.id for p in erratas_for_create})
 
-        bdus_by_cve = self._get_bdus_by_cves(cve_ids)
+        bdus_by_cve = get_bdus_by_cves(self, cve_ids)
         if not self.status:
             raise ErrataHandlerError("Failed to get BDUs by CVEs")
 
-        for errata in self._build_erratas_update(erratas_for_update, bdus_by_cve):
+        for errata in build_erratas_update(self, erratas_for_update, bdus_by_cve):
             status, result = self._update_errata(errata)
             if not status:
                 self.store_error(
@@ -235,7 +137,7 @@ class ErrataHandler(APIWorker):
                 result.get(ERRATA_MANAGE_RESPONSE_ERRATA_CHANGE_FIELD, [])
             )
 
-        for errata in self._build_erratas_create(erratas_for_create, bdus_by_cve):
+        for errata in build_erratas_create(self, erratas_for_create, bdus_by_cve):
             status, result = self._create_errata(errata)
             if not status:
                 self.store_error(
@@ -263,4 +165,8 @@ class ErrataHandler(APIWorker):
     def rollback(self) -> bool:
         # FIXME: implement errata changes rollback using `tarnsacion_id`` and
         # `ErrataChangeHistory` table contents here!
-        return True
+        if self.dry_run:
+            self.logger.warning("DRY_RUN: Errata manage transaction rollback")
+            return True
+        self.logger.warning("Errata manage transaction rollback")
+        return False
