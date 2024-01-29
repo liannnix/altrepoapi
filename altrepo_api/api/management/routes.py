@@ -34,7 +34,7 @@ from .endpoints.packages_open_vulns import (
 )
 
 from .namespace import get_namespace
-from .endpoints.cpe import CPECandidates, ManageCpe
+from .endpoints.cpe import CPECandidates, ManageCpe, CPEList
 from .endpoints.errata import ManageErrata
 from .endpoints.task_info import TaskInfo
 from .endpoints.task_list import TaskList
@@ -47,6 +47,7 @@ from .parsers import (
     cpe_manage_get_args,
     pkgs_open_vulns_args,
     maintainer_list_args,
+    cpe_list_args,
 )
 from .serializers import (
     task_list_model,
@@ -262,6 +263,25 @@ class routeCpeCandidates(Resource):
         url_logging(logger, g.url)
         args = {}
         w = CPECandidates(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/cpe/list",
+    doc={
+        "description": "Get CPE list",
+        "responses": GET_RESPONSES_404,
+        "security": "Bearer",
+    },
+)
+class routeCpeList(Resource):
+    @ns.expect(cpe_list_args)
+    @ns.marshal_with(cpe_candidates_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = cpe_list_args.parse_args(strict=True)
+        w = CPEList(g.connection, **args)
         return run_worker(worker=w, args=args)
 
 

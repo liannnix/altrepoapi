@@ -1046,5 +1046,60 @@ FROM PackagesCveMatch
 WHERE key_hash IN {tmp_table}
 """
 
+    get_cpes_by_vulns = """
+SELECT cpe 
+FROM (
+    SELECT cpe_hash, 
+           argMax(cpm_cpe, ts) as cpe
+    FROM CpeMatch 
+    WHERE vuln_id IN {cves}
+    GROUP BY cpe_hash
+)
+"""
+
+    find_cpe = """
+WITH
+repology_names AS (
+    SELECT
+        alt_name,
+        repology_name,
+        repology_branch
+    FROM (
+        SELECT
+            pkg_name AS alt_name,
+            pnc_result AS repology_name,
+            pnc_type AS repology_branch,
+            argMax(pnc_state, ts) AS state
+        FROM PackagesNameConversion
+        WHERE pnc_type IN ('alt_p9', 'altsisyphus', 'alt_p10')
+        GROUP BY pkg_name, pnc_result, pnc_type
+    ) WHERE state = 'active'
+)
+SELECT
+    state,
+    alt_name AS pkg_name,
+    repology_name,
+    repology_branch,
+    cpe
+FROM (
+    SELECT
+        cpe_pkg_name,
+        cpe,
+        state
+    FROM (
+        SELECT
+            pkg_name AS cpe_pkg_name,
+            argMax(pnc_result, ts) AS cpe,
+            argMax(pnc_state, ts) AS state
+        FROM PackagesNameConversion
+        WHERE pnc_type = 'cpe'
+        GROUP BY pkg_name, pnc_result
+    ) {state}
+) AS CPE
+INNER JOIN repology_names AS EN ON EN.repology_name = cpe_pkg_name
+{where}
+ORDER BY state, repology_name, pkg_name, repology_branch, cpe;
+"""
+
 
 sql = SQL()
