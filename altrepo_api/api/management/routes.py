@@ -35,7 +35,7 @@ from .endpoints.packages_open_vulns import (
 
 from .namespace import get_namespace
 from .endpoints.cpe import CPECandidates, ManageCpe
-from .endpoints.manage import ManageErrata
+from .endpoints.errata import ManageErrata
 from .endpoints.task_info import TaskInfo
 from .endpoints.task_list import TaskList
 from .endpoints.vulns_info import VulnsInfo

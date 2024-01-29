@@ -30,7 +30,7 @@ from ..tools.constants import (
     CHANGE_SOURCE_AUTO,
     DRY_RUN_KEY,
 )
-from ..manage import ManageErrata
+from ..errata import ManageErrata
 
 ERRATA_MANAGE_RESPONSE_ERRATA_FIELD = "errata"
 ERRATA_MANAGE_RESPONSE_ERRATA_CHANGE_FIELD = "errata_change"
