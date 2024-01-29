@@ -241,12 +241,7 @@ class ErrataBuilder(APIWorker):
                 continue
             # 2. XXX: nothing suitable was found
             self.logger.debug(
-                f"No suitable errata creaton point was found for {ep.cvm.id} in {ep.task.branch}"
+                f"No suitable errata creaton point was found for {ep.cvm.id} on {ep.task.name} in {ep.task.branch}"
             )
-            # # so use found task to create new errata record
-            # self.logger.debug(
-            #     f"use errata point for {ep.cvm.id} in {ep.task.branch}: {ep}"
-            # )
-            # erratas_for_create.append(ep)
 
         return erratas_for_create, erratas_for_update

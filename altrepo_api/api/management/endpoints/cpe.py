@@ -145,9 +145,6 @@ class ManageCpe(APIWorker):
         self.args = kwargs
         self.sql = sql
         self.trx = Transaction(source=ChangeSource.MANUAL)
-        self.eb = ErrataBuilder(
-            connection=connection, branches=lut.errata_manage_branches_with_tasks
-        )
         # values set in self.check_params_xxx() call
         self.user_info: UserInfo
         self.action: str
@@ -168,7 +165,7 @@ class ManageCpe(APIWorker):
         if not self.user_info.name:
             self.validation_results.append("User name should be specified")
 
-        if not self.user_info.reason:
+        if not self.user_info.reason and not self.dry_run:
             self.validation_results.append("CPE change reason should be specified")
 
         if not validate_action(self.action):
@@ -410,6 +407,9 @@ class ManageCpe(APIWorker):
 
         related_cve_ids: list[str] = []
         packages_cve_matches: list[dict[str, Any]] = []
+        eb = ErrataBuilder(
+            connection=self.conn, branches=lut.errata_manage_branches_with_tasks
+        )
         eh = ErrataHandler(self.conn, self.user_info, self.trx._id, self.dry_run)
 
         if related_packages:
@@ -564,6 +564,9 @@ class ManageCpe(APIWorker):
 
         related_cve_ids: list[str] = []
         packages_cve_matches: list[dict[str, Any]] = []
+        eb = ErrataBuilder(
+            connection=self.conn, branches=lut.errata_manage_branches_with_tasks
+        )
         eh = ErrataHandler(self.conn, self.user_info, self.trx._id, self.dry_run)
 
         if related_packages:
@@ -609,10 +612,10 @@ class ManageCpe(APIWorker):
 
             # XXX: update or create erratas
             try:
-                erratas = self.eb.build_erratas_on_cpe_add(pcms)
+                erratas = eb.build_erratas_on_cpe_add(pcms)
                 eh.commit(*erratas)
             except ErrataBuilderError:
-                return self.eb.error
+                return eb.error
             except ErrataHandlerError:
                 return eh.error
 
@@ -735,6 +738,9 @@ class ManageCpe(APIWorker):
 
         related_cve_ids: list[str] = []
         packages_cve_matches: list[dict[str, Any]] = []
+        eb = ErrataBuilder(
+            connection=self.conn, branches=lut.errata_manage_branches_with_tasks
+        )
         eh = ErrataHandler(self.conn, self.user_info, self.trx._id, self.dry_run)
 
         if related_packages:
@@ -793,3 +799,6 @@ class ManageCpe(APIWorker):
             "errata_change_records": eh.errata_change_records,
             "packages_cve_matches": packages_cve_matches,
         }, 200
+
+    def _rollback_on_failuer(self, eb: ErrataBuilder, eh: ErrataHandler):
+        pass
