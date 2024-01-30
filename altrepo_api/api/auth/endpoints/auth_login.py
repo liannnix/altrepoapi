@@ -84,7 +84,7 @@ class AuthLogin(APIWorker):
         headers = {
             "Set-Cookie": (
                 f"refresh_token={refresh_token}; Expires=f'{cookie_expires}'; "
-                f"HttpOnly; SameSite=Lax"
+                f"{namespace.AUTH_COOKIES_OPTIONS}"
             )
         }
 

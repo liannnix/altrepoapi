@@ -49,6 +49,7 @@ class RefreshToken(APIWorker):
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
+        self.logger.debug(f"Cookies: {request.cookies}")
         self.validation_results = []
 
         # check access token and decode it.

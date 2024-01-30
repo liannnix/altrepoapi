@@ -91,6 +91,7 @@ class BasePathNamespace:
     ERRATA_ID_URL = ""
     # Flask CORS origins
     CORS_ORIGINS = "*"
+    AUTH_COOKIES_OPTIONS = "HttpOnly;"
 
 
 namespace = BasePathNamespace()
