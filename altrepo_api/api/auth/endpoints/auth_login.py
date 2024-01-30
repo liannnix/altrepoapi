@@ -82,7 +82,10 @@ class AuthLogin(APIWorker):
 
         response = {"access_token": encoded_jwt, "refresh_token": refresh_token}
         headers = {
-            "Set-Cookie": f"refresh_token={refresh_token}; Expires=f'{cookie_expires}'; HttpOnly"
+            "Set-Cookie": (
+                f"refresh_token={refresh_token}; Expires=f'{cookie_expires}'; "
+                f"HttpOnly; SameSite=Lax"
+            )
         }
 
         return response, 200, headers
