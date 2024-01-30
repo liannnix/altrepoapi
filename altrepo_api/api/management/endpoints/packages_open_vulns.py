@@ -73,7 +73,7 @@ class PackageMeta(NamedTuple):
 
 
 class PackageBranchPair(NamedTuple):
-    pkg_hash: int
+    pkg_name: str
     branch: str
 
 
@@ -219,6 +219,13 @@ class PackagesOpenVulns(APIWorker):
             for el in response
         }
 
+        self.package_vulns = {
+            PackageBranchPair(el[1], el[-2]): PackageMeta(
+                *el[:-1], vulns=[VulnInfoMeta(*vuln) for vuln in el[-1]]
+            )
+            for el in response
+        }
+
         if not self.sql_status:
             return None
         self.status = True
@@ -245,6 +252,12 @@ class PackagesOpenVulns(APIWorker):
             return None
         self.package_vulns = {
             PackageBranchPair(el[0], el[-2]): PackageMeta(
+                *el[:-1], vulns=[VulnInfoMeta(*vuln) for vuln in el[-1]]
+            )
+            for el in response
+        }
+        self.package_vulns = {
+            PackageBranchPair(el[1], el[-2]): PackageMeta(
                 *el[:-1], vulns=[VulnInfoMeta(*vuln) for vuln in el[-1]]
             )
             for el in response
@@ -318,10 +331,15 @@ class PackagesOpenVulns(APIWorker):
                 {
                     "name": _tmp_table,
                     "structure": [
-                        ("pkg_hash", "UInt64"),
+                        ("pkg_name", "String"),
+                        ("pkgset_name", "String"),
                     ],
                     "data": [
-                        {"pkg_hash": el.pkg_hash} for el in self.package_vulns.keys()
+                        {
+                            "pkg_name": el.pkg_name,
+                            "pkgset_name": el.branch,
+                        }
+                        for el in self.package_vulns.values()
                     ],
                 }
             ],
@@ -329,8 +347,9 @@ class PackagesOpenVulns(APIWorker):
         if not self.sql_status:
             return None
         self.status = True
+
         if response:
-            return {PackageBranchPair(el[1], el[2]): el[3] for el in response}
+            return {PackageBranchPair(el[0], el[1]): el[2] for el in response}
 
     def _get_pkg_images(self) -> None:
         """
@@ -347,7 +366,7 @@ class PackagesOpenVulns(APIWorker):
                         ("pkg_hash", "UInt64"),
                     ],
                     "data": [
-                        {"pkg_hash": el.pkg_hash} for el in self.package_vulns.keys()
+                        {"pkg_hash": el.pkghash} for el in self.package_vulns.values()
                     ],
                 }
             ],
@@ -356,8 +375,11 @@ class PackagesOpenVulns(APIWorker):
             return None
         if response:
             for el in response:
-                key = PackageBranchPair(pkg_hash=el[0], branch=el[1])
-                if key in self.package_vulns:
+                key = PackageBranchPair(pkg_name=el[1], branch=el[2])
+                if (
+                    key in self.package_vulns
+                    and self.package_vulns[key].pkghash == el[0]
+                ):
                     self.package_vulns[key] = self.package_vulns[key]._replace(
                         images=[PackageImagesMeta(*img) for img in el[-1]]
                     )
@@ -372,11 +394,6 @@ class PackagesOpenVulns(APIWorker):
             self._get_all_open_vulns()
             if not self.status:
                 return self.error
-
-        # get related vulns for CVE
-        self._get_related_vulns()
-        if not self.status:
-            return self.error
 
         # get erratas list by package hash and branch
         erratas = self._get_erratas()
@@ -393,6 +410,11 @@ class PackagesOpenVulns(APIWorker):
                     self.package_vulns[key] = self.package_vulns[key]._replace(
                         vulns=pkg_vulns
                     )
+
+        # get related vulns for CVE
+        self._get_related_vulns()
+        if not self.status:
+            return self.error
 
         # get a list of images
         self._get_pkg_images()

@@ -932,10 +932,14 @@ SELECT * FROM (
 """
 
     get_errata_packages = """
-SELECT * FROM (
+SELECT
+    pkg_name,
+    branch,
+    arrayDistinct(arrayFlatten(groupArray(refs_links)))
+FROM (
     SELECT
         errata_id,
-        argMax(pkg_hash, ts) AS hash,
+        pkg_name,
         argMax(pkgset_name, ts) AS branch,
         argMax(eh_references.link, ts) AS refs_links
     FROM ErrataHistory
@@ -953,32 +957,38 @@ SELECT * FROM (
             SELECT errata_id FROM last_discarded_erratas
         )
     )
-    GROUP BY errata_id
-) WHERE hash IN (SELECT pkg_hash FROM {tmp_table})
+    GROUP BY errata_id, pkg_name
+) WHERE (pkg_name, branch) IN (SELECT pkg_name, pkgset_name FROM {tmp_table})
+GROUP BY pkg_name, branch
 """
 
     get_pkg_images = """
 WITH pkgs AS (
-    SELECT pkg_hash, pkg_srcrpm_hash
+    SELECT pkg_name, pkg_hash, pkg_sourcepackage, pkg_srcrpm_hash
     FROM Packages
     WHERE pkg_hash IN (
         SELECT DISTINCT pkg_hash
         FROM Packages
         WHERE pkg_srcrpm_hash IN {tmp_table}
-          AND (pkg_sourcepackage = 0)
     )
 )
 SELECT DISTINCT
     TT.pkg_srcrpm_hash AS src_hash,
+    TT.pkg_name AS pkgname,
     img_branch,
     groupUniqArray((img_tag, img_file)) tags
 FROM lv_all_image_packages
 LEFT JOIN (
-    SELECT DISTINCT pkg_hash, pkg_srcrpm_hash FROM pkgs
+    SELECT DISTINCT PN.pkg_name AS pkg_name, pkg_hash, pkg_srcrpm_hash FROM pkgs
+    LEFT JOIN (
+        SELECT pkg_name, pkg_hash FROM pkgs
+    ) AS PN ON PN.pkg_hash = pkg_srcrpm_hash
+    WHERE pkg_sourcepackage = 0
 ) AS TT ON TT.pkg_hash = lv_all_image_packages.pkg_hash
 WHERE pkg_hash IN (
     SELECT DISTINCT pkg_hash
     FROM pkgs
+    WHERE pkg_sourcepackage = 0
 )
 AND img_tag IN (
     SELECT img_tag FROM (
@@ -1016,7 +1026,7 @@ AND img_tag IN (
                  )
         WHERE img_show = 'show'
     )
-) GROUP BY src_hash, img_branch
+) GROUP BY pkgname, src_hash, img_branch
 """
 
     get_packages_info_by_hashes = """
