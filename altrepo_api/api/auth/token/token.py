@@ -126,7 +126,7 @@ def update_access_token(payload: dict[str, Any]) -> str:
         tz=datetime.timezone.utc
     ) + datetime.timedelta(seconds=namespace.EXPIRES_ACCESS_TOKEN)
 
-    return jwt.encode(payload, namespace.ADMIN_PASSWORD, algorithm="HS256")
+    return encode_jwt_token(payload)
 
 
 def check_fingerprint(fingerprint: str) -> bool:
