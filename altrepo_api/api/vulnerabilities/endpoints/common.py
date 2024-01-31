@@ -278,20 +278,27 @@ class PackageVulnerabiltyInfo:
 def match_cpem_by_version(
     pkg: PackageVersion, cpems: Iterable[CpeMatch]
 ) -> list[CpeMatch]:
-    return [
-        cpem
-        for cpem in cpems
-        if version_less_or_equal(
+    def match_versions(pkg: PackageVersion, cpem: CpeMatch) -> bool:
+        # XXX: always match the package for CPE with version unspecified
+        if (
+            cpem.version.version_start == ""
+            and cpem.version.version_end == ""
+            and not cpem.version.version_start_excluded
+            and not cpem.version.version_end_excluded
+        ):
+            return True
+
+        return version_less_or_equal(
             pkg.version,
             cpem.version.version_end,
             cpem.version.version_end_excluded,
-        )
-        and version_less_or_equal(
+        ) and version_less_or_equal(
             cpem.version.version_start,
             pkg.version,
             cpem.version.version_start_excluded,
         )
-    ]
+
+    return [cpem for cpem in cpems if match_versions(pkg, cpem)]
 
 
 @dataclass

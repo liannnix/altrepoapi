@@ -175,6 +175,15 @@ def get_closest_task(
 
 
 def package_is_vulnerable(pkg: PackageTask, cpm: CpeMatchVersions) -> bool:
+    # XXX: always match the package for CPE with version unspecified
+    if (
+        cpm.version_start == ""
+        and cpm.version_end == ""
+        and not cpm.version_start_excluded
+        and not cpm.version_end_excluded
+    ):
+        return True
+
     return version_less_or_equal(
         version1=pkg.version,
         version2=cpm.version_end,
