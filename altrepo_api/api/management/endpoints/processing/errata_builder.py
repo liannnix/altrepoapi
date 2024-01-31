@@ -179,6 +179,9 @@ class ErrataBuilder(APIWorker):
                 # CVE ID already in existintg errata for given package
                 if cve_in_errata_references(ep.cvm.id, exact_errata):
                     continue
+                # Errata point previous task was not found -> skip it
+                if ep.prev_task is None:
+                    continue
                 # collect errata for update and continue
                 self.logger.debug(
                     f"Found exact errata to be updated: {ep.cvm.id}: {exact_errata}"
