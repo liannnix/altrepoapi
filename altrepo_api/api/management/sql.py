@@ -1057,11 +1057,11 @@ WHERE key_hash IN {tmp_table}
 """
 
     get_cpes_by_vulns = """
-SELECT cpe 
+SELECT cpe
 FROM (
-    SELECT cpe_hash, 
+    SELECT cpe_hash,
            argMax(cpm_cpe, ts) as cpe
-    FROM CpeMatch 
+    FROM CpeMatch
     WHERE vuln_id IN {cves}
     GROUP BY cpe_hash
 )
