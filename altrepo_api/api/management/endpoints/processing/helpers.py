@@ -162,7 +162,7 @@ def get_related_erratas_by_cve_ids(
 
 def get_pkgs_versions(
     cls: _pAPIWorker, pkgs_hashes: Iterable[int]
-) -> dict[int, PackageVersion]:
+) -> dict[int, list[PackageVersion]]:
     cls.status = False
 
     tmp_table = make_tmp_table_name("pkgs_hashes")
@@ -180,8 +180,12 @@ def get_pkgs_versions(
     if not cls.sql_status or not response:
         return {}
 
+    pkgs_versions: dict[int, list[PackageVersion]] = {}
+    for p in (PackageVersion(*el) for el in response):
+        pkgs_versions.setdefault(p.hash, []).append(p)
+
     cls.status = True
-    return {p.hash: p for p in (PackageVersion(*el) for el in response)}
+    return pkgs_versions
 
 
 def get_pkgs_changelog(
