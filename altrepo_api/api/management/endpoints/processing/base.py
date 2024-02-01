@@ -139,8 +139,10 @@ def compare_pnc_records(a: PncRecord, b: PncRecord, *, include_state: bool) -> b
 def collect_erratas(
     task: PackageTask, erratas_by_package: dict[str, list[Errata]]
 ) -> list[Errata]:
-    # filter out existing erratas by package name and branch using
-    # branch inheratance list
+    """Filter out existing erratas by package name and branch using
+    branch inheratance list.
+    """
+
     return [
         e
         for e in erratas_by_package.get(task.name, [])
@@ -151,8 +153,10 @@ def collect_erratas(
 def find_errata_by_package_task(
     t: PackageTask, erratas: list[Errata]
 ) -> Optional[Errata]:
+    """Find exact Errata from list matching by by task_id, package version and release.
+    """
+
     for e in erratas:
-        # got existing errata
         if (e.task_id, e.pkg_version, e.pkg_release) == (
             t.task_id,
             t.version,
