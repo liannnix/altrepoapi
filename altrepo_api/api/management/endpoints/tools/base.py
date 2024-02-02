@@ -14,6 +14,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import json
+
 from datetime import datetime
 from enum import IntEnum
 from typing import Any, NamedTuple, Protocol, Union
@@ -61,7 +63,6 @@ class Branch(NamedTuple):
 
 
 class UserInfo(NamedTuple):
-    reason: str
     name: str
     ip: str
 
@@ -211,13 +212,24 @@ class ChangeOrigin(IntEnum):
     CHILD = 1
 
 
+class ChangeReason(NamedTuple):
+    actor: UserInfo
+    message: str
+    details: dict[str, Any]
+
+    def serialize(self) -> str:
+        res = self._asdict()
+        res["actor"] = f"{self.actor.name}[{self.actor.ip}]"
+        return json.dumps(res, default=str)
+
+
 class ErrataChange(NamedTuple):
     id: ErrataID
     created: datetime
     updated: datetime
     user: str
     user_ip: str
-    reason: str
+    reason: ChangeReason
     type: ChangeType
     source: ChangeSource
     origin: ChangeOrigin
@@ -233,6 +245,7 @@ class ErrataChange(NamedTuple):
         res["type"] = self.type.name
         res["source"] = self.source.name
         res["origin"] = self.origin.name
+        res["reason"] = self.reason.serialize()
         return res
 
 
@@ -249,9 +262,7 @@ class PncRecord(NamedTuple):
 
 class PncChangeRecord(NamedTuple):
     id: UUID
-    user: str
-    user_ip: str
-    reason: str
+    reason: ChangeReason
     type: ChangeType
     source: ChangeSource
     origin: ChangeOrigin
@@ -264,4 +275,7 @@ class PncChangeRecord(NamedTuple):
         res["source"] = self.source.name
         res["origin"] = self.origin.name
         res["pnc"] = self.pnc._asdict()
+        res["reason"] = self.reason.serialize()
+        res["user"] = self.reason.actor.name
+        res["user_ip"] = self.reason.actor.ip
         return res

@@ -19,7 +19,7 @@ from typing import Any
 
 from altrepo_api.api.base import APIWorker
 
-from .tools.base import Errata, ChangeSource, TaskInfo, UserInfo
+from .tools.base import Errata, ChangeReason, ChangeSource, TaskInfo, UserInfo
 from .tools.constants import (
     CHANGE_ACTION_CREATE,
     CHANGE_ACTION_DISCARD,
@@ -85,7 +85,7 @@ class ManageErrata(APIWorker):
             change_source=self.change_source,
         )
         # values set in self.check_params_xxx() call
-        self.user_info: UserInfo
+        self.reason: ChangeReason
         self.action: str
         self.errata: Errata
         super().__init__()
@@ -93,18 +93,21 @@ class ManageErrata(APIWorker):
     def _valiadte_and_parse(self):
         """Validate and parse `self.payload' JSON contents."""
 
-        self.user_info = UserInfo(
-            ip=request.remote_addr or "",
-            name=self.payload.get("user", ""),
-            reason=self.payload.get("reason", ""),
+        self.reason = ChangeReason(
+            actor=UserInfo(
+                name=self.payload.get("user", ""),
+                ip=request.remote_addr or "",
+            ),
+            message=self.payload.get("reason", ""),
+            details={"transaction_id": str(self.trx.id)},
         )
 
         self.action = self.payload.get("action", "")
 
-        if not self.user_info.name:
+        if not self.reason.actor.name:
             self.validation_results.append("User name should be specified")
 
-        if not self.user_info.reason:
+        if not self.reason.message:
             self.validation_results.append("Errata change reason should be specified")
 
         if not validate_action(self.action):
@@ -340,9 +343,9 @@ class ManageErrata(APIWorker):
         # check if errata change already registered for current package update errata
         ec_errata_id = get_ec_id_by_package_update(self, self.errata.id)  # type: ignore
         if ec_errata_id is not None:
-            self.trx.commit(self.user_info, ec_errata_id.id)
+            self.trx.commit(self.reason, ec_errata_id.id)
         else:
-            self.trx.commit(self.user_info, None)
+            self.trx.commit(self.reason, None)
 
         if not self.dry_run:
             # 6. store new errata and errata change records to DB
@@ -489,7 +492,7 @@ class ManageErrata(APIWorker):
                 self.trx.register_bulletin_create(branch_state)
 
         # 7. commit errata registration transaction
-        self.trx.commit(self.user_info, None)
+        self.trx.commit(self.reason, None)
 
         if not self.dry_run:
             # 8. store new errata and errata change records to DB
@@ -597,9 +600,9 @@ class ManageErrata(APIWorker):
         # check if errata change already registered for current package update errata
         ec_errata_id = get_ec_id_by_package_update(self, self.errata.id)  # type: ignore
         if ec_errata_id is not None:
-            self.trx.commit(self.user_info, ec_errata_id.id)
+            self.trx.commit(self.reason, ec_errata_id.id)
         else:
-            self.trx.commit(self.user_info, None)
+            self.trx.commit(self.reason, None)
 
         if not self.dry_run:
             # 7. store new errata and errata change records to DB

@@ -27,11 +27,11 @@ from .base import (
     Errata,
     ErrataID,
     ErrataChange,
+    ChangeReason,
     ChangeOrigin,
     ChangeSource,
     ChangeType,
     ErrataManageError,
-    UserInfo,
     DBTransactionRollback,
 )
 from .constants import DT_NEVER
@@ -82,7 +82,7 @@ def _build_errata_change(
     *,
     ec_id: ErrataIDServiceResult,
     errata: ErrataID,
-    user_unfo: UserInfo,
+    reason: ChangeReason,
     type: ChangeType,
     source: ChangeSource,
     origin: ChangeOrigin,
@@ -96,9 +96,9 @@ def _build_errata_change(
         id=ErrataID.from_id(ec_id.id),
         created=ec_id.created,
         updated=ec_id.updated,
-        user=user_unfo.name,
-        user_ip=user_unfo.ip,
-        reason=user_unfo.reason,
+        user=reason.actor.name,
+        user_ip=reason.actor.ip,
+        reason=reason,
         type=type,
         source=source,
         origin=origin,
@@ -124,15 +124,14 @@ class Transaction:
         change_source: ChangeSource,
     ) -> None:
         self.eid_service = eid_service
+        self.id = transaction_id
         self.dry_run = dry_run
-        self._user_info: UserInfo
+        self._change_source = change_source
         self._errata_update: ErrataUpdate
         self._bulletin_update: Union[ErrataUpdate, None] = None
         self._errata_history_records: dict[ErrataType, Errata] = dict()
         self._errata_change_records: list[ErrataChange] = list()
         self._ec_id: Union[str, None] = None
-        self._id = transaction_id
-        self._change_source = change_source
 
     @property
     def new_errata(self) -> Errata:
@@ -216,9 +215,10 @@ class Transaction:
             old_eid=bulletin.id,
         )
 
-    def commit(self, user_info: UserInfo, ec_id: Union[str, None]):
+    def commit(
+        self, reason: ChangeReason, ec_id: Union[str, None]
+    ):
         self._ec_id = ec_id
-        self._user_info = user_info
         logger.info("Commtinig errata manage transaction")
         # build errata history records
         {
@@ -227,7 +227,7 @@ class Transaction:
             ErrataAction.DISCARD: self._handle_errata_discard,
         }[self._errata_update.action]()
         # build errata change history records
-        self._handle_errata_change_history()
+        self._handle_errata_change_history(reason)
 
     def rollback(self, sql_callback: DBTransactionRollback) -> bool:
         # XXX: delete DB records by transaction ID here!
@@ -236,9 +236,9 @@ class Transaction:
             logger.warning("DRY_RUN: Errata manage transaction rollback")
             return True
         logger.warning("Errata manage transaction rollback")
-        return sql_callback([self._id])
+        return sql_callback([self.id])
 
-    def _handle_errata_change_history(self):
+    def _handle_errata_change_history(self, reason: ChangeReason):
         # get new errata change ID if not provided
         if self._ec_id is None:
             _ec_id = register_errata_change_id(self.eid_service)
@@ -251,11 +251,11 @@ class Transaction:
         pu_ec_fn = partial(
             _build_errata_change,
             ec_id=_ec_id,
-            user_unfo=self._user_info,
+            reason=reason,
             errata=self._errata_history_records[ErrataType.PACKAGE].id,  # type: ignore
             source=self._change_source,
             origin=ChangeOrigin.PARENT,
-            transaction_id=self._id,
+            transaction_id=self.id,
         )
 
         def stub_fn(*args, **kwargs) -> ErrataChange:
@@ -265,11 +265,11 @@ class Transaction:
             bu_ec_fn = partial(
                 _build_errata_change,
                 ec_id=_ec_id,
-                user_unfo=self._user_info,
+                reason=reason,
                 errata=self._errata_history_records[ErrataType.BULLETIN].id,  # type: ignore
                 source=ChangeSource.AUTO,
                 origin=ChangeOrigin.CHILD,
-                transaction_id=self._id,
+                transaction_id=self.id,
             )
         else:
             bu_ec_fn = stub_fn
