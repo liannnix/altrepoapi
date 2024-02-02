@@ -101,6 +101,7 @@ class TaskState(NamedTuple):
 
 
 class CpeMatchVersions(NamedTuple):
+    cpe: str
     version_start: str
     version_end: str
     version_start_excluded: bool

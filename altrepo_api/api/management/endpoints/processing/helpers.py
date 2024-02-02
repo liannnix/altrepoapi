@@ -312,7 +312,7 @@ def get_cves_versions_matches(
         cvm = CveVersionsMatch(
             id=el[0],
             hashes=CveCpmHashes(*el[1:4]),
-            versions=CpeMatchVersions(*el[4:]),
+            versions=CpeMatchVersions(*el[4:])
         )
         res.setdefault(cvm.hashes.vuln_hash, []).append(cvm)
 
@@ -350,14 +350,13 @@ def get_bdus_by_cves(cls: _pAPIWorker, cve_ids: Iterable[str]) -> dict[str, set[
 
 
 def build_erratas_update(
-    cls: _pAPIWorker,
-    erratas_for_update: list[tuple[Errata, str]],
+    erratas_for_update: list[tuple[Errata, ErrataPoint]],
     bdus_by_cve: dict[str, set[str]],
 ) -> list[Errata]:
     # updates erratas with new CVE and related BDU IDs
     erratas: dict[str, Errata] = {}
 
-    for errata, cve_id in erratas_for_update:
+    for errata, ep in erratas_for_update:
         # update existing errata if several CVE ids are added to the same one
         _errata_id = errata.id.id  # type: ignore
         _errata = erratas.get(_errata_id, errata)
@@ -365,10 +364,10 @@ def build_erratas_update(
         _linked_vulns = {r.link for r in _references}
 
         # append new CVE reference if not exists
-        if cve_id not in _linked_vulns:
-            _references.append(Reference(VULN_REFERENCE_TYPE, cve_id))
+        if ep.cvm.id not in _linked_vulns:
+            _references.append(Reference(VULN_REFERENCE_TYPE, ep.cvm.id))
         # append new BDU references if not exists
-        for bdu_id in bdus_by_cve.get(cve_id, set()):
+        for bdu_id in bdus_by_cve.get(ep.cvm.id, set()):
             if bdu_id not in _linked_vulns:
                 _references.append(Reference(VULN_REFERENCE_TYPE, bdu_id))
 
@@ -379,7 +378,6 @@ def build_erratas_update(
 
 
 def build_erratas_create(
-    cls: _pAPIWorker,
     erratas_for_create: list[ErrataPoint],
     bdus_by_cve: dict[str, set[str]],
 ) -> list[Errata]:

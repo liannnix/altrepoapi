@@ -178,6 +178,7 @@ SELECT
     vuln_hash,
     cpe_hash,
     cpm_version_hash,
+    cpm_cpe,
     cpm_version_start,
     cpm_version_end,
     cpm_version_start_excluded,
