@@ -61,6 +61,7 @@ if __name__ == "__main__":
         "app:app",
         "--timeout",
         settings.WORKER_TIMEOUT,
+        "--forwarded-allow-ips=\'*\'",
     ]
 
     run()
