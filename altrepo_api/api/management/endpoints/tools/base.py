@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import copy
 import json
 
 from datetime import datetime
@@ -216,6 +217,13 @@ class ChangeReason(NamedTuple):
     actor: UserInfo
     message: str
     details: dict[str, Any]
+
+    def clone(self) -> "ChangeReason":
+        return ChangeReason(
+            actor=self.actor,
+            message=self.message,
+            details=copy.deepcopy(self.details)
+        )
 
     def serialize(self) -> str:
         res = self._asdict()
