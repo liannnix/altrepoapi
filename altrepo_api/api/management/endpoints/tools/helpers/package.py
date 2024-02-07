@@ -72,8 +72,8 @@ def store_pnc_change_records(
         for pncc in pnc_change_records:
             res = {
                 "transaction_id": str(pncc.id),
-                "pncc_user": pncc.user,
-                "pncc_user_ip": pncc.user_ip,
+                "pncc_user": pncc.reason.actor.name,
+                "pncc_user_ip": pncc.reason.actor.ip,
                 "pncc_reason": pncc.reason,
                 "pncc_type": pncc.type.value,
                 "pncc_source": pncc.source.value,
