@@ -24,10 +24,10 @@ from .base import (
     PncChangeRecord,
     PncRecord,
     PncManageError,
+    ChangeReason,
     ChangeOrigin,
     ChangeSource,
     ChangeType,
-    UserInfo,
     DBTransactionRollback,
 )
 from .constants import PNC_STATE_ACTIVE, PNC_STATE_INACTIVE, PNC_STATE_CANDIDATE
@@ -59,7 +59,7 @@ def _build_pnc_change(
     *,
     id: UUID,
     pnc: PncRecord,
-    user_unfo: UserInfo,
+    reason: ChangeReason,
     type: ChangeType,
     source: ChangeSource,
     origin: ChangeOrigin,
@@ -70,9 +70,7 @@ def _build_pnc_change(
     )
     return PncChangeRecord(
         id=id,
-        user=user_unfo.name,
-        user_ip=user_unfo.ip,
-        reason=user_unfo.reason,
+        reason=reason,
         type=type,
         source=source,
         origin=origin,
@@ -82,7 +80,7 @@ def _build_pnc_change(
 
 class Transaction:
     def __init__(self, source: ChangeSource) -> None:
-        self._user_info: UserInfo
+        self._reason: ChangeReason
         self._pnc_updates: list[PncUpdate] = list()
         self._pnc_change_records: list[PncChangeRecord] = list()
         self._id: UUID
@@ -117,9 +115,9 @@ class Transaction:
             PncUpdate(pnc=pnc, type=pnc_type, action=PncAction.DISCARD)
         )
 
-    def commit(self, user_info: UserInfo) -> None:
+    def commit(self, reason: ChangeReason) -> None:
         self._id = uuid4()
-        self._user_info = user_info
+        self._reason = reason
         logger.info("Commtinig PNC manage transaction")
         # build errata history records
         self._handle_pnc_records()
@@ -134,7 +132,7 @@ class Transaction:
             _build_pnc_change(
                 id=self._id,
                 pnc=pnc_update.pnc,
-                user_unfo=self._user_info,
+                reason=self._reason,
                 type=ChangeType.CREATE,
                 source=self._source,
                 origin=ChangeOrigin.PARENT,
@@ -146,7 +144,7 @@ class Transaction:
             _build_pnc_change(
                 id=self._id,
                 pnc=pnc_update.pnc,
-                user_unfo=self._user_info,
+                reason=self._reason,
                 type=ChangeType.UPDATE,
                 source=self._source,
                 origin=ChangeOrigin.PARENT,
@@ -158,7 +156,7 @@ class Transaction:
             _build_pnc_change(
                 id=self._id,
                 pnc=pnc_update.pnc,
-                user_unfo=self._user_info,
+                reason=self._reason,
                 type=ChangeType.DISCARD,
                 source=self._source,
                 origin=ChangeOrigin.PARENT,
