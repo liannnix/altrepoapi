@@ -15,12 +15,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from datetime import datetime
+from functools import cmp_to_key
 from typing import Any, Iterator, NamedTuple, Optional, Union
 
 from altrepodb_libs import (
     PackageCveMatch,
     VersionCompareResult,
-    version_compare,
+    mmhash64,
+    evrdt_compare,
     version_less_or_equal,
 )
 
@@ -79,6 +81,12 @@ class ErrataPoint(NamedTuple):
     cvm: CveVersionsMatch
 
 
+class ChangelogErrataPoint(NamedTuple):
+    task: PackageTask
+    evr: str
+    cve_ids: tuple[str, ...]
+
+
 class CpeRecord(NamedTuple):
     cpe: CPE
     state: str
@@ -98,16 +106,6 @@ class CpeRaw(NamedTuple):
     repology_name: str
     repology_branch: str
     cpe: str
-
-
-def branch_inheritance_list(b: str) -> dict[str, int]:
-    if b not in lut.branch_inheritance:
-        return {lut.branch_inheritance_root: 0}
-
-    if b == lut.branch_inheritance_root:
-        return {b: 0}
-
-    return {x: i for i, x in enumerate([b] + lut.branch_inheritance[b])}
 
 
 def cpe_record2pnc_record(cpe: CpeRecord) -> PncRecord:
@@ -136,29 +134,75 @@ def compare_pnc_records(a: PncRecord, b: PncRecord, *, include_state: bool) -> b
         )
 
 
-def collect_erratas(
-    task: PackageTask, erratas_by_package: dict[str, list[Errata]]
-) -> list[Errata]:
-    """Filter out existing erratas by package name and branch using
-    branch inheratance list.
+def version_release_compare(
+    *, v1: str, r1: str, v2: str, r2: str
+) -> VersionCompareResult:
+    return evrdt_compare(version1=v1, release1=r1, version2=v2, release2=r2)
+
+
+def version_release_less_or_equal(e: Errata, p: PackageVersion) -> bool:
+    return version_release_compare(
+        v1=e.pkg_version, r1=e.pkg_release, v2=p.version, r2=p.release
+    ) in (VersionCompareResult.EQUAL, VersionCompareResult.LESS_THAN)
+
+
+def branch_inheritance_list(b: str) -> dict[str, int]:
+    if b not in lut.branch_inheritance:
+        return {lut.branch_inheritance_root: 0}
+
+    if b == lut.branch_inheritance_root:
+        return {b: 0}
+
+    return {x: i for i, x in enumerate([b] + lut.branch_inheritance[b])}
+
+
+def collect_erratas(branch: str, erratas: list[Errata]) -> list[Errata]:
+    """Collect existing erratas by branch and sorts it descending by package'
+    version and release in accordance to branch inheritance order.
     """
 
-    return [
-        e
-        for e in erratas_by_package.get(task.name, [])
-        if e.pkgset_name in branch_inheritance_list(task.branch)
-    ]
+    inheritance_list = branch_inheritance_list(branch)
+
+    def compare_erratas(a: Errata, b: Errata) -> int:
+        if a.pkg_name != b.pkg_name:
+            raise ValueError("Failed to compare Erratas for different packages")
+
+        vr_cmp = int(
+            version_release_compare(
+                v1=a.pkg_version, r1=a.pkg_release, v2=b.pkg_version, r2=b.pkg_release
+            )
+        )
+
+        if vr_cmp != 0:
+            return vr_cmp
+
+        a_branch_idx = inheritance_list[a.pkgset_name]
+        b_branch_idx = inheritance_list[b.pkgset_name]
+
+        if a_branch_idx < b_branch_idx:
+            return 1
+        elif a_branch_idx > b_branch_idx:
+            return -1
+        return 0
+
+    return sorted(
+        [e for e in erratas if e.pkgset_name in inheritance_list],
+        key=cmp_to_key(compare_erratas),
+        reverse=True,
+    )
 
 
 def find_errata_by_package_task(
     t: PackageTask, erratas: list[Errata]
 ) -> Optional[Errata]:
-    """Find exact Errata from list matching by by task_id, package version and release.
+    """Find exact Errata from list matching by by task_id, package name,
+    version and release.
     """
 
     for e in erratas:
-        if (e.task_id, e.pkg_version, e.pkg_release) == (
+        if (e.task_id, e.pkg_name, e.pkg_version, e.pkg_release) == (
             t.task_id,
+            t.name,
             t.version,
             t.release,
         ):
@@ -199,10 +243,21 @@ def package_is_vulnerable(pkg: PackageTask, cpm: CpeMatchVersions) -> bool:
     )
 
 
-def version_release_compare(
-    *, v1: str, r1: str, v2: str, r2: str
-) -> VersionCompareResult:
-    return version_compare(version1=f"{v1}-{r1}", version2=f"{v2}-{r2}")
+def dedup_pcms(pcms: list[PackageCveMatch]) -> list[PackageCveMatch]:
+    key_hashes = set()
+    res = []
+    for pcm in pcms:
+        key_hash = mmhash64(
+            pcm.pkg_hash,
+            pcm.pkg_cpe_hash,
+            pcm.vuln_hash,
+            pcm.cpm_cpe_hash,
+            pcm.cpm_version_hash,
+        )
+        if key_hash not in key_hashes:
+            res.append(pcm)
+            key_hashes.add(key_hash)
+    return res
 
 
 def uniq_pcm_records(
