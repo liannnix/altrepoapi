@@ -393,10 +393,8 @@ cpe_manage_model = ns.model(
         "user": fields.String(description="CPE change originator"),
         "action": fields.String(description="CPE manage action"),
         "reason": fields.String(description="CPE change reason"),
-        "cpes": fields.Nested(
-            cpe_manage_cpe_model,
-            description="list of CPE match records",
-            as_list=True,
+        "cpe": fields.Nested(
+            cpe_manage_cpe_model, description="list of CPE match records"
         ),
     },
 )
@@ -408,10 +406,9 @@ cpe_manage_response_model = ns.model(
         "action": fields.String(description="CPE manage action"),
         "reason": fields.String(description="CPE change reason"),
         "message": fields.String(description="API response message"),
-        "cpes": fields.Nested(
+        "cpe": fields.Nested(
             cpe_manage_cpe_model,
             description="list of CPE match records",
-            as_list=True,
         ),
         "related_packages": fields.List(
             fields.String,
