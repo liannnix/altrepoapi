@@ -43,12 +43,21 @@ VULN_RE = re.compile(_VULN_REGEX, re.IGNORECASE)
 EVR_RE = re.compile(r"^\d+:[\w\.\-]+$")
 
 
-def _mentioned_vulns(chagelog: str) -> list[str]:
-    return sorted({m.upper() for m in VULN_RE.findall(chagelog)})
+def _mentioned_vulns(chagelog: str) -> set[str]:
+    return {m.upper() for m in VULN_RE.findall(chagelog)}
 
 
-def vulns_from_package_changelog(package_changelog: PackageChangelog) -> list[list[str]]:
+def vulns_from_changelog(package_changelog: PackageChangelog) -> list[set[str]]:
     return [_mentioned_vulns(c.text) for c in package_changelog.changelog]
+
+
+def all_vulns_from_changelog(package_changelog: PackageChangelog) -> set[str]:
+    all_vulns: set[str] = set()
+
+    for chlog in package_changelog.changelog:
+        all_vulns.update(_mentioned_vulns(chlog.text))
+
+    return all_vulns
 
 
 def split_evr(evr: str) -> tuple[int, str, str]:
