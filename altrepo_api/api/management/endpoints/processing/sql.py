@@ -207,5 +207,25 @@ WHERE (vuln_id, vuln_hash) IN (
 )
 """
 
+    get_affected_erratas_by_transaction_id = """
+SELECT DISTINCT
+    ec_id,
+    errata_id
+FROM ErrataChangeHistory
+WHERE transaction_id = '{transaction_id}'
+"""
+
+    delete_errata_history_records = """
+DLETE FROM ErrataHistory WHERE errata_id in {tmp_table}
+"""
+
+    delete_errata_change_history_records = """
+DLETE FROM ErrataChangeHistory WHERE transaction_id = '{transaction_id}'
+"""
+
+    delete_pnc_change_history_records = """
+DLETE FROM PncChangeHistory WHERE transaction_id = '{transaction_id}'
+"""
+
 
 sql = SQL()

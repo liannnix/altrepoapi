@@ -23,22 +23,13 @@ from .base import (
     CpeMatchVersions,
     CveCpmHashes,
     CveVersionsMatch,
-    ErrataPoint,
     PackageTask,
     PackageVersion,
 )
 from .sql import SQL
 from ..tools.base import Errata, ErrataID, Reference
-from ..tools.constants import (
-    CVE_ID_TYPE,
-    DT_NEVER,
-    TASK_STATE_DONE,
-    TASK_PACKAGE_ERRATA_TYPE,
-    TASK_PACKAGE_ERRATA_SOURCE,
-    VULN_REFERENCE_TYPE,
-)
 from ..tools.changelog import ChangelogRecord, PackageChangelog, split_evr
-from ..tools.errata import errata_hash
+from ..tools.constants import CVE_ID_TYPE
 
 
 class _pAPIWorker(Protocol):
@@ -49,13 +40,11 @@ class _pAPIWorker(Protocol):
 
     def store_error(
         self, message: dict[str, Any], severity: int = ..., http_code: int = ...
-    ) -> tuple[Any, int]:
-        ...
+    ) -> tuple[Any, int]: ...
 
     def send_sql_request(
         self, request_line: Any, http_code: int = ..., **kwargs
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
 
 class _pHasBranches(_pAPIWorker, Protocol):
@@ -310,9 +299,7 @@ def get_cves_versions_matches(
 
     for el in response:
         cvm = CveVersionsMatch(
-            id=el[0],
-            hashes=CveCpmHashes(*el[1:4]),
-            versions=CpeMatchVersions(*el[4:])
+            id=el[0], hashes=CveCpmHashes(*el[1:4]), versions=CpeMatchVersions(*el[4:])
         )
         res.setdefault(cvm.hashes.vuln_hash, []).append(cvm)
 
@@ -349,66 +336,73 @@ def get_bdus_by_cves(cls: _pAPIWorker, cve_ids: Iterable[str]) -> dict[str, set[
     return bdus_by_cve
 
 
-def build_erratas_update(
-    erratas_for_update: list[tuple[Errata, ErrataPoint]],
-    bdus_by_cve: dict[str, set[str]],
-) -> list[Errata]:
-    # updates erratas with new CVE and related BDU IDs
-    erratas: dict[str, Errata] = {}
+def get_affected_errata_ids_by_transaction_id(
+    cls: _pAPIWorker, transaction_id: str
+) -> set[str]:
+    errata_ids = set()
+    cls.status = False
 
-    for errata, ep in erratas_for_update:
-        # update existing errata if several CVE ids are added to the same one
-        _errata_id = errata.id.id  # type: ignore
-        _errata = erratas.get(_errata_id, errata)
-        _references = _errata.references
-        _linked_vulns = {r.link for r in _references}
-
-        # append new CVE reference if not exists
-        if ep.cvm.id not in _linked_vulns:
-            _references.append(Reference(VULN_REFERENCE_TYPE, ep.cvm.id))
-        # append new BDU references if not exists
-        for bdu_id in bdus_by_cve.get(ep.cvm.id, set()):
-            if bdu_id not in _linked_vulns:
-                _references.append(Reference(VULN_REFERENCE_TYPE, bdu_id))
-
-        _errata = _errata.update(references=sorted(_references))
-        erratas[_errata_id] = _errata.update(hash=errata_hash(_errata))
-
-    return list(erratas.values())
-
-
-def build_erratas_create(
-    erratas_for_create: list[ErrataPoint],
-    bdus_by_cve: dict[str, set[str]],
-) -> list[Errata]:
-    erratas = []
-
-    for ep in erratas_for_create:
-        cve_id = ep.cvm.id
-        _references = [Reference(VULN_REFERENCE_TYPE, cve_id)]
-        for bdu_id in bdus_by_cve.get(cve_id, set()):
-            _references.append(Reference(VULN_REFERENCE_TYPE, bdu_id))
-
-        _references = sorted(_references)
-
-        errata = Errata(
-            id=None,
-            type=TASK_PACKAGE_ERRATA_TYPE,
-            source=TASK_PACKAGE_ERRATA_SOURCE,
-            created=DT_NEVER,
-            updated=DT_NEVER,
-            pkg_hash=ep.task.hash,
-            pkg_name=ep.task.name,
-            pkg_version=ep.task.version,
-            pkg_release=ep.task.release,
-            pkgset_name=ep.task.branch,
-            task_id=ep.task.task_id,
-            subtask_id=ep.task.subtask_id,
-            task_state=TASK_STATE_DONE,
-            references=_references,
-            hash=0,
-            is_discarded=False,
+    response = cls.send_sql_request(
+        cls.sql.get_affected_erratas_by_transaction_id.format(
+            transaction_id=transaction_id
         )
-        erratas.append(errata.update(hash=errata_hash(errata)))
+    )
+    if not cls.sql_status:
+        return errata_ids
 
-    return erratas
+    for el in response:
+        errata_ids.add(el[0])
+        errata_ids.add(el[1])
+
+    cls.status = True
+    return errata_ids
+
+
+def delete_errata_history_records(cls: _pAPIWorker, errata_ids: Iterable[str]) -> None:
+    cls.status = False
+
+    tmp_table = make_tmp_table_name("errata_ids")
+
+    _ = cls.send_sql_request(
+        cls.sql.delete_errata_history_records.format(tmp_table=tmp_table),
+        external_tables=[
+            {
+                "name": tmp_table,
+                "structure": [("errata_id", "String")],
+                "data": [{"errata_id": e} for e in errata_ids],
+            },
+        ],
+    )
+    if not cls.sql_status:
+        return None
+
+    cls.status = True
+    return None
+
+
+def delete_errata_change_history_records(cls: _pAPIWorker, transaction_id: str) -> None:
+    cls.status = False
+
+    _ = cls.send_sql_request(
+        cls.sql.delete_errata_change_history_records.format(
+            transaction_id=transaction_id
+        )
+    )
+    if not cls.sql_status:
+        return None
+
+    cls.status = True
+    return None
+
+
+def delete_pnc_change_history_records(cls: _pAPIWorker, transaction_id: str) -> None:
+    cls.status = False
+
+    _ = cls.send_sql_request(
+        cls.sql.delete_pnc_change_history_records.format(transaction_id=transaction_id)
+    )
+    if not cls.sql_status:
+        return None
+
+    cls.status = True
+    return None
