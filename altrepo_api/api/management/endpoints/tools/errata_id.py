@@ -34,20 +34,15 @@ logger = get_logger(__name__)
 
 
 class ErrataIDServiceProtocol(Protocol):
-    def __init__(self, url: str) -> None:
-        ...
+    def __init__(self, url: str) -> None: ...
 
-    def register(self, prefix: str, year: Optional[int]) -> ErrataIDServiceResult:
-        ...
+    def register(self, prefix: str, year: Optional[int]) -> ErrataIDServiceResult: ...
 
-    def check(self, id: str) -> ErrataIDServiceResult:
-        ...
+    def check(self, id: str) -> ErrataIDServiceResult: ...
 
-    def update(self, id: str) -> ErrataIDServiceResult:
-        ...
+    def update(self, id: str) -> ErrataIDServiceResult: ...
 
-    def discard(self, id: str) -> ErrataIDServiceResult:
-        ...
+    def discard(self, id: str) -> ErrataIDServiceResult: ...
 
 
 class stubErrataIDService:
@@ -101,7 +96,7 @@ def _check_errata_id(
     eid_service: ErrataIDServiceProtocol, id: str
 ) -> ErrataIDServiceResult:
     try:
-        logger.debug(f"Check errata ID latest version for {id}")
+        logger.info(f"Check errata ID latest version for {id}")
         return eid_service.check(id)
     except ErrataIDServiceError as e:
         logger.error(f"Failed to update errata ID version for {id}: {e}")
@@ -117,7 +112,7 @@ def _reister_errata_id(
     eid_service: ErrataIDServiceProtocol, prefix: str, year: Optional[int]
 ) -> ErrataIDServiceResult:
     try:
-        logger.debug(f"Register new errata ID for {prefix}-{year}")
+        logger.info(f"Register new errata ID for {prefix}-{year}")
         return eid_service.register(prefix=prefix, year=year)
     except ErrataIDServiceError as e:
         logger.error(f"Failed to register new errata ID for {prefix}-{year}: {e}")
@@ -157,8 +152,21 @@ def update_errata_id(
     """Updates errata identificator version in ErrataID service."""
 
     try:
-        logger.debug(f"Update errata identificator version for {id}")
+        logger.info(f"Update errata identificator version for {id}")
         return eid_service.update(id)
     except ErrataIDServiceError as e:
         logger.error(f"Failed to update errata ID version for {id}: {e}")
+        raise ErrataManageError("error: %s" % e)
+
+
+def discard_errata_id(
+    eid_service: ErrataIDServiceProtocol, id: str
+) -> ErrataIDServiceResult:
+    """Discards errata identificator in ErrataID service."""
+
+    try:
+        logger.info(f"Discrad errata identificator version for {id}")
+        return eid_service.discard(id)
+    except ErrataIDServiceError as e:
+        logger.error(f"Failed to discard errata ID version for {id}: {e}")
         raise ErrataManageError("error: %s" % e)
