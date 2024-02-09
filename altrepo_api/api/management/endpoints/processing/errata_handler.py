@@ -22,8 +22,9 @@ from altrepodb_libs import PackageCveMatch
 from altrepo_api.api.base import APIWorker
 
 from .sql import sql
-from .base import ErrataHandlerError, ErrataPoint, ChangelogErrataPoint, PackageTask
-from .helpers import get_bdus_by_cves, build_erratas_create, build_erratas_update
+from .base import ErrataHandlerError, ErrataPoint, ChangelogErrataPoint
+from .helpers import get_bdus_by_cves
+from ..errata import ManageErrata
 from ..tools.base import Errata, ChangeReason
 from ..tools.constants import (
     CHANGE_ACTION_CREATE,
@@ -31,20 +32,267 @@ from ..tools.constants import (
     CHANGE_SOURCE_KEY,
     CHANGE_SOURCE_AUTO,
     DRY_RUN_KEY,
+    DT_NEVER,
+    ERRATA_MANAGE_RESPONSE_ERRATA_FIELD,
+    ERRATA_MANAGE_RESPONSE_ERRATA_CHANGE_FIELD,
+    SOURCE_CHANGELOG,
+    SOURCE_ERRATA_POINT,
+    SOURCE_ORDER,
+    TASK_STATE_DONE,
+    TASK_PACKAGE_ERRATA_TYPE,
+    TASK_PACKAGE_ERRATA_SOURCE,
+    VULN_REFERENCE_TYPE,
 )
-from ..errata import ManageErrata
-
-ERRATA_MANAGE_RESPONSE_ERRATA_FIELD = "errata"
-ERRATA_MANAGE_RESPONSE_ERRATA_CHANGE_FIELD = "errata_change"
-SOURCE_ERRATA_POINT = "cpe"
-SOURCE_CHANGELOG = "changelog"
-SOURCE_ORDER = {SOURCE_ERRATA_POINT: 0, SOURCE_CHANGELOG: 1}
+from ..tools.errata import Reference, errata_hash
 
 
-def build_em_payload(
+class ErrataCreate(NamedTuple):
+    reason: ChangeReason
+    ep: Union[ErrataPoint, ChangelogErrataPoint]
+    cve_ids: tuple[str, ...]
+
+
+class ErrataUpdate(NamedTuple):
+    reason: ChangeReason
+    errata: Errata
+    ep: Union[ErrataPoint, ChangelogErrataPoint]
+    cve_ids: tuple[str, ...]
+
+
+# type aliases
+ErrataT = Union[ErrataCreate, ErrataUpdate]
+ErrataTupleT = tuple[str, int, int]
+
+
+class ErrataHandler(APIWorker):
+    """Handles Errata records modification."""
+
+    def __init__(
+        self, connection, reason: ChangeReason, transaction_id: UUID, dry_run: bool
+    ):
+        self.transaction_id = transaction_id
+        self.reason = reason
+        self.dry_run = dry_run
+        self.conn = connection
+        self.sql = sql
+        self.errata_records: list[dict[str, Any]] = []
+        self.errata_change_records: list[dict[str, Any]] = []
+        self.is_transaction_completed = False
+        self._erratas_to_create: list[ErrataCreate] = []
+        self._erratas_to_update: list[ErrataUpdate] = []
+        super().__init__()
+
+    def _create_errata(
+        self, et: ErrataCreate, errata: Errata
+    ) -> tuple[bool, dict[str, Any]]:
+        args = {
+            "payload": build_manage_errata_payload(
+                user=self.reason.actor.name,
+                reason=build_reason_string(et),
+                action=CHANGE_ACTION_CREATE,
+                errata=errata,
+            ),
+            "transaction_id": self.transaction_id,
+            DRY_RUN_KEY: self.dry_run,
+            CHANGE_SOURCE_KEY: CHANGE_SOURCE_AUTO,
+        }
+        me = ManageErrata(connection=self.conn, **args)
+        # validate input
+        if not me.check_params_post():
+            return False, build_validation_error_report(me, args)
+        # update 'ManageErrata' reason object with details
+        update_manage_errata_reason(me, et)
+        # process errata changes
+        response, http_code = me.post()
+        return http_code == 200, response
+
+    def _update_errata(
+        self, et: ErrataUpdate, errata: Errata
+    ) -> tuple[bool, dict[str, Any]]:
+        args = {
+            "payload": build_manage_errata_payload(
+                user=self.reason.actor.name,
+                reason=build_reason_string(et),
+                action=CHANGE_ACTION_UPDATE,
+                errata=errata,
+            ),
+            "transaction_id": self.transaction_id,
+            DRY_RUN_KEY: self.dry_run,
+            CHANGE_SOURCE_KEY: CHANGE_SOURCE_AUTO,
+        }
+        me = ManageErrata(connection=self.conn, **args)
+        # validate input
+        if not me.check_params_put():
+            return False, build_validation_error_report(me, args)
+        # update 'ManageErrata' reason object with details
+        update_manage_errata_reason(me, et)
+        # process errata changes
+        response, http_code = me.put()
+        return http_code == 200, response
+
+    def _process_create_errata(self, bdus_by_cve: dict[str, set[str]]) -> None:
+        # sort and merge erratas to be created if any
+        erratas_to_create = sort_erratas_by_source(self._erratas_to_create)
+
+        uniq_cves: dict[ErrataTupleT, set[str]] = {}
+        uniq_idxs: dict[ErrataTupleT, int] = {}
+
+        for idx, errata in enumerate(erratas_to_create):
+            t = errata.ep.task
+            e_tpl = (t.branch, t.task_id, t.subtask_id)
+            if e_tpl not in uniq_cves:
+                uniq_cves[e_tpl] = set(errata.cve_ids)
+                uniq_idxs[e_tpl] = idx
+            else:
+                diff = set(errata.cve_ids).difference(uniq_cves[e_tpl])
+                if diff:
+                    # merge EPs has different CVE IDs
+                    uniq_cves[e_tpl].update(diff)
+
+        # store erratas to be created
+        for key_tpl, idx in uniq_idxs.items():
+            cve_ids = uniq_cves[key_tpl]
+            et = erratas_to_create[idx]
+            # create errata here
+            errata = build_errata_create(et, cve_ids, bdus_by_cve)
+            status, result = self._create_errata(et, errata)
+            if not status:
+                self.store_error(
+                    {
+                        "message": (
+                            "Failed to create Errata in DB for : "
+                            f"{errata.task_id}.{errata.subtask_id} : {errata.pkg_name}"
+                        ),
+                        "details": result,
+                    },
+                    severity=self.LL.ERROR,
+                    http_code=400,
+                )
+                raise ErrataHandlerError("Failed to update Errata")
+            self.errata_records.extend(
+                result.get(ERRATA_MANAGE_RESPONSE_ERRATA_FIELD, [])
+            )
+            self.errata_change_records.extend(
+                result.get(ERRATA_MANAGE_RESPONSE_ERRATA_CHANGE_FIELD, [])
+            )
+
+    def _process_update_errata(self, bdus_by_cve: dict[str, set[str]]) -> None:
+        # sort and merge erratas to be updated if any
+        erratas_to_update = sort_erratas_by_source(self._erratas_to_update)
+
+        uniq_cves: dict[ErrataTupleT, set[str]] = {}
+        uniq_idxs: dict[ErrataTupleT, int] = {}
+
+        for idx, errata in enumerate(erratas_to_update):
+            t = errata.ep.task
+            e_tpl = (t.branch, t.task_id, t.subtask_id)
+            if e_tpl not in uniq_cves:
+                uniq_cves[e_tpl] = set(errata.cve_ids)
+                uniq_idxs[e_tpl] = idx
+            else:
+                diff = set(errata.cve_ids).difference(uniq_cves[e_tpl])
+                if diff:
+                    # merge EPs has different CVE IDs
+                    uniq_cves[e_tpl].update(diff)
+
+        # store erratas to be created
+        for key_tpl, idx in uniq_idxs.items():
+            cve_ids = uniq_cves[key_tpl]
+            et = erratas_to_update[idx]
+            # update errata here
+            errata = build_errata_update(et, cve_ids, bdus_by_cve)
+            status, result = self._update_errata(et, errata)
+            if not status:
+                self.store_error(
+                    {
+                        "message": f"Failed to update Errata in DB: {errata.id}",
+                        "details": result,
+                    },
+                    severity=self.LL.ERROR,
+                    http_code=400,
+                )
+                raise ErrataHandlerError("Failed to update Errata")
+            self.errata_records.extend(
+                result.get(ERRATA_MANAGE_RESPONSE_ERRATA_FIELD, [])
+            )
+            self.errata_change_records.extend(
+                result.get(ERRATA_MANAGE_RESPONSE_ERRATA_CHANGE_FIELD, [])
+            )
+
+    def add_errata_create_from_ep(self, ep: ErrataPoint, pcm: PackageCveMatch):
+        reason = self.reason.clone()
+        reason.details["from"] = build_errata_details(
+            CHANGE_ACTION_CREATE, SOURCE_ERRATA_POINT, ep=ep, pcm=pcm
+        )
+        self._erratas_to_create.append(
+            ErrataCreate(reason=reason, ep=ep, cve_ids=(pcm.vuln_id,))
+        )
+
+    def add_errata_create_from_chlog(self, ep: ChangelogErrataPoint):
+        reason = self.reason.clone()
+        reason.details["from"] = build_errata_details(
+            CHANGE_ACTION_CREATE, SOURCE_CHANGELOG, ep=ep
+        )
+        self._erratas_to_create.append(
+            ErrataCreate(reason=reason, ep=ep, cve_ids=ep.cve_ids)
+        )
+
+    def add_errata_update_from_ep(
+        self, errata: Errata, ep: ErrataPoint, pcm: PackageCveMatch
+    ):
+        reason = self.reason.clone()
+        reason.details["from"] = build_errata_details(
+            CHANGE_ACTION_UPDATE, SOURCE_ERRATA_POINT, errata=errata, ep=ep, pcm=pcm
+        )
+        self._erratas_to_update.append(
+            ErrataUpdate(reason=reason, errata=errata, ep=ep, cve_ids=(pcm.vuln_id,))
+        )
+
+    def add_errata_update_from_chlog(self, errata: Errata, ep: ChangelogErrataPoint):
+        reason = self.reason.clone()
+        reason.details["from"] = build_errata_details(
+            CHANGE_ACTION_UPDATE, SOURCE_CHANGELOG, errata=errata, ep=ep
+        )
+        self._erratas_to_update.append(
+            ErrataUpdate(reason=reason, errata=errata, ep=ep, cve_ids=ep.cve_ids)
+        )
+
+    def commit(self) -> None:
+        # collect CVE to BDU mapping
+        cve_ids = {c for e in self._erratas_to_update for c in e.cve_ids}
+        cve_ids.update({c for e in self._erratas_to_create for c in e.cve_ids})
+
+        bdus_by_cve = get_bdus_by_cves(self, cve_ids)
+        if not self.status:
+            raise ErrataHandlerError("Failed to get BDUs by CVEs")
+
+        self._process_create_errata(bdus_by_cve)
+        self._process_update_errata(bdus_by_cve)
+
+        # all errata updates are completed without errors
+        self.is_transaction_completed = True
+
+
+# helper functions
+T = TypeVar("T", bound=ErrataT)
+
+
+def sort_erratas_by_source(erratas: list[T]) -> list[T]:
+    def key(e: T) -> int:
+        return SOURCE_ORDER[e.reason.details["from"]["source"]]
+
+    return sorted(erratas, key=key)
+
+
+def build_manage_errata_payload(
     user: str, reason: str, action: str, errata: Errata
 ) -> dict[str, Any]:
     return {"user": user, "reason": reason, "action": action, "errata": errata.asdict()}
+
+
+def update_manage_errata_reason(me: ManageErrata, et: ErrataT) -> None:
+    me.reason.details.update(et.reason.details)
+    me.reason.details["original_message"] = et.reason.message
 
 
 def build_validation_error_report(worker: APIWorker, args: Any) -> dict[str, Any]:
@@ -110,227 +358,78 @@ def build_errata_details(action: str, source: str, **kwargs) -> dict[str, Any]:
     return result
 
 
-class ErrataCreate(NamedTuple):
-    reason: ChangeReason
-    ep: Union[ErrataPoint, ChangelogErrataPoint]
-    cve_ids: tuple[str, ...]
+def build_reason_string(et: ErrataT) -> str:
+    message: list[str] = []
+
+    if isinstance(et, ErrataCreate):
+        message = ["Create Errata on"]
+    else:
+        message = [f"Update Errata {et.errata.id} on"]
+
+    if isinstance(et.ep, ErrataPoint):
+        message.append(f"manage CPE '{et.ep.cvm.versions.cpe}'")
+    else:
+        message.append(f"package changelog parse [{et.ep.evr}]")
+
+    message.extend(
+        [
+            "for package",
+            f"{et.ep.task.name} {et.ep.task.version}-{et.ep.task.release}",
+            f"[{et.ep.task.task_id}:{et.ep.task.subtask_id}] in '{et.ep.task.branch}'",
+        ]
+    )
+
+    return " ".join(message)
 
 
-class ErrataUpdate(NamedTuple):
-    reason: ChangeReason
-    errata: Errata
-    ep: Union[ErrataPoint, ChangelogErrataPoint]
-    cve_ids: tuple[str, ...]
+def build_errata_create(
+    ec: ErrataCreate, cve_ids: set[str], bdus_by_cve: dict[str, set[str]]
+) -> Errata:
+
+    references = []
+    for cve_id in cve_ids:
+        references.append(Reference(VULN_REFERENCE_TYPE, cve_id))
+        for bdu_id in bdus_by_cve.get(cve_id, set()):
+            references.append(Reference(VULN_REFERENCE_TYPE, bdu_id))
+
+    references = sorted(references)
+
+    errata = Errata(
+        id=None,
+        type=TASK_PACKAGE_ERRATA_TYPE,
+        source=TASK_PACKAGE_ERRATA_SOURCE,
+        created=DT_NEVER,
+        updated=DT_NEVER,
+        pkg_hash=ec.ep.task.hash,
+        pkg_name=ec.ep.task.name,
+        pkg_version=ec.ep.task.version,
+        pkg_release=ec.ep.task.release,
+        pkgset_name=ec.ep.task.branch,
+        task_id=ec.ep.task.task_id,
+        subtask_id=ec.ep.task.subtask_id,
+        task_state=TASK_STATE_DONE,
+        references=references,
+        hash=0,
+        is_discarded=False,
+    )
+
+    return errata
 
 
-ErrataT = Union[ErrataCreate, ErrataUpdate]
+def build_errata_update(
+    eu: ErrataUpdate, cve_ids: set[str], bdus_by_cve: dict[str, set[str]]
+) -> Errata:
+    errata = eu.errata
+    references = errata.references[:]
+    linked_vulns = {r.link for r in references}
 
+    # append new CVE and realted BDU references if not exists
+    for cve_id in cve_ids.difference(linked_vulns):
+        references.append(Reference(VULN_REFERENCE_TYPE, cve_id))
+        for bdu_id in bdus_by_cve.get(cve_id, set()).difference(linked_vulns):
+            references.append(Reference(VULN_REFERENCE_TYPE, bdu_id))
 
-T = TypeVar("T", bound=ErrataT)
+    errata = errata.update(references=sorted(references))
+    errata = errata.update(hash=errata_hash(errata))
 
-
-def sort_erratas_by_source(erratas: list[T]) -> list[T]:
-    def key(e: T) -> int:
-        return SOURCE_ORDER[e.reason.details["from"]["source"]]
-
-    return sorted(erratas, key=key)
-
-
-class ErrataHandler(APIWorker):
-    """Handles Errata records modification."""
-
-    def __init__(
-        self, connection, reason: ChangeReason, transaction_id: UUID, dry_run: bool
-    ):
-        self.transaction_id = transaction_id
-        self.reason = reason
-        self.dry_run = dry_run
-        self.conn = connection
-        self.sql = sql
-        self.errata_records: list[dict[str, Any]] = []
-        self.errata_change_records: list[dict[str, Any]] = []
-        self.is_transaction_completed = False
-        self._erratas_to_create: list[ErrataCreate] = []
-        self._erratas_to_update: list[ErrataUpdate] = []
-        super().__init__()
-
-    def _create_errata(
-        self, reason: str, errata: Errata
-    ) -> tuple[bool, dict[str, Any]]:
-        args = {
-            "payload": build_em_payload(
-                user=self.reason.actor.name,
-                reason=reason,
-                action=CHANGE_ACTION_CREATE,
-                errata=errata,
-            ),
-            "transaction_id": self.transaction_id,
-            DRY_RUN_KEY: self.dry_run,
-            CHANGE_SOURCE_KEY: CHANGE_SOURCE_AUTO,
-        }
-        me = ManageErrata(connection=self.conn, **args)
-        # validate input
-        if not me.check_params_post():
-            return False, build_validation_error_report(me, args)
-        # process errata changes
-        response, http_code = me.post()
-        return http_code == 200, response
-
-    def _update_errata(
-        self, reason: str, errata: Errata
-    ) -> tuple[bool, dict[str, Any]]:
-        args = {
-            "payload": build_em_payload(
-                user=self.reason.actor.name,
-                reason=reason,
-                action=CHANGE_ACTION_UPDATE,
-                errata=errata,
-            ),
-            "transaction_id": self.transaction_id,
-            DRY_RUN_KEY: self.dry_run,
-            CHANGE_SOURCE_KEY: CHANGE_SOURCE_AUTO,
-        }
-        me = ManageErrata(connection=self.conn, **args)
-        # validate input
-        if not me.check_params_put():
-            return False, build_validation_error_report(me, args)
-        # process errata changes
-        response, http_code = me.put()
-        return http_code == 200, response
-
-    def add_errata_create_from_ep(self, ep: ErrataPoint, pcm: PackageCveMatch):
-        reason = self.reason.clone()
-        reason.details["from"] = build_errata_details(
-            CHANGE_ACTION_CREATE, SOURCE_ERRATA_POINT, ep=ep, pcm=pcm
-        )
-        self._erratas_to_create.append(
-            ErrataCreate(reason=reason, ep=ep, cve_ids=(pcm.vuln_id,))
-        )
-
-    def add_errata_create_from_chlog(self, ep: ChangelogErrataPoint):
-        reason = self.reason.clone()
-        reason.details["from"] = build_errata_details(
-            CHANGE_ACTION_CREATE, SOURCE_CHANGELOG, ep=ep
-        )
-        self._erratas_to_create.append(
-            ErrataCreate(reason=reason, ep=ep, cve_ids=ep.cve_ids)
-        )
-
-    def add_errata_update_from_ep(
-        self, errata: Errata, ep: ErrataPoint, pcm: PackageCveMatch
-    ):
-        reason = self.reason.clone()
-        reason.details["from"] = build_errata_details(
-            CHANGE_ACTION_UPDATE, SOURCE_ERRATA_POINT, errata=errata, ep=ep, pcm=pcm
-        )
-        self._erratas_to_update.append(
-            ErrataUpdate(reason=reason, errata=errata, ep=ep, cve_ids=(pcm.vuln_id,))
-        )
-
-    def add_errata_update_from_chlog(self, errata: Errata, ep: ChangelogErrataPoint):
-        reason = self.reason.clone()
-        reason.details["from"] = build_errata_details(
-            CHANGE_ACTION_UPDATE, SOURCE_CHANGELOG, errata=errata, ep=ep
-        )
-        self._erratas_to_update.append(
-            ErrataUpdate(reason=reason, errata=errata, ep=ep, cve_ids=ep.cve_ids)
-        )
-
-    def commit(self) -> None:
-        # collect CVE to BDU mapping
-        cve_ids = {c for e in self._erratas_to_update for c in e.cve_ids}
-        cve_ids.update({c for e in self._erratas_to_create for c in e.cve_ids})
-
-        bdus_by_cve = get_bdus_by_cves(self, cve_ids)
-        if not self.status:
-            raise ErrataHandlerError("Failed to get BDUs by CVEs")
-
-        # XXX: combine erratas to be created if any
-        pass
-
-        e2c = sort_erratas_by_source(self._erratas_to_create)
-
-        uniq: dict[tuple[str, int, int], set[str]] = {}
-        uniq_idxs: dict[tuple[str, int, int], int] = {}
-
-        for idx, e in enumerate(e2c):
-            t = e.ep.task
-            e_tpl = (t.branch, t.task_id, t.subtask_id)
-            if e_tpl not in uniq:
-                uniq[e_tpl] = set(e.cve_ids)
-                uniq_idxs[e_tpl] = idx
-            else:
-                diff = set(e.cve_ids).difference(uniq[e_tpl])
-                if diff:
-                    # TODO: do something with same EP has different CVE IDs
-                    print("DBG", diff, e)
-                    uniq[e_tpl].update(diff)
-
-        print("DBG", uniq)
-        print("DBG", uniq_idxs)
-
-        for key_tpl, idx in uniq_idxs.items():
-            cve_ids = uniq[key_tpl]
-            ep = e2c[idx]
-            # FIXME: create errata here
-            pass
-
-        raise RuntimeError("STOP")
-
-        # XXX: combine erratas to be updated if any
-        pass
-
-        # for errata in build_erratas_update(erratas_for_update, bdus_by_cve):
-        #     status, result = self._update_errata(errata)
-        #     if not status:
-        #         self.store_error(
-        #             {
-        #                 "message": f"Failed to update Errata in DB: {errata.id}",
-        #                 "details": result,
-        #             },
-        #             severity=self.LL.ERROR,
-        #             http_code=400,
-        #         )
-        #         raise ErrataHandlerError("Failed to update Errata")
-        #     self.errata_records.extend(
-        #         result.get(ERRATA_MANAGE_RESPONSE_ERRATA_FIELD, [])
-        #     )
-        #     self.errata_change_records.extend(
-        #         result.get(ERRATA_MANAGE_RESPONSE_ERRATA_CHANGE_FIELD, [])
-        #     )
-
-        # for errata in build_erratas_create(erratas_for_create, bdus_by_cve):
-        #     status, result = self._create_errata(errata)
-        #     if not status:
-        #         self.store_error(
-        #             {
-        #                 "message": (
-        #                     "Failed to create Errata in DB for : "
-        #                     f"{errata.task_id}.{errata.subtask_id} : {errata.pkg_name}"
-        #                 ),
-        #                 "details": result,
-        #             },
-        #             severity=self.LL.ERROR,
-        #             http_code=400,
-        #         )
-        #         raise ErrataHandlerError("Failed to update Errata")
-        #     self.errata_records.extend(
-        #         result.get(ERRATA_MANAGE_RESPONSE_ERRATA_FIELD, [])
-        #     )
-        #     self.errata_change_records.extend(
-        #         result.get(ERRATA_MANAGE_RESPONSE_ERRATA_CHANGE_FIELD, [])
-        #     )
-
-        raise RuntimeError("STOP")
-
-        # all errata updates are completed without errors
-        self.is_transaction_completed = True
-
-    def rollback(self) -> bool:
-        # FIXME: implement errata changes rollback using `tarnsacion_id`` and
-        # `ErrataChangeHistory` table contents here!
-        if self.dry_run:
-            self.logger.warning("DRY_RUN: Errata manage transaction rollback")
-            return True
-        self.logger.warning("Errata manage transaction rollback")
-        return False
+    return errata
