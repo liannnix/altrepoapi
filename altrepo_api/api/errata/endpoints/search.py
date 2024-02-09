@@ -15,8 +15,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
-from dataclasses import dataclass, field, asdict
 
+from dataclasses import dataclass, field
 from typing import NamedTuple, Any, Union
 
 from altrepo_api.api.base import APIWorker

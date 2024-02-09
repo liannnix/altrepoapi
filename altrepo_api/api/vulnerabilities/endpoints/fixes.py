@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 from datetime import datetime
 from typing import Union, Any, Iterable, NamedTuple
 
@@ -183,7 +183,7 @@ class VulnFixes(APIWorker):
         return pkg_tasks
 
     def _get_done_tasks_history(
-        self, branches: tuple[str]
+        self, branches: tuple[str, ...]
     ) -> Union[dict[int, TaskHistory], None]:
         """
         Get a list of tasks history in the `DONE` status for each branch of the package.
@@ -332,6 +332,7 @@ class VulnFixes(APIWorker):
         """
         Sort the Erratas list by task state.
         """
+
         def _task_state_index(state: str) -> int:
             return {
                 "DONE": 0,
