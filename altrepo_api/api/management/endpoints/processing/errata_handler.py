@@ -385,7 +385,6 @@ def build_reason_string(et: ErrataT) -> str:
 def build_errata_create(
     ec: ErrataCreate, cve_ids: set[str], bdus_by_cve: dict[str, set[str]]
 ) -> Errata:
-
     references = []
     for cve_id in cve_ids:
         references.append(Reference(VULN_REFERENCE_TYPE, cve_id))

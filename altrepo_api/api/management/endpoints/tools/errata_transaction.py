@@ -215,9 +215,7 @@ class Transaction:
             old_eid=bulletin.id,
         )
 
-    def commit(
-        self, reason: ChangeReason, ec_id: Union[str, None]
-    ):
+    def commit(self, reason: ChangeReason, ec_id: Union[str, None]):
         self._ec_id = ec_id
         logger.info("Commtinig errata manage transaction")
         # build errata history records

@@ -29,7 +29,8 @@ UUID_T = Union[str, UUID]
 
 
 class RollbackCB(Protocol):
-    def __call__(self, transaction_id: UUID_T) -> bool: ...
+    def __call__(self, transaction_id: UUID_T) -> bool:
+        ...
 
 
 class ErrataManageError(Exception):

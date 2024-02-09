@@ -822,7 +822,6 @@ class ManageCpe(APIWorker):
 
 
 class CPEListArgs(NamedTuple):
-
     input: Union[str, None]
     is_discarded: bool
     limit: Union[int, None]
