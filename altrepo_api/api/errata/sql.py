@@ -459,11 +459,11 @@ errata_branches AS (
     )
     GROUP BY errata_id
 )
-SELECT 
-    HSH.pkg_hash, 
-    HSH.pkg_name AS bin_pkg_name, 
-    ER.*, 
-    if(DE.discarded_id != '', 1, 0) AS discard 
+SELECT
+    HSH.pkg_hash,
+    HSH.pkg_name AS bin_pkg_name,
+    ER.*,
+    if(DE.discarded_id != '', 1, 0) AS discard
 FROM (
     SELECT * FROM errata_tasks
     UNION ALL
