@@ -461,6 +461,8 @@ class ManageCpe(APIWorker):
             for p in (PncRecord(*el) for el in response):
                 db_cpes.setdefault(p.pkg_name, []).append(p)
 
+        pncr = cpe_record2pnc_record(self.cpe)
+
         # check if any records already exists in DB
         if db_cpes:
             pncr = cpe_record2pnc_record(self.cpe)
@@ -481,9 +483,7 @@ class ManageCpe(APIWorker):
             return self.error
 
         # create and store new CPE match records
-        self.trx.register_pnc_create(
-            pnc=cpe_record2pnc_record(self.cpe), pnc_type=PncType.CPE
-        )
+        self.trx.register_pnc_create(pnc=pncr, pnc_type=PncType.CPE)
         self.trx.commit(self.reason)
 
         if self._related_packages:
@@ -504,6 +504,17 @@ class ManageCpe(APIWorker):
             matcher.match_cpe_add(pkg_cpe_pairs)
 
             pcms = matcher.packages_cve_matches
+            # XXX: if all packages' CVE matches already loaded use hashes from matcher
+            if not pcms and matcher.packages_cve_match_hashes:
+                self.logger.info(
+                    "Got no new packages' CVE matches, use existing hashes"
+                )
+                pcms = self._get_pkgss_cve_matches_by_hashes(
+                    matcher.packages_cve_match_hashes
+                )
+                if not self.status:
+                    return self.error
+
             self._related_cve_ids = sorted({m.vuln_id for m in pcms})
 
             if not self.dry_run:
@@ -515,8 +526,12 @@ class ManageCpe(APIWorker):
             # collect packages info from latest branch states
             self._packages_cve_matches = self._collect_packages_cve_match_info(pcms)
 
-            # FIXME: update or create erratas
-            raise NotImplementedError("Errata processing not implemented")
+            # XXX: update or create erratas
+            try:
+                self.eb.build_erratas_on_cpe_add(pcms)
+            except ErrataBuilderError:
+                self.logger.error("Failed to build erratas")
+                return self.eb.error
 
         return self._commit_or_rollback()
 
@@ -640,7 +655,7 @@ class ManageCpe(APIWorker):
                 self.logger.error("Failed to build erratas")
                 return self.eb.error
 
-            return self._commit_or_rollback()
+        return self._commit_or_rollback()
 
     def delete(self):
         """Handles CPE record discard.
