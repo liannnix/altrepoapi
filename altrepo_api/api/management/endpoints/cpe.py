@@ -42,6 +42,7 @@ from .processing.base import (
     cpe_record2pnc_record,
     uniq_pcm_records,
 )
+from .processing.helpers import cpe_transaction_rollback
 from .tools.base import ChangeReason, ChangeSource, PncRecord, UserInfo
 from .tools.constants import (
     CHANGE_ACTION_CREATE,
@@ -138,19 +139,20 @@ class ManageCpe(APIWorker):
     def __init__(self, connection, payload, **kwargs):
         self.payload: dict[str, Any] = payload
         self.dry_run = kwargs.get(DRY_RUN_KEY, False)
-        # FIXME: change_source set to 'AUTO' to be used during Erratas updates
-        # self.change_source = ChangeSource.from_string(
-        #     kwargs.get(CHANGE_SOURCE_KEY, CHANGE_SOURCE_MANUAL)
-        # )
         self.change_source = ChangeSource.AUTO
         self.conn = connection
         self.args = kwargs
         self.sql = sql
         self.trx = Transaction(source=ChangeSource.MANUAL)
+        # private fields
+        self._related_packages: list[str] = []
+        self._related_cve_ids: list[str] = []
+        self._packages_cve_matches: list[dict[str, Any]] = []
         # values set in self.check_params_xxx() call
         self.action: str
         self.reason: ChangeReason
         self.cpe: CpeRecord
+        self.eb: ErrataBuilder
         super().__init__()
 
     def _valiadte_and_parse(self):
@@ -163,6 +165,15 @@ class ManageCpe(APIWorker):
             ),
             message=self.payload.get("reason", ""),
             details={},
+        )
+
+        # inirtialize ErrataBuilder
+        self.eb = ErrataBuilder(
+            connection=self.conn,
+            branches=lut.errata_manage_branches_with_tasks,
+            reason=self.reason,
+            transaction_id=self.trx.id,
+            dry_run=self.dry_run,
         )
 
         self.action = self.payload.get("action", "")
@@ -246,6 +257,71 @@ class ManageCpe(APIWorker):
 
         self.status = True
         return [PackageCveMatch(*el) for el in response]
+
+    def _commit_or_rollback(self):
+        status = False
+        errors = []
+
+        class CommitError(Exception):
+            pass
+
+        try:
+            # store Erratas' changes
+            try:
+                self.eb.commit()
+            except ErrataBuilderError:
+                self.logger.error("Failed to build erratas")
+                errors.append(self.eb.error)
+                raise CommitError
+            # store PNC records changes
+            if not self.dry_run:
+                # XXX: data save order is important here!
+                # 1. store `PncChangeHistory` records
+                store_pnc_change_records(self, self.trx.pnc_change_records)
+                if not self.sql_status:
+                    errors.append(self.error)
+                    raise CommitError
+                # 2. stor `PackagesNameConversion` records
+                store_pnc_records(self, self.trx.pnc_records)
+                if not self.sql_status:
+                    errors.append(self.error)
+                    raise CommitError
+        except CommitError:
+            status = self.eb.rollback()
+            if not status:
+                errors.extend(self.eb.rollback_errors)
+            status = self.trx.rollback(cpe_transaction_rollback(self))
+            if not status:
+                errors.extend(self.error)
+        else:
+            # happy path
+            self.logger.info(
+                f"All changes comitted to DB for transaction {self.trx.id}"
+            )
+            return {
+                "user": self.reason.actor.name,
+                "action": self.action,
+                "reason": self.reason.message,
+                "message": "OK",
+                "cpe": self.cpe.asdict(),
+                "related_packages": self._related_packages,
+                "related_cve_ids": self._related_cve_ids,
+                "cpe_records": [r.asdict() for r in self.trx.pnc_records],
+                "cpe_change_records": [r.asdict() for r in self.trx.pnc_change_records],
+                "errata_records": self.eb.errata_records,
+                "errata_change_records": self.eb.errata_change_records,
+                "packages_cve_matches": self._packages_cve_matches,
+            }, 200
+
+        # errors occured during rollback
+        return self.store_error(
+            {
+                "message": "Errors occured while commiting changes to DB",
+                "errors": errors,
+            },
+            self.LL.CRITICAL,
+            500,
+        )
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
@@ -398,7 +474,7 @@ class ManageCpe(APIWorker):
                     )
 
         # check if there is any packages that affected by added CPE records in branches
-        related_packages = get_related_packages_by_project_name(
+        self._related_packages = get_related_packages_by_project_name(
             self, [self.cpe.project_name]
         )
         if not self.status:
@@ -408,20 +484,9 @@ class ManageCpe(APIWorker):
         self.trx.register_pnc_create(
             pnc=cpe_record2pnc_record(self.cpe), pnc_type=PncType.CPE
         )
-
         self.trx.commit(self.reason)
 
-        related_cve_ids: list[str] = []
-        packages_cve_matches: list[dict[str, Any]] = []
-        eb = ErrataBuilder(
-            connection=self.conn,
-            branches=lut.errata_manage_branches_with_tasks,
-            reason=self.reason,
-            transaction_id=self.trx._id,
-            dry_run=self.dry_run,
-        )
-
-        if related_packages:
+        if self._related_packages:
             # update PackagesCveMatch table
             pkg_cpe_pairs = [
                 PackageCpePair(name=self.cpe.project_name, cpe=str(self.cpe.cpe))
@@ -439,7 +504,7 @@ class ManageCpe(APIWorker):
             matcher.match_cpe_add(pkg_cpe_pairs)
 
             pcms = matcher.packages_cve_matches
-            related_cve_ids = sorted({m.vuln_id for m in pcms})
+            self._related_cve_ids = sorted({m.vuln_id for m in pcms})
 
             if not self.dry_run:
                 matcher.store()
@@ -448,34 +513,12 @@ class ManageCpe(APIWorker):
             del matcher
 
             # collect packages info from latest branch states
-            packages_cve_matches = self._collect_packages_cve_match_info(pcms)
+            self._packages_cve_matches = self._collect_packages_cve_match_info(pcms)
 
             # FIXME: update or create erratas
             raise NotImplementedError("Errata processing not implemented")
 
-        # store PNC and PNC change records
-        if not self.dry_run:
-            store_pnc_records(self, self.trx.pnc_records)
-            if not self.sql_status:
-                return self.error
-            store_pnc_change_records(self, self.trx.pnc_change_records)
-            if not self.sql_status:
-                return self.error
-
-        return {
-            "user": self.reason.actor.name,
-            "action": self.action,
-            "reason": self.reason.message,
-            "message": "OK",
-            "cpe": self.cpe.asdict(),
-            "related_packages": related_packages,
-            "related_cve_ids": related_cve_ids,
-            "cpe_records": [r.asdict() for r in self.trx.pnc_records],
-            "cpe_change_records": [r.asdict() for r in self.trx.pnc_change_records],
-            "errata_records": eb.eh.errata_records,
-            "errata_change_records": eb.eh.errata_change_records,
-            "packages_cve_matches": packages_cve_matches,
-        }, 200
+        return self._commit_or_rollback()
 
     def put(self):
         """Handles CPE record update.
@@ -540,7 +583,7 @@ class ManageCpe(APIWorker):
                 }, 200
 
         # check if there is any packages that affected by added CPE records in branches
-        related_packages = get_related_packages_by_project_name(
+        self._related_packages = get_related_packages_by_project_name(
             self, [self.cpe.project_name]
         )
         if not self.status:
@@ -550,17 +593,7 @@ class ManageCpe(APIWorker):
         self.trx.register_pnc_create(pnc=pncr, pnc_type=PncType.CPE)
         self.trx.commit(self.reason)
 
-        related_cve_ids: list[str] = []
-        packages_cve_matches: list[dict[str, Any]] = []
-        eb = ErrataBuilder(
-            connection=self.conn,
-            branches=lut.errata_manage_branches_with_tasks,
-            reason=self.reason,
-            transaction_id=self.trx._id,
-            dry_run=self.dry_run,
-        )
-
-        if related_packages:
+        if self._related_packages:
             # update PackagesCveMatch table
             pkg_cpe_pairs = [
                 PackageCpePair(name=self.cpe.project_name, cpe=str(self.cpe.cpe))
@@ -589,7 +622,7 @@ class ManageCpe(APIWorker):
                 if not self.status:
                     return self.error
 
-            related_cve_ids = sorted({m.vuln_id for m in pcms})
+            self._related_cve_ids = sorted({m.vuln_id for m in pcms})
 
             if not self.dry_run:
                 matcher.store()
@@ -598,39 +631,16 @@ class ManageCpe(APIWorker):
             del matcher
 
             # collect packages info from latest branch states
-            packages_cve_matches = self._collect_packages_cve_match_info(pcms)
+            self._packages_cve_matches = self._collect_packages_cve_match_info(pcms)
 
             # XXX: update or create erratas
             try:
-                eb.build_erratas_on_cpe_add(pcms)
-                eb.commit()
+                self.eb.build_erratas_on_cpe_add(pcms)
             except ErrataBuilderError:
                 self.logger.error("Failed to build erratas")
-                return eb.error
+                return self.eb.error
 
-        # store PNC and PNC change records
-        if not self.dry_run:
-            store_pnc_records(self, self.trx.pnc_records)
-            if not self.sql_status:
-                return self.error
-            store_pnc_change_records(self, self.trx.pnc_change_records)
-            if not self.sql_status:
-                return self.error
-
-        return {
-            "user": self.reason.actor.name,
-            "action": self.action,
-            "reason": self.reason.message,
-            "message": "OK",
-            "cpe": self.cpe.asdict(),
-            "related_packages": related_packages,
-            "related_cve_ids": related_cve_ids,
-            "cpe_records": [r.asdict() for r in self.trx.pnc_records],
-            "cpe_change_records": [r.asdict() for r in self.trx.pnc_change_records],
-            "errata_records": eb.eh.errata_records,
-            "errata_change_records": eb.eh.errata_change_records,
-            "packages_cve_matches": packages_cve_matches,
-        }, 200
+            return self._commit_or_rollback()
 
     def delete(self):
         """Handles CPE record discard.
@@ -639,6 +649,9 @@ class ManageCpe(APIWorker):
             - 400 (Bad request) on paload validation errors
             - 404 (Not found) if CPE record is discarded already or does not exists
         """
+
+        raise NotImplementedError("Errata processing not implemented")
+
         # # get CPE match records by `project_name`
         # db_cpes: dict[str, list[PncRecord]] = {}
         # response = self.send_sql_request(
@@ -792,43 +805,9 @@ class ManageCpe(APIWorker):
         #     "packages_cve_matches": packages_cve_matches,
         # }, 200
 
-    # def _store_or_rollback(
-    #     self, eh: ErrataHandler, eb: ErrataBuilder, pcms: list[PackageCveMatch]
-    # ) -> tuple[bool, Union[None, tuple[Any, int]]]:
-    #     error: Union[None, tuple[Any, int]] = None
-
-    #     class CommitError(Exception):
-    #         pass
-
-    #     try:
-    #         # update or create erratas
-    #         try:
-    #             erratas = eb.build_erratas_on_cpe_add(pcms)
-    #             eh.commit(*erratas)
-    #         except ErrataBuilderError:
-    #             error = eb.error
-    #             self.logger.error("Failed to build erratas")
-    #             raise CommitError()
-    #         except ErrataHandlerError:
-    #             error = eh.error
-    #             self.logger.error("Failed to store erratas' changes")
-    #             raise CommitError()
-    #     except CommitError:
-    #         self.logger.error(
-    #             "Failed to store changes to DB. "
-    #             f"Rolling back transaction {self.trx._id}"
-    #         )
-    #         # collect affected Errata IDs
-    #         pass
-    #         # delete affected erratas by IDs
-    #         pass
-    #         # delete created PNC change records
-    #         return False, error
-
-    #     return True, None
-
 
 class CPEListArgs(NamedTuple):
+
     input: Union[str, None]
     is_discarded: bool
     limit: Union[int, None]
