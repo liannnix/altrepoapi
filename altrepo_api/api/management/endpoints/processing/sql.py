@@ -227,5 +227,20 @@ DLETE FROM ErrataChangeHistory WHERE transaction_id = '{transaction_id}'
 DLETE FROM PncChangeHistory WHERE transaction_id = '{transaction_id}'
 """
 
+    get_pnc_records_by_transaction_id = """
+SELECT
+    pkg_name,
+    pnc_result,
+    pnc_state
+FROM PncChangeHistory
+WHERE transaction_id = '{transaction_id}'
+"""
+
+    delete_pnc_records = """
+DELETE FROM PackagesNameConversion
+WHERE pnc_type = 'cpe'
+    AND (pkg_name, pnc_result, pnc_state) IN {tmp_table}
+"""
+
 
 sql = SQL()

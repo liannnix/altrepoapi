@@ -14,8 +14,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from functools import partial
 from logging import Logger
-from typing import Any, Iterable, Protocol
+from typing import Any, Iterable, NamedTuple, Protocol
 
 from altrepo_api.utils import make_tmp_table_name
 
@@ -26,14 +27,13 @@ from .base import (
     PackageTask,
     PackageVersion,
 )
-from .sql import SQL
-from ..tools.base import Errata, ErrataID, Reference
+from .sql import SQL, sql
+from ..tools.base import Errata, ErrataID, Reference, RollbackCB, UUID_T
 from ..tools.changelog import ChangelogRecord, PackageChangelog, split_evr
 from ..tools.constants import CVE_ID_TYPE
 
 
-class _pAPIWorker(Protocol):
-    sql: SQL
+class _pAPIWorkerBase(Protocol):
     status: bool
     sql_status: bool
     logger: Logger
@@ -45,6 +45,10 @@ class _pAPIWorker(Protocol):
     def send_sql_request(
         self, request_line: Any, http_code: int = ..., **kwargs
     ) -> Any: ...
+
+
+class _pAPIWorker(_pAPIWorkerBase, Protocol):
+    sql: SQL
 
 
 class _pHasBranches(_pAPIWorker, Protocol):
@@ -380,12 +384,14 @@ def delete_errata_history_records(cls: _pAPIWorker, errata_ids: Iterable[str]) -
     return None
 
 
-def delete_errata_change_history_records(cls: _pAPIWorker, transaction_id: str) -> None:
+def delete_errata_change_history_records(
+    cls: _pAPIWorker, transaction_id: UUID_T
+) -> None:
     cls.status = False
 
     _ = cls.send_sql_request(
         cls.sql.delete_errata_change_history_records.format(
-            transaction_id=transaction_id
+            transaction_id=str(transaction_id)
         )
     )
     if not cls.sql_status:
@@ -395,14 +401,71 @@ def delete_errata_change_history_records(cls: _pAPIWorker, transaction_id: str) 
     return None
 
 
-def delete_pnc_change_history_records(cls: _pAPIWorker, transaction_id: str) -> None:
+def delete_pnc_change_history_records(
+    cls: _pAPIWorkerBase, transaction_id: UUID_T
+) -> bool:
     cls.status = False
 
+    # XXX: use 'processing.SQL' instance directly
     _ = cls.send_sql_request(
-        cls.sql.delete_pnc_change_history_records.format(transaction_id=transaction_id)
+        sql.delete_pnc_change_history_records.format(transaction_id=str(transaction_id))
     )
     if not cls.sql_status:
-        return None
+        return False
 
     cls.status = True
-    return None
+    return True
+
+
+def delete_pnc_records(cls: _pAPIWorkerBase, transaction_id: UUID_T) -> bool:
+    class PncRecord(NamedTuple):
+        pkg_name: str  # project_name
+        pnc_result: str  # CPE string
+        pnc_state: str  # state
+
+    # collect affected `PackagesNameConversion` records
+    response = cls.send_sql_request(
+        sql.get_pnc_records_by_transaction_id.format(transaction_id=str(transaction_id))
+    )
+    if cls.sql_status or not response:
+        cls.logger.error(
+            f"Failed to get `PncCHangeHistory` records for transaction '{transaction_id}'"
+        )
+        return False
+
+    tmp_table = make_tmp_table_name("pnc_records")
+    pnc_records = [PncRecord(*el) for el in response]
+
+    # delete affected `PackagesNameConversion` records
+    _ = _ = cls.send_sql_request(
+        sql.delete_errata_history_records.format(tmp_table=tmp_table),
+        external_tables=[
+            {
+                "name": tmp_table,
+                "structure": [
+                    ("pkg_name", "String"),
+                    ("pnc_result", "String"),
+                    ("pnc_state", "String"),
+                ],
+                "data": [r._asdict() for r in pnc_records],
+            },
+        ],
+    )
+    if not cls.sql_status:
+        return False
+
+    return True
+
+
+def cpe_transaction_rollback(cls: _pAPIWorkerBase) -> RollbackCB:
+    def rollback(cls: _pAPIWorkerBase, transaction_id: UUID_T) -> bool:
+        # XXX: order is important here!
+        # 1. delete `PackagesNameComversion` records
+        status = delete_pnc_records(cls, transaction_id)
+        if not status:
+            return False
+        # 2. delete `PncChangeHistory` records
+        status = delete_pnc_change_history_records(cls, transaction_id)
+        return status
+
+    return partial(rollback, cls)

@@ -25,19 +25,19 @@ from uuid import UUID
 from .constants import CHANGE_SOURCE_AUTO, CHANGE_SOURCE_MANUAL
 
 
+UUID_T = Union[str, UUID]
+
+
+class RollbackCB(Protocol):
+    def __call__(self, transaction_id: UUID_T) -> bool: ...
+
+
 class ErrataManageError(Exception):
     pass
 
 
 class PncManageError(Exception):
     pass
-
-
-class DBTransactionRollback(Protocol):
-    """Callback that rolls back DB changes using list transaction IDs."""
-
-    def __call__(self, transaction_ids: list[UUID]) -> bool:
-        ...
 
 
 class Task(NamedTuple):
@@ -220,9 +220,7 @@ class ChangeReason(NamedTuple):
 
     def clone(self) -> "ChangeReason":
         return ChangeReason(
-            actor=self.actor,
-            message=self.message,
-            details=copy.deepcopy(self.details)
+            actor=self.actor, message=self.message, details=copy.deepcopy(self.details)
         )
 
     def serialize(self) -> str:
