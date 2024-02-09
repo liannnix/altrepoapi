@@ -64,7 +64,7 @@ PARAMS = {
         "expires_access_token": ("EXPIRES_ACCESS_TOKEN", "int"),
         "expires_refresh_token": ("EXPIRES_REFRESH_TOKEN", "int"),
         "max_refresh_sessions_count": ("MAX_REFRESH_SESSIONS_COUNT", "int"),
-        "auth_cookies_options": ("AUTH_COOKIES_OPTIONS", "str")
+        "auth_cookies_options": ("AUTH_COOKIES_OPTIONS", "str"),
     },
     "redis": {"redis_url": ("REDIS_URL", "str")},
     "errata": {"errata_id_url": ("ERRATA_ID_URL", "str")},
