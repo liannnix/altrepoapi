@@ -32,7 +32,7 @@ from .base import (
     ChangeSource,
     ChangeType,
     ErrataManageError,
-    DBTransactionRollback,
+    RollbackCB,
 )
 from .constants import DT_NEVER
 
@@ -229,14 +229,12 @@ class Transaction:
         # build errata change history records
         self._handle_errata_change_history(reason)
 
-    def rollback(self, sql_callback: DBTransactionRollback) -> bool:
-        # XXX: delete DB records by transaction ID here!
-        # FIXME: need to handle ErrataID service records rollback as well
+    def rollback(self, rollback_cb: RollbackCB) -> bool:
         if self.dry_run:
             logger.warning("DRY_RUN: Errata manage transaction rollback")
             return True
         logger.warning("Errata manage transaction rollback")
-        return sql_callback([self.id])
+        return rollback_cb(self.id)
 
     def _handle_errata_change_history(self, reason: ChangeReason):
         # get new errata change ID if not provided
