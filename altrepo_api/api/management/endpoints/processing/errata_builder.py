@@ -46,8 +46,10 @@ from .helpers import (
     get_pkgs_versions,
     get_build_tasks_by_pkg_nevr,
     get_cves_versions_matches,
-    # get_related_erratas_by_cve_ids,
     get_related_erratas_by_pkgs_names,
+    get_affected_errata_ids_by_transaction_id,
+    delete_errata_history_records,
+    delete_errata_change_history_records,
 )
 from .sql import sql
 from ..tools.base import ChangeReason, Errata
@@ -57,6 +59,7 @@ from ..tools.changelog import (
     vulns_from_changelog,
     all_vulns_from_changelog,
 )
+from ..tools.errata_id import ErrataManageError, get_errataid_service, discard_errata_id
 
 
 class ErrataBuilder(APIWorker):
@@ -73,8 +76,19 @@ class ErrataBuilder(APIWorker):
         self.branches = branches
         self.conn = connection
         self.sql = sql
+        self.transaction_id = transaction_id
+        self.dry_run = dry_run
         self.eh = ErrataHandler(self.conn, reason, transaction_id, dry_run)
+        self.rollback_errors = []
         super().__init__()
+
+    @property
+    def errata_records(self):
+        return self.eh.errata_records
+
+    @property
+    def errata_change_records(self):
+        return self.eh.errata_change_records
 
     def _get_packages_versions(self, pkgs_hashes: Iterable[int]):
         """Get packages' versions info by hashes."""
@@ -108,6 +122,7 @@ class ErrataBuilder(APIWorker):
 
         cve_cpm_versions = get_cves_versions_matches(self, cpm_hashes)
         if not self.status:
+            self.store_error({"message": "Failed to get CVE versions matches from DB"})
             raise ErrataBuilderError("Failed to get CVE versions matches from DB")
         return cve_cpm_versions
 
@@ -516,4 +531,66 @@ class ErrataBuilder(APIWorker):
         try:
             self.eh.commit()
         except ErrataHandlerError as e:
+            self.error = self.eh.error
             raise ErrataBuilderError("Failed while handling Errata updates") from e
+
+    def rollback(self) -> bool:
+        # delete all `ErrataChangeHistory` and related `ErrataHistory` records
+        # using transaction ID and Errata IDs
+        if self.dry_run:
+            self.logger.warning("DRY_RUN: Errata manage transaction rollback")
+            return True
+        self.logger.warning("Errata manage transaction rollback")
+
+        # collect affected Errata IDS
+        errata_ids = get_affected_errata_ids_by_transaction_id(
+            self, str(self.transaction_id)
+        )
+        if not self.status:
+            self.rollback_errors.append(self.error)
+
+        # delete ErrataChangeHistory records
+        delete_errata_change_history_records(self, str(self.transaction_id))
+        if not self.status:
+            self.rollback_errors.append(self.error)
+
+        # delete ErrataHistory records
+        delete_errata_history_records(self, errata_ids)
+        if not self.status:
+            self.rollback_errors.append(self.error)
+
+        # discard registered Errata IDs
+        error = discard_errata_ids(self.dry_run, errata_ids)
+        if error:
+            self.store_error(
+                {"message": f"Transaction rollback failed: {error}"},
+                severity=self.LL.CRITICAL,
+                http_code=500,
+            )
+            self.rollback_errors.append(self.error)
+
+        return self.status
+
+
+def discard_errata_ids(dry_run, errata_ids: Iterable[str]) -> Optional[str]:
+    errors = []
+    ids = list(errata_ids)
+
+    try:
+        eid_service = get_errataid_service(dry_run)
+    except ErrataManageError:
+        return "Failed to connect to ErrataID service"
+
+    for idx, errata_id in enumerate(ids):
+        try:
+            discard_errata_id(eid_service, errata_id)
+        except ErrataManageError:
+            # XXX: ignore ErrataID service errors here
+            errors.append(f"Failed to discard Errata ID '{errata_id}'")
+            for i in range(idx, len(ids)):
+                errors.append(f"Errata ID '{ids[i]}' was not discarded")
+
+    if errors:
+        return "; ".join(errors)
+
+    return None
