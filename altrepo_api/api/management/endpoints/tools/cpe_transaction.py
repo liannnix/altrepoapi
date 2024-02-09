@@ -28,7 +28,7 @@ from .base import (
     ChangeOrigin,
     ChangeSource,
     ChangeType,
-    DBTransactionRollback,
+    RollbackCB,
 )
 from .constants import PNC_STATE_ACTIVE, PNC_STATE_INACTIVE, PNC_STATE_CANDIDATE
 
@@ -80,11 +80,15 @@ def _build_pnc_change(
 
 class Transaction:
     def __init__(self, source: ChangeSource) -> None:
+        self._id = uuid4()
         self._reason: ChangeReason
         self._pnc_updates: list[PncUpdate] = list()
         self._pnc_change_records: list[PncChangeRecord] = list()
-        self._id: UUID
         self._source = source
+
+    @property
+    def id(self):
+        return self._id
 
     @property
     def pnc_records(self) -> list[PncRecord]:
@@ -116,21 +120,20 @@ class Transaction:
         )
 
     def commit(self, reason: ChangeReason) -> None:
-        self._id = uuid4()
         self._reason = reason
         logger.info("Commtinig PNC manage transaction")
         # build errata history records
         self._handle_pnc_records()
 
-    def rollback(self, sql_callback: DBTransactionRollback) -> bool:
+    def rollback(self, rollback_cb: RollbackCB) -> bool:
         # XXX: delete all related DB records using transaction UUID here!
         logger.warning("PNC manage transaction rollback")
-        return sql_callback([self._id])
+        return rollback_cb(self.id)
 
     def _handle_pnc_create(self, pnc_update: PncUpdate) -> None:
         self._pnc_change_records.append(
             _build_pnc_change(
-                id=self._id,
+                id=self.id,
                 pnc=pnc_update.pnc,
                 reason=self._reason,
                 type=ChangeType.CREATE,
@@ -142,7 +145,7 @@ class Transaction:
     def _handle_pnc_update(self, pnc_update: PncUpdate) -> None:
         self._pnc_change_records.append(
             _build_pnc_change(
-                id=self._id,
+                id=self.id,
                 pnc=pnc_update.pnc,
                 reason=self._reason,
                 type=ChangeType.UPDATE,
@@ -154,7 +157,7 @@ class Transaction:
     def _handle_pnc_discard(self, pnc_update: PncUpdate) -> None:
         self._pnc_change_records.append(
             _build_pnc_change(
-                id=self._id,
+                id=self.id,
                 pnc=pnc_update.pnc,
                 reason=self._reason,
                 type=ChangeType.DISCARD,
