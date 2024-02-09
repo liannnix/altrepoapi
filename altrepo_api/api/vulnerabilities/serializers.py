@@ -138,7 +138,7 @@ vuln_pkg_last_version_model = ns.model(
         "branch": fields.String(description="package set name"),
         "version": fields.String(description="package version"),
         "release": fields.String(description="package release"),
-    }
+    },
 )
 vuln_fixes_el_model = ns.model(
     "VulnFixesPackagesElementModel",
@@ -153,9 +153,9 @@ vuln_fixes_el_model = ns.model(
         "task_state": fields.String(description="task state"),
         "last_version": fields.Nested(
             vuln_pkg_last_version_model,
-            description="last package version and release from repository"
-        )
-    }
+            description="last package version and release from repository",
+        ),
+    },
 )
 vuln_fixes_model = ns.model(
     "VulnFixesPackagesModel",
@@ -167,7 +167,7 @@ vuln_fixes_model = ns.model(
             description="vulnerable packages information",
             as_list=True,
         ),
-    }
+    },
 )
 
 

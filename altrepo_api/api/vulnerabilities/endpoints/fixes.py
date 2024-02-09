@@ -94,7 +94,6 @@ class VulnFixes(APIWorker):
     def _get_pkgs_branches(
         pkg_names: dict[str, list[tuple[str, int]]]
     ) -> dict[str, set[str]]:
-
         pkgs_branches: dict[str, set[str]] = {}
         for pkg, pkg_branches in pkg_names.items():
             pkg_br = {el[0] for el in pkg_branches}
