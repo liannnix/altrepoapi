@@ -23,7 +23,7 @@ import time
 
 from collections import defaultdict
 from dataclasses import dataclass
-from flask import Response, send_file, __version__ as FLASK_VERSION
+from flask import Response, Request, send_file, __version__ as FLASK_VERSION
 from logging import handlers
 from packaging import version
 from typing import Any, Iterable, Union
@@ -412,3 +412,12 @@ def arch_sort_index(arch: str) -> int:
         "e2kv6": -13,
         "x86_64-i586": -14,
     }.get(arch, -100)
+
+
+def get_real_ip(request: Request) -> str:
+    x_forwarded_for = request.headers.getlist("X-Forwarded-For")
+    if not x_forwarded_for:
+        ip = request.remote_addr
+    else:
+        ip = x_forwarded_for[0].rpartition(" ")[-1]
+    return str(ip)

@@ -23,6 +23,7 @@ from flask import Request, request
 from typing import Any, NamedTuple, Optional, Protocol, Union
 
 from altrepo_api.settings import namespace
+from altrepo_api.utils import get_real_ip
 from .redis import RedisStorage
 from .file_storage import FileStorage
 from ..constants import BLACKLISTED_ACCESS_TOKEN_KEY, JWT_ENCODE_ALGORITHM
@@ -106,10 +107,11 @@ def user_fingerprint(request: Request) -> str:
     """
     Get user fingerprint MD5 hash based on ip, user-agent and accept-language.
     """
+    ip = get_real_ip(request)
 
     user_info = "|".join(
         [
-            str(request.remote_addr),
+            ip,
             str(request.user_agent),
             str(request.accept_languages),
         ]
