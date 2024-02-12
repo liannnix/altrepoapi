@@ -531,6 +531,10 @@ ORDER BY subtask_id ASC
 """
 
     get_subtasks_by_id_from_state = """
+WITH (
+    SELECT max(task_changed) FROM TaskStates
+    WHERE task_id = {id}
+) AS t_chaned
 SELECT * FROM (
     SELECT
         task_id,
@@ -548,7 +552,7 @@ SELECT * FROM (
         argMax(subtask_changed, ts) AS changed,
         if(has(groupUniqArray(subtask_deleted), 0), 'create', 'delete') AS tp
     FROM Tasks
-    WHERE (task_id = {id})
+    WHERE (task_id = {id}) AND (task_changed = t_chaned)
     GROUP BY task_id, subtask_id
 ) WHERE sub_type != 'unknown'
     OR arrayFilter(x -> notEmpty(x), [srpm, package, dir]) != []
