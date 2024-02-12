@@ -19,7 +19,7 @@ import datetime
 import hashlib
 import jwt
 
-from flask import Request, request
+from flask import request
 from typing import Any, NamedTuple, Optional, Protocol, Union
 
 from altrepo_api.settings import namespace
@@ -103,11 +103,11 @@ def decode_jwt_token(token: str) -> dict[str, Any]:
         raise InvalidTokenError("Invalid token")
 
 
-def user_fingerprint(request: Request) -> str:
+def user_fingerprint() -> str:
     """
     Get user fingerprint MD5 hash based on ip, user-agent and accept-language.
     """
-    ip = get_real_ip(request)
+    ip = get_real_ip()
 
     user_info = "|".join(
         [
@@ -135,7 +135,7 @@ def check_fingerprint(fingerprint: str) -> bool:
     """
     Verifies if request context user's fingerprint is equal to given one.
     """
-    current_fingerprint = user_fingerprint(request)
+    current_fingerprint = user_fingerprint()
     return fingerprint == current_fingerprint
 
 
@@ -176,7 +176,7 @@ class AccessTokenBlacklist:
         the fingerprint of the access token.
         """
 
-        if fingerprint != user_fingerprint(request):
+        if fingerprint != user_fingerprint():
             self.add()
             return False
 

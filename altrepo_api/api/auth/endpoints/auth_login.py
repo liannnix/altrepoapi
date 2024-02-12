@@ -17,7 +17,6 @@
 import datetime
 import json
 
-from flask import request
 from uuid import uuid4
 
 from altrepo_api.api.base import APIWorker
@@ -92,7 +91,7 @@ class AuthLogin(APIWorker):
         Adds new session if stored user sessions does not exceeds MAX_REFRESH_SESSIONS_COUNT,
         else remove all user sessions and create a new session.
         """
-        fingerprint = user_fingerprint(request)
+        fingerprint = user_fingerprint()
 
         if self._exceeds_max_sessions():
             self.storage.delete(self._token)
