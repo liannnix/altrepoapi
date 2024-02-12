@@ -88,7 +88,7 @@ def get_related_erratas_by_pkgs_names(
             hash=el[3],
             type=el[4],
             source=el[5],
-            references=[Reference(t, l) for t, l in zip(el[6], el[7])],
+            references=[Reference(rt, rl) for rt, rl in zip(el[6], el[7])],
             pkg_hash=el[8],
             pkg_name=el[9],
             pkg_version=el[10],
@@ -138,7 +138,7 @@ def get_related_erratas_by_cve_ids(
             hash=el[3],
             type=el[4],
             source=el[5],
-            references=[Reference(t, l) for t, l in zip(el[6], el[7])],
+            references=[Reference(rt, rl) for rt, rl in zip(el[6], el[7])],
             pkg_hash=el[8],
             pkg_name=el[9],
             pkg_version=el[10],
@@ -333,7 +333,7 @@ def get_bdus_by_cves(cls: _pAPIWorker, cve_ids: Iterable[str]) -> dict[str, set[
         return {}
     for el in response:
         bdu_id = el[0]
-        for reference in (Reference(t, l) for t, l in zip(el[1], el[2])):
+        for reference in (Reference(rt, rl) for rt, rl in zip(el[1], el[2])):
             if reference.type != CVE_ID_TYPE:
                 continue
             bdus_by_cve.setdefault(reference.link, set()).add(bdu_id)

@@ -498,9 +498,9 @@ class OVALBuilder:
 
     def _errata_bug_links(self, errata: ErrataHistoryRecord) -> list[str]:
         return [
-            l
-            for t, l in zip(errata.eh_references_type, errata.eh_references_link)
-            if t == "bug"
+            rl
+            for rt, rl in zip(errata.eh_references_type, errata.eh_references_link)
+            if rt == "bug"
         ]
 
     def _errata_vuln_links(
@@ -508,9 +508,9 @@ class OVALBuilder:
     ) -> list[str]:
         # collect vulnerabilities descriptions and references
         errata_linked_vulns = {
-            l
-            for t, l in zip(errata.eh_references_type, errata.eh_references_link)
-            if t == "vuln"
+            rl
+            for rt, rl in zip(errata.eh_references_type, errata.eh_references_link)
+            if rt == "vuln"
         }
 
         if link_bdu_by_cve:
