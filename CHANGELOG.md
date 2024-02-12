@@ -1,6 +1,16 @@
 # Changelog
 ALTrepo API changelog
 
+## [1.15.25] - 2024-02-12
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `/task/progress/task_info`: subtasks gathering SQL request
+- `/api/auth`: user IP gathering when proxied
+
 ## [1.15.24] - 2023-12-28
 
 Regular API code updates and fixes.
