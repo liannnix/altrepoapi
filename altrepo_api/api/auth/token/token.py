@@ -19,10 +19,11 @@ import datetime
 import hashlib
 import jwt
 
-from flask import Request, request
+from flask import request
 from typing import Any, NamedTuple, Optional, Protocol, Union
 
 from altrepo_api.settings import namespace
+from altrepo_api.utils import get_real_ip
 from .redis import RedisStorage
 from .file_storage import FileStorage
 from ..constants import BLACKLISTED_ACCESS_TOKEN_KEY, JWT_ENCODE_ALGORITHM
@@ -102,14 +103,15 @@ def decode_jwt_token(token: str, verify_exp: bool = True) -> dict[str, Any]:
         raise InvalidTokenError("Invalid token")
 
 
-def user_fingerprint(request: Request) -> str:
+def user_fingerprint() -> str:
     """
     Get user fingerprint MD5 hash based on ip, user-agent and accept-language.
     """
+    ip = get_real_ip()
 
     user_info = "|".join(
         [
-            str(request.remote_addr),
+            ip,
             str(request.user_agent),
             str(request.accept_languages),
         ]
@@ -133,7 +135,7 @@ def check_fingerprint(fingerprint: str) -> bool:
     """
     Verifies if request context user's fingerprint is equal to given one.
     """
-    current_fingerprint = user_fingerprint(request)
+    current_fingerprint = user_fingerprint()
     return fingerprint == current_fingerprint
 
 
@@ -174,7 +176,7 @@ class AccessTokenBlacklist:
         the fingerprint of the access token.
         """
 
-        if fingerprint != user_fingerprint(request):
+        if fingerprint != user_fingerprint():
             self.add()
             return False
 
