@@ -165,6 +165,9 @@ class ErrataBuilder(APIWorker):
 
         # get packages' tasks history
         pkgs_tasks = self._get_done_tasks(pkgs_names)
+        if not pkgs_tasks:
+            self.logger.info(f"No build tasks found in DB for {pkgs_names}")
+            return errata_points
         # group packages' tasks by branch
         tasks_by_branch: dict[str, list[PackageTask]] = {}
         for t in (x for xx in pkgs_tasks.values() for x in xx):

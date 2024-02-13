@@ -268,7 +268,7 @@ def get_pkgs_done_tasks(
             },
         ],
     )
-    if not cls.sql_status or not response:
+    if not cls.sql_status:
         return res
 
     for p in (PackageTask(*el) for el in response):
