@@ -371,7 +371,7 @@ class ErrataBuilder(APIWorker):
             pkg_versions = pkgs_versions[h]
             pkg_name = pkg_versions[0].name
             pkg_branches = [v.branch for v in pkg_versions]
-            existing_erratas = erratas_by_package[pkg_name]
+            existing_erratas = erratas_by_package.get(pkg_name, [])
             # check if errata exists and not contains mentioned vulns
             for r, v in (
                 (r, v) for r, v in zip(chlog.changelog, pkgs_vulns_from_chlog[h]) if v
