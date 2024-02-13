@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from flask import request
 from typing import Any, NamedTuple, Union
 
 from altrepodb_libs import (
@@ -31,7 +30,7 @@ from altrepo_api.settings import namespace as settings
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
-from altrepo_api.utils import make_tmp_table_name
+from altrepo_api.utils import make_tmp_table_name, get_real_ip
 
 from .processing import ErrataBuilder, ErrataBuilderError
 from .processing.base import (
@@ -161,7 +160,7 @@ class ManageCpe(APIWorker):
         self.reason = ChangeReason(
             actor=UserInfo(
                 name=self.payload.get("user", ""),
-                ip=request.remote_addr or "",
+                ip=get_real_ip(),
             ),
             message=self.payload.get("reason", ""),
             details={},

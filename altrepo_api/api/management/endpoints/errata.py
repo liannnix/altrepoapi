@@ -14,10 +14,10 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from flask import request
 from typing import Any
 
 from altrepo_api.api.base import APIWorker
+from altrepo_api.utils import get_real_ip
 
 from .tools.base import Errata, ChangeReason, ChangeSource, TaskInfo, UserInfo
 from .tools.constants import (
@@ -96,7 +96,7 @@ class ManageErrata(APIWorker):
         self.reason = ChangeReason(
             actor=UserInfo(
                 name=self.payload.get("user", ""),
-                ip=request.remote_addr or "",
+                ip=get_real_ip(),
             ),
             message=self.payload.get("reason", ""),
             details={"transaction_id": str(self.trx.id)},
