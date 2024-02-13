@@ -339,7 +339,7 @@ def store_errata_change_records(
                 "ec_updated": errata.updated,
                 "ec_user": errata.user,
                 "ec_user_ip": errata.user_ip,
-                "ec_reason": errata.reason,
+                "ec_reason": errata.reason.serialize(),
                 "ec_type": errata.type.value,
                 "ec_source": errata.source.value,
                 "ec_origin": errata.origin.value,

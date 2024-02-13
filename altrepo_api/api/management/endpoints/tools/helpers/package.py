@@ -74,7 +74,7 @@ def store_pnc_change_records(
                 "transaction_id": str(pncc.id),
                 "pncc_user": pncc.reason.actor.name,
                 "pncc_user_ip": pncc.reason.actor.ip,
-                "pncc_reason": pncc.reason,
+                "pncc_reason": pncc.reason.serialize(),
                 "pncc_type": pncc.type.value,
                 "pncc_source": pncc.source.value,
                 "pncc_origin": pncc.origin.value,

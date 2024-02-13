@@ -103,8 +103,17 @@ class ErrataHandler(APIWorker):
         # update 'ManageErrata' reason object with details
         update_manage_errata_reason(me, et)
         # process errata changes
-        response, http_code = me.post()
-        return http_code == 200, response
+        try:
+            response, http_code = me.post()
+            return http_code == 200, response
+        except Exception as e:
+            return False, {
+                "message": (
+                    f"Failed to create errata for {errata.pkg_name} "
+                    f"[{errata.task_id}:{errata.subtask_id}]"
+                ),
+                "reason": f"Exception: {e}",
+            }
 
     def _update_errata(
         self, et: ErrataUpdate, errata: Errata
@@ -127,8 +136,14 @@ class ErrataHandler(APIWorker):
         # update 'ManageErrata' reason object with details
         update_manage_errata_reason(me, et)
         # process errata changes
-        response, http_code = me.put()
-        return http_code == 200, response
+        try:
+            response, http_code = me.put()
+            return http_code == 200, response
+        except Exception as e:
+            return False, {
+                "message": f"Failed to update errata {errata.id}",
+                "reason": f"Exception: {e}",
+            }
 
     def _process_create_errata(self, bdus_by_cve: dict[str, set[str]]) -> None:
         # sort and merge erratas to be created if any
