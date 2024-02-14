@@ -686,7 +686,7 @@ repology_names AS (
 SELECT
     state,
     alt_name AS pkg_name,
-    repology_name,
+    cpe_pkg_name,
     repology_branch,
     cpe
 FROM (
