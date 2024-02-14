@@ -43,6 +43,7 @@ from .parsers import (
     task_list_args,
     errata_manage_args,
     errata_manage_get_args,
+    cpe_candidates_args,
     cpe_manage_args,
     cpe_manage_get_args,
     pkgs_open_vulns_args,
@@ -256,12 +257,12 @@ class routeErrataChangeHistory(Resource):
     },
 )
 class routeCpeCandidates(Resource):
-    # @ns.expect()
+    @ns.expect(cpe_candidates_args)
     @ns.marshal_with(cpe_candidates_response_model)
     @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
     def get(self):
         url_logging(logger, g.url)
-        args = {}
+        args = cpe_candidates_args.parse_args(strict=True)
         w = CPECandidates(g.connection, **args)
         return run_worker(worker=w, args=args)
 

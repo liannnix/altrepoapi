@@ -704,7 +704,7 @@ FROM (
         GROUP BY pkg_name, pnc_result
     ) WHERE state IN {cpe_states}
 ) AS CPE
-INNER JOIN repology_names AS EN ON EN.repology_name = cpe_pkg_name
+{join_type} JOIN repology_names AS EN ON EN.repology_name = cpe_pkg_name
 ORDER BY state, repology_name, pkg_name, repology_branch, cpe
 """
 

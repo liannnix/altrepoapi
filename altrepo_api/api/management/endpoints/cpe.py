@@ -67,6 +67,9 @@ from ..sql import sql
 
 MATCHER_LOG_LEVEL = convert_log_level(settings.LOG_LEVEL)
 RETUNRN_VULNERABLE_ONLY_PCMS = False
+JOIN_TYPE_INNER = "INNER"
+JOIN_TYPE_LEFT = "LEFT"
+BRANCH_NONE = "none"
 
 
 class CPECandidates(APIWorker):
@@ -85,13 +88,23 @@ class CPECandidates(APIWorker):
     def get(self):
         cpes: dict[tuple[str, str], Any] = {}
 
-        response = self.send_sql_request(
-            self.sql.get_cpes.format(
+        all_candidates = self.args.get("all", False)
+
+        if all_candidates:
+            sql = self.sql.get_cpes.format(
                 cpe_branches=tuple(set(lut.cpe_reverse_branch_map.keys())),
                 pkg_name_conversion_clause="",
                 cpe_states=(PNC_STATE_CANDIDATE,),
+                join_type=JOIN_TYPE_LEFT,
             )
-        )
+        else:
+            sql = self.sql.get_cpes.format(
+                cpe_branches=tuple(set(lut.cpe_reverse_branch_map.keys())),
+                pkg_name_conversion_clause="",
+                cpe_states=(PNC_STATE_CANDIDATE,),
+                join_type=JOIN_TYPE_INNER,
+            )
+        response = self.send_sql_request(sql)
         if not self.sql_status:
             return self.error
         if not response:
@@ -101,7 +114,9 @@ class CPECandidates(APIWorker):
             try:
                 cpe_raw = CpeRaw(*el)
 
-                branch = lut.cpe_reverse_branch_map[cpe_raw.repology_branch][0]
+                branch = lut.cpe_reverse_branch_map.get(
+                    cpe_raw.repology_branch, [BRANCH_NONE]
+                )[0]
                 cpe = CPE(cpe_raw.cpe)
                 cpe_s = str(cpe)
 
@@ -112,7 +127,9 @@ class CPECandidates(APIWorker):
                 if (cpe_s, cpe_raw.repology_name) not in cpes:
                     cpes[(cpe_s, cpe_raw.repology_name)] = {
                         "state": cpe_raw.state,
-                        "packages": [{"name": cpe_raw.name, "branch": branch}],
+                        "packages": [{"name": cpe_raw.name, "branch": branch}]
+                        if branch != BRANCH_NONE
+                        else [],
                     }
                 else:
                     cpes[(cpe_s, cpe_raw.repology_name)]["packages"].append(
@@ -396,6 +413,7 @@ class ManageCpe(APIWorker):
                 cpe_branches=cpe_branches,
                 pkg_name_conversion_clause=f"AND alt_name = '{pkg_name}'",
                 cpe_states=(PNC_STATE_ACTIVE, PNC_STATE_CANDIDATE, PNC_STATE_INACTIVE),
+                join_type=JOIN_TYPE_INNER,
             )
         )
         if not self.sql_status:
@@ -452,6 +470,7 @@ class ManageCpe(APIWorker):
             self.sql.get_cpes_by_project_names.format(
                 project_names=(self.cpe.project_name,),
                 cpe_states=(PNC_STATE_ACTIVE, PNC_STATE_CANDIDATE, PNC_STATE_INACTIVE),
+                join_type=JOIN_TYPE_INNER,
             )
         )
         if not self.sql_status:
@@ -547,6 +566,7 @@ class ManageCpe(APIWorker):
             self.sql.get_cpes_by_project_names.format(
                 project_names=(self.cpe.project_name,),
                 cpe_states=(PNC_STATE_ACTIVE, PNC_STATE_CANDIDATE, PNC_STATE_INACTIVE),
+                join_type=JOIN_TYPE_INNER,
             )
         )
         if not self.sql_status:
@@ -673,6 +693,7 @@ class ManageCpe(APIWorker):
             self.sql.get_cpes_by_project_names.format(
                 project_names=(self.cpe.project_name,),
                 cpe_states=(PNC_STATE_ACTIVE, PNC_STATE_CANDIDATE, PNC_STATE_INACTIVE),
+                join_type=JOIN_TYPE_INNER,
             )
         )
         if not self.sql_status:

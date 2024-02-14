@@ -163,6 +163,14 @@ is_cpe_discarded_opt = parser.register_item(
     help="show discarded CPE records",
     location="args",
 )
+all_candidates_opt = parser.register_item(
+    "all",
+    type=inputs.boolean,
+    default=False,
+    required=False,
+    help="show all CPE candidates",
+    location="args",
+)
 
 task_list_args = parser.build_parser(
     task_input_val_opt, branch_name_opt, is_errata_opt, page_opt, limit_opt
@@ -180,6 +188,7 @@ pkgs_open_vulns_args = parser.build_parser(
     limit_opt,
     sort_opt,
 )
+cpe_candidates_args = parser.build_parser(all_candidates_opt)
 cpe_manage_args = parser.build_parser(dry_run)
 cpe_manage_get_args = parser.build_parser(pkg_name, branch_name_opt)
 maintainer_list_args = parser.build_parser(branch_name_opt, page_opt, limit_opt)
