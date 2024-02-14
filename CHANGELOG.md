@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+## [1.15.26] - 2024-02-14
+
+Regular API code updates and fixes.
+
+### Added
+- `auth`: support for nested LDAP groups
+### Changed
+### Fixed
+
 ## [1.15.25] - 2024-02-12
 
 Regular API code updates and fixes.
