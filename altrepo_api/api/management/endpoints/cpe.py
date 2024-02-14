@@ -351,6 +351,9 @@ class ManageCpe(APIWorker):
     def check_params_post(self) -> bool:
         self._valiadte_and_parse()
 
+        if self.validation_results != []:
+            return False
+
         if not self.action == CHANGE_ACTION_CREATE:
             self.validation_results.append("Change action validation error")
 
@@ -366,6 +369,9 @@ class ManageCpe(APIWorker):
     def check_params_put(self) -> bool:
         self._valiadte_and_parse()
 
+        if self.validation_results != []:
+            return False
+
         if not self.action == CHANGE_ACTION_UPDATE:
             self.validation_results.append("Change action validation error")
 
@@ -380,6 +386,9 @@ class ManageCpe(APIWorker):
 
     def check_params_delete(self) -> bool:
         self._valiadte_and_parse()
+
+        if self.validation_results != []:
+            return False
 
         if not self.action == CHANGE_ACTION_DISCARD:
             self.validation_results.append("Change action validation error")
