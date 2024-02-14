@@ -69,12 +69,12 @@ def check_auth_ldap(
         return AuthCheckResult(False, "LDAP server connection failed", {})
 
     def is_memeber_of_ldap_group(group: str) -> bool:
+        user_filter = f"(memberOf={namespace.LDAP_REQUIRE_GROUP})" % {"group": group}
         # Returns True if the group requirement (AUTH_LDAP_REQUIRE_GROUP) is met
-        return ldap_client.compare_s(
-            namespace.LDAP_REQUIRE_GROUP % {"group": group},
-            "member",
-            namespace.LDAP_USER_SEARCH % {"user": user},
+        res = ldap_client.search_ext_s(
+            namespace.LDAP_USER_SEARCH % {"user": user}, ldap.SCOPE_SUBTREE, user_filter
         )
+        return res != []
 
     try:
         # binds to the LDAP server with the user's DN and password
