@@ -72,7 +72,7 @@ def check_auth_ldap(
         user_filter = f"(memberOf={namespace.LDAP_REQUIRE_GROUP})" % {"group": group}
         # Returns True if the group requirement (AUTH_LDAP_REQUIRE_GROUP) is met
         res = ldap_client.search_ext_s(
-            namespace.LDAP_USER_SEARCH % {"user": user}, ldap.SCOPE_SUBTREE, user_filter
+            namespace.LDAP_USER_SEARCH % {"user": user}, ldap.SCOPE_SUBTREE, user_filter  # type: ignore
         )
         return res != []
 
