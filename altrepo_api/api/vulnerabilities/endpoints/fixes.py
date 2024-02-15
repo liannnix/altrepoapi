@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 from datetime import datetime
 from typing import Union, Any, Iterable, NamedTuple
 
@@ -94,7 +94,6 @@ class VulnFixes(APIWorker):
     def _get_pkgs_branches(
         pkg_names: dict[str, list[tuple[str, int]]]
     ) -> dict[str, set[str]]:
-
         pkgs_branches: dict[str, set[str]] = {}
         for pkg, pkg_branches in pkg_names.items():
             pkg_br = {el[0] for el in pkg_branches}
@@ -183,7 +182,7 @@ class VulnFixes(APIWorker):
         return pkg_tasks
 
     def _get_done_tasks_history(
-        self, branches: tuple[str]
+        self, branches: tuple[str, ...]
     ) -> Union[dict[int, TaskHistory], None]:
         """
         Get a list of tasks history in the `DONE` status for each branch of the package.
@@ -215,7 +214,7 @@ class VulnFixes(APIWorker):
 
         # get 'DONE' tasks by package names and branches
         pkg_tasks = self._get_done_tasks(pkgs_branches)
-        if not self.status:
+        if not self.status or not pkg_tasks:
             return None
 
         # process tasks
@@ -240,7 +239,7 @@ class VulnFixes(APIWorker):
             return None
 
         tasks_history = self._get_done_tasks_history(tuple(_all_branches))
-        if not self.status:
+        if not self.status or not tasks_history:
             return None
 
         # get the map of latest task of each branch
@@ -257,19 +256,13 @@ class VulnFixes(APIWorker):
         for branch, task in newest_tasks.items():
             t = task
             tasks_set = set()
-            intermediate_branches = set()
 
             while True:
                 tasks_set.add(t.id)
-
                 if t.prev not in tasks_history:
                     # End of the list
                     break
-
                 t = tasks_history[t.prev]
-
-                if t.branch != branch and t.branch not in intermediate_branches:
-                    intermediate_branches.add(t.branch)
 
             branch_history[branch] = tasks_set
 
@@ -300,7 +293,7 @@ class VulnFixes(APIWorker):
                         break
                     if package not in self.erratas_packages:
                         prev_package = self.erratas_packages.get(
-                            (package.name, tasks[package][-1].branch)
+                            (package.name, task.branch)
                         )
                         if (
                             prev_package
@@ -332,6 +325,7 @@ class VulnFixes(APIWorker):
         """
         Sort the Erratas list by task state.
         """
+
         def _task_state_index(state: str) -> int:
             return {
                 "DONE": 0,
@@ -347,7 +341,7 @@ class VulnFixes(APIWorker):
         vuln_id = self.args["vuln_id"]
 
         # Get list of errata by vuln ID to Errata references matching
-        get_errata_by_cve_id(self, vuln_id)
+        get_errata_by_cve_id(self, vuln_id)  # type: ignore
         if not self.status:
             return self.error
         self._sort_erratas()
