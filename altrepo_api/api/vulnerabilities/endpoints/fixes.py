@@ -214,7 +214,7 @@ class VulnFixes(APIWorker):
 
         # get 'DONE' tasks by package names and branches
         pkg_tasks = self._get_done_tasks(pkgs_branches)
-        if not self.status:
+        if not self.status or not pkg_tasks:
             return None
 
         # process tasks
@@ -239,7 +239,7 @@ class VulnFixes(APIWorker):
             return None
 
         tasks_history = self._get_done_tasks_history(tuple(_all_branches))
-        if not self.status:
+        if not self.status or not tasks_history:
             return None
 
         # get the map of latest task of each branch
@@ -256,19 +256,13 @@ class VulnFixes(APIWorker):
         for branch, task in newest_tasks.items():
             t = task
             tasks_set = set()
-            intermediate_branches = set()
 
             while True:
                 tasks_set.add(t.id)
-
                 if t.prev not in tasks_history:
                     # End of the list
                     break
-
                 t = tasks_history[t.prev]
-
-                if t.branch != branch and t.branch not in intermediate_branches:
-                    intermediate_branches.add(t.branch)
 
             branch_history[branch] = tasks_set
 
@@ -299,7 +293,7 @@ class VulnFixes(APIWorker):
                         break
                     if package not in self.erratas_packages:
                         prev_package = self.erratas_packages.get(
-                            (package.name, tasks[package][-1].branch)
+                            (package.name, task.branch)
                         )
                         if (
                             prev_package
@@ -347,7 +341,7 @@ class VulnFixes(APIWorker):
         vuln_id = self.args["vuln_id"]
 
         # Get list of errata by vuln ID to Errata references matching
-        get_errata_by_cve_id(self, vuln_id)
+        get_errata_by_cve_id(self, vuln_id)  # type: ignore
         if not self.status:
             return self.error
         self._sort_erratas()

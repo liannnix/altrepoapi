@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+## [1.15.27] - 2024-02-15
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `vuln/cve/fixes`: branch' task inheritance algo
+
 ## [1.15.26] - 2024-02-14
 
 Regular API code updates and fixes.
