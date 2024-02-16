@@ -66,9 +66,9 @@ def add_headers(response):
 def configure_app(flask_app):
     flask_app.config["SWAGGER_UI_DOC_EXPANSION"] = "list"
     flask_app.config["SWAGGER_UI_REQUEST_DURATION"] = True
-    flask_app.config["RESTX_VALIDATE"] = True
-    flask_app.config["ERROR_404_HELP"] = False
+    flask_app.config["RESTX_ERROR_404_HELP"] = False
     flask_app.config["RESTX_MASK_SWAGGER"] = False
+    flask_app.config["RESTX_VALIDATE"] = True
     flask_app.config["BUNDLE_ERRORS"] = True
     flask_app.config["RESTX_INCLUDE_ALL_MODELS"] = False
     # pass custom default JSON object conversion handler
