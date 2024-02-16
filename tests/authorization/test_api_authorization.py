@@ -2,6 +2,7 @@ import pytest
 import base64
 
 # test routes
+TEST_ROUTE_AUTH_LOGIN = "/login"
 TEST_ROUTE_ADMIN_AUTH = "/auth"
 TEST_ROUTE_LDAP_USER_AUTH = "/ldap_user"
 TEST_ROUTE_LDAP_ADMIN_AUTH = "/ldap_admin"
@@ -21,6 +22,47 @@ TEST_USER2_LDAP_GROUP = "users2"
 TEST_FAKE_USER_NAME = "UNKNOWN"
 TEST_FAKE_USER_PASSWORD = "UNKNOWN"
 TEST_FAKE_USER_LDAP_GROUP = "UNKNOWN"
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "nickname": TEST_ADMIN_NAME,
+            "password": TEST_ADMIN_PASSWORD,
+            "status_code": 200,
+        },
+        {
+            "nickname": TEST_USER_NAME,
+            "password": TEST_USER_PASSWORD,
+            "status_code": 200,
+        },
+        {
+            "nickname": TEST_USER_NAME,
+            "password": TEST_ADMIN_PASSWORD,
+            "status_code": 401,
+        },
+        {
+            "nickname": TEST_FAKE_USER_NAME,
+            "password": TEST_FAKE_USER_PASSWORD,
+            "status_code": 401,
+        },
+    ],
+)
+def test_api_login(client, slapd, kwargs):
+    params = {}
+    for k, v in kwargs.items():
+        if k == "status_code":
+            continue
+        if v is not None:
+            params[k] = v
+    url = f"/api{TEST_ROUTE_AUTH_LOGIN}"
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data.get("access_token") is not None
+        assert data.get("refresh_token") is not None
 
 
 def test_api_admin_authorization_fail(client):
