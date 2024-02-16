@@ -1,6 +1,16 @@
 # Changelog
 ALTrepo API changelog
 
+## [1.15.28] - 2024-02-16
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `auth`: LDAP group membership check
+- `tests/authorization`: tests and test assets
+
 ## [1.15.27] - 2024-02-15
 
 Regular API code updates and fixes.
