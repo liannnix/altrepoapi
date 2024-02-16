@@ -68,13 +68,16 @@ def check_auth_ldap(
     except ldap.SERVER_DOWN:  # type: ignore
         return AuthCheckResult(False, "LDAP server connection failed", {})
 
-    def is_memeber_of_ldap_group(group: str) -> bool:
-        user_filter = f"(memberOf={namespace.LDAP_REQUIRE_GROUP})" % {"group": group}
+    def is_member_of_ldap_group(group: str) -> bool:
+        user_dn = namespace.LDAP_USER_SEARCH % {"user": user}
+        group_dn = namespace.LDAP_REQUIRE_GROUP % {"group": group}
+        filter = f"(memberOf={group_dn})"
         # Returns True if the group requirement (AUTH_LDAP_REQUIRE_GROUP) is met
-        res = ldap_client.search_ext_s(
-            namespace.LDAP_USER_SEARCH % {"user": user}, ldap.SCOPE_SUBTREE, user_filter  # type: ignore
-        )
-        return res != []
+        res = ldap_client.search_ext_s(user_dn, ldap.SCOPE_SUBTREE, filter) != []  # type: ignore
+        if res:
+            return res
+        # fall back to direct group memebership matching
+        return ldap_client.compare_s(group_dn, "member", user_dn)
 
     try:
         # binds to the LDAP server with the user's DN and password
@@ -87,9 +90,9 @@ def check_auth_ldap(
         user_groups = []
         for group in ldap_groups:
             try:
-                if is_memeber_of_ldap_group(group):
+                if is_member_of_ldap_group(group):
                     user_groups.append(group)
-            except (ldap.NO_SUCH_OBJECT, ldap.PROTOCOL_ERROR):  # type: ignore
+            except (ldap.NO_SUCH_ATTRIBUTE, ldap.NO_SUCH_OBJECT, ldap.PROTOCOL_ERROR):  # type: ignore
                 logger.info(f"No such group `{group}` found for `{user}`")
                 pass
 
