@@ -46,6 +46,9 @@ CVE_ID_TYPE = "CVE"
 CVE_ID_PREFIX = f"{CVE_ID_TYPE}-"
 
 
+CPETriplet = tuple[str, str, str]
+
+
 def unescape(x: str) -> str:
     def first_pass(s: str) -> str:
         escaped = False
@@ -239,7 +242,7 @@ class CpeMatch:
 
     def __init__(self, cpe: str, *args) -> None:
         self.cpe = CPE(cpe)
-        self.version = CpeMatchVersions(*args)
+        self.version = CpeMatchVersions(cpe, *args)
 
     def asdict(self) -> dict[str, Any]:
         return {"cpe": repr(self.cpe), "versions": self.version.asdict()}
@@ -928,8 +931,6 @@ def matcher(
     class PkgMatch(NamedTuple):
         version: PackageVersion
         cpes: list[CPE]
-
-    CPETriplet = tuple[str, str, str]
 
     def cpe_triplet(cpe: CPE) -> CPETriplet:
         return (cpe.vendor, cpe.product, cpe.target_sw)
