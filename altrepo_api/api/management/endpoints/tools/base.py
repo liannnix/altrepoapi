@@ -172,12 +172,12 @@ class Errata(NamedTuple):
         for k in kwargs:
             if k not in self._fields:
                 raise ValueError(
-                    "Class %s has not attribute %s" % (self.__class__.__name__, k)
+                    "Class %s has no attribute %s" % (self.__class__.__name__, k)
                 )
 
         res.update(kwargs)
 
-        # handle `id` filed update
+        # handle `id` field update
         _id = res["id"]
         if isinstance(_id, str):
             res["id"] = ErrataID.from_id(_id)
@@ -281,7 +281,7 @@ class PncChangeRecord(NamedTuple):
         res["type"] = self.type.name
         res["source"] = self.source.name
         res["origin"] = self.origin.name
-        res["pnc"] = self.pnc._asdict()
+        res["pnc"] = self.pnc.asdict()
         res["reason"] = self.reason.serialize()
         res["user"] = self.reason.actor.name
         res["user_ip"] = self.reason.actor.ip
