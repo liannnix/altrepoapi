@@ -393,9 +393,7 @@ cpe_manage_model = ns.model(
         "user": fields.String(description="CPE change originator"),
         "action": fields.String(description="CPE manage action"),
         "reason": fields.String(description="CPE change reason"),
-        "cpe": fields.Nested(
-            cpe_manage_cpe_model, description="list of CPE match records"
-        ),
+        "cpe": fields.Nested(cpe_manage_cpe_model, description="CPE match record"),
     },
 )
 
@@ -518,6 +516,28 @@ maintainer_list_model = ns.model(
             maintainer_list_el_model,
             description="maintainers list",
             as_list=True,
+        ),
+    },
+)
+
+pnc_manage_model = ns.model(
+    "PncManageModel",
+    {
+        "user": fields.String(description="CPE change originator"),
+        "action": fields.String(description="CPE manage action"),
+        "reason": fields.String(description="CPE change reason"),
+        "pnc": fields.Nested(
+            cpe_manage_pnc_record_model, description="PNC record object"
+        ),
+    },
+)
+
+pnc_manage_get_model = ns.model(
+    "PncManageGetModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "pncs": fields.Nested(
+            cpe_manage_pnc_record_model, description="list of PNC records", as_list=True
         ),
     },
 )

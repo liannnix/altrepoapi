@@ -19,15 +19,15 @@ from flask_restx import inputs
 from altrepo_api.api.parser import (
     parser,
     branch_name_type,
-    errata_id_type,
-    packager_name_type,
-    positive_integer_type,
-    task_search_type,
-    packager_nick_type,
-    sort_type,
-    open_vulns_search_type,
-    uuid_type,
     cpe_search_type,
+    errata_id_type,
+    open_vulns_search_type,
+    pkg_name_type,
+    packager_nick_type,
+    positive_integer_type,
+    sort_type,
+    task_search_type,
+    uuid_type,
 )
 
 from .endpoints.tools.constants import DRY_RUN_KEY
@@ -125,9 +125,9 @@ is_images_opt = parser.register_item(
     help="filtering by package inclusion in the images",
     location="args",
 )
-pkg_name = parser.register_item(
+package_name = parser.register_item(
     "name",
-    type=packager_name_type,
+    type=pkg_name_type,
     required=True,
     help="source package name",
     location="args",
@@ -171,6 +171,32 @@ all_candidates_opt = parser.register_item(
     help="show all CPE candidates",
     location="args",
 )
+package_name_opt = parser.register_item(
+    "package_name",
+    type=pkg_name_type,
+    required=False,
+    help="package name",
+    location="args",
+)
+project_name_opt = parser.register_item(
+    "project_name",
+    type=pkg_name_type,
+    required=False,
+    help="common project name",
+    location="args",
+)
+pnc_state_opt = parser.register_item(
+    "state",
+    choices=(
+        "all",
+        "active",
+        "inactive",
+    ),
+    default="all",
+    required=False,
+    help="PNC record state",
+    location="args",
+)
 
 task_list_args = parser.build_parser(
     task_input_val_opt, branch_name_opt, is_errata_opt, page_opt, limit_opt
@@ -190,8 +216,11 @@ pkgs_open_vulns_args = parser.build_parser(
 )
 cpe_candidates_args = parser.build_parser(all_candidates_opt)
 cpe_manage_args = parser.build_parser(dry_run)
-cpe_manage_get_args = parser.build_parser(pkg_name, branch_name_opt)
+cpe_manage_get_args = parser.build_parser(package_name, branch_name_opt)
 maintainer_list_args = parser.build_parser(branch_name_opt, page_opt, limit_opt)
 cpe_list_args = parser.build_parser(
     cpe_input_val, page_opt, limit_opt, sort_opt, is_cpe_discarded_opt
+)
+pnc_manage_get_args = parser.build_parser(
+    package_name_opt, project_name_opt, pnc_state_opt, branch_name_opt
 )

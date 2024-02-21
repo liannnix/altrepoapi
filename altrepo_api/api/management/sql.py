@@ -1111,5 +1111,25 @@ INNER JOIN repology_names AS EN ON EN.repology_name = cpe_pkg_name
 ORDER BY state, repology_name, pkg_name, repology_branch, cpe;
 """
 
+    get_pnc_records = """
+SELECT name, type, result, source, state
+FROM (
+    SELECT
+        pkg_name AS name,
+        argMax(pnc_state, ts) AS state,
+        argMax(pnc_result, ts) AS result,
+        argMax(pnc_type, ts) AS type,
+        argMax(pnc_source, ts) AS source
+    FROM PackagesNameConversion
+    WHERE pnc_type != 'cpe'
+    GROUP BY
+        pkg_name,
+        pnc_type,
+        pnc_result
+)
+{where_clause}
+ORDER BY name, type, result
+"""
+
 
 sql = SQL()
