@@ -143,7 +143,7 @@ class Transaction:
     @property
     def new_bulletin(self) -> Errata:
         try:
-            return self._errata_history_records[ErrataType.PACKAGE]
+            return self._errata_history_records[ErrataType.BULLETIN]
         except KeyError:
             raise ErrataManageError("No value found for `new_bulletin`")
 
