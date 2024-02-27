@@ -429,11 +429,20 @@ def delete_pnc_records(cls: _pAPIWorkerBase, transaction_id: UUID_T) -> bool:
     response = cls.send_sql_request(
         sql.get_pnc_records_by_transaction_id.format(transaction_id=str(transaction_id))
     )
-    if cls.sql_status or not response:
-        cls.logger.error(
-            f"Failed to get `PncCHangeHistory` records for transaction '{transaction_id}'"
-        )
+    if not cls.sql_status:
         return False
+    if not response:
+        # TODO: maybe set an error when no records found  to be deleted in DB by transaction ID
+        # cls.store_error(
+        #     {
+        #         "message": f"Failed to get `PncCHangeHistory` records for transaction '{transaction_id}'"
+        #     }
+        # )
+        # return False
+        cls.logger.warning(
+            f"No `PncCHangeHistory` records found in DB for transaction '{transaction_id}'"
+        )
+        return True
 
     tmp_table = make_tmp_table_name("pnc_records")
     pnc_records = [PncRecord(*el) for el in response]
