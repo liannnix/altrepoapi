@@ -216,15 +216,15 @@ WHERE transaction_id = '{transaction_id}'
 """
 
     delete_errata_history_records = """
-DLETE FROM ErrataHistory WHERE errata_id in {tmp_table}
+DELETE FROM ErrataHistory WHERE errata_id in {tmp_table}
 """
 
     delete_errata_change_history_records = """
-DLETE FROM ErrataChangeHistory WHERE transaction_id = '{transaction_id}'
+DELETE FROM ErrataChangeHistory WHERE transaction_id = '{transaction_id}'
 """
 
     delete_pnc_change_history_records = """
-DLETE FROM PncChangeHistory WHERE transaction_id = '{transaction_id}'
+DELETE FROM PncChangeHistory WHERE transaction_id = '{transaction_id}'
 """
 
     get_pnc_records_by_transaction_id = """
