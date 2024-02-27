@@ -127,9 +127,11 @@ class CPECandidates(APIWorker):
                 if (cpe_s, cpe_raw.repology_name) not in cpes:
                     cpes[(cpe_s, cpe_raw.repology_name)] = {
                         "state": cpe_raw.state,
-                        "packages": [{"name": cpe_raw.name, "branch": branch}]
-                        if branch != BRANCH_NONE
-                        else [],
+                        "packages": (
+                            [{"name": cpe_raw.name, "branch": branch}]
+                            if branch != BRANCH_NONE
+                            else []
+                        ),
                     }
                 else:
                     cpes[(cpe_s, cpe_raw.repology_name)]["packages"].append(
@@ -251,7 +253,7 @@ class ManageCpe(APIWorker):
 
         return pcm_info_records
 
-    def _get_pkgss_cve_matches_by_hashes(
+    def _get_pkgs_cve_matches_by_hashes(
         self, match_hashes: list[int]
     ) -> list[PackageCveMatch]:
         self.status = False
@@ -308,7 +310,7 @@ class ManageCpe(APIWorker):
                 errors.extend(self.eb.rollback_errors)
             status = self.trx.rollback(cpe_transaction_rollback(self))
             if not status:
-                errors.extend(self.error)
+                errors.append(self.error)
         else:
             # happy path
             self.logger.info(
@@ -536,7 +538,7 @@ class ManageCpe(APIWorker):
                 self.logger.info(
                     "Got no new packages' CVE matches, use existing hashes"
                 )
-                pcms = self._get_pkgss_cve_matches_by_hashes(
+                pcms = self._get_pkgs_cve_matches_by_hashes(
                     matcher.packages_cve_match_hashes
                 )
                 if not self.status:
@@ -661,7 +663,7 @@ class ManageCpe(APIWorker):
                 self.logger.info(
                     "Got no new packages' CVE matches, use existing hashes"
                 )
-                pcms = self._get_pkgss_cve_matches_by_hashes(
+                pcms = self._get_pkgs_cve_matches_by_hashes(
                     matcher.packages_cve_match_hashes
                 )
                 if not self.status:
@@ -687,7 +689,7 @@ class ManageCpe(APIWorker):
 
         return self._commit_or_rollback()
 
-    def delete(self):
+    def delete(self, source_package_name: Union[str, None] = None):
         """Handles CPE record discard.
         Returns:
             - 200 (OK) if CPE record discarded successfully
@@ -766,13 +768,6 @@ class ManageCpe(APIWorker):
         if db_cpe.state == PNC_STATE_CANDIDATE:
             return self._commit_or_rollback()
 
-        return self.store_error(
-            {
-                "message": f"Discarding CPE in state '{db_cpe.state}' not supported.",
-            },
-            http_code=409,
-        )
-
         # check if there is any packages that affected by added CPE records in branches
         self._related_packages = get_related_packages_by_project_name(
             self, [self.cpe.project_name]
@@ -803,7 +798,7 @@ class ManageCpe(APIWorker):
                 self.logger.info(
                     "Got no new packages' CVE matches, use existing hashes"
                 )
-                pcms = self._get_pkgss_cve_matches_by_hashes(
+                pcms = self._get_pkgs_cve_matches_by_hashes(
                     matcher.packages_cve_match_hashes
                 )
                 if not self.status:
@@ -820,11 +815,9 @@ class ManageCpe(APIWorker):
             # collect packages info from latest branch states
             self._packages_cve_matches = self._collect_packages_cve_match_info(pcms)
 
-            raise NotImplementedError
-
-            # XXX: update or create erratas
+            # XXX: update or discard erratas
             try:
-                self.eb.build_erratas_on_cpe_delete(pcms)
+                self.eb.build_erratas_on_cpe_delete(pcms, source_package_name)
             except ErrataBuilderError:
                 self.logger.error("Failed to build erratas")
                 return self.eb.error
