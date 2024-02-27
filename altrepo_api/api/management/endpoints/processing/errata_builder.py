@@ -58,6 +58,7 @@ from ..tools.changelog import (
     split_evr,
     vulns_from_changelog,
     all_vulns_from_changelog,
+    vulns_from_changelog_record,
 )
 from ..tools.errata_id import ErrataManageError, get_errataid_service, discard_errata_id
 
@@ -529,6 +530,120 @@ class ErrataBuilder(APIWorker):
                     continue
             # no existing errata was found -> create new one
             self.eh.add_errata_create_from_ep(ep, pkgs_cve_matches[idx])
+
+    def build_erratas_on_cpe_delete(
+        self, pkgs_cve_matches: list[PackageCveMatch], pkg_name: Optional[str]
+    ) -> None:
+        if not pkgs_cve_matches:
+            self.logger.info("No packages' CVE matches found to be processed")
+            return None
+
+        # collect affected packages names and hashes
+        if pkg_name is None:
+            pkgs_names = {m.pkg_name for m in pkgs_cve_matches}
+            pkgs_hashes = {m.pkg_hash for m in pkgs_cve_matches}
+        else:
+            pkgs_names = {
+                m.pkg_name for m in pkgs_cve_matches if m.pkg_name == pkg_name
+            }
+            pkgs_hashes = {
+                m.pkg_hash for m in pkgs_cve_matches if m.pkg_name == pkg_name
+            }
+
+        # no packages matches left for specific package name
+        if not pkgs_names:
+            return None
+
+        # collect all CVE IDs from matches
+        pcms_cve_ids = {m.vuln_id for m in pkgs_cve_matches}
+
+        # get packages' changelogs
+        pkgs_changelogs = self._get_pkgs_changelogs(pkgs_hashes)
+
+        # collect existing Erratas by packages' names, excluding those are has
+        # no intersection by CVE IDs from packages' CVE matches
+        def any_cve_ids_in_errata_references(cve_ids: set[str], e: Errata) -> bool:
+            if cve_ids.intersection({r.link for r in e.references}):
+                return True
+            return False
+
+        erratas_by_package: dict[str, list[Errata]] = {}
+        for pkg, erratas in self._get_existing_erratas(pkgs_names).items():
+            for errata in erratas:
+                if any_cve_ids_in_errata_references(pcms_cve_ids, errata):
+                    erratas_by_package.setdefault(pkg, []).append(errata)
+
+        # no erratas found by packages' names
+        if not erratas_by_package:
+            return None
+
+        cves_by_errata_ids: dict[str, set[str]] = {}
+        erratas_by_cve: dict[str, list[tuple[Errata, str]]] = {}
+        processed_cve_to_errata_pairs: set[tuple[str, str]] = set()
+
+        # check if CVE ID added to errata from package' changel using EVR
+        def check_cve_by_chlog(
+            cve_id: str, e: Errata, changelog: PackageChangelog
+        ) -> bool:
+            # try to find changelog record by EVR
+            for record in changelog.changelog:
+                _, version, release = split_evr(record.evr)
+                if (e.pkg_version, e.pkg_release) == (version, release):
+                    if cve_id in vulns_from_changelog_record(record):
+                        return True
+            return False
+
+        # collect existing erratas if any update is required
+        for pcm in pkgs_cve_matches:
+            # skip packages that filtered out before by specific package name
+            if pcm.pkg_name not in pkgs_names:
+                continue
+            # get existing erratas by package name
+            erratas = erratas_by_package.get(pcm.pkg_name, [])
+            # no erratas found for current package
+            if not erratas:
+                continue
+            # check errata contents
+            for errata in erratas:
+                # FIXME: check errata.id is not None, just to make type-checker happy
+                if errata.id is None:
+                    raise ValueError("Errata ID object is 'None'")
+                # skip CVE-to-Errata pairs if processed already
+                if (pcm.vuln_id, errata.id.id) in processed_cve_to_errata_pairs:
+                    continue
+                processed_cve_to_errata_pairs.add((pcm.vuln_id, errata.id.id))
+                # current CVE ID not Errata references -> skip it
+                if not cve_in_errata_references(pcm.vuln_id, errata):
+                    continue
+                # current CVE ID added to Errata by changelog -> skip it
+                if check_cve_by_chlog(
+                    pcm.vuln_id, errata, pkgs_changelogs[pcm.pkg_hash]
+                ):
+                    self.logger.debug(
+                        f"{pcm.vuln_id} added to {errata.id.id} from package changelog"
+                    )
+                    continue
+                # CVE ID from matches found in Errata' references
+                # collect it for further processing
+                if pcm.vuln_id not in erratas_by_cve:
+                    erratas_by_cve[pcm.vuln_id] = [(errata, pcm.cpm_cpe)]
+                else:
+                    # skip duplicates
+                    if (errata, pcm.cpm_cpe) not in erratas_by_cve[pcm.vuln_id]:
+                        erratas_by_cve[pcm.vuln_id].append((errata, pcm.cpm_cpe))
+                cves_by_errata_ids.setdefault(errata.id.id, set()).add(pcm.vuln_id)
+
+        def get_errata_and_cpe(eid: str, cve: str) -> tuple[Errata, str]:
+            for errata, cpe in erratas_by_cve.get(cve, []):
+                # FIXME: check errata.id is not None, just to make type-checker happy
+                if errata.id and errata.id.id == eid:
+                    return errata, cpe
+            raise ValueError(f"No Errata {eid} found for {cve}")
+
+        for eid, cves in cves_by_errata_ids.items():
+            _cves = tuple(cves)
+            errata, cpe = get_errata_and_cpe(eid, _cves[0])
+            self.eh.add_errata_discard_from_cpe(errata=errata, cpe=cpe, cve_ids=_cves)
 
     def commit(self) -> None:
         try:

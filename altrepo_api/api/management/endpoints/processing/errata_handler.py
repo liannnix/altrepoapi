@@ -27,6 +27,7 @@ from .helpers import get_bdus_by_cves
 from ..errata import ManageErrata
 from ..tools.base import Errata, ChangeReason
 from ..tools.constants import (
+    CHANGE_ACTION_DISCARD,
     CHANGE_ACTION_CREATE,
     CHANGE_ACTION_UPDATE,
     CHANGE_SOURCE_KEY,
@@ -36,6 +37,7 @@ from ..tools.constants import (
     ERRATA_MANAGE_RESPONSE_ERRATA_FIELD,
     ERRATA_MANAGE_RESPONSE_ERRATA_CHANGE_FIELD,
     SOURCE_CHANGELOG,
+    SOURCE_CPE_DISCRAD,
     SOURCE_ERRATA_POINT,
     SOURCE_ORDER,
     TASK_STATE_DONE,
@@ -59,8 +61,15 @@ class ErrataUpdate(NamedTuple):
     cve_ids: tuple[str, ...]
 
 
+class ErrataDiscard(NamedTuple):
+    reason: ChangeReason
+    errata: Errata
+    cpe: str
+    cve_ids: tuple[str, ...]
+
+
 # type aliases
-ErrataT = Union[ErrataCreate, ErrataUpdate]
+ErrataT = Union[ErrataCreate, ErrataUpdate, ErrataDiscard]
 ErrataTupleT = tuple[str, int, int]
 
 
@@ -80,6 +89,7 @@ class ErrataHandler(APIWorker):
         self.is_transaction_completed = False
         self._erratas_to_create: list[ErrataCreate] = []
         self._erratas_to_update: list[ErrataUpdate] = []
+        self._erratas_to_discard: list[ErrataDiscard] = []
         super().__init__()
 
     def _create_errata(
@@ -142,6 +152,41 @@ class ErrataHandler(APIWorker):
         except Exception as e:
             return False, {
                 "message": f"Failed to update errata {errata.id}",
+                "reason": f"Exception: {e}",
+            }
+
+    def _discard_errata(
+        self, et: ErrataDiscard, errata: Errata
+    ) -> tuple[bool, dict[str, Any]]:
+        # Errata references is not empty after CVE and BDU discard -> update
+        if errata.references:
+            return self._update_errata(et, errata)  # type: ignore
+        # discard Errata
+        args = {
+            "payload": build_manage_errata_payload(
+                user=self.reason.actor.name,
+                reason=build_reason_string(et),
+                action=CHANGE_ACTION_DISCARD,
+                # XXX: use original errata state here to be discarded
+                errata=et.errata,
+            ),
+            "transaction_id": self.transaction_id,
+            DRY_RUN_KEY: self.dry_run,
+            CHANGE_SOURCE_KEY: CHANGE_SOURCE_AUTO,
+        }
+        me = ManageErrata(connection=self.conn, **args)
+        # validate input
+        if not me.check_params_delete():
+            return False, build_validation_error_report(me, args)
+        # update 'ManageErrata' reason object with details
+        update_manage_errata_reason(me, et)
+        # process errata changes
+        try:
+            response, http_code = me.delete()
+            return http_code == 200, response
+        except Exception as e:
+            return False, {
+                "message": f"Failed to discard errata {errata.id}",
                 "reason": f"Exception: {e}",
             }
 
@@ -234,6 +279,53 @@ class ErrataHandler(APIWorker):
                 result.get(ERRATA_MANAGE_RESPONSE_ERRATA_CHANGE_FIELD, [])
             )
 
+    def _process_discrad_errata(self, bdus_by_cve: dict[str, set[str]]) -> None:
+        erratas_to_discard = self._erratas_to_discard[:]
+
+        uniq_cves: dict[ErrataTupleT, set[str]] = {}
+        uniq_idxs: dict[ErrataTupleT, int] = {}
+
+        for idx, errata in enumerate(erratas_to_discard):
+            e_tpl = (
+                errata.errata.pkgset_name,
+                errata.errata.task_id,
+                errata.errata.subtask_id,
+            )
+            if e_tpl not in uniq_cves:
+                uniq_cves[e_tpl] = set(errata.cve_ids)
+                uniq_idxs[e_tpl] = idx
+            else:
+                diff = set(errata.cve_ids).difference(uniq_cves[e_tpl])
+                if diff:
+                    # merge EPs has different CVE IDs
+                    uniq_cves[e_tpl].update(diff)
+
+        # store erratas to be created
+        for key_tpl, idx in uniq_idxs.items():
+            cve_ids = uniq_cves[key_tpl]
+            et = erratas_to_discard[idx]
+            # update errata here
+            errata = build_errata_discard(et, cve_ids, bdus_by_cve)
+            status, result = self._discard_errata(et, errata)
+            if not status:
+                self.store_error(
+                    {
+                        "message": f"Failed to discard or update Errata in DB: {errata.id}",
+                        "details": result,
+                    },
+                    severity=self.LL.ERROR,
+                    http_code=400,
+                )
+                raise ErrataHandlerError("Failed to discrad or update Errata")
+            self.errata_records.extend(
+                result.get(ERRATA_MANAGE_RESPONSE_ERRATA_FIELD, [])
+            )
+            self.errata_change_records.extend(
+                result.get(ERRATA_MANAGE_RESPONSE_ERRATA_CHANGE_FIELD, [])
+            )
+
+        pass
+
     def add_errata_create_from_ep(self, ep: ErrataPoint, pcm: PackageCveMatch):
         reason = self.reason.clone()
         reason.details["from"] = build_errata_details(
@@ -272,10 +364,26 @@ class ErrataHandler(APIWorker):
             ErrataUpdate(reason=reason, errata=errata, ep=ep, cve_ids=ep.cve_ids)
         )
 
+    def add_errata_discard_from_cpe(
+        self, errata: Errata, cpe: str, cve_ids: tuple[str, ...]
+    ):
+        reason = self.reason.clone()
+        reason.details["from"] = build_errata_details(
+            CHANGE_ACTION_DISCARD,
+            SOURCE_CPE_DISCRAD,
+            errata=errata,
+            cpe=cpe,
+            cve_ids=cve_ids,
+        )
+        self._erratas_to_discard.append(
+            ErrataDiscard(reason=reason, errata=errata, cpe=cpe, cve_ids=cve_ids)
+        )
+
     def commit(self) -> None:
         # collect CVE to BDU mapping
         cve_ids = {c for e in self._erratas_to_update for c in e.cve_ids}
         cve_ids.update({c for e in self._erratas_to_create for c in e.cve_ids})
+        cve_ids.update({c for e in self._erratas_to_discard for c in e.cve_ids})
 
         bdus_by_cve = get_bdus_by_cves(self, cve_ids)
         if not self.status:
@@ -283,6 +391,7 @@ class ErrataHandler(APIWorker):
 
         self._process_create_errata(bdus_by_cve)
         self._process_update_errata(bdus_by_cve)
+        self._process_discrad_errata(bdus_by_cve)
 
         # all errata updates are completed without errors
         self.is_transaction_completed = True
@@ -323,6 +432,8 @@ def build_errata_details(action: str, source: str, **kwargs) -> dict[str, Any]:
         errata: Errata
         ep: Union[ErrataPoint, ChangelogErrataPoint]
         pcm: PackageCveMatch
+        cpe: str
+        cve_ids: tuple[str, ...]
 
     args = BuildDetailsKwargs(kwargs)  # type: ignore
 
@@ -339,6 +450,9 @@ def build_errata_details(action: str, source: str, **kwargs) -> dict[str, Any]:
         (CHANGE_ACTION_UPDATE, SOURCE_CHANGELOG),
     ):
         result["reason"] = "by package changelog"
+
+    if (action, source) == (CHANGE_ACTION_DISCARD, SOURCE_CPE_DISCRAD):
+        result["reason"] = "by CPE discard"
 
     if "errata" in args:
         result["errata"] = str(args["errata"].id)
@@ -370,6 +484,13 @@ def build_errata_details(action: str, source: str, **kwargs) -> dict[str, Any]:
                 "version_end_excluded": ep.cvm.versions.version_end_excluded,
             }
 
+    if "cpe" in args or "cve_ids" in args:
+        if "match" not in result:
+            result["match"] = {}
+
+        result["match"]["cpe"] = args.get("cpe", "")
+        result["match"]["cve_ids"] = list(args.get("cve_ids", []))
+
     return result
 
 
@@ -378,21 +499,26 @@ def build_reason_string(et: ErrataT) -> str:
 
     if isinstance(et, ErrataCreate):
         message = ["Create Errata on"]
-    else:
+    elif isinstance(et, ErrataUpdate):
         message = [f"Update Errata {et.errata.id} on"]
-
-    if isinstance(et.ep, ErrataPoint):
-        message.append(f"manage CPE '{et.ep.cvm.versions.cpe}'")
     else:
-        message.append(f"package changelog parse [{et.ep.evr}]")
+        message = [f"Discard or update Errata {et.errata.id} on"]
 
-    message.extend(
-        [
-            "for package",
-            f"{et.ep.task.name} {et.ep.task.version}-{et.ep.task.release}",
-            f"[{et.ep.task.task_id}:{et.ep.task.subtask_id}] in '{et.ep.task.branch}'",
-        ]
-    )
+    if isinstance(et, (ErrataCreate, ErrataUpdate)):
+        if isinstance(et.ep, ErrataPoint):
+            message.append(f"manage CPE '{et.ep.cvm.versions.cpe}'")
+        else:
+            message.append(f"package changelog parse [{et.ep.evr}]")
+
+        message.extend(
+            [
+                "for package",
+                f"{et.ep.task.name} {et.ep.task.version}-{et.ep.task.release}",
+                f"[{et.ep.task.task_id}:{et.ep.task.subtask_id}] in '{et.ep.task.branch}'",
+            ]
+        )
+    else:
+        message.append(f"manage CPE {et.cpe} discarding CVE IDs {list(et.cve_ids)}")
 
     return " ".join(message)
 
@@ -426,6 +552,29 @@ def build_errata_create(
         hash=0,
         is_discarded=False,
     )
+
+    return errata
+
+
+def build_errata_discard(
+    ed: ErrataDiscard, cve_ids: set[str], bdus_by_cve: dict[str, set[str]]
+) -> Errata:
+    errata = ed.errata
+    references = errata.references[:]
+    linked_vulns = {r.link for r in references}
+
+    # remove CVE and realted BDU from references
+    for cve_id in cve_ids.intersection(linked_vulns):
+        references.remove(Reference(VULN_REFERENCE_TYPE, cve_id))
+        for bdu_id in bdus_by_cve.get(cve_id, set()).intersection(linked_vulns):
+            try:
+                references.remove(Reference(VULN_REFERENCE_TYPE, bdu_id))
+            except ValueError:
+                # skip repetitve related BDU removal
+                pass
+
+    errata = errata.update(references=sorted(references))
+    errata = errata.update(hash=errata_hash(errata))
 
     return errata
 
