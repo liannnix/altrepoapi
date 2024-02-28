@@ -440,7 +440,9 @@ class ErrataBuilder(APIWorker):
                         uniq_chlog_update.add((e_, ep_))
                         self.eh.add_errata_update_from_chlog(e_, ep_)
 
-    def build_erratas_on_cpe_add(self, pkgs_cve_matches: list[PackageCveMatch]) -> None:
+    def build_erratas_on_cpe_add(
+        self, pkgs_cve_matches: list[PackageCveMatch], pkg_name: Optional[str]
+    ) -> None:
         if not pkgs_cve_matches:
             self.logger.info("No packages' CVE matches found to be processed")
             return None
@@ -449,8 +451,16 @@ class ErrataBuilder(APIWorker):
         pkgs_cve_matches = dedup_pcms(pkgs_cve_matches)
 
         # collect affected packages names and hashes
-        pkgs_names = {m.pkg_name for m in pkgs_cve_matches}
-        pkgs_hashes = {m.pkg_hash for m in pkgs_cve_matches}
+        if pkg_name is None:
+            pkgs_names = {m.pkg_name for m in pkgs_cve_matches}
+            pkgs_hashes = {m.pkg_hash for m in pkgs_cve_matches}
+        else:
+            pkgs_names = {
+                m.pkg_name for m in pkgs_cve_matches if m.pkg_name == pkg_name
+            }
+            pkgs_hashes = {
+                m.pkg_hash for m in pkgs_cve_matches if m.pkg_name == pkg_name
+            }
 
         # get packages' versions and changelogs
         pkgs_versions = self._get_packages_versions(pkgs_hashes)

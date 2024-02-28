@@ -26,6 +26,8 @@ from ..base import PncRecord, PncChangeRecord
 def get_related_packages_by_project_name(
     cls: _pAPIWorker, project_names: list[str]
 ) -> list[str]:
+    """Get related packages by project name from 'PackagesNameConversion' table."""
+
     cls.status = False
     res = []
 
