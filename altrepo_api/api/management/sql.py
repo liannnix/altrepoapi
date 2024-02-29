@@ -1112,7 +1112,12 @@ ORDER BY state, repology_name, pkg_name, repology_branch, cpe;
 """
 
     get_pnc_records = """
-SELECT name, type, result, source, state
+SELECT
+    name,
+    state,
+    result,
+    type,
+    source
 FROM (
     SELECT
         pkg_name AS name,
