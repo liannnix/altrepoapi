@@ -163,6 +163,8 @@ class ManageCpe(APIWorker):
         self.sql = sql
         self.trx = Transaction(source=ChangeSource.MANUAL)
         # private fields
+        self._branch: Union[str, None] = None
+        self._package_name: Union[str, None] = None
         self._related_packages: list[str] = []
         self._related_cve_ids: list[str] = []
         self._packages_cve_matches: list[dict[str, Any]] = []
@@ -176,6 +178,10 @@ class ManageCpe(APIWorker):
     def _valiadte_and_parse(self):
         """Validate and parse `self.payload' JSON contents."""
 
+        # get package name from args if specified
+        self._package_name = self.args.get("package_name", None)
+
+        # build change reason object
         self.reason = ChangeReason(
             actor=UserInfo(
                 name=self.payload.get("user", ""),
@@ -276,6 +282,36 @@ class ManageCpe(APIWorker):
         self.status = True
         return [PackageCveMatch(*el) for el in response]
 
+    def _check_package_name_is_consistent_with_db(self) -> bool:
+        if not self._package_name:
+            return True
+
+        if self._package_name not in self._related_packages:
+            self.store_error(
+                {
+                    "message": "Given package name not found in related packages",
+                    "package_name": self._package_name,
+                    "related_packages": self._related_packages,
+                },
+                self.LL.WARNING,
+                409,
+            )
+            return False
+
+        if len(self._related_packages) > 1:
+            self.store_error(
+                {
+                    "message": "Multiple packages are affected by given CPE match record changes, but one was specified",
+                    "package_name": self._package_name,
+                    "related_packages": self._related_packages,
+                },
+                self.LL.WARNING,
+                409,
+            )
+            return False
+
+        return True
+
     def _commit_or_rollback(self):
         status = False
         errors = []
@@ -322,6 +358,7 @@ class ManageCpe(APIWorker):
                 "reason": self.reason.message,
                 "message": "OK",
                 "cpe": self.cpe.asdict(),
+                "package_name": self._package_name or "",
                 "related_packages": self._related_packages,
                 "related_cve_ids": self._related_cve_ids,
                 "cpe_records": [r.asdict() for r in self.trx.pnc_records],
@@ -343,10 +380,14 @@ class ManageCpe(APIWorker):
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
+        # parse package name and branch form request args if exists
         branch = self.args.get("branch", None)
         if branch is not None and not validate_branch_with_tatsks(branch):
             self.validation_results.append(f"Invalid branch: {self.args['branch']}")
             return False
+
+        self._branch = branch
+        self._package_name = self.args.get("package_name", None)
 
         return True
 
@@ -410,19 +451,16 @@ class ManageCpe(APIWorker):
 
         cpes: dict[tuple[str, str], Any] = {}
 
-        pkg_name = self.args["name"]
-        branch = self.args.get("branch")
-        if branch is None:
-            branch = ""
+        if self._branch is None:
             cpe_branches = tuple(set(lut.cpe_reverse_branch_map.keys()))
         else:
-            cpe_branches = (lut.cpe_branch_map[branch],)
+            cpe_branches = (lut.cpe_branch_map[self._branch],)
 
         # get last CPE match states for specific package name
         response = self.send_sql_request(
             self.sql.get_cpes.format(
                 cpe_branches=cpe_branches,
-                pkg_name_conversion_clause=f"AND alt_name = '{pkg_name}'",
+                pkg_name_conversion_clause=f"AND alt_name = '{self._package_name}'",
                 cpe_states=(PNC_STATE_ACTIVE, PNC_STATE_CANDIDATE, PNC_STATE_INACTIVE),
                 join_type=JOIN_TYPE_INNER,
             )
@@ -431,7 +469,9 @@ class ManageCpe(APIWorker):
             return self.error
         if not response:
             return self.store_error(
-                {"Error": f"No CPE records found in DB for package '{pkg_name}'"}
+                {
+                    "Error": f"No CPE records found in DB for package '{self._package_name}'"
+                }
             )
 
         for el in response:
@@ -461,8 +501,8 @@ class ManageCpe(APIWorker):
 
         return {
             "length": len(cpes),
-            "name": pkg_name,
-            "branch": branch,
+            "name": self._package_name or "",
+            "branch": self._branch or "",
             "cpes": [
                 {"cpe": k[0], "repology_name": k[1], **v} for k, v in cpes.items()
             ],
@@ -515,6 +555,10 @@ class ManageCpe(APIWorker):
         self.trx.register_pnc_create(pnc=pncr, pnc_type=PncType.CPE)
         self.trx.commit(self.reason)
 
+        # check if `package_name` was specified and consistent with DB contents
+        if not self._check_package_name_is_consistent_with_db():
+            return self.error
+
         if self._related_packages:
             # update PackagesCveMatch table
             pkg_cpe_pairs = [
@@ -530,7 +574,10 @@ class ManageCpe(APIWorker):
                 ),
                 log_level=MATCHER_LOG_LEVEL,
             )
-            matcher.match_cpe_add(pkg_cpe_pairs)
+            if self._package_name:
+                matcher.match_cpe_add(pkg_cpe_pairs, package_name=self._package_name)
+            else:
+                matcher.match_cpe_add(pkg_cpe_pairs)
 
             pcms = matcher.packages_cve_matches
             # XXX: if all packages' CVE matches already loaded use hashes from matcher
@@ -557,7 +604,7 @@ class ManageCpe(APIWorker):
 
             # XXX: update or create erratas
             try:
-                self.eb.build_erratas_on_cpe_add(pcms)
+                self.eb.build_erratas_on_cpe_add(pcms, self._package_name)
             except ErrataBuilderError:
                 self.logger.error("Failed to build erratas")
                 return self.eb.error
@@ -620,6 +667,7 @@ class ManageCpe(APIWorker):
                     "reason": self.reason.message,
                     "message": "No changes found to be stored to DB",
                     "cpe": self.cpe.asdict(),
+                    "package_name": self._package_name or "",
                     "related_packages": self._related_packages,
                     "related_cve_ids": self._related_cve_ids,
                     "cpe_records": [],
@@ -640,6 +688,20 @@ class ManageCpe(APIWorker):
         self.trx.register_pnc_create(pnc=pncr, pnc_type=PncType.CPE)
         self.trx.commit(self.reason)
 
+        # FIXME: ignore `package_name` argument here
+        # # check if `package_name` was specified and consistent with DB contents
+        # if not self._check_package_name_is_consistent_with_db():
+        #     return self.error
+        if self._package_name:
+            return self.store_error(
+                {
+                    "message": "'package_name' argument not supported here",
+                    "package_name": self._package_name,
+                },
+                self.LL.WARNING,
+                400,
+            )
+
         if self._related_packages:
             # update PackagesCveMatch table
             pkg_cpe_pairs = [
@@ -655,6 +717,10 @@ class ManageCpe(APIWorker):
                 ),
                 log_level=MATCHER_LOG_LEVEL,
             )
+            # FIXME: ignore `package_name` argument here
+            # if self._package_name:
+            #     matcher.match_cpe_add(pkg_cpe_pairs, package_name=self._package_name)
+            # else:
             matcher.match_cpe_add(pkg_cpe_pairs)
 
             pcms = matcher.packages_cve_matches
@@ -682,14 +748,14 @@ class ManageCpe(APIWorker):
 
             # XXX: update or create erratas
             try:
-                self.eb.build_erratas_on_cpe_add(pcms)
+                self.eb.build_erratas_on_cpe_add(pcms, self._package_name)
             except ErrataBuilderError:
                 self.logger.error("Failed to build erratas")
                 return self.eb.error
 
         return self._commit_or_rollback()
 
-    def delete(self, source_package_name: Union[str, None] = None):
+    def delete(self):
         """Handles CPE record discard.
         Returns:
             - 200 (OK) if CPE record discarded successfully
@@ -751,6 +817,7 @@ class ManageCpe(APIWorker):
                     "reason": self.reason.message,
                     "message": "No changes found to be stored to DB",
                     "cpe": self.cpe.asdict(),
+                    "package_name": self._package_name or "",
                     "related_packages": self._related_packages,
                     "related_cve_ids": self._related_cve_ids,
                     "cpe_records": [],
@@ -775,6 +842,10 @@ class ManageCpe(APIWorker):
         if not self.status:
             return self.error
 
+        # check if `package_name` was specified and consistent with DB contents
+        if not self._check_package_name_is_consistent_with_db():
+            return self.error
+
         if self._related_packages:
             # update PackagesCveMatch table
             pkg_cpe_pairs = [
@@ -790,7 +861,10 @@ class ManageCpe(APIWorker):
                 ),
                 log_level=MATCHER_LOG_LEVEL,
             )
-            matcher.match_cpe_delete(pkg_cpe_pairs)
+            if self._package_name:
+                matcher.match_cpe_delete(pkg_cpe_pairs, package_name=self._package_name)
+            else:
+                matcher.match_cpe_delete(pkg_cpe_pairs)
 
             pcms = matcher.packages_cve_matches
             # XXX: if all packages' CVE matches already loaded use hashes from matcher
@@ -817,7 +891,7 @@ class ManageCpe(APIWorker):
 
             # XXX: update or discard erratas
             try:
-                self.eb.build_erratas_on_cpe_delete(pcms, source_package_name)
+                self.eb.build_erratas_on_cpe_delete(pcms, self._package_name)
             except ErrataBuilderError:
                 self.logger.error("Failed to build erratas")
                 return self.eb.error

@@ -408,6 +408,9 @@ cpe_manage_response_model = ns.model(
             cpe_manage_cpe_model,
             description="list of CPE match records",
         ),
+        "package_name": fields.String(
+            description="exact package name to restrict results on"
+        ),
         "related_packages": fields.List(
             fields.String,
             description="packages names are related to modified CPE records",

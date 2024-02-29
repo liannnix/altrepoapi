@@ -126,7 +126,7 @@ is_images_opt = parser.register_item(
     location="args",
 )
 package_name = parser.register_item(
-    "name",
+    "package_name",
     type=pkg_name_type,
     required=True,
     help="source package name",
@@ -215,7 +215,7 @@ pkgs_open_vulns_args = parser.build_parser(
     sort_opt,
 )
 cpe_candidates_args = parser.build_parser(all_candidates_opt)
-cpe_manage_args = parser.build_parser(dry_run)
+cpe_manage_args = parser.build_parser(dry_run, package_name_opt)
 cpe_manage_get_args = parser.build_parser(package_name, branch_name_opt)
 maintainer_list_args = parser.build_parser(branch_name_opt, page_opt, limit_opt)
 cpe_list_args = parser.build_parser(
