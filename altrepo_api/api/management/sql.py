@@ -725,7 +725,7 @@ FROM (
     WHERE pnc_type = 'cpe'
     GROUP BY pkg_name, pnc_result
 ) WHERE state IN {cpe_states}
-    AND pkg_name IN {project_names}
+    AND pkg_name IN {tmp_table}
 """
 
     get_packages_by_project_names = """

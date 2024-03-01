@@ -517,12 +517,21 @@ class ManageCpe(APIWorker):
         """
         # get CPE match records by `project_name`
         db_cpes: dict[str, list[PncRecord]] = {}
+        _tmp_table = "_project_names_tmp_table"
         response = self.send_sql_request(
             self.sql.get_cpes_by_project_names.format(
-                project_names=(self.cpe.project_name,),
+                tmp_table=_tmp_table,
                 cpe_states=(PNC_STATE_ACTIVE, PNC_STATE_CANDIDATE, PNC_STATE_INACTIVE),
-                join_type=JOIN_TYPE_INNER,
-            )
+            ),
+            external_tables=[
+                {
+                    "name": _tmp_table,
+                    "structure": [
+                        ("project_name", "String"),
+                    ],
+                    "data": [{"project_name": self.cpe.project_name}],
+                },
+            ],
         )
         if not self.sql_status:
             return self.error
@@ -620,12 +629,21 @@ class ManageCpe(APIWorker):
         """
         # get CPE match records by `project_name`
         db_cpes: dict[str, list[PncRecord]] = {}
+        _tmp_table = "_project_names_tmp_table"
         response = self.send_sql_request(
             self.sql.get_cpes_by_project_names.format(
-                project_names=(self.cpe.project_name,),
+                tmp_table=_tmp_table,
                 cpe_states=(PNC_STATE_ACTIVE, PNC_STATE_CANDIDATE, PNC_STATE_INACTIVE),
-                join_type=JOIN_TYPE_INNER,
-            )
+            ),
+            external_tables=[
+                {
+                    "name": _tmp_table,
+                    "structure": [
+                        ("project_name", "String"),
+                    ],
+                    "data": [{"project_name": self.cpe.project_name}],
+                },
+            ],
         )
         if not self.sql_status:
             return self.error
@@ -766,12 +784,21 @@ class ManageCpe(APIWorker):
 
         # get CPE match records by `project_name`
         db_cpes: dict[str, list[PncRecord]] = {}
+        _tmp_table = "_project_names_tmp_table"
         response = self.send_sql_request(
             self.sql.get_cpes_by_project_names.format(
-                project_names=(self.cpe.project_name,),
+                tmp_table=_tmp_table,
                 cpe_states=(PNC_STATE_ACTIVE, PNC_STATE_CANDIDATE, PNC_STATE_INACTIVE),
-                join_type=JOIN_TYPE_INNER,
-            )
+            ),
+            external_tables=[
+                {
+                    "name": _tmp_table,
+                    "structure": [
+                        ("project_name", "String"),
+                    ],
+                    "data": [{"project_name": self.cpe.project_name}],
+                },
+            ],
         )
         if not self.sql_status:
             return self.error
