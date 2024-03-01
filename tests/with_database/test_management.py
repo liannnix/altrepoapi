@@ -36,6 +36,9 @@ INVALID_ACCESS_TOKEN = "invalid_token"
 CPE_IN_DB = "cpe:2.3:a:curl:curl:*:*:*:*:*:*:*:*"
 CPE_NOT_IN_DB = "cpe:2.3:a:test:test:*:*:*:*:*:*:*:*"
 
+PROJECT_NAME_IN_DB = "mongo-c-driver"
+PROJECT_NAME_NOT_IN_DB = "test_project_name"
+
 
 @pytest.mark.parametrize(
     "kwargs",
@@ -630,3 +633,68 @@ def test_cpe_list(client, kwargs, mocked_check_access_token):
                     assert params["input"] in pkg["name"]
             if params.get("input", "") == CPE_IN_DB:
                 assert params["input"] in el["cpe"]
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": PACKAGE_IN_DB,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": PROJECT_NAME_IN_DB,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "status_code": 200,
+            "limit": 10,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": PACKAGE_NOT_IN_DB,
+            "status_code": 404,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": PROJECT_NAME_NOT_IN_DB,
+            "status_code": 404,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "status_code": 401,
+            "headers": {"Authorization": INVALID_ACCESS_TOKEN},
+        },
+        {
+            "status_code": 401,
+        },
+    ],
+)
+def test_pnc_list(client, kwargs, mocked_check_access_token):
+    params = {k: v for k, v in kwargs.items() if k not in ("status_code", "headers")}
+    url = url_for("manage.manage_route_pnc_list")
+    mocked_check_access_token.headers = kwargs.get("headers", {})
+    mocked_check_access_token.status_code = kwargs["status_code"]
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["pncs"] != []
+        if params.get("limit", ""):
+            assert params["limit"] <= len(data["pncs"])
+
+        for el in data["pncs"]:
+            if params.get("input", "") == PACKAGE_IN_DB:
+                for pkg in el["packages"]:
+                    assert params["input"].lower() in pkg["pkg_name"].lower()
+            if params.get("input", "") == PROJECT_NAME_IN_DB:
+                assert params["input"].lower() in el["pnc_result"].lower()
+            if params.get("state", "") == "active":
+                assert params["state"] == el["pnc_state"]

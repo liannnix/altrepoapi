@@ -22,8 +22,8 @@ from enum import IntEnum
 from typing import Any, NamedTuple, Protocol, Union
 from uuid import UUID
 
+from altrepo_api.api.misc import lut
 from .constants import CHANGE_SOURCE_AUTO, CHANGE_SOURCE_MANUAL
-
 
 UUID_T = Union[str, UUID]
 
@@ -265,6 +265,29 @@ class PncRecord(NamedTuple):
 
     def asdict(self) -> dict[str, str]:
         return self._asdict()
+
+
+class PncPackage(NamedTuple):
+    pkg_name: str
+    pnc_type: str
+    pnc_source: str
+
+    def asdict(self):
+        res = self._asdict()
+        res["pnc_type"] = lut.cpe_reverse_branch_map[res["pnc_type"]][0]
+        return res
+
+
+class PncListElement(NamedTuple):
+    pnc_state: str
+    pnc_result: str
+    packages: list[PncPackage]
+
+    def asdict(self) -> dict[str, str]:
+        res = self._asdict()
+        res["packages"] = [r.asdict() for r in self.packages]
+        res["cpes"] = []
+        return res
 
 
 class PncChangeRecord(NamedTuple):

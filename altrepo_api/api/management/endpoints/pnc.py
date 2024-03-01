@@ -18,9 +18,18 @@ from typing import Any, NamedTuple, Union
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
+from altrepo_api.libs.pagination import Paginator
+from altrepo_api.libs.sorting import rich_sort
 from altrepo_api.utils import make_tmp_table_name, get_real_ip
 
-from .tools.base import ChangeReason, ChangeSource, PncRecord, UserInfo
+from .tools.base import (
+    ChangeReason,
+    ChangeSource,
+    PncRecord,
+    UserInfo,
+    PncListElement,
+    PncPackage,
+)
 from .tools.constants import (
     CHANGE_ACTION_CREATE,
     CHANGE_ACTION_DISCARD,
@@ -208,3 +217,113 @@ class ManagePnc(APIWorker):
 
     def delete(self):
         return "OK", 200
+
+
+class PncList(APIWorker):
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def check_params(self):
+        self.logger.debug(f"args : {self.args}")
+        branch = self.args.get("branch", None)
+
+        if branch is not None and branch not in lut.cpe_branch_map:
+            self.validation_results.append(f"Invalid branch: {branch}")
+            return False
+
+        return True
+
+    def _get_cpes(self, pncs: list[dict[str, Any]]):
+        projects: dict[str, dict[str, Any]] = {el["pnc_result"]: el for el in pncs}
+        _tmp_table = "_project_names_tmp_table"
+        response = self.send_sql_request(
+            self.sql.get_cpes_by_project_names.format(
+                tmp_table=_tmp_table,
+                cpe_states=(PNC_STATE_ACTIVE, PNC_STATE_CANDIDATE, PNC_STATE_INACTIVE),
+            ),
+            external_tables=[
+                {
+                    "name": _tmp_table,
+                    "structure": [
+                        ("project_name", "String"),
+                    ],
+                    "data": [{"project_name": el} for el in projects.keys()],
+                },
+            ],
+        )
+        if response:
+            for p in (PncRecord(*el) for el in response):
+                projects[p.pkg_name].setdefault("cpes", []).append(p.asdict())
+        return list(projects.values())
+
+    def get(self):
+        input_val = self.args.get("input")
+        limit = self.args.get("limit")
+        page = self.args.get("page")
+        sort = self.args.get("sort")
+
+        branch = self.args.get("branch")
+        if branch:
+            branch = (lut.cpe_branch_map[branch],)
+        else:
+            branch = tuple(lut.cpe_reverse_branch_map.keys())
+
+        state = self.args.get("state")
+        if state == "all":
+            state = None
+
+        # build where clause for PNC records gathering request
+        where_conditions = ["WHERE 1"]
+
+        if branch:
+            where_conditions.append(f"type IN {branch}")
+        if input_val:
+            where_conditions.append(
+                f"(name ILIKE '%{input_val}%' OR result ILIKE '%{input_val}%')"
+            )
+        if state:
+            where_conditions.append(f"state = '{state}'")
+
+        where_clause = " AND ".join(where_conditions)
+
+        # get PNC records from DB
+        response = self.send_sql_request(
+            self.sql.get_pnc_list.format(where_clause=where_clause)
+        )
+        if not self.sql_status:
+            return self.error
+
+        pnc_records = [
+            PncListElement(el[0], el[1], [PncPackage(*pkg) for pkg in el[-1]]).asdict()
+            for el in response
+        ]
+
+        if not pnc_records:
+            return self.store_error(
+                {"message": f"No data found in DB for {self.args}"}, http_code=404
+            )
+
+        if sort:
+            pnc_records = rich_sort(pnc_records, sort)
+
+        paginator = Paginator(pnc_records, limit)
+        page_obj = paginator.get_page(page)
+
+        page_obj = self._get_cpes(page_obj)
+
+        res = {
+            "request_args": self.args,
+            "pncs": page_obj,
+        }
+
+        return (
+            res,
+            200,
+            {
+                "Access-Control-Expose-Headers": "X-Total-Count",
+                "X-Total-Count": int(paginator.count),
+            },
+        )

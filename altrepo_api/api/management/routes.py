@@ -36,7 +36,7 @@ from .endpoints.packages_open_vulns import (
 from .namespace import get_namespace
 from .endpoints.cpe import CPECandidates, ManageCpe, CPEList
 from .endpoints.errata import ManageErrata
-from .endpoints.pnc import ManagePnc
+from .endpoints.pnc import ManagePnc, PncList
 from .endpoints.task_info import TaskInfo
 from .endpoints.task_list import TaskList
 from .endpoints.vulns_info import VulnsInfo
@@ -51,6 +51,7 @@ from .parsers import (
     maintainer_list_args,
     cpe_list_args,
     pnc_manage_get_args,
+    pnc_list_args,
 )
 from .serializers import (
     task_list_model,
@@ -70,6 +71,7 @@ from .serializers import (
     maintainer_list_model,
     pnc_manage_model,
     pnc_manage_get_model,
+    pnc_list_model,
 )
 
 ns = get_namespace()
@@ -415,6 +417,23 @@ class routePackagesMaintainerList(Resource):
         url_logging(logger, g.url)
         args = maintainer_list_args.parse_args(strict=True)
         w = PackagesMaintainerList(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route("/pnc/list")
+class routePncList(Resource):
+    @ns.doc(
+        description="Get PNC records list.",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(pnc_list_args)
+    @ns.marshal_with(pnc_list_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = pnc_list_args.parse_args(strict=True)
+        w = PncList(g.connection, **args)
         return run_worker(worker=w, args=args)
 
 
