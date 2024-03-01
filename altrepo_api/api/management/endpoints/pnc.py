@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Any, NamedTuple, Union
+from typing import Any
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
@@ -24,7 +24,6 @@ from altrepo_api.utils import make_tmp_table_name, get_real_ip
 
 from .tools.base import (
     ChangeReason,
-    ChangeSource,
     PncRecord,
     UserInfo,
     PncListElement,
@@ -238,15 +237,14 @@ class PncList(APIWorker):
 
     def _get_cpes(self, pncs: list[dict[str, Any]]):
         projects: dict[str, dict[str, Any]] = {el["pnc_result"]: el for el in pncs}
-        _tmp_table = "_project_names_tmp_table"
+        tmp_table = make_tmp_table_name("project_names")
         response = self.send_sql_request(
             self.sql.get_cpes_by_project_names.format(
-                tmp_table=_tmp_table,
-                cpe_states=(PNC_STATE_ACTIVE, PNC_STATE_CANDIDATE, PNC_STATE_INACTIVE),
+                tmp_table=tmp_table, cpe_states=PNC_STATES
             ),
             external_tables=[
                 {
-                    "name": _tmp_table,
+                    "name": tmp_table,
                     "structure": [
                         ("project_name", "String"),
                     ],
@@ -314,10 +312,7 @@ class PncList(APIWorker):
 
         page_obj = self._get_cpes(page_obj)
 
-        res = {
-            "request_args": self.args,
-            "pncs": page_obj,
-        }
+        res = {"request_args": self.args, "pncs": page_obj}
 
         return (
             res,
