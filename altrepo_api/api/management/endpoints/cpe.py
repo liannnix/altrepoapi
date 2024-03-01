@@ -461,7 +461,7 @@ class ManageCpe(APIWorker):
             self.sql.get_cpes.format(
                 cpe_branches=cpe_branches,
                 pkg_name_conversion_clause=f"AND alt_name = '{self._package_name}'",
-                cpe_states=(PNC_STATE_ACTIVE, PNC_STATE_CANDIDATE, PNC_STATE_INACTIVE),
+                cpe_states=PNC_STATES,
                 join_type=JOIN_TYPE_INNER,
             )
         )
@@ -520,8 +520,7 @@ class ManageCpe(APIWorker):
         _tmp_table = "_project_names_tmp_table"
         response = self.send_sql_request(
             self.sql.get_cpes_by_project_names.format(
-                tmp_table=_tmp_table,
-                cpe_states=(PNC_STATE_ACTIVE, PNC_STATE_CANDIDATE, PNC_STATE_INACTIVE),
+                tmp_table=_tmp_table, cpe_states=PNC_STATES
             ),
             external_tables=[
                 {
@@ -632,8 +631,7 @@ class ManageCpe(APIWorker):
         _tmp_table = "_project_names_tmp_table"
         response = self.send_sql_request(
             self.sql.get_cpes_by_project_names.format(
-                tmp_table=_tmp_table,
-                cpe_states=(PNC_STATE_ACTIVE, PNC_STATE_CANDIDATE, PNC_STATE_INACTIVE),
+                tmp_table=_tmp_table, cpe_states=PNC_STATES
             ),
             external_tables=[
                 {
