@@ -197,6 +197,13 @@ pnc_state_opt = parser.register_item(
     help="PNC record state",
     location="args",
 )
+pnc_input_opt = parser.register_item(
+    "input",
+    type=pkg_name_type,
+    required=False,
+    help="package name or common project name",
+    location="args",
+)
 
 task_list_args = parser.build_parser(
     task_input_val_opt, branch_name_opt, is_errata_opt, page_opt, limit_opt
@@ -223,4 +230,7 @@ cpe_list_args = parser.build_parser(
 )
 pnc_manage_get_args = parser.build_parser(
     package_name_opt, project_name_opt, pnc_state_opt, branch_name_opt
+)
+pnc_list_args = parser.build_parser(
+    pnc_input_opt, pnc_state_opt, branch_name_opt, page_opt, limit_opt, sort_opt
 )

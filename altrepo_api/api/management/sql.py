@@ -725,7 +725,7 @@ FROM (
     WHERE pnc_type = 'cpe'
     GROUP BY pkg_name, pnc_result
 ) WHERE state IN {cpe_states}
-    AND pkg_name IN {project_names}
+    AND pkg_name IN {tmp_table}
 """
 
     get_packages_by_project_names = """
@@ -1134,6 +1134,31 @@ FROM (
 )
 {where_clause}
 ORDER BY name, type, result
+"""
+
+    get_pnc_list = """
+SELECT
+    state,
+    result,
+    groupArray((name, type, source))
+FROM (
+    SELECT
+        pkg_name AS name,
+        argMax(pnc_state, ts) AS state,
+        argMax(pnc_result, ts) AS result,
+        argMax(pnc_type, ts) AS type,
+        argMax(pnc_source, ts) AS source
+    FROM PackagesNameConversion
+    WHERE pnc_type != 'cpe'
+    GROUP BY
+        pkg_name,
+        pnc_type,
+        pnc_result
+    ORDER BY pkg_name, type
+)
+{where_clause}
+GROUP BY result, state
+ORDER BY result, state
 """
 
 

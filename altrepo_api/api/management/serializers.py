@@ -544,3 +544,38 @@ pnc_manage_get_model = ns.model(
         ),
     },
 )
+
+pnc_packages_el_model = ns.model(
+    "PncPackagesElementModel",
+    {
+        "pkg_name": fields.String(description="package name"),
+        "pnc_type": fields.String(description="package name conversion type"),
+        "pnc_source": fields.String(description="package name conversion source"),
+    },
+)
+pnc_list_el_model = ns.model(
+    "PncListElementModel",
+    {
+        "pnc_result": fields.String(description="package name conversion"),
+        "pnc_state": fields.String(description="package name conversion status"),
+        "packages": fields.Nested(
+            pnc_packages_el_model,
+            description="list of packages for PNC record",
+            as_list=True,
+        ),
+        "cpes": fields.Nested(
+            cpe_manage_pnc_record_model,
+            description="list of cpes for PNC record",
+            as_list=True,
+        ),
+    },
+)
+pnc_list_model = ns.model(
+    "PncListModal",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "pncs": fields.Nested(
+            pnc_list_el_model, description="list of PNC records", as_list=True
+        ),
+    },
+)
