@@ -523,14 +523,23 @@ maintainer_list_model = ns.model(
     },
 )
 
+pnc_manage_pnc_model = ns.model(
+    "PncManagePncModel",
+    {
+        "package_name": fields.String(description="PNC source package name"),
+        "project_name": fields.String(description="PNC common project name"),
+        "state": fields.String(description="PNC record state"),
+        "source": fields.String(description="PNC record source"),
+    },
+)
 pnc_manage_model = ns.model(
     "PncManageModel",
     {
-        "user": fields.String(description="CPE change originator"),
-        "action": fields.String(description="CPE manage action"),
-        "reason": fields.String(description="CPE change reason"),
+        "user": fields.String(description="PNC change originator"),
+        "action": fields.String(description="PNC manage action"),
+        "reason": fields.String(description="PNC change reason"),
         "pnc": fields.Nested(
-            cpe_manage_pnc_record_model, description="PNC record object"
+            pnc_manage_pnc_model, description="PNC record", as_list=False
         ),
     },
 )

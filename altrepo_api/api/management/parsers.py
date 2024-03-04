@@ -29,6 +29,7 @@ from altrepo_api.api.parser import (
     task_search_type,
     uuid_type,
 )
+from altrepo_api.api.misc import lut
 
 from .endpoints.tools.constants import DRY_RUN_KEY
 
@@ -204,6 +205,14 @@ pnc_input_opt = parser.register_item(
     help="package name or common project name",
     location="args",
 )
+pnc_branch_opt = parser.register_item(
+    "branch",
+    choices=tuple(["all"] + list(lut.cpe_reverse_branch_map.keys())),
+    default="all",
+    required=False,
+    help="PNC branch",
+    location="args",
+)
 
 task_list_args = parser.build_parser(
     task_input_val_opt, branch_name_opt, is_errata_opt, page_opt, limit_opt
@@ -228,6 +237,7 @@ maintainer_list_args = parser.build_parser(branch_name_opt, page_opt, limit_opt)
 cpe_list_args = parser.build_parser(
     cpe_input_val, page_opt, limit_opt, sort_opt, is_cpe_discarded_opt
 )
+pnc_manage_args = parser.build_parser(dry_run, pnc_branch_opt)
 pnc_manage_get_args = parser.build_parser(
     package_name_opt, project_name_opt, pnc_state_opt, branch_name_opt
 )

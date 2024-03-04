@@ -39,7 +39,8 @@ from .tools.constants import (
     PNC_STATES,
     PNC_STATE_ACTIVE,
     PNC_STATE_INACTIVE,
-    PNC_STATE_CANDIDATE,
+    # PNC_STATE_CANDIDATE,
+    PNC_SOURCES,
 )
 from .tools.utils import validate_action
 from ..sql import sql
@@ -54,7 +55,7 @@ class ManagePnc(APIWorker):
         self.sql = sql
         # values set in self.check_params_xxx() call
         self.action: str
-        self.pnc: PncRecord
+        self.pncs: list[PncRecord] = []
         self.reason: ChangeReason
         super().__init__()
 
@@ -82,6 +83,53 @@ class ManagePnc(APIWorker):
             self.validation_results.append(
                 f"PNC change action '{self.action}' not supported"
             )
+
+        branch = self.args.get("branch", None)
+
+        if branch == "all":
+            pnc_branches = tuple(lut.cpe_reverse_branch_map.keys())
+        else:
+            pnc_branches = (branch,)
+
+        pnc: dict[str, str] = self.payload.get("pnc", {})
+        if not pnc:
+            self.validation_results.append("No PNC record object found")
+            return
+        else:
+            try:
+                package_name = pnc["package_name"]
+                project_name = pnc["project_name"]
+                pnc_state = pnc["state"]
+                pnc_source = pnc["source"]
+
+                if pnc_state not in PNC_STATES:
+                    raise ValueError(f"Invalid PNC record state: {pnc_state}")
+
+                if pnc_source not in PNC_SOURCES:
+                    raise ValueError(f"Invalid PNC record source: {pnc_source}")
+
+                if not (package_name and project_name):
+                    raise ValueError("Required fields values are empty")
+
+                for branch in pnc_branches:
+                    self.pncs.append(
+                        PncRecord(
+                            pkg_name=package_name,
+                            pnc_result=project_name,
+                            pnc_state=pnc_state,
+                            pnc_type=branch,
+                            pnc_source=pnc_source,
+                        )
+                    )
+
+                # store PNC contents to `reason` object
+                self.reason.details["pncs"] = [r.asdict() for r in self.pncs]
+                self.reason.details["action"] = self.action
+            except Exception as e:
+                self.validation_results.append(
+                    f"Failed to parse PNC record object {pnc}: {e}"
+                )
+                return
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
@@ -111,10 +159,11 @@ class ManagePnc(APIWorker):
         if not self.action == CHANGE_ACTION_CREATE:
             self.validation_results.append("Change action validation error")
 
-        if self.pnc.pnc_state in (PNC_STATE_INACTIVE, PNC_STATE_CANDIDATE):
-            self.validation_results.append(
-                f"Invalid PNC record state: {self.pnc.asdict()}"
-            )
+        for pnc in self.pncs:
+            if pnc.pnc_state != PNC_STATE_ACTIVE:
+                self.validation_results.append(
+                    f"Invalid PNC record state: {pnc.asdict()}"
+                )
 
         if self.validation_results != []:
             return False
@@ -129,10 +178,11 @@ class ManagePnc(APIWorker):
         if not self.action == CHANGE_ACTION_UPDATE:
             self.validation_results.append("Change action validation error")
 
-        if self.pnc.pnc_state != PNC_STATE_ACTIVE:
-            self.validation_results.append(
-                f"Invalid PNC record state: {self.pnc.asdict()}"
-            )
+        for pnc in self.pncs:
+            if pnc.pnc_state != PNC_STATE_ACTIVE:
+                self.validation_results.append(
+                    f"Invalid PNC record state: {pnc.asdict()}"
+                )
 
         if self.validation_results != []:
             return False
@@ -147,10 +197,11 @@ class ManagePnc(APIWorker):
         if not self.action == CHANGE_ACTION_DISCARD:
             self.validation_results.append("Change action validation error")
 
-        if self.pnc.pnc_state != PNC_STATE_INACTIVE:
-            self.validation_results.append(
-                f"Invalid PNC record state: {self.pnc.asdict()}"
-            )
+        for pnc in self.pncs:
+            if pnc.pnc_state != PNC_STATE_INACTIVE:
+                self.validation_results.append(
+                    f"Invalid PNC record state: {pnc.asdict()}"
+                )
 
         if self.validation_results != []:
             return False
@@ -209,7 +260,20 @@ class ManagePnc(APIWorker):
         }, 200
 
     def post(self):
-        return "OK", 200
+        """Handles package to project mapping PNC records create.
+        Returns:
+            - 200 (OK) if PNC record created successfully
+            - 400 (Bad request) on paload validation errors
+            - 409 (Conflict) if such PNC record exists already in DB
+        """
+
+        return {
+            "user": self.reason.actor.name,
+            "action": self.action,
+            "reason": self.reason.message,
+            "message": "OK",
+            "pncs": [r.asdict() for r in self.pncs],
+        }, 200
 
     def put(self):
         return "OK", 200
