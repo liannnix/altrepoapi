@@ -604,7 +604,6 @@ class ManageCpe(APIWorker):
             if not self.dry_run:
                 matcher.store()
 
-            matcher.free(full=True)
             del matcher
 
             # collect packages info from latest branch states
@@ -756,7 +755,6 @@ class ManageCpe(APIWorker):
             if not self.dry_run:
                 matcher.store()
 
-            matcher.free(full=True)
             del matcher
 
             # collect packages info from latest branch states
@@ -908,7 +906,6 @@ class ManageCpe(APIWorker):
             if not self.dry_run:
                 matcher.store()
 
-            matcher.free(full=True)
             del matcher
 
             # collect packages info from latest branch states
