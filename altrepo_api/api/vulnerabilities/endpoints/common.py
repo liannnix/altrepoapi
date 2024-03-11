@@ -41,6 +41,8 @@ ROOT_BRANCH = "sisyphus"
 CVE_MATCHER_MAX_CPU = 4  # running more than 4 processes is inefficient
 CVE_MATCHER_CHUNK_SIZE = 1000  # optimal chunk size is around 500-1000
 
+CPETriplet = tuple[str, str, str]
+
 
 def unescape(x: str) -> str:
     def first_pass(s: str) -> str:
@@ -824,8 +826,6 @@ def get_packages_cpes(
 ) -> None:
     cls.status = False
 
-    cpe_branches = (lut.cpe_branch_map[cls.branch],)
-
     pkg_names_clause = ""
     external_tables = []
     if pkg_names:
@@ -841,7 +841,7 @@ def get_packages_cpes(
 
     response = cls.send_sql_request(
         cls.sql.get_packages_and_cpes.format(
-            cpe_branches=cpe_branches, pkg_names_clause=pkg_names_clause
+            cpe_branches=lut.cpe_branches, pkg_names_clause=pkg_names_clause
         ),
         external_tables=external_tables,
     )
@@ -849,7 +849,7 @@ def get_packages_cpes(
         return None
     if not response:
         _ = cls.store_error(
-            {"message": f"No CPE matches data info found in DB for {cpe_branches}"}
+            {"message": "No CPE matches data info found in DB"}
         )
         return None
 
@@ -926,8 +926,6 @@ def matcher(
     class PkgMatch(NamedTuple):
         version: PackageVersion
         cpes: list[CPE]
-
-    CPETriplet = tuple[str, str, str]
 
     def cpe_triplet(cpe: CPE) -> CPETriplet:
         return (cpe.vendor, cpe.product, cpe.target_sw)

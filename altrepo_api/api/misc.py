@@ -421,6 +421,7 @@ class LookupTables:
         "c7",
     ]
 
+    cpe_branches = ("alt_p9", "alt_p10", "altsisyphus")
     cpe_branch_map = {
         # P9
         "p9": "alt_p9",
