@@ -15,7 +15,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.misc import lut
 
 from .common import (
     CPE,
@@ -54,17 +53,7 @@ class PackageOpenVulnerabilities(APIWorker):
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
-        branch = self.args["branch"]
-        if branch not in lut.cpe_branch_map:
-            self.validation_results.append(
-                f"No CPE matches is specified for branch {branch}. "
-                f"Use one of: {', '.join(lut.cpe_branch_map.keys())}"
-            )
-
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return True
 
     def get(self):
         pkg_names = (self.args["name"],)

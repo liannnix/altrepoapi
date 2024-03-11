@@ -59,17 +59,7 @@ class VulnerablePackageByCve(APIWorker):
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
-        branch = self.args["branch"]
-        if branch not in lut.cpe_branch_map:
-            self.validation_results.append(
-                f"No CPE matches is specified for branch {branch}. "
-                f"Use one of: {', '.join(lut.cpe_branch_map.keys())}"
-            )
-
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return True
 
     def _find_vulnerable_packages(self, cve_ids: list[str]) -> None:
         # 1. get list of errata by CVE to Errata references matching

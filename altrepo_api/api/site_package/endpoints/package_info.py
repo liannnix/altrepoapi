@@ -783,7 +783,7 @@ class PackageNameFromRepology(APIWorker):
             return True
 
     def get(self):
-        branch = lut.repology_cpe_branch_map[self.args["branch"]]
+        branch = lut.repology_branch_map[self.args["branch"]]
         pkg_name = self.args["name"]
 
         response = self.send_sql_request(

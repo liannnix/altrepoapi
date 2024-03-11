@@ -227,8 +227,6 @@ class FindTasks(APIWorker):
         where_clause2 += state_clause
 
         for v in input_val:
-            # escape '_' symbol as it matches any symbol in SQL
-            v = v.replace("_", r"\_")
             if by_pkg is True:
                 where_clause2 += (
                     "AND task_id IN ("
@@ -242,6 +240,8 @@ class FindTasks(APIWorker):
                     "))"
                 )
             else:
+                # escape '_' symbol as it matches any symbol in SQL
+                v = v.replace("_", r"\_")
                 # XXX: use case insensitive 'ILIKE' here
                 where_clause2 += f"AND search ILIKE '%{v}%' "
 

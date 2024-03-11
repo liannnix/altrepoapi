@@ -400,5 +400,23 @@ WHERE task_state = 'DONE' and task_id IN (
 -- ORDER BY task_changed DESC
 """
 
+    get_related_vulns_for_cve = """
+SELECT
+    vuln_id
+FROM Vulnerabilities
+WHERE (vuln_id, vuln_hash) IN (
+    SELECT
+        vuln_id,
+        argMax(vuln_hash, ts)
+    FROM Vulnerabilities
+    WHERE vuln_id IN (
+        SELECT vuln_id
+        FROM Vulnerabilities
+        WHERE arrayExists(x -> x IN {tmp_table}, `vuln_references.link`)
+        )
+    GROUP BY vuln_id
+)
+"""
+
 
 sql = SQL()

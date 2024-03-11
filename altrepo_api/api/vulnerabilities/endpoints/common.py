@@ -48,6 +48,8 @@ CVE_ID_PREFIX = f"{CVE_ID_TYPE}-"
 
 CPETriplet = tuple[str, str, str]
 
+CPETriplet = tuple[str, str, str]
+
 
 def unescape(x: str) -> str:
     def first_pass(s: str) -> str:
@@ -829,8 +831,6 @@ def get_packages_cpes(
 ) -> None:
     cls.status = False
 
-    cpe_branches = (lut.cpe_branch_map[cls.branch],)
-
     pkg_names_clause = ""
     external_tables = []
     if pkg_names:
@@ -846,7 +846,7 @@ def get_packages_cpes(
 
     response = cls.send_sql_request(
         cls.sql.get_packages_and_cpes.format(
-            cpe_branches=cpe_branches, pkg_names_clause=pkg_names_clause
+            cpe_branches=lut.repology_branches, pkg_names_clause=pkg_names_clause
         ),
         external_tables=external_tables,
     )
@@ -854,7 +854,7 @@ def get_packages_cpes(
         return None
     if not response:
         _ = cls.store_error(
-            {"message": f"No CPE matches data info found in DB for {cpe_branches}"}
+            {"message": "No CPE matches data info found in DB"}
         )
         return None
 
