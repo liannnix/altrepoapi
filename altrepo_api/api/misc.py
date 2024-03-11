@@ -70,7 +70,8 @@ class LookupTables:
     }
     no_downloads_branches = ["sisyphus_e2k", "p9_e2k", "p10_e2k"]
     repology_export_branches = ["sisyphus", "p9", "p10"]
-    repology_cpe_branch_map = {
+    repology_branches = ("alt_p9", "alt_p10", "altsisyphus")
+    repology_branch_map = {
         # P9
         "p9": "alt_p9",
         "c9f1": "alt_p9",
@@ -420,27 +421,6 @@ class LookupTables:
         "c7.1",
         "c7",
     ]
-
-    cpe_branches = ("alt_p9", "alt_p10", "altsisyphus")
-    cpe_branch_map = {
-        # P9
-        "p9": "alt_p9",
-        "c9f1": "alt_p9",
-        "c9f2": "alt_p9",
-        "p9_e2k": "alt_p9",
-        "p9_mipsel": "alt_p9",
-        # P10
-        "p10": "alt_p10",
-        "c10f1": "alt_p10",
-        "c10f2": "alt_p10",
-        "p10_e2k": "alt_p10",
-        # Sisyphus
-        "sisyphus": "altsisyphus",
-        "sisyphus_e2k": "altsisyphus",
-        "sisyphus_mipsel": "altsisyphus",
-        "sisyphus_riscv64": "altsisyphus",
-        "sisyphus_loongarch64": "altsisyphus",
-    }
 
     branch_inheritance = {
         "c10f2": ["c10f1", "p10", "sisyphus"],

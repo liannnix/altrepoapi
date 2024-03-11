@@ -841,7 +841,7 @@ def get_packages_cpes(
 
     response = cls.send_sql_request(
         cls.sql.get_packages_and_cpes.format(
-            cpe_branches=lut.cpe_branches, pkg_names_clause=pkg_names_clause
+            cpe_branches=lut.repology_branches, pkg_names_clause=pkg_names_clause
         ),
         external_tables=external_tables,
     )
