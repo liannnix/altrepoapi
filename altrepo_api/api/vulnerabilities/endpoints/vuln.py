@@ -52,6 +52,16 @@ class VulnInfo(APIWorker):
 
         vuln = VulnerabilityInfo(*response[0][1:])
 
+        response = self.send_sql_request(
+            self.sql.get_related_vulns_for_cve.format(
+                tmp_table=(vuln_id,),
+            )
+        )
+        if not self.sql_status:
+            return self.error
+        if response:
+            vuln.refs_link = [ref[0] for ref in response] + vuln.refs_link
+
         return {
             "request_args": self.args,
             "vuln_info": vuln.asdict(),
