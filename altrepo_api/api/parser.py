@@ -26,7 +26,7 @@ class ParserFactory:
     """Registers request parser argument items and builds RequestParser by list of items."""
 
     def __init__(self) -> None:
-        self.items: list = []
+        self.items: list[tuple[str, dict[str, Any]]] = []
         self.lindex: int = 0
 
     def register_item(self, item_name: str, **kwargs) -> int:
