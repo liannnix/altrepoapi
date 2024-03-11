@@ -45,9 +45,7 @@ BDU_ID_PREFIX = f"{BDU_ID_TYPE}:"
 CVE_ID_TYPE = "CVE"
 CVE_ID_PREFIX = f"{CVE_ID_TYPE}-"
 
-
-CPETriplet = tuple[str, str, str]
-
+# type alias
 CPETriplet = tuple[str, str, str]
 
 
