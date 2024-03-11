@@ -310,7 +310,7 @@ class FindImageErratas(APIWorker):
         self.args = self._get_args(kwargs)
         self.sql = sql
         self.status: bool = False
-        self.erratas: Union[None, dict[int, ImageErrataInfo]] = None
+        self.erratas: dict[int, ImageErrataInfo] = {}
         super().__init__()
 
     def check_params(self) -> bool:
@@ -452,7 +452,7 @@ class FindImageErratas(APIWorker):
             return self.error
 
         packages = self._get_errata_pkgs_info()
-        if not self.status:
+        if not self.status or not packages:
             return self.error
 
         if self.args.sort:
