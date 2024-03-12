@@ -42,14 +42,16 @@ from .processing.base import (
     uniq_pcm_records,
 )
 from .processing.helpers import cpe_transaction_rollback
-from .tools.base import ChangeReason, ChangeSource, PncRecord, UserInfo
+from .tools.base import ChangeReason, ChangeSource, PncRecord, PncRecordType, UserInfo
 from .tools.constants import (
     CHANGE_ACTION_CREATE,
     CHANGE_ACTION_DISCARD,
     CHANGE_ACTION_UPDATE,
-    # CHANGE_SOURCE_KEY,
-    # CHANGE_SOURCE_MANUAL,
     DRY_RUN_KEY,
+    KEY_ACTION,
+    KEY_CPE,
+    KEY_STATE,
+    KEY_PROJECT,
     PNC_STATES,
     PNC_STATE_ACTIVE,
     PNC_STATE_INACTIVE,
@@ -92,14 +94,14 @@ class CPECandidates(APIWorker):
 
         if all_candidates:
             sql = self.sql.get_cpes.format(
-                cpe_branches=tuple(set(lut.cpe_reverse_branch_map.keys())),
+                cpe_branches=lut.repology_branches,
                 pkg_name_conversion_clause="",
                 cpe_states=(PNC_STATE_CANDIDATE,),
                 join_type=JOIN_TYPE_LEFT,
             )
         else:
             sql = self.sql.get_cpes.format(
-                cpe_branches=tuple(set(lut.cpe_reverse_branch_map.keys())),
+                cpe_branches=lut.repology_branches,
                 pkg_name_conversion_clause="",
                 cpe_states=(PNC_STATE_CANDIDATE,),
                 join_type=JOIN_TYPE_INNER,
@@ -114,7 +116,7 @@ class CPECandidates(APIWorker):
             try:
                 cpe_raw = CpeRaw(*el)
 
-                branch = lut.cpe_reverse_branch_map.get(
+                branch = lut.repology_reverse_branch_map.get(
                     cpe_raw.repology_branch, [BRANCH_NONE]
                 )[0]
                 cpe = CPE(cpe_raw.cpe)
@@ -198,6 +200,7 @@ class ManageCpe(APIWorker):
             reason=self.reason,
             transaction_id=self.trx.id,
             dry_run=self.dry_run,
+            type=PncRecordType.CPE,
         )
 
         self.action = self.payload.get("action", "")
@@ -233,12 +236,12 @@ class ManageCpe(APIWorker):
 
                 self.cpe = cpe_
                 # store CPE contents to `reason` object
-                self.reason.details["cpe"] = {
-                    "cpe": repr(self.cpe.cpe),
-                    "state": self.cpe.state,
-                    "project_name": self.cpe.project_name,
+                self.reason.details[KEY_CPE] = {
+                    KEY_CPE: repr(self.cpe.cpe),
+                    KEY_STATE: self.cpe.state,
+                    KEY_PROJECT: self.cpe.project_name,
                 }
-                self.reason.details["action"] = self.action
+                self.reason.details[KEY_ACTION] = self.action
             except Exception as e:
                 self.validation_results.append(
                     f"Failed to parse CPE record object {cpe}: {e}"
@@ -452,9 +455,9 @@ class ManageCpe(APIWorker):
         cpes: dict[tuple[str, str], Any] = {}
 
         if self._branch is None:
-            cpe_branches = tuple(set(lut.cpe_reverse_branch_map.keys()))
+            cpe_branches = lut.repology_branches
         else:
-            cpe_branches = (lut.cpe_branch_map[self._branch],)
+            cpe_branches = (lut.repology_branch_map[self._branch],)
 
         # get last CPE match states for specific package name
         response = self.send_sql_request(
@@ -478,7 +481,7 @@ class ManageCpe(APIWorker):
             try:
                 cpe_raw = CpeRaw(*el)
 
-                _branch = lut.cpe_reverse_branch_map[cpe_raw.repology_branch][0]
+                _branch = lut.repology_reverse_branch_map[cpe_raw.repology_branch][0]
                 cpe = CPE(cpe_raw.cpe)
                 cpe_s = str(cpe)
 
@@ -611,7 +614,7 @@ class ManageCpe(APIWorker):
 
             # XXX: update or create erratas
             try:
-                self.eb.build_erratas_on_cpe_add(pcms, self._package_name)
+                self.eb.build_erratas_on_add(pcms, self._package_name)
             except ErrataBuilderError:
                 self.logger.error("Failed to build erratas")
                 return self.eb.error
@@ -762,7 +765,7 @@ class ManageCpe(APIWorker):
 
             # XXX: update or create erratas
             try:
-                self.eb.build_erratas_on_cpe_add(pcms, self._package_name)
+                self.eb.build_erratas_on_add(pcms, self._package_name)
             except ErrataBuilderError:
                 self.logger.error("Failed to build erratas")
                 return self.eb.error
@@ -913,7 +916,7 @@ class ManageCpe(APIWorker):
 
             # XXX: update or discard erratas
             try:
-                self.eb.build_erratas_on_cpe_delete(pcms, self._package_name)
+                self.eb.build_erratas_on_delete(pcms, self._package_name)
             except ErrataBuilderError:
                 self.logger.error("Failed to build erratas")
                 return self.eb.error
@@ -979,7 +982,7 @@ class CPEList(APIWorker):
             try:
                 cpe_raw = CpeRaw(*el)
 
-                branch = lut.cpe_reverse_branch_map[cpe_raw.repology_branch][0]
+                branch = lut.repology_reverse_branch_map[cpe_raw.repology_branch][0]
                 cpe = CPE(cpe_raw.cpe)
                 cpe_s = str(cpe)
 
