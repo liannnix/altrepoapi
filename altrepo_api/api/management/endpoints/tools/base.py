@@ -29,8 +29,7 @@ UUID_T = Union[str, UUID]
 
 
 class RollbackCB(Protocol):
-    def __call__(self, transaction_id: UUID_T) -> bool:
-        ...
+    def __call__(self, transaction_id: UUID_T) -> bool: ...
 
 
 class ErrataManageError(Exception):
@@ -274,7 +273,7 @@ class PncPackage(NamedTuple):
 
     def asdict(self):
         res = self._asdict()
-        res["pnc_type"] = lut.cpe_reverse_branch_map[res["pnc_type"]][0]
+        res["pnc_type"] = lut.repology_reverse_branch_map[res["pnc_type"]][0]
         return res
 
 
