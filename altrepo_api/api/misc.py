@@ -69,6 +69,7 @@ class LookupTables:
         "c10f2": "5",
     }
     no_downloads_branches = ["sisyphus_e2k", "p9_e2k", "p10_e2k"]
+
     repology_export_branches = ["sisyphus", "p9", "p10"]
     repology_branches = ("alt_p9", "alt_p10", "altsisyphus")
     repology_branch_map = {
@@ -90,6 +91,21 @@ class LookupTables:
         "sisyphus_riscv64": "altsisyphus",
         "sisyphus_loongarch64": "altsisyphus",
     }
+    repology_reverse_branch_map = {
+        # P9
+        "alt_p9": ("p9", "c9f1", "c9f2", "p9_e2k", "p9_mipsel"),
+        # P10
+        "alt_p10": ("p10", "c10f1", "c10f2", "p10_e2k"),
+        # Sisyphus
+        "altsisyphus": (
+            "sisyphus",
+            "sisyphus_e2k",
+            "sisyphus_mipsel",
+            "sisyphus_riscv64",
+            "sisyphus_loongarch64",
+        ),
+    }
+
     known_archs = [
         "noarch",
         "i586",
