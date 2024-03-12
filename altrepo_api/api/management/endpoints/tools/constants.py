@@ -25,6 +25,15 @@ CHANGE_SOURCE_KEY = "change_source"
 CHANGE_SOURCE_AUTO = "auto"
 CHANGE_SOURCE_MANUAL = "manual"
 
+# ChangeReason' object `details` dictionary keys
+KEY_ACTION = "action"
+KEY_CPE = "cpe"
+KEY_STATE = 'state'
+KEY_PNC = 'pnc'
+KEY_PACKAGE = "package"
+KEY_PROJECT = "project_name"
+
+
 BUG_REFERENCE_TYPE = "bug"
 VULN_REFERENCE_TYPE = "vuln"
 ERRATA_REFERENCE_TYPE = "errata"
