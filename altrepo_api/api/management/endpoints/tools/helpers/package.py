@@ -36,7 +36,7 @@ def get_related_packages_by_project_name(
     response = cls.send_sql_request(
         cls.sql.get_packages_by_project_names.format(
             tmp_table=tmp_table,
-            cpe_branches=tuple(set(lut.cpe_reverse_branch_map.keys())),
+            cpe_branches=lut.repology_branches,
         ),
         external_tables=[
             {
