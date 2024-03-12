@@ -614,9 +614,10 @@ FROM (
         task_id,
         subtask_id,
         subtask_arch,
-        argMax(titer_status, task_changed) as status
+        titer_status as status
     FROM TaskIterations
     WHERE task_id = {id}
+        AND task_changed = '{task_changed}'
         AND subtask_id IN (
             SELECT subtask_id
             FROM (
@@ -628,10 +629,6 @@ FROM (
                  GROUP BY subtask_id
             ) WHERE subdel = 0
         )
-    GROUP BY
-        task_id,
-        subtask_id,
-        subtask_arch
 )
 GROUP BY
     task_id,

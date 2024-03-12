@@ -6,6 +6,15 @@ ALTrepo API changelog
 Regular API code updates and fixes.
 
 ### Added
+### Changed
+### Fixed
+- `/task/progress/task_info`: fix task architectures handling
+
+## [1.15.29] - 2024-03-11
+
+Regular API code updates and fixes.
+
+### Added
 - `api/vuln/cve`: collect related BDU IDs
 ### Changed
 - `api/vuln`: use all branches for package name to project name mapping

@@ -123,7 +123,9 @@ class TaskInfo(APIWorker):
             else:
                 response = self.send_sql_request(
                     self.sql.get_subtasks_status_by_id_from_state.format(
-                        id=self.task_id, sub_ids=tuple(subtasks.keys())
+                        id=self.task_id,
+                        sub_ids=tuple(subtasks.keys()),
+                        task_changed=task.task_changed,
                     )
                 )
 
