@@ -52,7 +52,7 @@ from .helpers import (
     delete_errata_change_history_records,
 )
 from .sql import sql
-from ..tools.base import ChangeReason, Errata
+from ..tools.base import ChangeReason, Errata, PncRecordType
 from ..tools.changelog import (
     PackageChangelog,
     split_evr,
@@ -73,12 +73,14 @@ class ErrataBuilder(APIWorker):
         reason: ChangeReason,
         transaction_id: UUID,
         dry_run: bool,
+        type: PncRecordType,
     ):
         self.branches = branches
         self.conn = connection
         self.sql = sql
         self.transaction_id = transaction_id
         self.dry_run = dry_run
+        self._type = type
         self.eh = ErrataHandler(self.conn, reason, transaction_id, dry_run)
         self.rollback_errors = []
         super().__init__()
@@ -440,7 +442,7 @@ class ErrataBuilder(APIWorker):
                         uniq_chlog_update.add((e_, ep_))
                         self.eh.add_errata_update_from_chlog(e_, ep_)
 
-    def build_erratas_on_cpe_add(
+    def build_erratas_on_add(
         self, pkgs_cve_matches: list[PackageCveMatch], pkg_name: Optional[str]
     ) -> None:
         if not pkgs_cve_matches:
@@ -541,7 +543,7 @@ class ErrataBuilder(APIWorker):
             # no existing errata was found -> create new one
             self.eh.add_errata_create_from_ep(ep, pkgs_cve_matches[idx])
 
-    def build_erratas_on_cpe_delete(
+    def build_erratas_on_delete(
         self, pkgs_cve_matches: list[PackageCveMatch], pkg_name: Optional[str]
     ) -> None:
         if not pkgs_cve_matches:
@@ -653,7 +655,9 @@ class ErrataBuilder(APIWorker):
         for eid, cves in cves_by_errata_ids.items():
             _cves = tuple(cves)
             errata, cpe = get_errata_and_cpe(eid, _cves[0])
-            self.eh.add_errata_discard_from_cpe(errata=errata, cpe=cpe, cve_ids=_cves)
+            self.eh.add_errata_discard(
+                errata=errata, cpe=cpe, cve_ids=_cves, type=self._type
+            )
 
     def commit(self) -> None:
         try:

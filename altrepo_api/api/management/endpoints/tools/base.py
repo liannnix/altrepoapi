@@ -255,6 +255,11 @@ class ErrataChange(NamedTuple):
         return res
 
 
+class PncRecordType(IntEnum):
+    CPE = 0
+    PNC = 1
+
+
 class PncRecord(NamedTuple):
     pkg_name: str
     pnc_state: str

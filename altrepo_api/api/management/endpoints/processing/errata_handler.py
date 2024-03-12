@@ -25,7 +25,7 @@ from .sql import sql
 from .base import ErrataHandlerError, ErrataPoint, ChangelogErrataPoint
 from .helpers import get_bdus_by_cves
 from ..errata import ManageErrata
-from ..tools.base import Errata, ChangeReason
+from ..tools.base import Errata, ChangeReason, PncRecordType
 from ..tools.constants import (
     CHANGE_ACTION_DISCARD,
     CHANGE_ACTION_CREATE,
@@ -36,8 +36,15 @@ from ..tools.constants import (
     DT_NEVER,
     ERRATA_MANAGE_RESPONSE_ERRATA_FIELD,
     ERRATA_MANAGE_RESPONSE_ERRATA_CHANGE_FIELD,
+    KEY_ACTION,
+    KEY_CPE,
+    KEY_PNC,
+    KEY_STATE,
+    KEY_PACKAGE,
+    KEY_PROJECT,
     SOURCE_CHANGELOG,
     SOURCE_CPE_DISCRAD,
+    SOURCE_PNC_DISCRAD,
     SOURCE_ERRATA_POINT,
     SOURCE_ORDER,
     TASK_STATE_DONE,
@@ -364,13 +371,13 @@ class ErrataHandler(APIWorker):
             ErrataUpdate(reason=reason, errata=errata, ep=ep, cve_ids=ep.cve_ids)
         )
 
-    def add_errata_discard_from_cpe(
-        self, errata: Errata, cpe: str, cve_ids: tuple[str, ...]
+    def add_errata_discard(
+        self, type: PncRecordType, errata: Errata, cpe: str, cve_ids: tuple[str, ...]
     ):
         reason = self.reason.clone()
         reason.details["from"] = build_errata_details(
             CHANGE_ACTION_DISCARD,
-            SOURCE_CPE_DISCRAD,
+            SOURCE_CPE_DISCRAD if type == PncRecordType.CPE else SOURCE_PNC_DISCRAD,
             errata=errata,
             cpe=cpe,
             cve_ids=cve_ids,
@@ -454,6 +461,9 @@ def build_errata_details(action: str, source: str, **kwargs) -> dict[str, Any]:
     if (action, source) == (CHANGE_ACTION_DISCARD, SOURCE_CPE_DISCRAD):
         result["reason"] = "by CPE discard"
 
+    if (action, source) == (CHANGE_ACTION_DISCARD, SOURCE_PNC_DISCRAD):
+        result["reason"] = "by PNC discard"
+
     if "errata" in args:
         result["errata"] = str(args["errata"].id)
 
@@ -473,11 +483,11 @@ def build_errata_details(action: str, source: str, **kwargs) -> dict[str, Any]:
         result["match"] = {}
 
         if isinstance(ep, ChangelogErrataPoint):
-            result["match"]["cves"] = ep.cve_ids  # type: ignore
+            result["match"]["cves"] = ep.cve_ids
         else:
             result["match"]["cve"] = ep.cvm.id
             result["match"]["cpe"] = pcm.pkg_cpe if pcm else ep.cvm.versions.cpe
-            result["match"]["versions"] = {  # type: ignore
+            result["match"]["versions"] = {
                 "version_start": ep.cvm.versions.version_start,
                 "version_start_excluded": ep.cvm.versions.version_start_excluded,
                 "version_end": ep.cvm.versions.version_end,
@@ -497,18 +507,37 @@ def build_errata_details(action: str, source: str, **kwargs) -> dict[str, Any]:
 def build_reason_string(et: ErrataT) -> str:
     message: list[str] = []
 
+    reason = et.reason.details
+
     if isinstance(et, ErrataCreate):
         message = ["Create Errata on"]
     elif isinstance(et, ErrataUpdate):
-        message = [f"Update Errata {et.errata.id} on"]
+        message = [f"Update Errata '{et.errata.id}' on"]
     else:
-        message = [f"Discard or update Errata {et.errata.id} on"]
+        message = [f"Discard or update Errata '{et.errata.id}' on"]
+
+    if KEY_ACTION in reason:
+        message.append(f"{reason[KEY_ACTION]}")
+    if KEY_CPE in reason:
+        # changes come from CPE manage
+        cpe = reason[KEY_CPE]
+        message.append(
+            f"CPE '{cpe[KEY_CPE]}' for project '{cpe[KEY_PROJECT]}' [{cpe[KEY_STATE]}]"
+        )
+    elif KEY_PNC in reason:
+        # changes come from PNC manage
+        pnc = reason[KEY_PNC]
+        message.append(
+            f"mapping '{pnc[KEY_PACKAGE]}' for project '{pnc[KEY_PROJECT]}' [{pnc[KEY_STATE]}]"
+        )
+    else:
+        pass
 
     if isinstance(et, (ErrataCreate, ErrataUpdate)):
         if isinstance(et.ep, ErrataPoint):
-            message.append(f"manage CPE '{et.ep.cvm.versions.cpe}'")
+            message.append(f"[match CPE: {et.ep.cvm.versions.cpe}]")
         else:
-            message.append(f"package changelog parse [{et.ep.evr}]")
+            message.append(f"[changelog EVR: {et.ep.evr}]")
 
         message.extend(
             [
@@ -517,8 +546,6 @@ def build_reason_string(et: ErrataT) -> str:
                 f"[{et.ep.task.task_id}:{et.ep.task.subtask_id}] in '{et.ep.task.branch}'",
             ]
         )
-    else:
-        message.append(f"manage CPE {et.cpe} discarding CVE IDs {list(et.cve_ids)}")
 
     return " ".join(message)
 
