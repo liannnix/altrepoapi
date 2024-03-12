@@ -289,6 +289,30 @@ errata_change_history_model = ns.model(
     },
 )
 
+manage_pnc_record_model = ns.model(
+    "ManagePncRecordModel",
+    {
+        "pkg_name": fields.String(description="package name"),
+        "pnc_result": fields.String(description="package name comversion"),
+        "pnc_type": fields.String(description="package name comversion type"),
+        "pnc_state": fields.String(description="package name comversion status"),
+        "pnc_source": fields.String(description="package name comversion source"),
+    },
+)
+manage_pnc_change_record_model = ns.model(
+    "ManagePncChangeRecordModel",
+    {
+        "id": fields.String(description="PNC change record identifier"),
+        "user": fields.String(description="errata change user"),
+        "reason": fields.String(description="errata change reason"),
+        "type": fields.String(description="errata change type"),
+        "pnc": fields.Nested(
+            manage_pnc_record_model,
+            description="list of modified CPE match records",
+        ),
+    },
+)
+
 cpe_package_el_model = ns.model(
     "CpePackageElementModel",
     {
@@ -348,29 +372,6 @@ cpe_manage_cpe_model = ns.model(
         "state": fields.String(description="CPE match state"),
     },
 )
-cpe_manage_pnc_record_model = ns.model(
-    "CpeManagePncRecordModel",
-    {
-        "pkg_name": fields.String(description="package name"),
-        "pnc_result": fields.String(description="package name comversion"),
-        "pnc_type": fields.String(description="package name comversion type"),
-        "pnc_state": fields.String(description="package name comversion status"),
-        "pnc_source": fields.String(description="package name comversion source"),
-    },
-)
-cpe_manage_pnc_change_record_model = ns.model(
-    "CpeManagePncChangeRecordModel",
-    {
-        "id": fields.String(description="PNC change record identifier"),
-        "user": fields.String(description="errata change user"),
-        "reason": fields.String(description="errata change reason"),
-        "type": fields.String(description="errata change type"),
-        "pnc": fields.Nested(
-            cpe_manage_pnc_record_model,
-            description="list of modified CPE match records",
-        ),
-    },
-)
 cpe_manage_pkg_cve_match_el_model = ns.model(
     "CpeManagePackageCveMatchElementModel",
     {
@@ -420,23 +421,23 @@ cpe_manage_response_model = ns.model(
             description="CVE IDs are related to modified CPE records",
         ),
         "cpe_records": fields.Nested(
-            cpe_manage_pnc_record_model,
+            manage_pnc_record_model,
             description="list of modified CPE match records",
             as_list=True,
         ),
         "cpe_change_records": fields.Nested(
-            cpe_manage_pnc_change_record_model,
+            manage_pnc_change_record_model,
             description="list of CPE match change records",
             as_list=True,
         ),
         "errata_records": fields.Nested(
             errata_manage_errata_model,
-            description="modified errata records contents",
+            description="modified Errata records contents",
             as_list=True,
         ),
         "errata_change_records": fields.Nested(
             errata_manage_errata_change_model,
-            description="errata change records contents",
+            description="Errata change records contents",
             as_list=True,
         ),
         "packages_cve_matches": fields.Nested(
@@ -549,7 +550,41 @@ pnc_manage_get_model = ns.model(
     {
         "request_args": fields.Raw(description="request arguments"),
         "pncs": fields.Nested(
-            cpe_manage_pnc_record_model, description="list of PNC records", as_list=True
+            manage_pnc_record_model, description="list of PNC records", as_list=True
+        ),
+    },
+)
+
+pnc_manage_response_model = ns.model(
+    "PncManageResponseModel",
+    {
+        "user": fields.String(description="PNC change originator"),
+        "action": fields.String(description="PNC manage action"),
+        "reason": fields.String(description="PNC change reason"),
+        "message": fields.String(description="API response message"),
+        "pnc_records": fields.Nested(
+            manage_pnc_record_model,
+            description="list of modified PNC records",
+            as_list=True,
+        ),
+        "pnc_change_records": fields.Nested(
+            manage_pnc_change_record_model,
+            description="list of PNC change records",
+            as_list=True,
+        ),
+        "errata_records": fields.Nested(
+            errata_manage_errata_model,
+            description="modified Errata records contents",
+            as_list=True,
+        ),
+        "errata_change_records": fields.Nested(
+            errata_manage_errata_change_model,
+            description="Errata change records contents",
+            as_list=True,
+        ),
+        "related_cve_ids": fields.List(
+            fields.String,
+            description="CVE IDs are related to modified PNC records",
         ),
     },
 )
@@ -573,7 +608,7 @@ pnc_list_el_model = ns.model(
             as_list=True,
         ),
         "cpes": fields.Nested(
-            cpe_manage_pnc_record_model,
+            manage_pnc_record_model,
             description="list of cpes for PNC record",
             as_list=True,
         ),

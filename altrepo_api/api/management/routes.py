@@ -41,37 +41,39 @@ from .endpoints.task_info import TaskInfo
 from .endpoints.task_list import TaskList
 from .endpoints.vulns_info import VulnsInfo
 from .parsers import (
-    task_list_args,
     errata_manage_args,
     errata_manage_get_args,
     cpe_candidates_args,
+    cpe_list_args,
     cpe_manage_args,
     cpe_manage_get_args,
-    pkgs_open_vulns_args,
     maintainer_list_args,
-    cpe_list_args,
-    pnc_manage_get_args,
+    pkgs_open_vulns_args,
     pnc_list_args,
+    pnc_manage_args,
+    pnc_manage_get_args,
+    task_list_args,
 )
 from .serializers import (
-    task_list_model,
-    task_info_model,
-    vuln_ids_json_list_model,
-    vuln_ids_json_post_list_model,
-    errata_manage_model,
-    errata_manage_response_model,
-    errata_manage_get_response_model,
-    errata_change_history_model,
     cpe_manage_model,
     cpe_manage_response_model,
     cpe_candidates_response_model,
     cpe_manage_get_response_model,
-    pkg_open_vulns,
-    supported_branches_model,
+    errata_manage_model,
+    errata_manage_response_model,
+    errata_manage_get_response_model,
+    errata_change_history_model,
     maintainer_list_model,
+    pkg_open_vulns,
     pnc_manage_model,
     pnc_manage_get_model,
+    pnc_manage_response_model,
     pnc_list_model,
+    supported_branches_model,
+    task_list_model,
+    task_info_model,
+    vuln_ids_json_list_model,
+    vuln_ids_json_post_list_model,
 )
 
 ns = get_namespace()
@@ -440,7 +442,7 @@ class routePncList(Resource):
 @ns.route("/pnc/manage")
 class routeManagePnc(Resource):
     @ns.doc(
-        description="Get PNC records info.",
+        description="Get package to project mapping records.",
         responses=GET_RESPONSES_400_404,
         security="Bearer",
     )
@@ -453,53 +455,53 @@ class routeManagePnc(Resource):
         w = ManagePnc(g.connection, payload={}, **args)
         return run_worker(worker=w, args=args)
 
+    @ns.doc(
+        description="Register new package to project mapping record.",
+        responses=RESPONSES_400_409,
+        security="Bearer",
+    )
+    @ns.expect(pnc_manage_model, pnc_manage_args)
+    @ns.marshal_with(pnc_manage_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    def post(self):
+        url_logging(logger, g.url)
+        args = pnc_manage_args.parse_args(strict=False)
+        w = ManagePnc(g.connection, payload=ns.payload, **args)
+        return run_worker(
+            worker=w, run_method=w.post, check_method=w.check_params_post, ok_code=200
+        )
+
     # @ns.doc(
-    #     description="Update PNC records.",
+    #     description="Update package to project mapping record.",
     #     responses=RESPONSES_400_404,
     #     security="Bearer",
     # )
-    # @ns.expect(pnc_manage_model, cpe_manage_args)
+    # @ns.expect(pnc_manage_model, pnc_manage_args)
     # @ns.marshal_with(pnc_manage_response_model)
     # @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
     # def put(self):
     #     url_logging(logger, g.url)
-    #     args = cpe_manage_args.parse_args(strict=False)
+    #     args = pnc_manage_args.parse_args(strict=False)
     #     w = ManagePnc(g.connection, payload=ns.payload, **args)
     #     return run_worker(
     #         worker=w, run_method=w.put, check_method=w.check_params_put, ok_code=200
     #     )
 
-    # @ns.doc(
-    #     description="Register new PNC records.",
-    #     responses=RESPONSES_400_409,
-    #     security="Bearer",
-    # )
-    # @ns.expect(pnc_manage_model, cpe_manage_args)
-    # @ns.marshal_with(pnc_manage_response_model)
-    # @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
-    # def post(self):
-    #     url_logging(logger, g.url)
-    #     args = cpe_manage_args.parse_args(strict=False)
-    #     w = ManagePnc(g.connection, payload=ns.payload, **args)
-    #     return run_worker(
-    #         worker=w, run_method=w.post, check_method=w.check_params_post, ok_code=200
-    #     )
-
-    # @ns.doc(
-    #     description="Discard PNC records.",
-    #     responses=GET_RESPONSES_400_404_409,
-    #     security="Bearer",
-    # )
-    # @ns.expect(cpe_manage_model, cpe_manage_args)
-    # @ns.marshal_with(pnc_manage_response_model)
-    # @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
-    # def delete(self):
-    #     url_logging(logger, g.url)
-    #     args = cpe_manage_args.parse_args(strict=False)
-    #     w = ManagePnc(g.connection, payload=ns.payload, **args)
-    #     return run_worker(
-    #         worker=w,
-    #         run_method=w.delete,
-    #         check_method=w.check_params_delete,
-    #         ok_code=200,
-    #     )
+    @ns.doc(
+        description="Discard package to project mapping record.",
+        responses=RESPONSES_400_409,
+        security="Bearer",
+    )
+    @ns.expect(pnc_manage_model, pnc_manage_args)
+    @ns.marshal_with(pnc_manage_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    def delete(self):
+        url_logging(logger, g.url)
+        args = pnc_manage_args.parse_args(strict=False)
+        w = ManagePnc(g.connection, payload=ns.payload, **args)
+        return run_worker(
+            worker=w,
+            run_method=w.delete,
+            check_method=w.check_params_delete,
+            ok_code=200,
+        )
