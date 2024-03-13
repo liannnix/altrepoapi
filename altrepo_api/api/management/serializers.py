@@ -308,7 +308,7 @@ manage_pnc_change_record_model = ns.model(
         "type": fields.String(description="errata change type"),
         "pnc": fields.Nested(
             manage_pnc_record_model,
-            description="list of modified CPE match records",
+            description="list of modified PNC records",
         ),
     },
 )
