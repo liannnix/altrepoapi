@@ -108,6 +108,8 @@ __cpe_search_match = re.compile(r"^([\w\.\+\-\_:*]{2,},?)+$")
 # input
 __positive_integer = re.compile(r"^(?<![-.])\b[0-9]+\b(?!\.[0-9])$")
 __sort_match = re.compile(r"^-?([a-z\_]{2,},?)+$")
+# package name conversion
+__project_name_match = re.compile(r"^[\w\.\+\-\:]{2,}$")
 
 
 # custom validators
@@ -741,4 +743,19 @@ def cpe_search_type(value: Any) -> str:
 cpe_search_type.__schema__ = {
     "type": "string",
     "pattern": __cpe_search_match.pattern,
+}
+
+
+def project_name_type(value: Any) -> str:
+    """Project name validator."""
+
+    value = __get_string(value)
+    if not __project_name_match.search(value):
+        raise ValueError("Invalid project name: {0}".format(value))
+    return value
+
+
+project_name_type.__schema__ = {
+    "type": "string",
+    "pattern": __project_name_match.pattern,
 }

@@ -25,6 +25,7 @@ from altrepo_api.api.parser import (
     pkg_name_type,
     packager_nick_type,
     positive_integer_type,
+    project_name_type,
     sort_type,
     task_search_type,
     uuid_type,
@@ -180,7 +181,7 @@ package_name_opt = parser.register_item(
 )
 project_name_opt = parser.register_item(
     "project_name",
-    type=pkg_name_type,
+    type=project_name_type,
     required=False,
     help="common project name",
     location="args",
