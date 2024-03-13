@@ -517,8 +517,6 @@ class ManagePnc(APIWorker):
         if not related_cpes:
             return self._commit_or_rollback()
 
-        print("DBG", related_cpes)
-
         # find and build Errata changes
         pkg_cpe_pairs = [
             PackageCpePair(name=project_name, cpe=r.pnc_result) for r in related_cpes
