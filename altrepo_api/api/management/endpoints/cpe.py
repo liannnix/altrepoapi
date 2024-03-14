@@ -68,6 +68,8 @@ from .tools.utils import validate_action, validate_branch_with_tatsks
 from ..sql import sql
 
 MATCHER_LOG_LEVEL = convert_log_level(settings.LOG_LEVEL)
+# FIXME: collecting and returning packages' CVE matches info could be quite heavy
+COLLECT_AND_RETURN_PCMS_DETAILS = False
 RETUNRN_VULNERABLE_ONLY_PCMS = False
 JOIN_TYPE_INNER = "INNER"
 JOIN_TYPE_LEFT = "LEFT"
@@ -610,7 +612,8 @@ class ManageCpe(APIWorker):
             del matcher
 
             # collect packages info from latest branch states
-            self._packages_cve_matches = self._collect_packages_cve_match_info(pcms)
+            if COLLECT_AND_RETURN_PCMS_DETAILS:
+                self._packages_cve_matches = self._collect_packages_cve_match_info(pcms)
 
             # XXX: update or create erratas
             try:
@@ -761,7 +764,8 @@ class ManageCpe(APIWorker):
             del matcher
 
             # collect packages info from latest branch states
-            self._packages_cve_matches = self._collect_packages_cve_match_info(pcms)
+            if COLLECT_AND_RETURN_PCMS_DETAILS:
+                self._packages_cve_matches = self._collect_packages_cve_match_info(pcms)
 
             # XXX: update or create erratas
             try:
@@ -912,7 +916,8 @@ class ManageCpe(APIWorker):
             del matcher
 
             # collect packages info from latest branch states
-            self._packages_cve_matches = self._collect_packages_cve_match_info(pcms)
+            if COLLECT_AND_RETURN_PCMS_DETAILS:
+                self._packages_cve_matches = self._collect_packages_cve_match_info(pcms)
 
             # XXX: update or discard erratas
             try:
