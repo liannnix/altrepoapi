@@ -1161,5 +1161,18 @@ GROUP BY result, state
 ORDER BY result, state
 """
 
+    get_unmapped_packages = """
+SELECT DISTINCT
+    pkg_name
+FROM static_last_packages
+WHERE {name_like}
+    AND pkg_sourcepackage = 1
+    AND pkg_name not in (
+        select distinct pkg_name from PackagesNameConversion
+        WHERE pnc_type IN {pnc_branches}
+    )
+ORDER BY pkg_name    
+"""
+
 
 sql = SQL()

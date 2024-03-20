@@ -496,6 +496,19 @@ pkg_open_vulns = ns.model(
     },
 )
 
+pkgs_unmapped_model = ns.model(
+    "PackagesUnmappedModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "packages": fields.List(
+            fields.String,
+            description="list of packages that not mapped to any project",
+            as_list=True,
+        ),
+    }
+)
+
 supported_branches_model = ns.model(
     "SupportedBranchesModel",
     {
