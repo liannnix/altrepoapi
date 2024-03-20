@@ -970,7 +970,9 @@ class CPEList(APIWorker):
 
         response = self.send_sql_request(
             self.sql.find_cpe.format(
-                where=self._where_condition if self.args.input else "", state=state
+                where=self._where_condition if self.args.input else "",
+                state=state,
+                pnc_branches=lut.repology_branches,
             )
         )
         if not self.sql_status:

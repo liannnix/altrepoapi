@@ -1081,7 +1081,7 @@ repology_names AS (
             pnc_type AS repology_branch,
             argMax(pnc_state, ts) AS state
         FROM PackagesNameConversion
-        WHERE pnc_type IN ('alt_p9', 'altsisyphus', 'alt_p10')
+        WHERE pnc_type IN {pnc_branches}
         GROUP BY pkg_name, pnc_result, pnc_type
     ) WHERE state = 'active'
 )
