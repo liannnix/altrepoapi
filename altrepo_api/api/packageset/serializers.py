@@ -86,20 +86,26 @@ pkgset_packages_model = ns.model(
 pkgset_status_post_el_model = ns.model(
     "PackageSetStatusPostElementModel",
     {
-        "pkgset_name": fields.String(description="package set name"),
+        "pkgset_name": fields.String(description="package set name", required=True),
         "rs_pkgset_name_bugzilla": fields.String(
-            description="package set name for bugzilla"
+            description="package set name for bugzilla", required=True
         ),
-        "rs_start_date": fields.DateTime(description="support start date"),
-        "rs_end_date": fields.DateTime(description="support end date"),
-        "rs_show": fields.Integer(description="0 - hide branch, 1 - show branch"),
+        "rs_start_date": fields.DateTime(
+            description="support start date", required=True
+        ),
+        "rs_end_date": fields.DateTime(description="support end date", required=True),
+        "rs_show": fields.Integer(
+            description="0 - hide branch, 1 - show branch", required=True
+        ),
         "rs_description_ru": fields.String(
-            description="html description in Russian in Base64 format"
+            description="html description in Russian in Base64 format", required=True
         ),
         "rs_description_en": fields.String(
-            description="html description in English in Base64 format"
+            description="html description in English in Base64 format", required=True
         ),
-        "rs_mailing_list": fields.String(description="link to mailing list"),
+        "rs_mailing_list": fields.String(
+            description="link to mailing list", required=True
+        ),
         "rs_mirrors_json": fields.List(
             fields.Raw,
             description="packageset mirror's auxilary info as JSON substructure",
@@ -110,7 +116,10 @@ pkgset_status_post_model = ns.model(
     "PackageSetStatusPostModel",
     {
         "branches": fields.Nested(
-            pkgset_status_post_el_model, description="package set info", as_list=True
+            pkgset_status_post_el_model,
+            description="package set info",
+            as_list=True,
+            required=True,
         )
     },
 )

@@ -44,6 +44,10 @@ class BranchesUpdates(APIWorker):
             self.validation_results.append("Payload data parsing error")
             return False
 
+        if not errata_ids:
+            self.validation_results.append("At least one Errata ID should be provided")
+            return False
+
         for errata_id in errata_ids:
             try:
                 self.errata_ids.append(errata_id_type(errata_id))

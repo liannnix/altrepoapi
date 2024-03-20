@@ -74,14 +74,6 @@ errata_type_opt = parser.register_item(
     help="errata type [packages|repository]",
     location="args",
 )
-last_chngs_limit_opt = parser.register_item(
-    "limit",
-    type=int,
-    required=False,
-    default=1000,
-    help="number of last errata to get",
-    location="args",
-)
 input_val_opt = parser.register_item(
     "input",
     type=errata_search_type,

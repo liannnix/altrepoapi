@@ -32,7 +32,11 @@ oval_branches_model = ns.model(
 
 erratas_ids_json_list_model = ns.model(
     "ErrataJsonPostListModel",
-    {"errata_ids": fields.List(fields.String, description="errata ids list")},
+    {
+        "errata_ids": fields.List(
+            fields.String, required=True, description="errata ids list"
+        )
+    },
 )
 
 errata_reference_model = ns.model(

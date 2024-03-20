@@ -373,25 +373,38 @@ build_dep_set_model = ns.model(
 repocop_json_post_model = ns.model(
     "RepocopJsonPostModel",
     {
-        "pkg_name": fields.String(description="package name"),
-        "pkg_version": fields.String(description="package version"),
-        "pkg_release": fields.String(description="package release"),
-        "pkg_arch": fields.String(description="package arch"),
-        "pkgset_name": fields.String(description="package branch"),
-        "rc_srcpkg_name": fields.String(description="source package name"),
-        "rc_srcpkg_version": fields.String(description="source package version"),
-        "rc_srcpkg_release": fields.String(description="source package version"),
-        "rc_test_name": fields.String(description="repocop test name"),
-        "rc_test_status": fields.String(description="repocop test status"),
-        "rc_test_message": fields.String(description="repocop test message"),
-        "rc_test_date": fields.DateTime(description="repocop test date"),
+        "pkg_name": fields.String(description="package name", required=True),
+        "pkg_version": fields.String(description="package version", required=True),
+        "pkg_release": fields.String(description="package release", required=True),
+        "pkg_arch": fields.String(description="package arch", required=True),
+        "pkgset_name": fields.String(description="package branch", required=True),
+        "rc_srcpkg_name": fields.String(
+            description="source package name", required=True
+        ),
+        "rc_srcpkg_version": fields.String(
+            description="source package version", required=True
+        ),
+        "rc_srcpkg_release": fields.String(
+            description="source package version", required=True
+        ),
+        "rc_test_name": fields.String(description="repocop test name", required=True),
+        "rc_test_status": fields.String(
+            description="repocop test status", required=True
+        ),
+        "rc_test_message": fields.String(
+            description="repocop test message", required=True
+        ),
+        "rc_test_date": fields.DateTime(description="repocop test date", required=True),
     },
 )
 repocop_json_list_model = ns.model(
     "RepocopJsonPostListModel",
     {
         "packages": fields.Nested(
-            repocop_json_post_model, description="repocop packages info", as_list=True
+            repocop_json_post_model,
+            description="repocop packages info",
+            as_list=True,
+            required=True,
         )
     },
 )
