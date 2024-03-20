@@ -696,7 +696,7 @@ def positive_integer_type(value: Any) -> int:
 
 
 positive_integer_type.__schema__ = {
-    "type": "int",
+    "type": "integer",
     "pattern": __positive_integer.pattern,
 }
 
