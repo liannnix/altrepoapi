@@ -32,6 +32,7 @@ from .endpoints.packages_open_vulns import (
     PackagesSupportedBranches,
     PackagesMaintainerList,
 )
+from .endpoints.packages_unmapped import PackagesUnmapped
 
 from .namespace import get_namespace
 from .endpoints.cpe import CPECandidates, ManageCpe, CPEList
@@ -53,6 +54,7 @@ from .parsers import (
     pnc_manage_args,
     pnc_manage_get_args,
     task_list_args,
+    pkgs_unmapped_args,
 )
 from .serializers import (
     cpe_manage_model,
@@ -74,6 +76,7 @@ from .serializers import (
     task_info_model,
     vuln_ids_json_list_model,
     vuln_ids_json_post_list_model,
+    pkgs_unmapped_model,
 )
 
 ns = get_namespace()
@@ -419,6 +422,25 @@ class routePackagesMaintainerList(Resource):
         url_logging(logger, g.url)
         args = maintainer_list_args.parse_args(strict=True)
         w = PackagesMaintainerList(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/packages/unmapped",
+    doc={
+        "description": "Get a list of packages that not mapped to any project.",
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routePackagesUnmapped(Resource):
+    @ns.expect(pkgs_unmapped_args)
+    @ns.marshal_with(pkgs_unmapped_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = pkgs_unmapped_args.parse_args(strict=True)
+        w = PackagesUnmapped(g.connection, **args)
         return run_worker(worker=w, args=args)
 
 

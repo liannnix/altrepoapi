@@ -29,6 +29,7 @@ from altrepo_api.api.parser import (
     sort_type,
     task_search_type,
     uuid_type,
+    pkg_name_list_type,
 )
 
 from .endpoints.tools.constants import DRY_RUN_KEY
@@ -205,6 +206,14 @@ pnc_input_opt = parser.register_item(
     help="package name or common project name",
     location="args",
 )
+package_name_list = parser.register_item(
+    "name",
+    type=pkg_name_list_type,
+    action="split",
+    required=True,
+    help="package or list of package names",
+    location="args",
+)
 
 task_list_args = parser.build_parser(
     task_input_val_opt, branch_name_opt, is_errata_opt, page_opt, limit_opt
@@ -222,6 +231,7 @@ pkgs_open_vulns_args = parser.build_parser(
     limit_opt,
     sort_opt,
 )
+pkgs_unmapped_args = parser.build_parser(package_name_list)
 cpe_candidates_args = parser.build_parser(all_candidates_opt)
 cpe_manage_args = parser.build_parser(dry_run, package_name_opt)
 cpe_manage_get_args = parser.build_parser(package_name, branch_name_opt)

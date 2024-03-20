@@ -12,6 +12,9 @@ OWNER_IN_DB = "rider"
 OWNER_NOT_IN_DB = "fakeowner"
 PACKAGE_IN_DB = "curl"
 PACKAGE_NOT_IN_DB = "fakepackagename"
+PACKAGE_UNMAPPED_IN_DB = "python-module-Draco"
+PACKAGE_UNMAPPED_IN_DB2 = "python,draco"
+PACKAGE_UNMAPPED_NOT_IN_DB = "fakepackagename"
 
 VULN_IN_DB = "CVE-2019-17069"
 VULN_IN_DB2 = "BDU:2021-04545"
@@ -698,3 +701,43 @@ def test_pnc_list(client, kwargs, mocked_check_access_token):
                 assert params["input"].lower() in el["pnc_result"].lower()
             if params.get("state", "") == "active":
                 assert params["state"] == el["pnc_state"]
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "name": PACKAGE_UNMAPPED_IN_DB,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "name": PACKAGE_UNMAPPED_IN_DB2,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "name": PACKAGE_UNMAPPED_NOT_IN_DB,
+            "status_code": 404,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "status_code": 401,
+            "headers": {"Authorization": INVALID_ACCESS_TOKEN},
+        },
+        {
+            "status_code": 401,
+        },
+    ],
+)
+def test_packages_unmapped(client, kwargs, mocked_check_access_token):
+    params = {k: v for k, v in kwargs.items() if k not in ("status_code", "headers")}
+    url = url_for("manage.manage_route_packages_unmapped")
+    mocked_check_access_token.headers = kwargs.get("headers", {})
+    mocked_check_access_token.status_code = kwargs["status_code"]
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["packages"] != []
