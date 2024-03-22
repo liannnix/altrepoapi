@@ -404,11 +404,21 @@ class PackagesOpenVulns(APIWorker):
         if erratas:
             for key, vulns in erratas.items():
                 if key in self.package_vulns:
-                    pkg_vulns = self.package_vulns[key].vulns
-                    for vuln in vulns:
-                        pkg_vulns = [el for el in pkg_vulns if el.id != vuln]
+                    old_vulns = self.package_vulns[key].vulns
+                    # remove vulnerabilities found as closed from erratas
+                    new_vulns = [el for el in old_vulns if el.id not in set(vulns)]
                     self.package_vulns[key] = self.package_vulns[key]._replace(
-                        vulns=pkg_vulns
+                        vulns=new_vulns
+                    )
+
+        # filter vulnerabilities by severity if provided
+        if self.args.severity:
+            for key in self.package_vulns:
+                old_vulns = self.package_vulns[key].vulns
+                new_vulns = [v for v in old_vulns if v.severity == self.args.severity]
+                if len(old_vulns) != len(new_vulns):
+                    self.package_vulns[key] = self.package_vulns[key]._replace(
+                        vulns=new_vulns
                     )
 
         # get related vulns for CVE
