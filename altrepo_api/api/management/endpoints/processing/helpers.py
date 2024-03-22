@@ -40,13 +40,11 @@ class _pAPIWorkerBase(Protocol):
 
     def store_error(
         self, message: dict[str, Any], severity: int = ..., http_code: int = ...
-    ) -> tuple[Any, int]:
-        ...
+    ) -> tuple[Any, int]: ...
 
     def send_sql_request(
         self, request_line: Any, http_code: int = ..., **kwargs
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
 
 class _pAPIWorker(_pAPIWorkerBase, Protocol):
@@ -364,20 +362,56 @@ def get_affected_errata_ids_by_transaction_id(
     return errata_ids
 
 
+def _wrap_delete_from(
+    cls: _pAPIWorkerBase,
+    sql: str,
+    name: str,
+    columns: list[tuple[str, str]],
+    values: list[dict[str, Any]],
+) -> None:
+    """Wraps 'DELETE FROM' mutation SQL request using 'Memory' engine table and
+    'mutations_sync' flag to handle bunch of a values that are supplied
+    due to temporary and external tables are not supported by ClickHouse server."""
+
+    cls.status = False
+
+    _columns = ", ".join(f"{c[0]} {c[1]}" for c in columns)
+    _ = cls.send_sql_request(f"CREATE TABLE {name} ({_columns}) ENGINE = Memory")
+    if not cls.sql_status:
+        return None
+
+    _ = cls.send_sql_request((f"INSERT INTO {name} (*) VALUES", values))
+    if not cls.sql_status:
+        return None
+
+    _ = cls.send_sql_request("SET mutations_sync = 1")
+    if not cls.sql_status:
+        return None
+
+    _ = cls.send_sql_request(sql)
+    if not cls.sql_status:
+        return None
+
+    _ = cls.send_sql_request("SET mutations_sync = 0")
+    if not cls.sql_status:
+        return None
+
+    _ = cls.send_sql_request(f"DROP TABLE IF EXISTS {name}")
+    if not cls.sql_status:
+        return None
+
+
 def delete_errata_history_records(cls: _pAPIWorker, errata_ids: Iterable[str]) -> None:
     cls.status = False
 
     tmp_table = make_tmp_table_name("errata_ids")
 
-    _ = cls.send_sql_request(
-        cls.sql.delete_errata_history_records.format(tmp_table=tmp_table),
-        external_tables=[
-            {
-                "name": tmp_table,
-                "structure": [("errata_id", "String")],
-                "data": [{"errata_id": e} for e in errata_ids],
-            },
-        ],
+    _wrap_delete_from(
+        cls,
+        sql=cls.sql.delete_errata_history_records.format(tmp_table=tmp_table),
+        name=tmp_table,
+        columns=[("errata_id", "String")],
+        values=[{"errata_id": e} for e in errata_ids],
     )
     if not cls.sql_status:
         return None
@@ -448,19 +482,16 @@ def delete_pnc_records(cls: _pAPIWorkerBase, transaction_id: UUID_T) -> bool:
     pnc_records = [PncRecord(*el) for el in response]
 
     # delete affected `PackagesNameConversion` records
-    _ = _ = cls.send_sql_request(
-        sql.delete_errata_history_records.format(tmp_table=tmp_table),
-        external_tables=[
-            {
-                "name": tmp_table,
-                "structure": [
-                    ("pkg_name", "String"),
-                    ("pnc_result", "String"),
-                    ("pnc_state", "String"),
-                ],
-                "data": [r._asdict() for r in pnc_records],
-            },
+    _wrap_delete_from(
+        cls,
+        sql=sql.delete_pnc_records.format(tmp_table=tmp_table),
+        name=tmp_table,
+        columns=[
+            ("pkg_name", "String"),
+            ("pnc_result", "String"),
+            ("pnc_state", "String"),
         ],
+        values=[r._asdict() for r in pnc_records],
     )
     if not cls.sql_status:
         return False
