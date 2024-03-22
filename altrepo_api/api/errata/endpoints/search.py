@@ -231,12 +231,17 @@ class FindErratas(APIWorker):
         eh_type = lut.known_errata_type.get(self.args["type"], "")
         limit = self.args["limit"]
         page = self.args["page"]
-        is_discarded = self.args["is_discarded"]
+        state = None
+
+        if self.args["state"] == "discarded":
+            state = True
+        if self.args["state"] == "active":
+            state = False
 
         branch_clause = f"AND pkgset_name = '{branch}'" if branch else ""
         where_conditions = [f"type IN {eh_type}"] if eh_type else []
-        if is_discarded:
-            where_conditions.append(f"discard = {is_discarded}")
+        if state is not None:
+            where_conditions.append(f"discard = {state}")
 
         conditions = [
             " OR ".join(
