@@ -234,7 +234,7 @@ def test_errata_search(client, kwargs):
         },
         {
             "payload": {"errata_ids": []},
-            "status_code": 404,
+            "status_code": 400,
         },
     ],
 )
@@ -269,7 +269,7 @@ def test_errata_packages_updates(client, kwargs):
         },
         {
             "payload": {"errata_ids": []},
-            "status_code": 404,
+            "status_code": 400,
         },
     ],
 )
