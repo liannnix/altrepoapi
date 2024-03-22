@@ -582,7 +582,9 @@ class PncList(APIWorker):
 
     def _get_cpes(self, pncs: list[dict[str, Any]]):
         self.status = False
-        projects: dict[str, dict[str, Any]] = {el["pnc_result"]: el for el in pncs}
+        projects: dict[(str, str), dict[str, Any]] = {
+            (el["pnc_result"], el["pnc_state"]): el for el in pncs
+        }
         tmp_table = make_tmp_table_name("project_names")
         response = self.send_sql_request(
             self.sql.get_cpes_by_project_names.format(
@@ -594,7 +596,7 @@ class PncList(APIWorker):
                     "structure": [
                         ("project_name", "String"),
                     ],
-                    "data": [{"project_name": el} for el in projects.keys()],
+                    "data": [{"project_name": el[0]} for el in projects.keys()],
                 },
             ],
         )
@@ -602,7 +604,14 @@ class PncList(APIWorker):
             return []
         if response:
             for p in (PncRecord(*el) for el in response):
-                projects[p.pkg_name].setdefault("cpes", []).append(p.asdict())
+                if (p.pkg_name, PNC_STATE_INACTIVE) in projects:
+                    projects[(p.pkg_name, PNC_STATE_INACTIVE)].setdefault(
+                        "cpes", []
+                    ).append(p.asdict())
+                if (p.pkg_name, PNC_STATE_ACTIVE) in projects:
+                    projects[(p.pkg_name, PNC_STATE_ACTIVE)].setdefault(
+                        "cpes", []
+                    ).append(p.asdict())
         self.status = True
         return list(projects.values())
 
