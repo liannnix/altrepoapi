@@ -1168,10 +1168,21 @@ FROM static_last_packages
 WHERE {name_like}
     AND pkg_sourcepackage = 1
     AND pkg_name not in (
-        select distinct pkg_name from PackagesNameConversion
-        WHERE pnc_type IN {pnc_branches}
+        SELECT pkg_name FROM (
+            SELECT
+                pkg_name,
+                argMax(pnc_state, ts) AS state
+            FROM PackagesNameConversion
+            WHERE pnc_type != 'cpe'
+            AND pnc_type IN {pnc_branches}
+            GROUP BY
+                pkg_name,
+                pnc_type,
+                pnc_result
+            ORDER BY pkg_name
+        ) WHERE state != 'inactive' AND {name_like}
     )
-ORDER BY pkg_name    
+ORDER BY pkg_name 
 """
 
 
