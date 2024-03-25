@@ -634,11 +634,9 @@ class PncList(APIWorker):
         # build where clause for PNC records gathering request
         where_conditions = ["WHERE 1"]
 
-        if branch:
-            where_conditions.append(f"type IN {branch}")
         if input_val:
             where_conditions.append(
-                f"(name ILIKE '%{input_val}%' OR result ILIKE '%{input_val}%')"
+                f"(arrayExists(x -> (x.1 ILIKE '%{input_val}%'), pkgs) OR result ILIKE '%{input_val}%')"
             )
         if state:
             where_conditions.append(f"state = '{state}'")
@@ -647,7 +645,7 @@ class PncList(APIWorker):
 
         # get PNC records from DB
         response = self.send_sql_request(
-            self.sql.get_pnc_list.format(where_clause=where_clause)
+            self.sql.get_pnc_list.format(where_clause=where_clause, branch=branch)
         )
         if not self.sql_status:
             return self.error

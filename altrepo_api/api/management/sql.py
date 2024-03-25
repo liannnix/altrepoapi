@@ -1137,27 +1137,29 @@ ORDER BY name, type, result
 """
 
     get_pnc_list = """
-SELECT
-    state,
-    result,
-    groupArray((name, type, source))
-FROM (
+SELECT * FROM (
     SELECT
-        pkg_name AS name,
-        argMax(pnc_state, ts) AS state,
-        argMax(pnc_result, ts) AS result,
-        argMax(pnc_type, ts) AS type,
-        argMax(pnc_source, ts) AS source
-    FROM PackagesNameConversion
-    WHERE pnc_type != 'cpe'
-    GROUP BY
-        pkg_name,
-        pnc_type,
-        pnc_result
-    ORDER BY pkg_name, type
-)
-{where_clause}
+        state,
+        result,
+        groupArray((name, type, source)) as pkgs
+    FROM (
+        SELECT
+            pkg_name AS name,
+            argMax(pnc_state, ts) AS state,
+            argMax(pnc_result, ts) AS result,
+            argMax(pnc_type, ts) AS type,
+            argMax(pnc_source, ts) AS source
+        FROM PackagesNameConversion
+        WHERE pnc_type != 'cpe'
+        GROUP BY
+            pkg_name,
+            pnc_type,
+            pnc_result
+        ORDER BY pkg_name, type
+    )
+    WHERE 1 AND type IN {branch}
 GROUP BY result, state
+) {where_clause}
 ORDER BY result, state
 """
 
