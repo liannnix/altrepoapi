@@ -17,9 +17,8 @@
 import base64
 import datetime
 import hashlib
-import time
-
 import jwt
+import time
 
 from flask import request
 from typing import Any, NamedTuple, Optional, Protocol, Union
