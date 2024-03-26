@@ -582,7 +582,7 @@ class PncList(APIWorker):
 
     def _get_cpes(self, pncs: list[dict[str, Any]]):
         self.status = False
-        projects: dict[(str, str), dict[str, Any]] = {
+        projects: dict[tuple[str, str], dict[str, Any]] = {
             (el["pnc_result"], el["pnc_state"]): el for el in pncs
         }
         tmp_table = make_tmp_table_name("project_names")

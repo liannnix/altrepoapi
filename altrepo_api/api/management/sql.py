@@ -1157,7 +1157,7 @@ SELECT * FROM (
             pnc_result
         ORDER BY pkg_name, type
     )
-    WHERE 1 AND type IN {branch}
+    WHERE type IN {branch}
 GROUP BY result, state
 ) {where_clause}
 ORDER BY result, state
@@ -1184,7 +1184,7 @@ WHERE {name_like}
             ORDER BY pkg_name
         ) WHERE state != 'inactive' AND {name_like}
     )
-ORDER BY pkg_name 
+ORDER BY pkg_name
 """
 
 
