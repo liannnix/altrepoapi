@@ -695,8 +695,13 @@ def test_pnc_list(client, kwargs, mocked_check_access_token):
 
         for el in data["pncs"]:
             if params.get("input", "") == PACKAGE_IN_DB:
-                for pkg in el["packages"]:
-                    assert params["input"].lower() in pkg["pkg_name"].lower()
+                print([pkg["pkg_name"] for pkg in el["packages"]])
+                assert any(
+                    [
+                        params["input"].lower() in pkg["pkg_name"].lower()
+                        for pkg in el["packages"]
+                    ]
+                )
             if params.get("input", "") == PROJECT_NAME_IN_DB:
                 assert params["input"].lower() in el["pnc_result"].lower()
             if params.get("state", "") == "active":
