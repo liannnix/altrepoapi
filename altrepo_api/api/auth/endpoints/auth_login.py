@@ -16,6 +16,7 @@
 
 import datetime
 import json
+import time
 
 from uuid import uuid4
 
@@ -75,6 +76,7 @@ class AuthLogin(APIWorker):
                 "nickname": self._name,
                 "fingerprint": fingerprint,
                 "exp": token_expires,
+                "ns": time.perf_counter_ns(),
                 "groups": user_groups,
             }
         )

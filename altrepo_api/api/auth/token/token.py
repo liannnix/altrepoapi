@@ -18,6 +18,7 @@ import base64
 import datetime
 import hashlib
 import jwt
+import time
 
 from flask import request
 from typing import Any, NamedTuple, Optional, Protocol, Union
@@ -27,7 +28,6 @@ from altrepo_api.utils import get_real_ip
 from .redis import RedisStorage
 from .file_storage import FileStorage
 from ..constants import BLACKLISTED_ACCESS_TOKEN_KEY, JWT_ENCODE_ALGORITHM
-
 
 # define `STORAGE` using `namespace.TOKEN_STORAGE` value
 if namespace.TOKEN_STORAGE == "file":
@@ -127,7 +127,7 @@ def update_access_token(payload: dict[str, Any]) -> str:
     payload["exp"] = datetime.datetime.now(
         tz=datetime.timezone.utc
     ) + datetime.timedelta(seconds=namespace.EXPIRES_ACCESS_TOKEN)
-
+    payload["ns"] = time.perf_counter_ns()
     return encode_jwt_token(payload)
 
 
