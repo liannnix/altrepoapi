@@ -422,6 +422,15 @@ def get_real_ip() -> str:
     if not x_forwarded_for:
         ip = request.remote_addr
     else:
-        ip = x_forwarded_for.split(',', maxsplit=1)[0].strip()
+        ip = x_forwarded_for.split(",", maxsplit=1)[0].strip()
 
     return ip or "unknown"
+
+
+def valid_task_id(task_id: int) -> bool:
+    """Validate that 'task_id' is an integer and within a valid range."""
+
+    MIN_TASK_ID = 1
+    MAX_TASK_ID = 4_000_000_000
+
+    return task_id >= MIN_TASK_ID and task_id <= MAX_TASK_ID
