@@ -14,10 +14,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from altrepo_api.utils import valid_task_id
 from altrepo_api.api.base import APIWorker
-from ..sql import sql
-from .task_repo import TaskRepoState
 from altrepo_api.api.package.endpoints.misconflict_packages import MisconflictPackages
+
+from .task_repo import TaskRepoState
+from ..sql import sql
 
 
 class TaskMisconflictPackages(APIWorker):
@@ -31,6 +33,8 @@ class TaskMisconflictPackages(APIWorker):
         super().__init__()
 
     def check_task_id(self):
+        if not valid_task_id(self.task_id):
+            return False
         response = self.send_sql_request(self.sql.check_task.format(id=self.task_id))
         if not self.sql_status:
             return False

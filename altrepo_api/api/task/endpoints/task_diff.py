@@ -16,11 +16,16 @@
 
 from collections import defaultdict, namedtuple
 
-from altrepo_api.utils import join_tuples, datetime_to_iso, make_tmp_table_name
-
+from altrepo_api.utils import (
+    join_tuples,
+    datetime_to_iso,
+    make_tmp_table_name,
+    valid_task_id,
+)
 from altrepo_api.api.base import APIWorker
-from ..sql import sql
 from altrepo_api.api.task.endpoints.task_repo import TaskRepoState
+
+from ..sql import sql
 
 
 class TaskDiff(APIWorker):
@@ -34,6 +39,8 @@ class TaskDiff(APIWorker):
         super().__init__()
 
     def check_task_id(self):
+        if not valid_task_id(self.task_id):
+            return False
         response = self.send_sql_request(self.sql.check_task.format(id=self.task_id))
         if not self.sql_status:
             return False
@@ -330,19 +337,30 @@ class TaskHistory(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if (self.args["start_task"] == 0 and self.args["start_date"] is None) or (
-            self.args["start_task"] != 0 and self.args["start_date"] is not None
+        start_task = self.args["start_task"]
+        start_date = self.args["start_date"]
+        end_task = self.args["end_task"]
+        end_date = self.args["end_date"]
+
+        if (start_task == 0 and start_date is None) or (
+            start_task != 0 and start_date is not None
         ):
             self.validation_results.append(
                 "one and only one start condition argument should be specified"
             )
 
-        if (self.args["end_task"] == 0 and self.args["end_date"] is None) or (
-            self.args["end_task"] != 0 and self.args["end_date"] is not None
+        if (end_task == 0 and end_date is None) or (
+            end_task != 0 and end_date is not None
         ):
             self.validation_results.append(
                 "one and only one end condition argument should be specified"
             )
+
+        if start_task and not valid_task_id(start_task):
+            self.validation_results.append(f"Invalid 'start_task' value: {start_task}")
+
+        if end_task and not valid_task_id(end_task):
+            self.validation_results.append(f"Invalid 'end_task' value: {end_task}")
 
         if self.validation_results != []:
             return False

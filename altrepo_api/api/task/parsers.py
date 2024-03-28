@@ -25,6 +25,7 @@ from altrepo_api.api.parser import (
     pkg_name_list_type,
     acl_group_type,
     datetime_string_type,
+    task_id_type,
 )
 
 # register parser items
@@ -130,7 +131,7 @@ branch = parser.register_item(
 )
 start_task_opt = parser.register_item(
     "start_task",
-    type=int,
+    type=task_id_type,
     default=0,
     required=False,
     help="start task ID",
@@ -138,7 +139,7 @@ start_task_opt = parser.register_item(
 )
 end_task_opt = parser.register_item(
     "end_task",
-    type=int,
+    type=task_id_type,
     default=0,
     required=False,
     help="end task ID",

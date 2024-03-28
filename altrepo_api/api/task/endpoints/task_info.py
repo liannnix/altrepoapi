@@ -18,10 +18,13 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Any, NamedTuple, Optional, Union
 
-from altrepo_api.utils import datetime_to_iso, mmhash
+from altrepo_api.utils import datetime_to_iso, mmhash, valid_task_id
 from altrepo_api.api.base import APIWorker
 
 from ..sql import sql
+
+
+MAX_TRY_ITER = 1_000
 
 
 class TaskInfo(APIWorker):
@@ -38,6 +41,8 @@ class TaskInfo(APIWorker):
         super().__init__()
 
     def check_task_id(self):
+        if not valid_task_id(self.task_id):
+            return False
         response = self.send_sql_request(self.sql.check_task.format(id=self.task_id))
         if not self.sql_status:
             return False
@@ -48,24 +53,27 @@ class TaskInfo(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["try"] is not None and self.args["iteration"] is not None:
-            if self.args["try"] > 0 and self.args["iteration"] > 0:
-                pass
-            else:
-                self.validation_results.append(
-                    "Task try and iteration parameters should be both greater than 0"
-                )
-        elif self.args["try"] is None and self.args["iteration"] is None:
+        try_ = self.args["try"]
+        iter_ = self.args["iteration"]
+
+        if try_ is None and iter_ is None:
+            # neither of 'try' or 'iteration' args is provided
             pass
-        else:
+        elif try_ is None or iter_ is None:
             self.validation_results.append(
                 "Task try and iteration parameters should be both specified"
             )
+        else:
+            if try_ < 1 or try_ > MAX_TRY_ITER:
+                self.validation_results.append(
+                    f"task try argument should be in range 1 to {MAX_TRY_ITER}"
+                )
+            if iter_ < 1 or iter_ > MAX_TRY_ITER:
+                self.validation_results.append(
+                    f"task iteration argument should be in range 1 to {MAX_TRY_ITER}"
+                )
 
-        if self.validation_results != []:
-            return False
-
-        return True
+        return self.validation_results == []
 
     class TaskState(NamedTuple):
         task_id: int
