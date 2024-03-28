@@ -108,11 +108,38 @@ __sort_match = re.compile(r"^-?([a-z\_]{2,},?)+$")
 
 
 # custom validators
+def __get_int(value: Any) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        raise ValueError("{0} is not a valid integer".format(value))
+
+
 def __get_string(value: Any) -> str:
     try:
         return str(value)
     except (TypeError, ValueError):
         raise ValueError("{0} is not a valid string".format(value))
+
+
+MIN_TASK_ID = 1
+MAX_TASK_ID = 4_000_000_000
+
+
+def task_id_type(value: Any) -> int:
+    """Task ID validator."""
+
+    value = __get_int(value)
+    if value < MIN_TASK_ID or value > MAX_TASK_ID:
+        raise ValueError("Invalid task ID: {0}".format(value))
+    return value
+
+
+task_id_type.__schema__ = {
+    "type": "integer",
+    "minimum": MIN_TASK_ID,
+    "maximum": MAX_TASK_ID,
+}
 
 
 def pkg_name_type(value: Any) -> str:
