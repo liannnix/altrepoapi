@@ -19,6 +19,8 @@ from collections import namedtuple
 from altrepo_api.api.base import APIWorker
 from ..sql import sql
 
+MAX_CHLOG_LENGTH = 100
+
 
 class PackageChangelog(APIWorker):
     """Retrieves package changelog from DB."""
@@ -34,15 +36,14 @@ class PackageChangelog(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["changelog_last"] < 1:
+        chlog_length = self.args["changelog_last"]
+
+        if chlog_length < 1 or chlog_length > MAX_CHLOG_LENGTH:
             self.validation_results.append(
-                "changelog history length should be not less than 1"
+                f"changelog history length should be in range 1 to {MAX_CHLOG_LENGTH}"
             )
 
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return self.validation_results == []
 
     def get(self):
         self.chlog_length = self.args["changelog_last"]
