@@ -18,6 +18,7 @@ from typing import NamedTuple
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
+from altrepo_api.utils import valid_task_id
 
 from ..sql import sql
 
@@ -68,6 +69,8 @@ class TaskVulnerabilities(APIWorker):
         super().__init__()
 
     def check_task_id(self):
+        if not valid_task_id(self.task_id):
+            return False
         response = self.send_sql_request(self.sql.check_task.format(id=self.task_id))
         if not self.sql_status:
             return False
