@@ -21,6 +21,9 @@ from altrepo_api.utils import full_file_permissions
 from ..sql import sql
 
 
+MAX_LIMIT = 5_000
+
+
 class FileSearch(APIWorker):
     """
     File search by name or directory.
@@ -36,12 +39,11 @@ class FileSearch(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["limit"] and self.args["limit"] < 1:
-            self.validation_results.append("limit should be greater or equal to 1")
+        limit = self.args["limit"]
+        if limit and (limit < 1 or limit > MAX_LIMIT):
+            self.validation_results.append(f"limit should be in range 1 to {MAX_LIMIT}")
 
-        if self.validation_results != []:
-            return False
-        return True
+        return self.validation_results == []
 
     def get(self):
         input_val = self.args["file_name"].replace("_", r"\_")
@@ -127,12 +129,11 @@ class FastFileSearchLookup(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["limit"] and self.args["limit"] < 1:
-            self.validation_results.append("limit should be greater or equal to 1")
+        limit = self.args["limit"]
+        if limit and (limit < 1 or limit > MAX_LIMIT):
+            self.validation_results.append(f"limit should be in range 1 to {MAX_LIMIT}")
 
-        if self.validation_results != []:
-            return False
-        return True
+        return self.validation_results == []
 
     def get(self):
         input_val = self.args["file_name"].replace("_", r"\_")
