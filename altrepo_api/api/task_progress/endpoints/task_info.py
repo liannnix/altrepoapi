@@ -17,7 +17,7 @@
 from dataclasses import asdict
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.utils import arch_sort_index
+from altrepo_api.utils import arch_sort_index, valid_task_id
 
 from ..dto import (
     TaskMeta,
@@ -39,6 +39,8 @@ class TaskInfo(APIWorker):
         super().__init__()
 
     def check_task_id(self):
+        if not valid_task_id(self.task_id):
+            return False
         response = self.send_sql_request(self.sql.check_task.format(id=self.task_id))
         if not self.sql_status:
             return False
