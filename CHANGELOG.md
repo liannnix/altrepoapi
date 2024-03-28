@@ -1,6 +1,16 @@
 # Changelog
 ALTrepo API changelog
 
+## [1.17.0] - 2024-03-28
+
+Regular API code updates and fixes.
+
+### Added
+- merged `errata_namagement` branch
+### Changed
+### Fixed
+- API arguments validation flaws
+
 ## [1.15.29] - 2024-03-11
 
 Regular API code updates and fixes.
