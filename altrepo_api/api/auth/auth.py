@@ -19,7 +19,7 @@ import ldap
 
 from typing import Any, NamedTuple
 
-from .token.token import parse_basic_auth_token
+from .token.token import parse_basic_auth_token, InvalidTokenError
 
 from altrepo_api.settings import namespace
 from altrepo_api.utils import get_logger
@@ -36,7 +36,7 @@ class AuthCheckResult(NamedTuple):
 def check_auth(token: str, ldap_groups: list[str]) -> AuthCheckResult:
     try:
         credentials = parse_basic_auth_token(token)
-    except ValueError:
+    except InvalidTokenError:
         logger.error("Authorization token validation error")
         return AuthCheckResult(False, "token validation error", {})
 
