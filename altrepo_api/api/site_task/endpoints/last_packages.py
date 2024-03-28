@@ -28,6 +28,9 @@ from altrepo_api.api.misc import lut
 from ..sql import sql
 
 
+MAX_LIMIT = 10_000
+
+
 class LastTaskPackages(APIWorker):
     """Retrieves packages information from last tasks."""
 
@@ -41,15 +44,13 @@ class LastTaskPackages(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["tasks_limit"] < 1:
+        limit = self.args["tasks_limit"]
+        if limit < 1 or limit > MAX_LIMIT:
             self.validation_results.append(
-                "last tasks limit should be greater or equal to 1"
+                f"last tasks limit should be in range 1 to {MAX_LIMIT}"
             )
 
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return self.validation_results == []
 
     def get(self):
         branch = self.args["branch"]
