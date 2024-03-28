@@ -130,20 +130,14 @@ class PackageBuildDependency(APIWorker):
         # get package acl
         _src_pkgs_tmp_table = "src_pkgs_tmp_table"
         response = self.send_sql_request(
-            self.sql.get_acl.format(
-                tmp_table=_src_pkgs_tmp_table,
-                branch=branch
-            ),
+            self.sql.get_acl.format(tmp_table=_src_pkgs_tmp_table, branch=branch),
             external_tables=[
                 {
                     "name": _src_pkgs_tmp_table,
                     "structure": [
                         ("pkgname", "String"),
                     ],
-                    "data": [
-                        {"pkgname": dep.name}
-                        for dep in dependencies
-                    ],
+                    "data": [{"pkgname": dep.name} for dep in dependencies],
                 }
             ],
         )

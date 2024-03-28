@@ -189,6 +189,9 @@ vulns_el_model = ns.model(
 errata_last_changed_el_model = ns.model(
     "ErrataLastChangedElementModel",
     {
+        "is_discarded": fields.Boolean(
+            description="is errata discarded", default=False
+        ),
         "errata_id": fields.String(description="errata ID"),
         "eh_type": fields.String(description=""),
         "task_id": fields.Integer(description="task ID"),

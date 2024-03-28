@@ -33,6 +33,7 @@ from .common import (
     get_errata_by_cve_ids,
     get_errata_by_pkg_names,
     deduplicate_erratas,
+    CVE_ID_TYPE,
 )
 from ..sql import sql
 
@@ -193,7 +194,7 @@ class VulnerablePackageByCve(APIWorker):
         cve_ids = []
         for bdu in bdus:
             for idx, ref_type in enumerate(bdu.refs_type):
-                if ref_type == "CVE":
+                if ref_type == CVE_ID_TYPE:
                     cve_ids.append(bdu.refs_link[idx])
 
         if not cve_ids:

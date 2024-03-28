@@ -111,6 +111,7 @@ def get_logger(name: str) -> logging.Logger:
 
             info_handler = logging.StreamHandler(sys.stdout)
             info_handler.setLevel(settings.LOG_LEVEL)
+            info_handler.addFilter(lambda rec: rec.levelno < logging.ERROR)
             info_handler.setFormatter(fmt)
 
             root_logger.addHandler(err_handler)

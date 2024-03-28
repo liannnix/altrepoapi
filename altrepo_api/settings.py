@@ -44,6 +44,9 @@ class BasePathNamespace:
     PROJECT_NAME = "altrepo-api"
     CONFIG_FILE = "/etc/{}/api.conf".format(PROJECT_NAME)
     LOG_FILE = "/var/log/{}/log".format(PROJECT_NAME)
+    # endpoint response OK code check settings
+    OK_RESPONSE_CODES = (200, 201, 202, 204)
+    OK_RESPONSE_CODE_STRICT_CHECK = False
     # application launch parameters
     DEFAULT_HOST = "127.0.0.1"
     DEFAULT_PORT = 5000
@@ -51,6 +54,7 @@ class BasePathNamespace:
     WORKER_TIMEOUT = "30"
     # database parameters
     DATABASE_HOST = "127.0.0.1"
+    DATABASE_PORT = 9000
     DATABASE_NAME = "default"
     TRY_CONNECTION_NUMBER = 5
     TRY_TIMEOUT = 5
@@ -83,6 +87,11 @@ class BasePathNamespace:
     MAX_REFRESH_SESSIONS_COUNT = 2
     # redis
     REDIS_URL = ""
+    # errata service
+    ERRATA_ID_URL = ""
+    # Flask CORS origins
+    CORS_ORIGINS = "*"
+    AUTH_COOKIES_OPTIONS = "HttpOnly;"
 
 
 namespace = BasePathNamespace()

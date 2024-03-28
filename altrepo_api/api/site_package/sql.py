@@ -98,7 +98,7 @@ SELECT
     if(pkg_sourcepackage = 1, 'source', 'binary') AS sourcepackage,
     pkg_summary
 FROM Packages
-WHERE pkg_hash = {pkghash}    
+WHERE pkg_hash = {pkghash}
 """
 
     get_package_build_tasks = """

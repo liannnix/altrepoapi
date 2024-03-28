@@ -15,8 +15,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
-from dataclasses import dataclass, field, asdict
 
+from dataclasses import dataclass, field
 from typing import NamedTuple, Any, Union
 
 from altrepo_api.api.base import APIWorker
@@ -40,6 +40,7 @@ class ErrataInfo(NamedTuple):
     vuln_ids: list[str]
     vuln_types: list[str]
     changed: str
+    is_discarded: bool
     vulnerabilities: list[dict[str, str]] = []
     packages: list[dict[str, str]] = []
 
@@ -230,9 +231,17 @@ class FindErratas(APIWorker):
         eh_type = lut.known_errata_type.get(self.args["type"], "")
         limit = self.args["limit"]
         page = self.args["page"]
+        state = None
+
+        if self.args["state"] == "discarded":
+            state = True
+        if self.args["state"] == "active":
+            state = False
 
         branch_clause = f"AND pkgset_name = '{branch}'" if branch else ""
         where_conditions = [f"type IN {eh_type}"] if eh_type else []
+        if state is not None:
+            where_conditions.append(f"discard = {state}")
 
         conditions = [
             " OR ".join(
@@ -306,7 +315,7 @@ class FindImageErratas(APIWorker):
         self.args = self._get_args(kwargs)
         self.sql = sql
         self.status: bool = False
-        self.erratas: Union[None, dict[int, ImageErrataInfo]] = None
+        self.erratas: dict[int, ImageErrataInfo] = {}
         super().__init__()
 
     def check_params(self) -> bool:
@@ -448,7 +457,7 @@ class FindImageErratas(APIWorker):
             return self.error
 
         packages = self._get_errata_pkgs_info()
-        if not self.status:
+        if not self.status or not packages:
             return self.error
 
         if self.args.sort:

@@ -82,7 +82,7 @@ from altrepo_api.libs.oval.independent_definitions import (
     Textfilecontent54State,
     Textfilecontent54Test,
 )
-from .common import ErrataID
+from .common import ErrataID, BDU_ID_TYPE, BDU_ID_PREFIX, CVE_ID_TYPE, CVE_ID_PREFIX
 
 
 LINK_BDU_BY_CVE = False
@@ -278,11 +278,11 @@ def serial_from_errata_id(errata_id: ErrataID) -> str:
 
 def vuln_id_to_sort_key(vuln: str) -> Union[tuple[int, int], str]:
     try:
-        if vuln.startswith("BDU:"):
-            s = vuln.lstrip("BDU:").split(":")[0]
+        if vuln.startswith(BDU_ID_PREFIX):
+            s = vuln.lstrip(BDU_ID_PREFIX).split(":")[0]
             return (int(s.split("-")[1]), int(s.split("-")[2]))
-        elif vuln.startswith("CVE-"):
-            s = vuln.lstrip("CVE-").split(":")[0]
+        elif vuln.startswith(CVE_ID_PREFIX):
+            s = vuln.lstrip(CVE_ID_PREFIX).split(":")[0]
             return (int(s.split("-")[1]), int(s.split("-")[2]))
         else:
             return vuln
@@ -492,15 +492,15 @@ class OVALBuilder:
         self.vulns = vulns
         self.bdus_by_cves = bdus_by_cves
         self.bdu_to_cve_map = {
-            bdu.id: {r for r in bdu.refs if r.startswith("CVE-")}
+            bdu.id: {r for r in bdu.refs if r.startswith(CVE_ID_PREFIX)}
             for bdu in self.bdus_by_cves.values()
         }
 
     def _errata_bug_links(self, errata: ErrataHistoryRecord) -> list[str]:
         return [
-            l
-            for t, l in zip(errata.eh_references_type, errata.eh_references_link)
-            if t == "bug"
+            rl
+            for rt, rl in zip(errata.eh_references_type, errata.eh_references_link)
+            if rt == "bug"
         ]
 
     def _errata_vuln_links(
@@ -508,16 +508,18 @@ class OVALBuilder:
     ) -> list[str]:
         # collect vulnerabilities descriptions and references
         errata_linked_vulns = {
-            l
-            for t, l in zip(errata.eh_references_type, errata.eh_references_link)
-            if t == "vuln"
+            rl
+            for rt, rl in zip(errata.eh_references_type, errata.eh_references_link)
+            if rt == "vuln"
         }
 
         if link_bdu_by_cve:
             # extend vulnerabilities list by BDUs mapped by CVEs
             linked_bdus: set[str] = set()
             for bdu_id, linked_cves in self.bdu_to_cve_map.items():
-                for cve_id in (c for c in errata_linked_vulns if c.startswith("CVE-")):
+                for cve_id in (
+                    c for c in errata_linked_vulns if c.startswith(CVE_ID_PREFIX)
+                ):
                     if cve_id in linked_cves:
                         linked_bdus.add(bdu_id)
             errata_linked_vulns = errata_linked_vulns.union(linked_bdus)
@@ -558,9 +560,9 @@ class OVALBuilder:
             vulns_list,
             key=lambda x: vuln_id_to_sort_key(x[0]),
         ):
-            if vuln_id.startswith("CVE-"):
+            if vuln_id.startswith(CVE_ID_PREFIX):
                 _vulns.append(_build_vuln_from_cve(vuln))
-            elif vuln_id.startswith("BDU:"):
+            elif vuln_id.startswith(BDU_ID_PREFIX):
                 _vulns.append(_build_vuln_from_bdu(vuln))
             else:
                 _vulns.append(_build_vuln_from_other(vuln))
@@ -610,31 +612,35 @@ class OVALBuilder:
             vuln = self._get_vuln_info_by_id(link)
             if vuln is not None:
                 vulns_list.append(f"{link}: {vuln.summary}")
-                if vuln.id.startswith("CVE-"):
+                if vuln.id.startswith(CVE_ID_PREFIX):
                     vuln_references.append(
-                        ReferenceType(source="CVE", ref_id=vuln.id, ref_url=vuln.url)
+                        ReferenceType(
+                            source=CVE_ID_TYPE, ref_id=vuln.id, ref_url=vuln.url
+                        )
                     )
-                elif link.startswith("BDU:"):
+                elif link.startswith(BDU_ID_PREFIX):
                     vuln_references.append(
-                        ReferenceType(source="BDU", ref_id=vuln.id, ref_url=vuln.url)
+                        ReferenceType(
+                            source=BDU_ID_TYPE, ref_id=vuln.id, ref_url=vuln.url
+                        )
                     )
                 else:
                     logger.error(f"Failed to create reference for {link}")
             else:
                 logger.debug(f"Failed to get vulnerability details for {link}")
                 vulns_list.append(f"{link}: description unavailable")
-                if link.startswith("CVE-"):
+                if link.startswith(CVE_ID_PREFIX):
                     vuln_references.append(
                         ReferenceType(
-                            source="CVE",
+                            source=CVE_ID_TYPE,
                             ref_id=link,
                             ref_url=f"{NVD_CVE_BASE_URL}/{link}",
                         )
                     )
-                elif link.startswith("BDU:"):
+                elif link.startswith(BDU_ID_PREFIX):
                     vuln_references.append(
                         ReferenceType(
-                            source="BDU",
+                            source=BDU_ID_TYPE,
                             ref_id=link,
                             ref_url=f"{FSTEC_BDU_BASE_URL}/{link.split(':')[-1]}",
                         )

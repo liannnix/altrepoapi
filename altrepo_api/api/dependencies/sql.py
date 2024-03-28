@@ -294,7 +294,7 @@ INNER JOIN (
             if(pkg_sourcepackage = 0, pkg_arch, 'srpm') AS arch
         FROM Packages
         LEFT JOIN (
-            SELECT pkg_hash, 
+            SELECT pkg_hash,
                    pkg_name,
                    CAST(toDateTime(any(pkg_buildtime)), 'String') AS buildtime_str
             FROM Packages
@@ -316,8 +316,8 @@ LEFT JOIN in_bin_pkgs_provides AS IBPP ON
     OR (in_bin_dp_name = dp_name AND arch = 'noarch' AND in_bin_pkg_arch = 'x86_64')
     OR (in_bin_dp_name = dp_name AND arch = 'srpm' AND in_bin_pkg_arch IN {archs})
 WHERE dp_type = 'require'
-    AND dp_name IN (SELECT DISTINCT in_bin_dp_name FROM in_bin_pkgs_provides)   
-GROUP BY src_hash, src_name, src_buildtime 
+    AND dp_name IN (SELECT DISTINCT in_bin_dp_name FROM in_bin_pkgs_provides)
+GROUP BY src_hash, src_name, src_buildtime
 """
 
     get_acl = """

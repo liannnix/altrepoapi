@@ -19,6 +19,8 @@ import sys
 import logging
 import configparser
 
+from functools import partial
+
 from .settings import namespace as settings
 
 
@@ -27,6 +29,7 @@ ACCESS_GROUPS_SECTION = "GROUPS"
 PARAMS = {
     "database": {
         "host": ("DATABASE_HOST", "str"),
+        "port": ("DATABASE_PORT", "int"),
         "name": ("DATABASE_NAME", "str"),
         "try_numbers": ("TRY_CONNECTION_NUMBER", "int"),
         "try_timeout": ("TRY_TIMEOUT", "int"),
@@ -38,6 +41,7 @@ PARAMS = {
         "port": ("DEFAULT_PORT", "int"),
         "processes": ("WORKER_PROCESSES", "str"),
         "timeout": ("WORKER_TIMEOUT", "str"),
+        "cors_origins": ("CORS_ORIGINS", "list"),
     },
     "other": {
         "admin_user": ("ADMIN_USER", "str"),
@@ -60,13 +64,26 @@ PARAMS = {
         "expires_access_token": ("EXPIRES_ACCESS_TOKEN", "int"),
         "expires_refresh_token": ("EXPIRES_REFRESH_TOKEN", "int"),
         "max_refresh_sessions_count": ("MAX_REFRESH_SESSIONS_COUNT", "int"),
+        "auth_cookies_options": ("AUTH_COOKIES_OPTIONS", "str"),
     },
     "redis": {"redis_url": ("REDIS_URL", "str")},
+    "errata": {"errata_id_url": ("ERRATA_ID_URL", "str")},
 }
 
 
-def read_config(config_file: str, params: dict, namespace: object) -> bool:
+def read_config(
+    config_file: str, params: dict[str, dict[str, tuple[str, str]]], namespace: object
+) -> bool:
     config = configparser.ConfigParser(inline_comment_prefixes="#")
+
+    # patch ConfigParser object
+    def getlist(cls, section, option):
+        value: str = cls.get(section, option)
+        if not value:
+            return None
+        return [v.strip() for v in value.split(",") if v]
+
+    setattr(config, "getlist", partial(getlist, config))
 
     if not config.read(config_file):
         return False
@@ -92,6 +109,7 @@ def read_config(config_file: str, params: dict, namespace: object) -> bool:
         "str": config.get,
         "int": config.getint,
         "bool": config.getboolean,
+        "list": config.getlist,  # type: ignore
         "log_level": _log_level,
     }
 

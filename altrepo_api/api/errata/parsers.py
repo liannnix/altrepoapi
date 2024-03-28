@@ -104,6 +104,14 @@ is_discarded = parser.register_item(
     help="is errata discarded",
     location="args",
 )
+errata_state_opt = parser.register_item(
+    "state",
+    choices=("all", "active", "discarded"),
+    default="all",
+    required=False,
+    help="errata state",
+    location="args",
+)
 img_uuid = parser.register_item(
     "uuid", type=uuid_type, required=True, help="Image UUID", location="args"
 )
@@ -128,7 +136,12 @@ errata_search_args = parser.build_parser(
     branch_name_opt, errata_pkg_name_opt, vuln_id_opt, errata_id_opt
 )
 find_erratas_args = parser.build_parser(
-    input_val_opt, branch_name_opt, errata_type_opt, page_opt, limit_opt
+    input_val_opt,
+    branch_name_opt,
+    errata_type_opt,
+    page_opt,
+    limit_opt,
+    errata_state_opt,
 )
 find_img_erratas_args = parser.build_parser(
     img_uuid,

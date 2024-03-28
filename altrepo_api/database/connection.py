@@ -30,6 +30,7 @@ class DBConnection:
     def __init__(
         self,
         clickhouse_host: str,
+        clickhouse_port: int,
         clickhouse_name: str,
         dbuser: str,
         dbpass: str,
@@ -39,7 +40,11 @@ class DBConnection:
         self.query_kwargs = {}
 
         self.clickhouse_client = Client(
-            host=clickhouse_host, database=clickhouse_name, user=dbuser, password=dbpass
+            host=clickhouse_host,
+            port=clickhouse_port,
+            database=clickhouse_name,
+            user=dbuser,
+            password=dbpass,
         )
 
         try_conn = self._connection_test()
@@ -62,6 +67,7 @@ class DBConnection:
     def _connection_test(self) -> Union[str, None]:
         logger.debug(
             f"Connecting to databse {settings.DATABASE_NAME}@{settings.DATABASE_HOST}"
+            f":{settings.DATABASE_PORT}"
         )
         try:
             self.clickhouse_client.connection.connect()
@@ -113,7 +119,9 @@ class DBConnection:
                     self.query, **self.query_kwargs
                 )
             response_status = True
-            logger.debug(f"SQL request elapsed {self.clickhouse_client.last_query.elapsed:.3f} seconds")  # type: ignore
+            logger.debug(
+                f"SQL request elapsed {self.clickhouse_client.last_query.elapsed:.3f} seconds"  # type: ignore
+            )
         except Exception as error:
             if issubclass(error.__class__, errors.Error):
                 logger.error(exception_to_logger(error))
@@ -135,6 +143,7 @@ class Connection:
         self.request_line: Union[str, tuple[str, Any]] = ""
         self._db_connection = DBConnection(
             settings.DATABASE_HOST,
+            settings.DATABASE_PORT,
             settings.DATABASE_NAME,
             settings.DATABASE_USER,
             settings.DATABASE_PASS,

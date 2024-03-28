@@ -69,6 +69,7 @@ class LookupTables:
         "c10f2": "5",
     }
     no_downloads_branches = ["sisyphus_e2k", "p9_e2k", "p10_e2k"]
+
     repology_export_branches = ["sisyphus", "p9", "p10"]
     repology_branches = ("alt_p9", "alt_p10", "altsisyphus")
     repology_branch_map = {
@@ -90,6 +91,21 @@ class LookupTables:
         "sisyphus_riscv64": "altsisyphus",
         "sisyphus_loongarch64": "altsisyphus",
     }
+    repology_reverse_branch_map = {
+        # P9
+        "alt_p9": ("p9", "c9f1", "c9f2", "p9_e2k", "p9_mipsel"),
+        # P10
+        "alt_p10": ("p10", "c10f1", "c10f2", "p10_e2k"),
+        # Sisyphus
+        "altsisyphus": (
+            "sisyphus",
+            "sisyphus_e2k",
+            "sisyphus_mipsel",
+            "sisyphus_riscv64",
+            "sisyphus_loongarch64",
+        ),
+    }
+
     known_archs = [
         "noarch",
         "i586",
@@ -127,7 +143,7 @@ class LookupTables:
         "p10_e2k": ["noarch", "e2k", "e2kv4", "e2kv5", "e2kv6"],
         "p9_e2k": ["noarch", "e2k", "e2kv4", "e2kv5", "e2kv6"],
         # MAIN
-        "default": ["noarch", "x86_64"]
+        "default": ["noarch", "x86_64"],
     }
     package_params = [
         "pkg_cs",
@@ -437,8 +453,31 @@ class LookupTables:
         # "p7": ["sisyphus"],
         "sisyphus": ["sisyphus"],
     }
+    branch_inheritance_root = "sisyphus"
 
     known_errata_type = {"packages": ["branch", "task"], "repository": ["bulletin"]}
+
+    errata_branch_update_prefix = "ALT-BU"
+    errata_package_update_prefix = "ALT-PU"
+    errata_change_prefix = "ALT-EC"
+
+    errata_manage_branches_with_tasks = (
+        "c9f1",
+        "c9f2",
+        "c10f1",
+        "c10f2",
+        "p9",
+        "p10",
+        "sisyphus",
+    )
+    errata_manage_branches_without_tasks = (
+        "p9_mipsel",
+        "p9_e2k",
+        "p10_e2k",
+        "sisyphus_mipsel",
+        "sisyphus_riscv64",
+        "sisyphus_e2k",
+    )
 
 
 lut = LookupTables()

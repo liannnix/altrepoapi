@@ -91,13 +91,13 @@ def encode_jwt_token(payload: dict[str, Any]) -> str:
     )
 
 
-def decode_jwt_token(token: str) -> dict[str, Any]:
+def decode_jwt_token(token: str, verify_exp: bool = True) -> dict[str, Any]:
     try:
         return jwt.decode(
-            token,
-            namespace.ADMIN_PASSWORD,
+            jwt=token,
+            key=namespace.ADMIN_PASSWORD,
             algorithms=[JWT_ENCODE_ALGORITHM],
-            options={"verify_signature": False},
+            options=None if verify_exp else {"verify_exp": False},
         )
     except (jwt.PyJWTError, jwt.DecodeError):
         raise InvalidTokenError("Invalid token")
@@ -128,7 +128,7 @@ def update_access_token(payload: dict[str, Any]) -> str:
         tz=datetime.timezone.utc
     ) + datetime.timedelta(seconds=namespace.EXPIRES_ACCESS_TOKEN)
     payload["ns"] = time.perf_counter_ns()
-    return jwt.encode(payload, namespace.ADMIN_PASSWORD, algorithm="HS256")
+    return encode_jwt_token(payload)
 
 
 def check_fingerprint(fingerprint: str) -> bool:
@@ -157,7 +157,7 @@ class AccessTokenBlacklist:
     def check(self) -> bool:
         """
         Check the access token in the blacklist.
-        if the fingerprint of the current user does not
+        If the fingerprint of the current user does not
         match the fingerprint of the access token, then
         add the token to the blacklist.
         """

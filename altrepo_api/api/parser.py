@@ -26,7 +26,7 @@ class ParserFactory:
     """Registers request parser argument items and builds RequestParser by list of items."""
 
     def __init__(self) -> None:
-        self.items: list = []
+        self.items: list[tuple[str, dict[str, Any]]] = []
         self.lindex: int = 0
 
     def register_item(self, item_name: str, **kwargs) -> int:
@@ -91,9 +91,11 @@ __license_id_match = re.compile(r"^[A-Za-z0-9\-\.\+]+$")
 # acl
 __acl_group_match = re.compile(r"^@?[a-z0-9\_]+$")
 # task search
-__task_search_match = re.compile(r"^(@?[\w\.\+\-\_]{2,},?)+$")
+__task_search_match = re.compile(r"^(@?[\w\.\+\-\_:#]{2,},?)+$")
 # file search
 __file_search_match = re.compile(r"^[\w\/\.\+\- $#%:=@\{\}]{3,}$")
+# package vulnerabilities
+__pkgs_open_vulns_search_match = re.compile(r"^([\w\.\+\-\_:]{2,},?)+$")
 # vulnerabilities
 __cve_id_match = re.compile(r"^CVE-\d{4}-\d{4,}$")
 __cve_id_list_match = re.compile(r"^(CVE-\d{4}-\d{4,},?)+$")
@@ -102,9 +104,12 @@ __bdu_id_list_match = re.compile(r"^(BDU:\d{4}-\d{5},?)+$")
 __errata_id_match = re.compile(r"^ALT-[A-Z]+-2\d{3}-\d{4,}-\d{1,}$")
 __errata_search_match = re.compile(r"^([\w\.\+\-\_:]{2,},?)+$")
 __password_match = re.compile(r"^([\w|\W]+)$")
+__cpe_search_match = re.compile(r"^([\w\.\+\-\_:*]{2,},?)+$")
 # input
 __positive_integer = re.compile(r"^(?<![-.])\b[0-9]+\b(?!\.[0-9])$")
 __sort_match = re.compile(r"^-?([a-z\_]{2,},?)+$")
+# package name conversion
+__project_name_match = re.compile(r"^[\w\.\+\-\:]{2,}$")
 
 
 # custom validators
@@ -708,17 +713,17 @@ password_type.__schema__ = {
 }
 
 
-def positive_integer_type(value: Any) -> str:
+def positive_integer_type(value: Any) -> int:
     """Positive integer validator."""
 
     value = __get_string(value)
     if not __positive_integer.search(value):
         raise ValueError("Invalid positive integer: {0}".format(value))
-    return value
+    return int(value)
 
 
 positive_integer_type.__schema__ = {
-    "type": "string",
+    "type": "integer",
     "pattern": __positive_integer.pattern,
 }
 
@@ -735,4 +740,49 @@ def sort_type(value: Any) -> str:
 sort_type.__schema__ = {
     "type": "string",
     "pattern": __sort_match.pattern,
+}
+
+
+def open_vulns_search_type(value: Any) -> str:
+    """Validator for searching packages with open vulnerabilities."""
+
+    value = __get_string(value)
+    if not __pkgs_open_vulns_search_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+open_vulns_search_type.__schema__ = {
+    "type": "string",
+    "pattern": __pkgs_open_vulns_search_match.pattern,
+}
+
+
+def cpe_search_type(value: Any) -> str:
+    """Validator for searching cpes."""
+
+    value = __get_string(value)
+    if not __cpe_search_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+cpe_search_type.__schema__ = {
+    "type": "string",
+    "pattern": __cpe_search_match.pattern,
+}
+
+
+def project_name_type(value: Any) -> str:
+    """Project name validator."""
+
+    value = __get_string(value)
+    if not __project_name_match.search(value):
+        raise ValueError("Invalid project name: {0}".format(value))
+    return value
+
+
+project_name_type.__schema__ = {
+    "type": "string",
+    "pattern": __project_name_match.pattern,
 }

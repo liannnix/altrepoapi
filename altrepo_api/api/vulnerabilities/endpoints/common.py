@@ -25,7 +25,7 @@ from itertools import islice
 from typing import Any, Iterable, Literal, NamedTuple, Protocol, Union
 
 from altrepo_api.api.misc import lut
-from altrepo_api.utils import make_tmp_table_name
+from altrepo_api.utils import make_tmp_table_name, mmhash
 from altrepo_api.libs.librpm_functions import (
     compare_versions,
     version_less_or_equal,
@@ -37,10 +37,15 @@ from ..sql import SQL
 logger = logging.getLogger(__name__)
 
 
-ROOT_BRANCH = "sisyphus"
+ROOT_BRANCH = lut.branch_inheritance_root
 CVE_MATCHER_MAX_CPU = 4  # running more than 4 processes is inefficient
 CVE_MATCHER_CHUNK_SIZE = 1000  # optimal chunk size is around 500-1000
+BDU_ID_TYPE = "BDU"
+BDU_ID_PREFIX = f"{BDU_ID_TYPE}:"
+CVE_ID_TYPE = "CVE"
+CVE_ID_PREFIX = f"{CVE_ID_TYPE}-"
 
+# type alias
 CPETriplet = tuple[str, str, str]
 
 
@@ -65,6 +70,10 @@ def unescape(x: str) -> str:
         return x_
     else:
         return x_.replace("\\", "")
+
+
+def escape(x: str):
+    return re.sub(r":", r"\:", x)
 
 
 def chunks(data: dict[str, Any], size: int) -> Iterable[dict[str, Any]]:
@@ -95,6 +104,7 @@ class TaskState(NamedTuple):
 
 
 class CpeMatchVersions(NamedTuple):
+    cpe: str
     version_start: str
     version_end: str
     version_start_excluded: bool
@@ -102,6 +112,58 @@ class CpeMatchVersions(NamedTuple):
 
     def asdict(self) -> dict[str, Any]:
         return self._asdict()
+
+
+CPE_FIELDS = (
+    "part",
+    "vendor",
+    "product",
+    "version",
+    "update",
+    "edition",
+    "lang",
+    "sw_edition",
+    "target_sw",
+    "target_hw",
+    "other",
+)
+CPE_PARTS_COUNT = 13
+
+
+@dataclass
+class CPE:
+    """CPE record structure."""
+
+    part: str
+    vendor: str
+    product: str
+    version: str
+    update: str
+    edition: str
+    lang: str
+    sw_edition: str
+    target_sw: str
+    target_hw: str
+    other: str
+    hash: int
+
+    def __init__(self, cpe_str: str) -> None:
+        self.hash = mmhash(cpe_str)
+
+        parts = re.split(r"(?<!\\):", cpe_str)
+
+        if len(parts) != CPE_PARTS_COUNT:
+            raise ValueError("Failed to parse CPE from %s" % cpe_str)
+
+        for attr, value in zip(CPE_FIELDS, parts[2:]):
+            setattr(self, attr, unescape(value))
+
+    def __hash__(self) -> int:
+        return self.hash
+
+    def __repr__(self) -> str:
+        parts = ":".join(escape(getattr(self, field)) for field in CPE_FIELDS)
+        return f"cpe:2.3:{parts}"
 
 
 @dataclass(frozen=True)
@@ -174,57 +236,13 @@ class VulnerabilityInfo:
 
 
 @dataclass
-class CPE:
-    part: str
-    vendor: str
-    product: str
-    version: str
-    update: str
-    edition: str
-    lang: str
-    sw_edition: str
-    target_sw: str
-    target_hw: str
-    other: str
-
-    def __init__(self, cpe_str: str) -> None:
-        res = re.split(r"(?<!\\):", cpe_str)
-        (
-            _,
-            _,
-            self.part,
-            self.vendor,
-            self.product,
-            self.version,
-            self.update,
-            self.edition,
-            self.lang,
-            self.sw_edition,
-            self.target_sw,
-            self.target_hw,
-            self.other,
-        ) = res
-        # self.vendor = unescape(self.vendor)
-        # self.product = unescape(self.product)
-        # self.version = unescape(self.version)
-        # self.update = unescape(self.update)
-
-    def __repr__(self) -> str:
-        return (
-            f"cpe:2.3:{self.part}:{self.vendor}:{self.product}:{self.version}:"
-            f"{self.update}:{self.edition}:{self.lang}:{self.sw_edition}:"
-            f"{self.target_sw}:{self.target_hw}:{self.other}"
-        )
-
-
-@dataclass
 class CpeMatch:
     cpe: CPE
     version: CpeMatchVersions
 
     def __init__(self, cpe: str, *args) -> None:
         self.cpe = CPE(cpe)
-        self.version = CpeMatchVersions(*args)
+        self.version = CpeMatchVersions(cpe, *args)
 
     def asdict(self) -> dict[str, Any]:
         return {"cpe": repr(self.cpe), "versions": self.version.asdict()}
@@ -262,42 +280,29 @@ class PackageVulnerabiltyInfo:
 
 
 def match_cpem_by_version(
-    pkg: PackageVersion, cpems: Iterable[CpeMatch], debug: bool = False
+    pkg: PackageVersion, cpems: Iterable[CpeMatch]
 ) -> list[CpeMatch]:
-    if not debug:
-        return [
-            cpem
-            for cpem in cpems
-            if version_less_or_equal(
-                pkg.version,
-                cpem.version.version_end,
-                cpem.version.version_end_excluded,
-            )
-            and version_less_or_equal(
-                cpem.version.version_start,
-                pkg.version,
-                cpem.version.version_start_excluded,
-            )
-        ]
-    else:
-        logger.debug(f"{pkg.name} {pkg.version}")
-        res = []
-        for cpem in cpems:
-            if version_less_or_equal(
-                pkg.version,
-                cpem.version.version_end,
-                cpem.version.version_end_excluded,
-            ) and version_less_or_equal(
-                cpem.version.version_start,
-                pkg.version,
-                cpem.version.version_start_excluded,
-            ):
-                res.append(cpem)
-                logger.debug(f"Overlap: {cpem}")
-            else:
-                logger.debug(f"Not overlap: {cpem}")
+    def match_versions(pkg: PackageVersion, cpem: CpeMatch) -> bool:
+        # XXX: always match the package for CPE with version unspecified
+        if (
+            cpem.version.version_start == ""
+            and cpem.version.version_end == ""
+            and not cpem.version.version_start_excluded
+            and not cpem.version.version_end_excluded
+        ):
+            return True
 
-        return res
+        return version_less_or_equal(
+            pkg.version,
+            cpem.version.version_end,
+            cpem.version.version_end_excluded,
+        ) and version_less_or_equal(
+            cpem.version.version_start,
+            pkg.version,
+            cpem.version.version_start_excluded,
+        )
+
+    return [cpem for cpem in cpems if match_versions(pkg, cpem)]
 
 
 @dataclass
@@ -711,9 +716,7 @@ def get_errata_by_cve_ids(
 
 
 def get_errata_by_cve_id(cls: _pGetErratasCompatible, cve_id: str) -> None:
-    where_clause = (
-        f"AND has(eh_references.link, '{cve_id}')"
-    )
+    where_clause = f"AND has(eh_references.link, '{cve_id}')"
     return _get_erratas(cls, where_clause)
 
 

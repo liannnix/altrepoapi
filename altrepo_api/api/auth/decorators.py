@@ -90,15 +90,15 @@ def token_required(ldap_groups: list[AccessGroups]):
 def _check_access_token(ldap_groups: list[AccessGroups]) -> dict[str, Any]:
     token = request.headers.get("Authorization")
     if not token:
-        raise ApiUnauthorized("Authentication token is required")
+        raise ApiUnauthorized(description="Authentication token is required")
 
     try:
         token_payload = decode_jwt_token(token)
     except InvalidTokenError:
-        raise ApiUnauthorized("Invalid token.")
+        raise ApiUnauthorized(description="Invalid token.")
 
     if AccessTokenBlacklist(token, int(token_payload["exp"])).check():
-        raise ApiUnauthorized("Token blacklisted")
+        raise ApiUnauthorized(description="Token blacklisted")
 
     # check if user groups from token is intersects with given LDAP groups
     user_ldap_groups = set(token_payload.get("groups", []))

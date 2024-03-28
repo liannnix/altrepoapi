@@ -141,11 +141,23 @@ def _abort_on_validation_error(
 def _abort_on_result_error(
     method: Callable[[], WorkerResult], ok_code: int
 ) -> Response:
-    """Call Flask abort() if APIWorker run method call returned not 'ok_code'."""
+    """Calls Flask abort() if APIWorker run method call returns not 'ok_code' if
+    strict mode set in API settings or return code not in OK codes list otherwise."""
 
     response = Response(*method())  # type: ignore
-    if response.http_code != ok_code:
+    if (settings.OK_RESPONSE_CODE_STRICT_CHECK and response.http_code != ok_code) or (
+        not settings.OK_RESPONSE_CODE_STRICT_CHECK
+        and response.http_code not in settings.OK_RESPONSE_CODES
+    ):
+        if 200 <= response.http_code <= 299:
+            # workaround for no exceptions registered for OK HTTP response codes
+            abort(
+                500,  # type: ignore
+                "Unexpected successful HTTP response code from APIWorker instance:"
+                f" {response.http_code} != {ok_code}",
+            )
         abort(response.http_code, **response_error_parser(response.result))  # type: ignore
+
     return response
 
 
@@ -160,7 +172,7 @@ def run_worker(
     """Calls APIWorker class's 'check_method' and 'run_method' and returns the result.
 
     Calls flask_restx abort() if check_method() returned False
-    or if run_method() returned code not equal to 'ok_code'.
+    or if run_method() returned not 'OK' code checkef in accordance to API settings.
     Otherwise returns run_method() results wrapped in `Response` class.
 
     Default 'run_method' is worker.get().

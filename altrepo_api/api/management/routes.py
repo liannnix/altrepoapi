@@ -1,0 +1,529 @@
+# ALTRepo API
+# Copyright (C) 2021-2023  BaseALT Ltd
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from flask import g
+from flask_restx import Resource
+
+from altrepo_api.api.base import (
+    run_worker,
+    GET_RESPONSES_404,
+    GET_RESPONSES_400_404,
+    POST_RESPONSES_400_404,
+)
+from altrepo_api.utils import get_logger, url_logging
+from altrepo_api.settings import namespace as settings
+from altrepo_api.api.auth.decorators import token_required
+from .endpoints.change_history import ErrataChangeHistory
+from .endpoints.packages_open_vulns import (
+    PackagesOpenVulns,
+    PackagesSupportedBranches,
+    PackagesMaintainerList,
+)
+from .endpoints.packages_unmapped import PackagesUnmapped
+
+from .namespace import get_namespace
+from .endpoints.cpe import CPECandidates, ManageCpe, CPEList
+from .endpoints.errata import ManageErrata
+from .endpoints.pnc import ManagePnc, PncList
+from .endpoints.task_info import TaskInfo
+from .endpoints.task_list import TaskList
+from .endpoints.vulns_info import VulnsInfo
+from .parsers import (
+    errata_manage_args,
+    errata_manage_get_args,
+    cpe_candidates_args,
+    cpe_list_args,
+    cpe_manage_args,
+    cpe_manage_get_args,
+    maintainer_list_args,
+    pkgs_open_vulns_args,
+    pnc_list_args,
+    pnc_manage_args,
+    pnc_manage_get_args,
+    task_list_args,
+    pkgs_unmapped_args,
+)
+from .serializers import (
+    cpe_manage_model,
+    cpe_manage_response_model,
+    cpe_candidates_response_model,
+    cpe_manage_get_response_model,
+    errata_manage_model,
+    errata_manage_response_model,
+    errata_manage_get_response_model,
+    errata_change_history_model,
+    maintainer_list_model,
+    pkg_open_vulns,
+    pnc_manage_model,
+    pnc_manage_get_model,
+    pnc_manage_response_model,
+    pnc_list_model,
+    supported_branches_model,
+    task_list_model,
+    task_info_model,
+    vuln_ids_json_list_model,
+    vuln_ids_json_post_list_model,
+    pkgs_unmapped_model,
+)
+
+ns = get_namespace()
+
+logger = get_logger(__name__)
+
+
+@ns.route(
+    "/task/list",
+    doc={
+        "description": "Get a list of tasks in DONE status."
+        "You can also search for issues by ID, task owner, "
+        "component or Vulnerability.",
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routeTaskList(Resource):
+    @ns.expect(task_list_args)
+    @ns.marshal_with(task_list_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = task_list_args.parse_args(strict=True)
+        w = TaskList(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/task/info/<int:id>",
+    doc={
+        "description": "Get information about the task in the state "
+        "'DONE' and a list of vulnerabilities for subtasks "
+        "based on task ID.",
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routeTaskInfo(Resource):
+    # @ns.expect()
+    @ns.marshal_with(task_info_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self, id):
+        url_logging(logger, g.url)
+        args = {}
+        w = TaskInfo(g.connection, id, **args)
+        if not w.check_task_id():
+            ns.abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/vuln/info",
+    doc={
+        "description": "Find vulnerability information.",
+        "responses": POST_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routeVulnsInfo(Resource):
+    @ns.expect(vuln_ids_json_post_list_model)
+    @ns.marshal_with(vuln_ids_json_list_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def post(self):
+        url_logging(logger, g.url)
+        w = VulnsInfo(g.connection, json_data=ns.payload)
+        return run_worker(
+            worker=w, run_method=w.post, check_method=w.check_params_post, ok_code=200
+        )
+
+
+RESPONSES_400_404 = {
+    200: "Data loaded",
+    400: "Request payload validation error",
+    404: "Requested data not found in database",
+}
+RESPONSES_400_409 = {
+    200: "Data loaded",
+    400: "Request payload validation error",
+    409: "Requests payload inconsistent with DB contents",
+}
+RESPONSES_400_404_409 = {
+    200: "Data loaded",
+    400: "Request payload validation error",
+    404: "Requested data not found in database",
+    409: "Requests payload inconsistent with DB contents",
+}
+GET_RESPONSES_400_404_409 = {
+    200: "OK",
+    400: "Request arguments validation error",
+    404: "Requested data not found in database",
+    409: "Request arguments is inconsistent with DB contents",
+}
+
+
+@ns.route("/errata/manage")
+class routeManageErrata(Resource):
+    @ns.doc(
+        description="Get errata info.",
+        responses=GET_RESPONSES_400_404_409,
+        security="Bearer",
+    )
+    @ns.expect(errata_manage_get_args)
+    @ns.marshal_with(errata_manage_get_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = errata_manage_get_args.parse_args(strict=True)
+        w = ManageErrata(g.connection, payload={}, **args)
+        return run_worker(worker=w, args=args)
+
+    @ns.doc(
+        description="Update errata version with new contents.",
+        responses=RESPONSES_400_404_409,
+        security="Bearer",
+    )
+    @ns.expect(errata_manage_model, errata_manage_args)
+    @ns.marshal_with(errata_manage_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    def put(self):
+        url_logging(logger, g.url)
+        args = errata_manage_args.parse_args(strict=False)
+        w = ManageErrata(g.connection, payload=ns.payload, **args)
+        return run_worker(
+            worker=w, run_method=w.put, check_method=w.check_params_put, ok_code=200
+        )
+
+    @ns.doc(
+        description="Register new errata record.",
+        responses=RESPONSES_400_409,
+        security="Bearer",
+    )
+    @ns.expect(errata_manage_model, errata_manage_args)
+    @ns.marshal_with(errata_manage_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    def post(self):
+        url_logging(logger, g.url)
+        args = errata_manage_args.parse_args(strict=False)
+        w = ManageErrata(g.connection, payload=ns.payload, **args)
+        return run_worker(
+            worker=w, run_method=w.post, check_method=w.check_params_post, ok_code=200
+        )
+
+    @ns.doc(
+        description="Discard errata record.",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(errata_manage_model, errata_manage_args)
+    @ns.marshal_with(errata_manage_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    def delete(self):
+        url_logging(logger, g.url)
+        args = errata_manage_args.parse_args(strict=False)
+        w = ManageErrata(g.connection, payload=ns.payload, **args)
+        return run_worker(
+            worker=w,
+            run_method=w.delete,
+            check_method=w.check_params_delete,
+            ok_code=200,
+        )
+
+
+@ns.route(
+    "/errata/change_history",
+    doc={
+        "description": "Get errata change history.",
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routeErrataChangeHistory(Resource):
+    @ns.expect(errata_manage_get_args)
+    @ns.marshal_with(errata_change_history_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = errata_manage_get_args.parse_args(strict=True)
+        w = ErrataChangeHistory(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/cpe/candidates",
+    doc={
+        "description": "Get CPE candidates",
+        "responses": GET_RESPONSES_404,
+        "security": "Bearer",
+    },
+)
+class routeCpeCandidates(Resource):
+    @ns.expect(cpe_candidates_args)
+    @ns.marshal_with(cpe_candidates_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = cpe_candidates_args.parse_args(strict=True)
+        w = CPECandidates(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/cpe/list",
+    doc={
+        "description": "Get CPE list",
+        "responses": GET_RESPONSES_404,
+        "security": "Bearer",
+    },
+)
+class routeCpeList(Resource):
+    @ns.expect(cpe_list_args)
+    @ns.marshal_with(cpe_candidates_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = cpe_list_args.parse_args(strict=True)
+        w = CPEList(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route("/cpe/manage")
+class routeManageCpe(Resource):
+    @ns.doc(
+        description="Get CPE records info.",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(cpe_manage_get_args)
+    @ns.marshal_with(cpe_manage_get_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = cpe_manage_get_args.parse_args(strict=True)
+        w = ManageCpe(g.connection, payload={}, **args)
+        return run_worker(worker=w, args=args)
+
+    @ns.doc(
+        description="Update CPE records.",
+        responses=RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(cpe_manage_model, cpe_manage_args)
+    @ns.marshal_with(cpe_manage_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    def put(self):
+        url_logging(logger, g.url)
+        args = cpe_manage_args.parse_args(strict=False)
+        w = ManageCpe(g.connection, payload=ns.payload, **args)
+        return run_worker(
+            worker=w, run_method=w.put, check_method=w.check_params_put, ok_code=200
+        )
+
+    @ns.doc(
+        description="Register new CPE records.",
+        responses=RESPONSES_400_409,
+        security="Bearer",
+    )
+    @ns.expect(cpe_manage_model, cpe_manage_args)
+    @ns.marshal_with(cpe_manage_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    def post(self):
+        url_logging(logger, g.url)
+        args = cpe_manage_args.parse_args(strict=False)
+        w = ManageCpe(g.connection, payload=ns.payload, **args)
+        return run_worker(
+            worker=w, run_method=w.post, check_method=w.check_params_post, ok_code=200
+        )
+
+    @ns.doc(
+        description="Discard CPE records.",
+        responses=GET_RESPONSES_400_404_409,
+        security="Bearer",
+    )
+    @ns.expect(cpe_manage_model, cpe_manage_args)
+    @ns.marshal_with(cpe_manage_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    def delete(self):
+        url_logging(logger, g.url)
+        args = cpe_manage_args.parse_args(strict=False)
+        w = ManageCpe(g.connection, payload=ns.payload, **args)
+        return run_worker(
+            worker=w,
+            run_method=w.delete,
+            check_method=w.check_params_delete,
+            ok_code=200,
+        )
+
+
+@ns.route(
+    "/packages/open_vulns",
+    doc={
+        "description": (
+            "Get a list of all repository packages "
+            "containing unpatched vulnerabilities"
+        ),
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routePackagesOpenVulns(Resource):
+    @ns.expect(pkgs_open_vulns_args)
+    @ns.marshal_with(pkg_open_vulns)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = pkgs_open_vulns_args.parse_args(strict=True)
+        w = PackagesOpenVulns(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/packages/supported_branches",
+    doc={
+        "description": "Get a list of supported branches.",
+        "responses": GET_RESPONSES_404,
+        "security": "Bearer",
+    },
+)
+class routePackagesSupportedBranches(Resource):
+    # @ns.expect()
+    @ns.marshal_with(supported_branches_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = {}
+        w = PackagesSupportedBranches(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/packages/maintainer_list",
+    doc={
+        "description": "Get a list of all maintainers.",
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routePackagesMaintainerList(Resource):
+    @ns.expect(maintainer_list_args)
+    @ns.marshal_with(maintainer_list_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = maintainer_list_args.parse_args(strict=True)
+        w = PackagesMaintainerList(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/packages/unmapped",
+    doc={
+        "description": "Get a list of packages that not mapped to any project.",
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routePackagesUnmapped(Resource):
+    @ns.expect(pkgs_unmapped_args)
+    @ns.marshal_with(pkgs_unmapped_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = pkgs_unmapped_args.parse_args(strict=True)
+        w = PackagesUnmapped(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route("/pnc/list")
+class routePncList(Resource):
+    @ns.doc(
+        description="Get PNC records list.",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(pnc_list_args)
+    @ns.marshal_with(pnc_list_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = pnc_list_args.parse_args(strict=True)
+        w = PncList(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route("/pnc/manage")
+class routeManagePnc(Resource):
+    @ns.doc(
+        description="Get package to project mapping records.",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(pnc_manage_get_args)
+    @ns.marshal_with(pnc_manage_get_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = pnc_manage_get_args.parse_args(strict=True)
+        w = ManagePnc(g.connection, payload={}, **args)
+        return run_worker(worker=w, args=args)
+
+    @ns.doc(
+        description="Register new package to project mapping record.",
+        responses=RESPONSES_400_409,
+        security="Bearer",
+    )
+    @ns.expect(pnc_manage_model, pnc_manage_args)
+    @ns.marshal_with(pnc_manage_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    def post(self):
+        url_logging(logger, g.url)
+        args = pnc_manage_args.parse_args(strict=False)
+        w = ManagePnc(g.connection, payload=ns.payload, **args)
+        return run_worker(
+            worker=w, run_method=w.post, check_method=w.check_params_post, ok_code=200
+        )
+
+    # @ns.doc(
+    #     description="Update package to project mapping record.",
+    #     responses=RESPONSES_400_404,
+    #     security="Bearer",
+    # )
+    # @ns.expect(pnc_manage_model, pnc_manage_args)
+    # @ns.marshal_with(pnc_manage_response_model)
+    # @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    # def put(self):
+    #     url_logging(logger, g.url)
+    #     args = pnc_manage_args.parse_args(strict=False)
+    #     w = ManagePnc(g.connection, payload=ns.payload, **args)
+    #     return run_worker(
+    #         worker=w, run_method=w.put, check_method=w.check_params_put, ok_code=200
+    #     )
+
+    @ns.doc(
+        description="Discard package to project mapping record.",
+        responses=RESPONSES_400_409,
+        security="Bearer",
+    )
+    @ns.expect(pnc_manage_model, pnc_manage_args)
+    @ns.marshal_with(pnc_manage_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    def delete(self):
+        url_logging(logger, g.url)
+        args = pnc_manage_args.parse_args(strict=False)
+        w = ManagePnc(g.connection, payload=ns.payload, **args)
+        return run_worker(
+            worker=w,
+            run_method=w.delete,
+            check_method=w.check_params_delete,
+            ok_code=200,
+        )
