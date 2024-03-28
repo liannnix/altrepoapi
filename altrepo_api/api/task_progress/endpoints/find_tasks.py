@@ -30,6 +30,9 @@ from ..dto import (
 )
 
 
+MAX_LIMIT = 10_000
+
+
 class FindTasksLookup(APIWorker):
     """
     Fast tasks search lookup by id, owner or components.
@@ -45,9 +48,10 @@ class FindTasksLookup(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["tasks_limit"] and self.args["tasks_limit"] < 1:
+        limit = self.args["tasks_limit"]
+        if limit and (limit < 1 or limit > MAX_LIMIT):
             self.validation_results.append(
-                "tasks_limit should be greater or equal to 1"
+                f"tasks_limit should be in range 1 to {MAX_LIMIT}"
             )
 
         if self.args["input"] and len(self.args["input"]) > 4:
@@ -55,9 +59,7 @@ class FindTasksLookup(APIWorker):
                 "input values list should contain no more than 4 elements"
             )
 
-        if self.validation_results != []:
-            return False
-        return True
+        return self.validation_results == []
 
     def get(self):
         input_val: list[str] = self.args["input"][:] if self.args["input"] else []
@@ -159,9 +161,10 @@ class FindTasks(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["tasks_limit"] and self.args["tasks_limit"] < 1:
+        limit = self.args["tasks_limit"]
+        if limit and (limit < 1 or limit > MAX_LIMIT):
             self.validation_results.append(
-                "tasks_limit should be greater or equal to 1"
+                f"tasks_limit should be in range 1 to {MAX_LIMIT}"
             )
 
         if self.args["input"] and len(self.args["input"]) > 4:
@@ -169,9 +172,7 @@ class FindTasks(APIWorker):
                 "input values list should contain no more than 4 elements"
             )
 
-        if self.validation_results != []:
-            return False
-        return True
+        return self.validation_results == []
 
     def get(self):
         input_val: list[str] = self.args["input"][:] if self.args["input"] else []
