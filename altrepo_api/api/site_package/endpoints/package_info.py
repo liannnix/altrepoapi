@@ -32,6 +32,9 @@ from altrepo_api.api.license.endpoints.license import LicenseParser
 from .common import FindBuildTaskMixixn, SQLRequestError, NoDataFoundInDB
 
 
+MAX_CHLOG_LENGTH = 100
+
+
 class PackageInfo(FindBuildTaskMixixn, APIWorker):
     """Retrieves package info from DB."""
 
@@ -47,15 +50,14 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["changelog_last"] < 1:
+        chlog_length = self.args["changelog_last"]
+
+        if chlog_length < 1 or chlog_length > MAX_CHLOG_LENGTH:
             self.validation_results.append(
-                "Changelog history length should be not less than 1"
+                f"changelog history length should be in range 1 to {MAX_CHLOG_LENGTH}"
             )
 
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return self.validation_results == []
 
     class PackageMeta(NamedTuple):
         name: str
