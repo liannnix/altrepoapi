@@ -24,6 +24,8 @@ from altrepo_api.api.misc import lut
 from ..sql import sql
 
 MAX_BRANCH_HIST_REWIND = 5
+MAX_BUILDTIME = 2_147_483_647
+MAX_LIMIT = 10_000
 
 
 class PackagesetPackages(APIWorker):
@@ -59,15 +61,13 @@ class PackagesetPackages(APIWorker):
                     f"allowed package categories : {lut.pkg_groups}"
                 )
 
-        if self.args["buildtime"] and self.args["buildtime"] < 0:
+        buildtime = self.args["buildtime"]
+        if buildtime and (buildtime < 0 or buildtime > MAX_BUILDTIME):
             self.validation_results.append(
                 "package build time should be integer UNIX time representation"
             )
 
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return self.validation_results == []
 
     def get(self):
         self.pkg_type = self.args["package_type"]
@@ -188,15 +188,13 @@ class LastBranchPackages(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["packages_limit"] < 1:
+        limit = self.args["packages_limit"]
+        if limit < 1 or limit > MAX_LIMIT:
             self.validation_results.append(
-                "last packages limit should be greater or equal to 1"
+                f"last packages limit should be in range 1 to {MAX_LIMIT}"
             )
 
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return self.validation_results == []
 
     def get(self):
         self.branch = self.args["branch"]
