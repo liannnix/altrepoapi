@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+## [1.17.1] - 2024-03-28
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/auth`: token parsing errors handling
+
 ## [1.17.0] - 2024-03-28
 
 Regular API code updates and fixes.
