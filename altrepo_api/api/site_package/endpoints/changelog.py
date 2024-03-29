@@ -19,7 +19,7 @@ from collections import namedtuple
 from altrepo_api.api.base import APIWorker
 from ..sql import sql
 
-MAX_CHLOG_LENGTH = 100
+MAX_CHLOG_LENGTH = 1000
 
 
 class PackageChangelog(APIWorker):
