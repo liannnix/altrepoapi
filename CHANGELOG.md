@@ -1,6 +1,18 @@
 # Changelog
 ALTrepo API changelog
 
+## [1.17.3] - 2024-04-01
+
+Regular API code updates and fixes.
+
+### Added
+- `api`: support for temporary DB name from configuration
+- `api/management`: use temporary DB name prefixing in `DELETE FROM` mutations wrapper
+- **Breaking change** `api/management`: pass temporar DB name to `PackageCVEMatcher` class instances. Requires `altrepodb_libs` version 2.13.12+
+### Changed
+### Fixed
+- `api/site_package/changelog`: fix validator upper bound
+
 ## [1.17.1] - 2024-03-28
 
 Regular API code updates and fixes.

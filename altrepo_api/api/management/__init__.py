@@ -17,6 +17,6 @@
 from .namespace import get_namespace
 from . import routes
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 ns = get_namespace()
