@@ -56,6 +56,7 @@ class BasePathNamespace:
     DATABASE_HOST = "127.0.0.1"
     DATABASE_PORT = 9000
     DATABASE_NAME = "default"
+    TMP_DATABASE_NAME = ""
     TRY_CONNECTION_NUMBER = 5
     TRY_TIMEOUT = 5
     DATABASE_USER = "default"

@@ -2,6 +2,7 @@
 HOST = 127.0.0.1
 PORT = 9000
 NAME = repodb
+TMP_NAME = 
 TRY_NUMBERS = 5
 TRY_TIMEOUT = 5
 USER = default
