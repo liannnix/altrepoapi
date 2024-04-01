@@ -439,6 +439,7 @@ class ManagePnc(APIWorker):
                 password=settings.DATABASE_PASS,
             ),
             log_level=MATCHER_LOG_LEVEL,
+            sql_patch={"tmp_db_name": settings.TMP_DATABASE_NAME},
         )
         matcher.match_pnc_add(pkg_cpe_pairs, package_name=package_name)
 
@@ -530,6 +531,7 @@ class ManagePnc(APIWorker):
                 password=settings.DATABASE_PASS,
             ),
             log_level=MATCHER_LOG_LEVEL,
+            sql_patch={"tmp_db_name": settings.TMP_DATABASE_NAME},
         )
         matcher.match_pnc_delete(pkg_cpe_pairs, package_name=package_name)
 

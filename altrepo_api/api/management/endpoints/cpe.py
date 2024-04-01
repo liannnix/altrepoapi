@@ -586,6 +586,7 @@ class ManageCpe(APIWorker):
                     password=settings.DATABASE_PASS,
                 ),
                 log_level=MATCHER_LOG_LEVEL,
+                sql_patch={"tmp_db_name": settings.TMP_DATABASE_NAME},
             )
             if self._package_name:
                 matcher.match_cpe_add(pkg_cpe_pairs, package_name=self._package_name)
@@ -737,6 +738,7 @@ class ManageCpe(APIWorker):
                     password=settings.DATABASE_PASS,
                 ),
                 log_level=MATCHER_LOG_LEVEL,
+                sql_patch={"tmp_db_name": settings.TMP_DATABASE_NAME},
             )
             # FIXME: ignore `package_name` argument here
             # if self._package_name:
@@ -890,6 +892,7 @@ class ManageCpe(APIWorker):
                     password=settings.DATABASE_PASS,
                 ),
                 log_level=MATCHER_LOG_LEVEL,
+                sql_patch={"tmp_db_name": settings.TMP_DATABASE_NAME},
             )
             if self._package_name:
                 matcher.match_cpe_delete(pkg_cpe_pairs, package_name=self._package_name)
