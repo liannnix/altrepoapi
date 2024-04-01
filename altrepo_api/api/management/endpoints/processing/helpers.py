@@ -18,6 +18,7 @@ from functools import partial
 from logging import Logger
 from typing import Any, Iterable, NamedTuple, Protocol
 
+from altrepo_api.settings import namespace as settings
 from altrepo_api.utils import make_tmp_table_name
 
 from .base import (
@@ -369,11 +370,19 @@ def _wrap_delete_from(
     columns: list[tuple[str, str]],
     values: list[dict[str, Any]],
 ) -> None:
-    """Wraps 'DELETE FROM' mutation SQL request using 'Memory' engine table and
+    """
+    Wraps 'DELETE FROM' mutation SQL request using 'Memory' engine table and
     'mutations_sync' flag to handle bunch of a values that are supplied
-    due to temporary and external tables are not supported by ClickHouse server."""
+    due to temporary and external tables are not supported in mutations by
+    ClickHouse server.
+    """
 
     cls.status = False
+
+    # build actual temporary table name
+    tmp_table = make_tmp_table_name(name)
+    if settings.TMP_DATABASE_NAME:
+        tmp_table = f"{settings.TMP_DATABASE_NAME}.{tmp_table}"
 
     _columns = ", ".join(f"{c[0]} {c[1]}" for c in columns)
     _ = cls.send_sql_request(f"CREATE TABLE {name} ({_columns}) ENGINE = Memory")
@@ -388,7 +397,7 @@ def _wrap_delete_from(
     if not cls.sql_status:
         return None
 
-    _ = cls.send_sql_request(sql)
+    _ = cls.send_sql_request(sql.format(tmp_table=tmp_table))
     if not cls.sql_status:
         return None
 
@@ -404,12 +413,10 @@ def _wrap_delete_from(
 def delete_errata_history_records(cls: _pAPIWorker, errata_ids: Iterable[str]) -> None:
     cls.status = False
 
-    tmp_table = make_tmp_table_name("errata_ids")
-
     _wrap_delete_from(
         cls,
-        sql=cls.sql.delete_errata_history_records.format(tmp_table=tmp_table),
-        name=tmp_table,
+        sql=cls.sql.delete_errata_history_records,
+        name="errata_ids",
         columns=[("errata_id", "String")],
         values=[{"errata_id": e} for e in errata_ids],
     )
@@ -478,14 +485,13 @@ def delete_pnc_records(cls: _pAPIWorkerBase, transaction_id: UUID_T) -> bool:
         )
         return True
 
-    tmp_table = make_tmp_table_name("pnc_records")
     pnc_records = [PncRecord(*el) for el in response]
 
     # delete affected `PackagesNameConversion` records
     _wrap_delete_from(
         cls,
-        sql=sql.delete_pnc_records.format(tmp_table=tmp_table),
-        name=tmp_table,
+        sql=sql.delete_pnc_records,
+        name="pnc_records",
         columns=[
             ("pkg_name", "String"),
             ("pnc_result", "String"),
