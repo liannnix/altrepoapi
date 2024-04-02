@@ -141,7 +141,7 @@ def read_config(
 
 
 # check python version
-assert sys.version_info >= (3, 7), "Pyhton version 3.7 or newer is required!"
+assert sys.version_info >= (3, 8), "Pyhton version 3.8 or newer is required!"
 
 # abort to run as root
 if os.geteuid() == 0:

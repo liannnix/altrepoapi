@@ -21,6 +21,7 @@ GNU AGPLv3
 * python3-module-gunicorn
 * python3-module-packaging
 * python3-module-redis-py
+* python3-module-altrepodb_libs
 
 # Starting application
 
