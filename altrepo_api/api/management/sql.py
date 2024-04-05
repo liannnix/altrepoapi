@@ -580,7 +580,7 @@ SELECT
 FROM PackageSetName
 WHERE pkgset_depth = 0
     AND pkgset_nodename = '{branch}'
-ORDER BY pkgset_date DESC
+ORDER BY pkgset_date {order}
 LIMIT 1
 """
 

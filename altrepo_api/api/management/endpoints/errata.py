@@ -326,12 +326,22 @@ class ManageErrata(APIWorker):
             _, task_changed = ti
             #
             if task_changed < branch_state.date:
-                # XXX: shouldn't ever happen
-                return self.store_error(
-                    {"message": "Inconsistent data in DB: "},
-                    http_code=500,
-                    severity=self.LL.CRITICAL,
-                )
+                # XXX: may happen for 'DONE' tasks that committed before first repository
+                # state have been loaded to DB
+                branch_state = get_last_branch_state(self, reverse=True)
+                if not self.sql_status or not self.status or branch_state is None:
+                    return self.error
+                if task_changed > branch_state.date:
+                    return self.store_error(
+                        {
+                            "message": (
+                                "Inconsistent data in DB: "
+                                f"no branch update Errata fround for {self.errata.id}"
+                            )
+                        },
+                        http_code=500,
+                        severity=self.LL.CRITICAL,
+                    )
             self.logger.info(
                 f"Task {self.errata.task_id} has no committed brunch state yet"
             )
@@ -465,12 +475,22 @@ class ManageErrata(APIWorker):
             if not self.sql_status or not self.status or branch_state is None:
                 return self.error
             if task_changed < branch_state.date:
-                # XXX: shouldn't ever happen
-                return self.store_error(
-                    {"message": "Inconsistent data in DB: "},
-                    http_code=500,
-                    severity=self.LL.CRITICAL,
-                )
+                # XXX: may happen for 'DONE' tasks that committed before first repository
+                # state have been loaded to DB
+                branch_state = get_last_branch_state(self, reverse=True)
+                if not self.sql_status or not self.status or branch_state is None:
+                    return self.error
+                if task_changed > branch_state.date:
+                    return self.store_error(
+                        {
+                            "message": (
+                                "Inconsistent data in DB: "
+                                f"no branch update Errata fround for {self.errata.id}"
+                            )
+                        },
+                        http_code=500,
+                        severity=self.LL.CRITICAL,
+                    )
             self.logger.info(
                 f"Task {self.errata.task_id} has no committed brunch state yet"
             )
@@ -583,12 +603,22 @@ class ManageErrata(APIWorker):
             _, task_changed = ti
             #
             if task_changed < branch_state.date:
-                # XXX: shouldn't ever happen
-                return self.store_error(
-                    {"message": "Inconsistent data in DB: "},
-                    http_code=500,
-                    severity=self.LL.CRITICAL,
-                )
+                # XXX: may happen for 'DONE' tasks that committed before first repository
+                # state have been loaded to DB
+                branch_state = get_last_branch_state(self, reverse=True)
+                if not self.sql_status or not self.status or branch_state is None:
+                    return self.error
+                if task_changed > branch_state.date:
+                    return self.store_error(
+                        {
+                            "message": (
+                                "Inconsistent data in DB: "
+                                f"no branch update Errata fround for {self.errata.id}"
+                            )
+                        },
+                        http_code=500,
+                        severity=self.LL.CRITICAL,
+                    )
             self.logger.info(
                 f"Task {self.errata.task_id} has no committed brunch state yet"
             )

@@ -74,14 +74,22 @@ def find_closest_branch_state(
     return branch_state
 
 
-def get_last_branch_state(cls: _pManageErrata) -> Union[Branch, None]:
-    """gets last branch state by given task."""
+def get_last_branch_state(
+    cls: _pManageErrata, reverse: bool = False
+) -> Union[Branch, None]:
+    """Retrieves last repository state by Erratas branch.
+    If 'reverse' is true, last state means the very first one.
+    """
 
     cls.status = False
     branch = cls.errata.pkgset_name
 
+    order = "ASC" if reverse else "DESC"
+
     # get last commited branch state
-    response = cls.send_sql_request(cls.sql.get_last_branch_state.format(branch=branch))
+    response = cls.send_sql_request(
+        cls.sql.get_last_branch_state.format(branch=branch, order=order)
+    )
     if not cls.sql_status:
         return None
     if not response:
