@@ -34,20 +34,15 @@ logger = get_logger(__name__)
 
 
 class ErrataIDServiceProtocol(Protocol):
-    def __init__(self, url: str) -> None:
-        ...
+    def __init__(self, url: str) -> None: ...
 
-    def register(self, prefix: str, year: Optional[int]) -> ErrataIDServiceResult:
-        ...
+    def register(self, prefix: str, year: Optional[int]) -> ErrataIDServiceResult: ...
 
-    def check(self, id: str) -> ErrataIDServiceResult:
-        ...
+    def check(self, id: str) -> ErrataIDServiceResult: ...
 
-    def update(self, id: str) -> ErrataIDServiceResult:
-        ...
+    def update(self, id: str) -> ErrataIDServiceResult: ...
 
-    def discard(self, id: str) -> ErrataIDServiceResult:
-        ...
+    def discard(self, id: str) -> ErrataIDServiceResult: ...
 
 
 class stubErrataIDService:
@@ -154,7 +149,16 @@ def register_errata_change_id(
 def update_errata_id(
     eid_service: ErrataIDServiceProtocol, id: str
 ) -> ErrataIDServiceResult:
-    """Updates errata identificator version in ErrataID service."""
+    """Updates errata identificator version in ErrataID service in a failsafe manner."""
+
+    check_id = _check_errata_id(eid_service, id)
+    # if Errata ID version is inconsistent with one from DB - use the latest one
+    if check_id.id != id:
+        logger.warning(
+            f"Failed to update version of errata ID {id}. "
+            f"Will use the latest one: {check_id.id}"
+        )
+        id = check_id.id
 
     try:
         logger.info(f"Update errata identificator version for {id}")

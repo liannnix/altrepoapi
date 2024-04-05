@@ -45,7 +45,6 @@ from .errata import (
 from .errata_id import (
     ErrataIDServiceProtocol,
     ErrataIDServiceResult,
-    # check_errata_id,
     update_errata_id,
     register_package_update_id,
     register_errata_change_id,
