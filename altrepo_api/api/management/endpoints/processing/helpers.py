@@ -385,11 +385,11 @@ def _wrap_delete_from(
         tmp_table = f"{settings.TMP_DATABASE_NAME}.{tmp_table}"
 
     _columns = ", ".join(f"{c[0]} {c[1]}" for c in columns)
-    _ = cls.send_sql_request(f"CREATE TABLE {name} ({_columns}) ENGINE = Memory")
+    _ = cls.send_sql_request(f"CREATE TABLE {tmp_table} ({_columns}) ENGINE = Memory")
     if not cls.sql_status:
         return None
 
-    _ = cls.send_sql_request((f"INSERT INTO {name} (*) VALUES", values))
+    _ = cls.send_sql_request((f"INSERT INTO {tmp_table} (*) VALUES", values))
     if not cls.sql_status:
         return None
 
@@ -405,7 +405,7 @@ def _wrap_delete_from(
     if not cls.sql_status:
         return None
 
-    _ = cls.send_sql_request(f"DROP TABLE IF EXISTS {name}")
+    _ = cls.send_sql_request(f"DROP TABLE IF EXISTS {tmp_table}")
     if not cls.sql_status:
         return None
 
