@@ -349,9 +349,10 @@ class ManageCpe(APIWorker):
             status = self.eb.rollback()
             if not status:
                 errors.extend(self.eb.rollback_errors)
-            status = self.trx.rollback(cpe_transaction_rollback(self))
-            if not status:
-                errors.append(self.error)
+            if not self.dry_run:
+                status = self.trx.rollback(cpe_transaction_rollback(self))
+                if not status:
+                    errors.append(self.error)
         else:
             # happy path
             self.logger.info(
