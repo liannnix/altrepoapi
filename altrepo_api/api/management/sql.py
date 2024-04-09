@@ -27,7 +27,7 @@ DROP TABLE {tmp_table}
 SELECT count(task_id)
 FROM TaskStates
 WHERE task_id = {id}
-AND task_state = 'DONE'
+AND task_state IN ['DONE', 'TESTED', 'EPERM']
 """
 
     supported_branches = """
@@ -211,7 +211,7 @@ t_state AS (
         argMax(task_message, task_changed) AS message
     FROM TaskStates
     WHERE task_id = {id}
-    AND task_state = 'DONE'
+    AND task_state IN ['DONE', 'TESTED', 'EPERM']
 )
 SELECT
     t_id AS task_id,
