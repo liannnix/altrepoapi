@@ -86,7 +86,7 @@ WITH global_search AS (
             GROUP BY lead
             ORDER BY max(ts) DESC
         )
-        WHERE search LIKE '%|DONE|%'
+        WHERE {state_clause}
         AND task_id IN (
              SELECT task_id FROM (
                  SELECT
@@ -119,7 +119,7 @@ errata_tasks AS (
                 errata_id_noversion,
                 argMax(errata_id, errata_id_version) AS eid
             FROM ErrataHistory
-            WHERE eh_type = 'task' AND task_state = 'DONE' AND pkgset_name != 'icarus'
+            WHERE eh_type = 'task' AND task_state IN {state_clause2} AND pkgset_name != 'icarus'
             {branch_errata_clause}
             GROUP BY errata_id_noversion
         )

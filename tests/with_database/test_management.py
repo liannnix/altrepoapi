@@ -54,6 +54,20 @@ PROJECT_NAME_NOT_IN_DB = "test_project_name"
         },
         {
             "input": TASK_IN_DB,
+            "branch": BRANCH_IN_DB,
+            "state": "DONE",
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": TASK_IN_DB,
+            "branch": BRANCH_IN_DB,
+            "state": "all",
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": TASK_IN_DB,
             "status_code": 200,
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },
@@ -90,6 +104,13 @@ PROJECT_NAME_NOT_IN_DB = "test_project_name"
         {
             "input": PU_ERRATA_ID_IN_DB_2,
             "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": TASK_IN_DB,
+            "branch": BRANCH_IN_DB,
+            "state": "fakestate",
+            "status_code": 400,
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },
         {
@@ -209,6 +230,8 @@ def test_task_list(client, kwargs, mocked_check_access_token):
         for task in data["tasks"]:
             if params.get("branch", ""):
                 assert task["branch"] == params["branch"]
+            if params.get("state", "") and params["state"] != "all":
+                assert task["state"] == params["state"]
             if params["input"] == OWNER_IN_DB:
                 assert task["owner"] == OWNER_IN_DB
             if params["input"] == PU_ERRATA_ID_IN_DB_1:

@@ -199,6 +199,19 @@ pnc_state_opt = parser.register_item(
     help="PNC record state",
     location="args",
 )
+task_state_opt = parser.register_item(
+    "state",
+    choices=(
+        "all",
+        "DONE",
+        "EPERM",
+        "TESTED",
+    ),
+    default="all",
+    required=False,
+    help="task state",
+    location="args",
+)
 pnc_input_opt = parser.register_item(
     "input",
     type=pkg_name_type,
@@ -216,7 +229,12 @@ package_name_list = parser.register_item(
 )
 
 task_list_args = parser.build_parser(
-    task_input_val_opt, branch_name_opt, is_errata_opt, page_opt, limit_opt
+    task_input_val_opt,
+    branch_name_opt,
+    task_state_opt,
+    is_errata_opt,
+    page_opt,
+    limit_opt,
 )
 errata_manage_args = parser.build_parser(transaction_id_opt)
 errata_manage_get_args = parser.build_parser(errata_id)

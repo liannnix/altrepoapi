@@ -100,6 +100,7 @@ class TaskList(APIWorker):
     def get(self):
         input_val: list[str] = self.args["input"][:] if self.args["input"] else []
         branch = self.args["branch"]
+        state = self.args["state"]
         limit = self.args["limit"]
         page = self.args["page"]
 
@@ -109,6 +110,12 @@ class TaskList(APIWorker):
 
         owner_clause = ""
         branch_errata_clause = f"AND pkgset_name = '{branch}'" if branch else ""
+        state_clause = (
+            "(search LIKE '%|DONE|%' OR search LIKE '%|TESTING|%' OR search LIKE '%|EPERM|%')"
+            if state == "all"
+            else f"search LIKE '%|{state}|%'"
+        )
+        state_clause2 = ["DONE", "TESTING", "EPERM"] if state == "all" else [state]
         bug_id_clause = ""
 
         where_clause_is_errata = "WHERE errata != ''" if self.args["is_errata"] else ""
@@ -181,6 +188,8 @@ class TaskList(APIWorker):
         response = self.send_sql_request(
             self.sql.get_task_list.format(
                 branch_errata_clause=branch_errata_clause,
+                state_clause=state_clause,
+                state_clause2=state_clause2,
                 where_clause_errata=where_clause_errata,
                 where_clause_tasks=where_clause_tasks + owner_clause,
                 where_clause_tasks2=where_clause_tasks2,
