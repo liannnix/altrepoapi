@@ -33,6 +33,7 @@ class PackagesOpenVulnsArgs(NamedTuple):
     by_acl: str
     severity: Union[str, None]
     is_images: bool
+    img: str
     limit: Union[int, None]
     page: Union[int, None]
     sort: Union[list[str], None]
@@ -49,6 +50,7 @@ class VulnInfoMeta(NamedTuple):
 class PackageImagesMeta(NamedTuple):
     tag: str
     file: str
+    show: str
 
 
 class PackageMeta(NamedTuple):
@@ -68,7 +70,9 @@ class PackageMeta(NamedTuple):
             "pkg_release": self.pkg_release,
             "branch": self.branch,
             "vulns": [el._asdict() for el in self.vulns],
-            "images": [el._asdict() for el in self.images],
+            "images": sorted(
+                [el._asdict() for el in self.images], key=lambda k: k["file"]
+            ),
         }
 
 
@@ -84,6 +88,7 @@ class PackagesOpenVulns(APIWorker):
         self.sql = sql
         self.status: bool = False
         self.package_vulns: dict[PackageBranchPair, PackageMeta] = {}
+        self.all_images: list[dict[str, str]] = []
         super().__init__()
 
     @cached_property
@@ -383,6 +388,10 @@ class PackagesOpenVulns(APIWorker):
                     self.package_vulns[key] = self.package_vulns[key]._replace(
                         images=[PackageImagesMeta(*img) for img in el[-1]]
                     )
+                    for img in self.package_vulns[key].images:
+                        if img._asdict() not in self.all_images:
+                            self.all_images.append(img._asdict())
+            self.all_images = sorted(self.all_images, key=lambda k: k["file"])
         self.status = True
 
     def get(self):
@@ -431,7 +440,14 @@ class PackagesOpenVulns(APIWorker):
         if not self.status:
             return self.error
 
-        if self.args.is_images:
+        if self.args.img:
+            packages = [
+                el.asdict()
+                for el in self.package_vulns.values()
+                if el.vulns != []
+                and any(self.args.img == img.file for img in el.images)
+            ]
+        elif self.args.is_images:
             packages = [
                 el.asdict()
                 for el in self.package_vulns.values()
@@ -458,6 +474,7 @@ class PackagesOpenVulns(APIWorker):
             "request_args": self.args._asdict(),
             "length": len(page_obj),
             "packages": page_obj,
+            "images": self.all_images,
         }
 
         return (

@@ -30,6 +30,7 @@ from altrepo_api.api.parser import (
     task_search_type,
     uuid_type,
     pkg_name_list_type,
+    image_file_type,
 )
 
 from .endpoints.tools.constants import DRY_RUN_KEY
@@ -125,6 +126,13 @@ is_images_opt = parser.register_item(
     default=False,
     required=False,
     help="filtering by package inclusion in the images",
+    location="args",
+)
+image_opt = parser.register_item(
+    "img",
+    type=image_file_type,
+    required=False,
+    help="image file name",
     location="args",
 )
 package_name = parser.register_item(
@@ -245,6 +253,7 @@ pkgs_open_vulns_args = parser.build_parser(
     by_acl_opt,
     vuln_severity_opt,
     is_images_opt,
+    image_opt,
     page_opt,
     limit_opt,
     sort_opt,

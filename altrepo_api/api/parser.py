@@ -82,6 +82,7 @@ __dp_name_match = re.compile(r"^[\w\/\(\)\.\:\-\+]{2,}$")
 __uuid_string_match = re.compile(
     r"^[0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12}$"
 )
+__image_file_match = re.compile(r"^[a-zA-Z0-9\-\.\_:]+$")
 __image_tag_match = re.compile(r"^[a-zA-Z0-9\-\.\_:]+:[a-z]+$")
 __image_version_match = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
 __image_flavor_match = re.compile(r"^[a-zA-Z\-]+$")
@@ -422,6 +423,18 @@ def image_tag_type(value: Any) -> str:
 
 
 image_tag_type.__schema__ = {"type": "string", "pattern": __image_tag_match.pattern}
+
+
+def image_file_type(value: Any) -> str:
+    """Image name validator."""
+
+    value = __get_string(value)
+    if not __image_file_match.search(value):
+        raise ValueError("Invalid image name: {0}".format(value))
+    return value
+
+
+image_file_type.__schema__ = {"type": "string", "pattern": __image_file_match.pattern}
 
 
 def image_version_type(value: Any) -> str:

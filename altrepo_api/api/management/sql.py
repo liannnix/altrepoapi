@@ -972,61 +972,39 @@ WITH pkgs AS (
         WHERE pkg_srcrpm_hash IN {tmp_table}
     )
 )
-SELECT DISTINCT
-    TT.pkg_srcrpm_hash AS src_hash,
-    TT.pkg_name AS pkgname,
-    img_branch,
-    groupUniqArray((img_tag, img_file)) tags
-FROM lv_all_image_packages
-LEFT JOIN (
-    SELECT DISTINCT PN.pkg_name AS pkg_name, pkg_hash, pkg_srcrpm_hash FROM pkgs
+SELECT src_hash,
+        pkgname,
+        img_branch,
+        groupUniqArray((img_tag, img_file, IT.img_show)) AS tags
+FROM (
+    SELECT DISTINCT
+        TT.pkg_srcrpm_hash AS src_hash,
+        TT.pkg_name AS pkgname,
+        img_branch,
+        img_tag,
+        img_file
+    FROM lv_all_image_packages
     LEFT JOIN (
-        SELECT pkg_name, pkg_hash FROM pkgs
-    ) AS PN ON PN.pkg_hash = pkg_srcrpm_hash
-    WHERE pkg_sourcepackage = 0
-) AS TT ON TT.pkg_hash = lv_all_image_packages.pkg_hash
-WHERE pkg_hash IN (
-    SELECT DISTINCT pkg_hash
-    FROM pkgs
-    WHERE pkg_sourcepackage = 0
-)
-AND img_tag IN (
-    SELECT img_tag FROM (
-          SELECT
-            argMax(img_tag, ts) as img_tag,
-            argMax(img_version_major, ts),
-            argMax(img_version_minor, ts),
-            argMax(img_version_sub, ts),
-            img_edition,
-            img_branch,
-            img_arch,
-            img_flavor,
-            img_platform,
-            img_release,
-            img_variant,
-            img_type
-          FROM ImagePackageSetName
-          GROUP BY
-            img_edition,
-            img_branch,
-            img_arch,
-            img_flavor,
-            img_platform,
-            img_release,
-            img_variant,
-            img_type
-             )
-    WHERE img_tag IN (
-        SELECT img_tag
-        FROM (
-              SELECT img_tag,
-                     argMax(img_show, ts) AS img_show
-              FROM ImageTagStatus
-              GROUP BY img_tag
-                 )
-        WHERE img_show = 'show'
-    )
-) GROUP BY pkgname, src_hash, img_branch
+        SELECT DISTINCT PN.pkg_name AS pkg_name, pkg_hash, pkg_srcrpm_hash FROM pkgs
+        LEFT JOIN (
+            SELECT pkg_name, pkg_hash FROM pkgs
+        ) AS PN ON PN.pkg_hash = pkg_srcrpm_hash
+        WHERE pkg_sourcepackage = 0
+    ) AS TT ON TT.pkg_hash = lv_all_image_packages.pkg_hash
+    WHERE pkg_hash IN (
+        SELECT DISTINCT pkg_hash
+        FROM pkgs
+        WHERE pkg_sourcepackage = 0
+    ) GROUP BY pkgname, src_hash, img_branch, img_tag, img_file
+    ORDER BY img_file
+) AS imgs
+LEFT JOIN (
+        SELECT img_tag,
+               argMax(img_show, ts) AS img_show
+        FROM ImageTagStatus
+        GROUP BY img_tag
+) AS IT ON IT.img_tag = imgs.img_tag
+GROUP BY pkgname, src_hash, img_branch
 """
 
     get_packages_info_by_hashes = """
