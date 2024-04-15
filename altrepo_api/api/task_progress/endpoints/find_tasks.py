@@ -229,17 +229,7 @@ class FindTasks(APIWorker):
 
         for v in input_val:
             if by_pkg is True:
-                where_clause2 += (
-                    "AND task_id IN ("
-                    "SELECT DISTINCT task_id "
-                    "FROM TaskIterations "
-                    "WHERE titer_srcrpm_hash IN ("
-                    "SELECT pkg_hash "
-                    "FROM Packages "
-                    f"WHERE (pkg_name = '{v}') "
-                    "AND (pkg_sourcepackage = 1)"
-                    "))"
-                )
+                where_clause2 += self.sql.where_tasks_by_pkg.format(pkg_name=v)
             else:
                 # escape '_' symbol as it matches any symbol in SQL
                 v = v.replace("_", r"\_")
