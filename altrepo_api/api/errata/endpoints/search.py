@@ -228,7 +228,8 @@ class FindErratas(APIWorker):
     def get(self):
         input_val: list[str] = self.args["input"] if self.args["input"] else []
         branch = self.args["branch"]
-        eh_type = lut.known_errata_type.get(self.args["type"], "")
+        tp = self.args["type"]
+        eh_type = lut.known_errata_type.get(tp, "")
         limit = self.args["limit"]
         page = self.args["page"]
         state = None
@@ -240,6 +241,8 @@ class FindErratas(APIWorker):
 
         branch_clause = f"AND pkgset_name = '{branch}'" if branch else ""
         where_conditions = [f"type IN {eh_type}"] if eh_type else []
+        if tp in ["bug", "vuln"]:
+            where_conditions.append(f"arrayExists(x -> x = '{tp}', refs_types)")
         if state is not None:
             where_conditions.append(f"discard = {state}")
 
