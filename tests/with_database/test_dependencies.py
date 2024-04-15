@@ -1,7 +1,6 @@
 import pytest
 from flask import url_for
 
-
 BRANCH_IN_DB = "sisyphus"
 BRANCH_NOT_IN_DB = "fakebranch"
 BIN_PKG_HASH_IN_DB = 2737734146634739740  # curl-7.80.0-alt1.x86_64.rpm
@@ -20,6 +19,12 @@ BIN_PKG_NAME = "libcurl"
             "branch": BRANCH_IN_DB,
             "dp_name": DP_NAME_IN_DB,
             "dp_type": None,
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "dp_name": DP_NAME_IN_DB,
+            "dp_type": "all",
             "status_code": 200,
         },
         {
@@ -215,43 +220,43 @@ def test_backport_helper(client, kwargs):
             "branch": BRANCH_IN_DB,
             "name": SRC_PKG_NAME,
             "dp_type": None,
-            "status_code": 200
+            "status_code": 200,
         },
         {
             "branch": BRANCH_IN_DB,
             "name": SRC_PKG_NAME,
             "dp_type": None,
-            "status_code": 200
+            "status_code": 200,
         },
         {
             "branch": BRANCH_IN_DB,
             "name": SRC_PKG_NAME,
             "dp_type": "source",
-            "status_code": 200
+            "status_code": 200,
         },
         {
             "branch": BRANCH_IN_DB,
             "name": SRC_PKG_NAME,
             "dp_type": "binary",
-            "status_code": 200
+            "status_code": 200,
         },
         {
             "branch": BRANCH_IN_DB,
             "name": SRC_PKG_NAME,
             "dp_type": "both",
-            "status_code": 200
+            "status_code": 200,
         },
         {
             "branch": BRANCH_IN_DB,
             "name": BIN_PKG_NAME,
             "dp_type": None,
-            "status_code": 404
+            "status_code": 404,
         },
         {
             "branch": BRANCH_NOT_IN_DB,
             "name": SRC_PKG_NAME,
             "dp_type": None,
-            "status_code": 400
+            "status_code": 400,
         },
     ],
 )

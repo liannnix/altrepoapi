@@ -36,10 +36,10 @@ dp_name = parser.register_item(
 dp_type_opt = parser.register_item(
     "dp_type",
     type=str,
-    choices=("provide", "require", "conflict", "obsolete"),
-    default="provide",
+    choices=("all", "provide", "require", "conflict", "obsolete"),
+    default="all",
     required=False,
-    help="type of dependency [provide|require|conflict|obsolete]",
+    help="type of dependency [all|provide|require|conflict|obsolete]",
     location="args",
 )
 depends_depth_opt = parser.register_item(
