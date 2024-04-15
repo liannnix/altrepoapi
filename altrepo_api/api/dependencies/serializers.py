@@ -20,7 +20,6 @@ from .namespace import get_namespace
 
 ns = get_namespace()
 
-
 all_pkgsets_el_model = ns.model(
     "DependenciesAllPackagasetsElementModel",
     {
@@ -67,6 +66,7 @@ depends_packages_el_model = ns.model(
         "buildtime": fields.Integer(description="package buildtime"),
         "category": fields.String(description="package category"),
         "maintainer": fields.String(description="package maintainer"),
+        "dp_types": fields.List(fields.String, description="list of dependency types"),
     },
 )
 depends_packages_model = ns.model(
@@ -209,6 +209,21 @@ pkg_build_dep_model = ns.model(
         "length": fields.Integer(description="number of packages found"),
         "dependencies": fields.Nested(
             pkg_build_dep_el_model, description="build dependency results", as_list=True
+        ),
+    },
+)
+
+fast_deps_search_el_model = ns.model(
+    "FastDependencySearchElementModel",
+    {"dp_name": fields.String(description="the name of the dependent package")},
+)
+fast_deps_search_model = ns.model(
+    "FastDependencySearchModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of dependencies found"),
+        "dependencies": fields.Nested(
+            fast_deps_search_el_model, description="dependency list", as_list=True
         ),
     },
 )

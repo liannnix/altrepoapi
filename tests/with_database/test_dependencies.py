@@ -285,3 +285,48 @@ def test_wds(client, kwargs):
                     assert dep["requires"]["arch"] == "srpm"
                 elif kwargs["dp_type"] == "binary":
                     assert dep["requires"]["arch"] != "srpm"
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "branch": BRANCH_IN_DB,
+            "dp_name": DP_NAME_IN_DB,
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "dp_name": DP_NAME_IN_DB,
+            "limit": 100,
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "dp_name": DP_NAME_NOT_IN_DB,
+            "status_code": 404,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "dp_name": DP_NAME_IN_DB,
+            "limit": 10000,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_NOT_IN_DB,
+            "dp_name": DP_NAME_NOT_IN_DB,
+            "status_code": 400,
+        },
+    ],
+)
+def test_fast_lookup(client, kwargs):
+    url = url_for("api.dependencies_route_fast_lookup")
+    params = {k: v for k, v in kwargs.items() if k != "status_code"}
+    response = client.get(url, query_string=params)
+
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["length"] != 0
+        assert data["dependencies"] != []

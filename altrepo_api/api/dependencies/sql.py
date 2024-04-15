@@ -333,5 +333,14 @@ WHERE acl_for IN
 GROUP BY acl_for
 """
 
+    fast_find_depends = """
+SELECT DISTINCT dp_name
+FROM last_depends
+WHERE dp_name ILIKE '%{dp_name}%'
+    AND pkgset_name = '{branch}'
+ORDER BY dp_name
+{limit}
+"""
+
 
 sql = SQL()
