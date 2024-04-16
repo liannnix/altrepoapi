@@ -312,15 +312,29 @@ FROM (
                 pkg_hash,
                 pkg_version,
                 pkg_release,
-                chlog_text,
-                chlog_date,
-                chlog_name,
-                chlog_evr
-            FROM BranchPackageHistory
+                CHLG.chlog_name,
+                CHLG.chlog_nick,
+                CHLG.chlog_date,
+                CHLG.chlog_text,
+                CHLG.chlog_evr
+            FROM Packages
+            LEFT JOIN
+            (
+                SELECT
+                    pkg_hash,
+                    chlog_name,
+                    chlog_nick,
+                    chlog_date,
+                    chlog_text,
+                    chlog_evr
+                FROM SrcPackagesLastChangelog
+                WHERE pkg_hash IN (
+                    SELECT pkg_hash FROM pkg_hashes
+                )
+            ) AS CHLG ON CHLG.pkg_hash = Packages.pkg_hash
             WHERE pkg_hash IN (
                 SELECT pkg_hash FROM pkg_hashes
             )
-            AND pkgset_name = '{branch}'
         ) AS PKG ON PKG.pkg_hash = pkg_hashes.pkg_hash
         GROUP BY
             task_id,
