@@ -19,6 +19,7 @@ from flask_restx import Resource
 
 from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
+from .endpoints.dependency_search import FastDependencySearchLookup
 from .endpoints.pkg_build_dependency import PackageBuildDependency
 
 from .namespace import get_namespace
@@ -33,6 +34,7 @@ from .parsers import (
     src_pkg_depends_args,
     backport_helper_args,
     pkg_build_dep_args,
+    fast_lookup_args,
 )
 from .serializers import (
     package_dependencies_model,
@@ -40,6 +42,7 @@ from .serializers import (
     package_build_deps_model,
     backport_helper_model,
     pkg_build_dep_model,
+    fast_deps_search_model,
 )
 
 ns = get_namespace()
@@ -129,4 +132,24 @@ class routePackageBuildDependency(Resource):
         url_logging(logger, g.url)
         args = pkg_build_dep_args.parse_args(strict=True)
         w = PackageBuildDependency(g.connection, **args)
+        return run_worker(worker=w, args=args)  # type: ignore
+
+
+@ns.route(
+    "/fast_lookup",
+    doc={
+        "description": """
+        Fast search for dependencies by name (case sensitive) 
+        including partial occurrence.
+        """,
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeFastLookup(Resource):
+    @ns.expect(fast_lookup_args)
+    @ns.marshal_with(fast_deps_search_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = fast_lookup_args.parse_args(strict=True)
+        w = FastDependencySearchLookup(g.connection, **args)
         return run_worker(worker=w, args=args)  # type: ignore

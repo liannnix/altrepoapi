@@ -21,6 +21,7 @@ from altrepo_api.api.parser import (
     pkg_name_list_type,
     arch_name_type,
     pkg_name_type,
+    positive_integer_type,
 )
 
 branch = parser.register_item(
@@ -36,10 +37,10 @@ dp_name = parser.register_item(
 dp_type_opt = parser.register_item(
     "dp_type",
     type=str,
-    choices=("provide", "require", "conflict", "obsolete"),
-    default="provide",
+    choices=("all", "provide", "require", "conflict", "obsolete"),
+    default="all",
     required=False,
-    help="type of dependency [provide|require|conflict|obsolete]",
+    help="type of dependency [all|provide|require|conflict|obsolete]",
     location="args",
 )
 depends_depth_opt = parser.register_item(
@@ -96,6 +97,14 @@ src_pkg_name = parser.register_item(
     help="source package name",
     location="args",
 )
+fast_lookup_deps_limit_opt = parser.register_item(
+    "limit",
+    type=positive_integer_type,
+    required=False,
+    default=10,
+    help="number of dependencies to get",
+    location="args",
+)
 
 pkgs_depends_args = parser.build_parser(branch, dp_name, dp_type_opt)
 src_pkg_depends_args = parser.build_parser(branch, depends_depth_opt)
@@ -107,3 +116,4 @@ pkg_build_dep_args = parser.build_parser(
     branch,
     dp_type,
 )
+fast_lookup_args = parser.build_parser(branch, dp_name, fast_lookup_deps_limit_opt)

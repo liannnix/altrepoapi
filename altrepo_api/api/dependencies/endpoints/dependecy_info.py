@@ -82,11 +82,13 @@ class PackagesDependence(APIWorker):
         dp_type = self.args["dp_type"]
         branch = self.args["branch"]
 
+        dp_type_clause = f"AND dp_type = '{dp_type}'" if dp_type != "all" else ""
+
         response = self.send_sql_request(
             self.sql.get_pkgs_depends.format(
                 dp_name=dp_name,
                 branch=branch,
-                dp_type=dp_type,
+                dp_type=dp_type_clause,
             )
         )
         if not self.sql_status:
@@ -98,13 +100,22 @@ class PackagesDependence(APIWorker):
                     "args": self.args,
                 }
             )
-        pkg_hash = response
+        DepsMeta = namedtuple(
+            "DepsMeta", ["pkg_hash", "dp_type"]
+        )
+        pkg_hashes: dict[int, list[str]] = {}
+        for el in response:
+            dp = DepsMeta(*el)
+            if dp.pkg_hash not in pkg_hashes:
+                pkg_hashes[dp.pkg_hash] = [dp.dp_type]
+            else:
+                pkg_hashes[dp.pkg_hash].append(dp.dp_type)
 
         # create temporary table with pkg_hash
         tmp_table = make_tmp_table_name("tmp_pkghash")
         _ = self.send_sql_request(
             self.sql.create_tmp_table.format(
-                tmp_table=tmp_table, columns="(pkg_hash UInt64)"
+                tmp_table=tmp_table, columns="(pkg_hash String)"
             )
         )
         if not self.sql_status:
@@ -116,9 +127,9 @@ class PackagesDependence(APIWorker):
                 self.sql.insert_into_tmp_table.format(tmp_table=tmp_table),
                 (
                     {
-                        "pkg_hash": el[0],
+                        "pkg_hash": el,
                     }
-                    for el in pkg_hash
+                    for el in pkg_hashes.keys()
                 ),
             )
         )
@@ -157,13 +168,14 @@ class PackagesDependence(APIWorker):
         retval = [PkgMeta(*el)._asdict() for el in response]
 
         for el in retval:
+            el["dp_types"] = pkg_hashes.get(el["hash"], [])
             if el["sourcepackage"] == 1:
                 el["arch"] = "source"
 
         # get pkgsetname dependency
         all_branches = []
         response = self.send_sql_request(
-            self.sql.get_pkgset_depends.format(dp_name=dp_name, dp_type=dp_type)
+            self.sql.get_pkgset_depends.format(dp_name=dp_name, dp_type=dp_type_clause)
         )
         if not self.sql_status:
             return self.error

@@ -127,11 +127,11 @@ WHERE pkg_hash = {pkghash}
 """
 
     get_pkgs_depends = """
-SELECT pkg_hash
+SELECT toString(pkg_hash), dp_type
 FROM last_depends
 WHERE dp_name = '{dp_name}'
     AND pkgset_name = '{branch}'
-    AND dp_type = '{dp_type}'
+    {dp_type}
 """
 
     get_repo_packages = """
@@ -159,7 +159,7 @@ SELECT
     pkgset_name
 FROM last_depends
 WHERE dp_name = '{dp_name}'
-    AND dp_type = '{dp_type}'
+    {dp_type}
 group by pkgset_name
 """
 
@@ -331,6 +331,15 @@ WHERE acl_for IN
 )
     AND acl_branch = '{branch}'
 GROUP BY acl_for
+"""
+
+    fast_find_depends = """
+SELECT DISTINCT dp_name
+FROM last_depends
+WHERE dp_name ILIKE '%{dp_name}%'
+    AND pkgset_name = '{branch}'
+ORDER BY dp_name
+{limit}
 """
 
 
