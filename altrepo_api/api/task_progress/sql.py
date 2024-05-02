@@ -27,16 +27,16 @@ WHERE task_id = {id}
 
     where_tasks_by_pkg = """
 AND task_id IN (
-    SELECT DISTINCT task_id 
-    FROM TaskIterations 
+    SELECT DISTINCT task_id
+    FROM TaskIterations
     WHERE titer_srcrpm_hash IN (
-        SELECT pkg_hash 
-        FROM Packages 
-        WHERE (pkg_name = '{pkg_name}') 
+        SELECT pkg_hash
+        FROM Packages
+        WHERE (pkg_name = '{pkg_name}')
         AND (pkg_sourcepackage = 1)
     )
     AND (task_id, task_changed) IN (
-        SELECT task_id, max(task_changed) FROM TaskStates group by task_id
+        SELECT task_id, max(task_changed) FROM TaskStates GROUP BY task_id
     )
 )
 """
