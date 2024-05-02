@@ -213,7 +213,9 @@ class NeedsApproval(APIWorker):
                             subtask.add(group)
                         elif app_type == "disapprove":
                             # Discard a task if it has any disapproval(-s).
-                            del task_approvals[task.id]
+                            # XXX: use `pop` method with a default value to handle
+                            # repetitive deletions properly
+                            _ = task_approvals.pop(task_id, None)
 
         def needs_approval_by_maint(X):
             # check if `@maint` group not in subtask' approvers list
