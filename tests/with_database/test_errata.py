@@ -9,7 +9,7 @@ BRANCH_IN_DB3 = "sisyphus_e2k"
 BRANCH_NOT_IN_DB = "fakebranch"
 BRANCH_IN_DB_NO_ERRATA = "4.0"
 
-ERRATA_TYPES_IN_DB = ["packages", "repository"]
+ERRATA_TYPES_IN_DB = ["packages", "repository", "bug", "vuln"]
 
 PKG_NAME_IN_DB = "curl"
 PKG_NAME_IN_DB2 = "libcurl"
@@ -290,6 +290,20 @@ def test_errata_branches_updates(client, kwargs):
     [
         {"input": BU_ERRATA_ID_IN_DB_3, "status_code": 200},
         {"input": BU_ERRATA_ID_IN_DB_3, "branch": BRANCH_IN_DB, "status_code": 200},
+        {
+            "input": BU_ERRATA_ID_IN_DB_3,
+            "branch": BRANCH_IN_DB,
+            "type": ERRATA_TYPES_IN_DB[1],
+            "status_code": 200,
+        },
+        {
+            "type": ERRATA_TYPES_IN_DB[2],
+            "status_code": 200,
+        },
+        {
+            "type": ERRATA_TYPES_IN_DB[3],
+            "status_code": 200,
+        },
         {
             "input": BU_ERRATA_ID_IN_DB_3,
             "branch": BRANCH_IN_DB,
