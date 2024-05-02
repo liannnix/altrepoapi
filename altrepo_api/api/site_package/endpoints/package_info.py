@@ -67,6 +67,7 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
         epoch: int
         buildtime: int
         url: str
+        vcs: str
         license: str
         summary: str
         description: str
