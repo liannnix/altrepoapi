@@ -461,6 +461,7 @@ pkg_imgs_el_model = ns.model(
     {
         "tag": fields.String(description="Image package set tag"),
         "file": fields.String(description="Image file name"),
+        "show": fields.String(description="hide - hide image, show - show image"),
     },
 )
 pkg_open_vulns_el_vulns = ns.model(
@@ -491,6 +492,11 @@ pkg_open_vulns = ns.model(
         "packages": fields.Nested(
             pkg_open_vulns_el_vulns,
             description="list of packages with open vulnerabilities",
+            as_list=True,
+        ),
+        "images": fields.Nested(
+            pkg_imgs_el_model,
+            description="all images",
             as_list=True,
         ),
     },

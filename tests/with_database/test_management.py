@@ -42,6 +42,9 @@ CPE_NOT_IN_DB = "cpe:2.3:a:test:test:*:*:*:*:*:*:*:*"
 PROJECT_NAME_IN_DB = "mongo-c-driver"
 PROJECT_NAME_NOT_IN_DB = "test_project_name"
 
+IMG_IN_DB = "alt-kworkstation-10.2.1-install-x86_64.iso"
+IMG_NOT_IN_DB = "test_image"
+
 
 @pytest.mark.parametrize(
     "kwargs",
@@ -49,6 +52,20 @@ PROJECT_NAME_NOT_IN_DB = "test_project_name"
         {
             "input": TASK_IN_DB,
             "branch": BRANCH_IN_DB,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": TASK_IN_DB,
+            "branch": BRANCH_IN_DB,
+            "state": "DONE",
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": TASK_IN_DB,
+            "branch": BRANCH_IN_DB,
+            "state": "all",
             "status_code": 200,
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },
@@ -90,6 +107,13 @@ PROJECT_NAME_NOT_IN_DB = "test_project_name"
         {
             "input": PU_ERRATA_ID_IN_DB_2,
             "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": TASK_IN_DB,
+            "branch": BRANCH_IN_DB,
+            "state": "fakestate",
+            "status_code": 400,
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },
         {
@@ -209,6 +233,8 @@ def test_task_list(client, kwargs, mocked_check_access_token):
         for task in data["tasks"]:
             if params.get("branch", ""):
                 assert task["branch"] == params["branch"]
+            if params.get("state", "") and params["state"] != "all":
+                assert task["state"] == params["state"]
             if params["input"] == OWNER_IN_DB:
                 assert task["owner"] == OWNER_IN_DB
             if params["input"] == PU_ERRATA_ID_IN_DB_1:
@@ -451,6 +477,11 @@ def test_errata_change_history(client, kwargs, mocked_check_access_token):
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },
         {
+            "img": IMG_IN_DB,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
             "input": VULN_IN_DB2,
             "status_code": 200,
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
@@ -458,6 +489,12 @@ def test_errata_change_history(client, kwargs, mocked_check_access_token):
         {
             "input": PACKAGE_IN_DB,
             "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "img": IMG_IN_DB,
+            "branch": "p9",
+            "status_code": 404,
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },
         {
@@ -524,6 +561,13 @@ def test_packages_open_vulns(client, kwargs, mocked_check_access_token):
                 assert params.get("input") in [el["id"] for el in pkg["vulns"]]
             if params.get("severity"):
                 assert params.get("severity") in [el["severity"] for el in pkg["vulns"]]
+            if params.get("img"):
+                assert any(
+                    [
+                        params["img"].lower() == img["file"].lower()
+                        for img in pkg["images"]
+                    ]
+                )
 
         if params.get("limit", ""):
             assert params["limit"] <= data["length"]
@@ -695,7 +739,6 @@ def test_pnc_list(client, kwargs, mocked_check_access_token):
 
         for el in data["pncs"]:
             if params.get("input", "") == PACKAGE_IN_DB:
-                print([pkg["pkg_name"] for pkg in el["packages"]])
                 assert any(
                     [
                         params["input"].lower() in pkg["pkg_name"].lower()

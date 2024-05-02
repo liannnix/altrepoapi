@@ -30,6 +30,7 @@ from altrepo_api.api.parser import (
     task_search_type,
     uuid_type,
     pkg_name_list_type,
+    image_file_type,
 )
 
 from .endpoints.tools.constants import DRY_RUN_KEY
@@ -127,6 +128,13 @@ is_images_opt = parser.register_item(
     help="filtering by package inclusion in the images",
     location="args",
 )
+image_opt = parser.register_item(
+    "img",
+    type=image_file_type,
+    required=False,
+    help="image file name",
+    location="args",
+)
 package_name = parser.register_item(
     "package_name",
     type=pkg_name_type,
@@ -199,6 +207,19 @@ pnc_state_opt = parser.register_item(
     help="PNC record state",
     location="args",
 )
+task_state_opt = parser.register_item(
+    "state",
+    choices=(
+        "all",
+        "DONE",
+        "EPERM",
+        "TESTED",
+    ),
+    default="all",
+    required=False,
+    help="task state",
+    location="args",
+)
 pnc_input_opt = parser.register_item(
     "input",
     type=pkg_name_type,
@@ -216,7 +237,12 @@ package_name_list = parser.register_item(
 )
 
 task_list_args = parser.build_parser(
-    task_input_val_opt, branch_name_opt, is_errata_opt, page_opt, limit_opt
+    task_input_val_opt,
+    branch_name_opt,
+    task_state_opt,
+    is_errata_opt,
+    page_opt,
+    limit_opt,
 )
 errata_manage_args = parser.build_parser(transaction_id_opt)
 errata_manage_get_args = parser.build_parser(errata_id)
@@ -227,6 +253,7 @@ pkgs_open_vulns_args = parser.build_parser(
     by_acl_opt,
     vuln_severity_opt,
     is_images_opt,
+    image_opt,
     page_opt,
     limit_opt,
     sort_opt,
