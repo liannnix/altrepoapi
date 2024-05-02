@@ -500,7 +500,7 @@ class OVALBuilder:
         return [
             rl
             for rt, rl in zip(errata.eh_references_type, errata.eh_references_link)
-            if rt == "bug"
+            if rt == lut.errata_ref_type_bug
         ]
 
     def _errata_vuln_links(
@@ -510,7 +510,7 @@ class OVALBuilder:
         errata_linked_vulns = {
             rl
             for rt, rl in zip(errata.eh_references_type, errata.eh_references_link)
-            if rt == "vuln"
+            if rt == lut.errata_ref_type_vuln
         }
 
         if link_bdu_by_cve:

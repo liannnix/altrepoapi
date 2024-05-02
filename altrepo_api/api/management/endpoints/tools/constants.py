@@ -34,8 +34,8 @@ KEY_PACKAGE = "package"
 KEY_PROJECT = "project_name"
 
 
-BUG_REFERENCE_TYPE = "bug"
-VULN_REFERENCE_TYPE = "vuln"
+BUG_REFERENCE_TYPE = lut.errata_ref_type_bug
+VULN_REFERENCE_TYPE = lut.errata_ref_type_vuln
 ERRATA_REFERENCE_TYPE = "errata"
 
 BDU_ID_TYPE = "BDU"

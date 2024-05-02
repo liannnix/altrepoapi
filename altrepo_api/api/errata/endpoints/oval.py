@@ -94,9 +94,9 @@ class OvalExport(APIWorker):
         vuln_ids: list[str] = []
         for err in erratas:
             for type_, link in zip(err.eh_references_type, err.eh_references_link):
-                if type_ == "bug":
+                if type_ == lut.errata_ref_type_bug:
                     bz_ids.append(int(link))
-                elif type_ == "vuln":
+                elif type_ == lut.errata_ref_type_vuln:
                     vuln_ids.append(link)
 
         # get binary packages info by source packages hashes

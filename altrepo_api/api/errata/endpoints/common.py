@@ -37,6 +37,8 @@ CVE_ID_TYPE = "CVE"
 CVE_ID_PREFIX = f"{CVE_ID_TYPE}-"
 MFSA_ID_TYPE = "MFSA"
 MFSA_ID_PREFIX = f"{MFSA_ID_TYPE}"
+RT_BUG = lut.errata_ref_type_bug
+RT_VULN = lut.errata_ref_type_vuln
 
 
 # @dataclass
@@ -212,13 +214,11 @@ class _pAPIWorker(Protocol):
 
     def store_error(
         self, message: dict[str, Any], severity: int = ..., http_code: int = ...
-    ) -> tuple[Any, int]:
-        ...
+    ) -> tuple[Any, int]: ...
 
     def send_sql_request(
         self, request_line: Any, http_code: int = ..., **kwargs
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
 
 # Mixin
@@ -354,7 +354,7 @@ def get_packges_updates_erratas(
                 for v in (
                     empty_vuln(ref.id)
                     for ref in errata.references
-                    if ref.type == "vuln"
+                    if ref.type == RT_VULN
                 )
             }
         )
@@ -364,7 +364,7 @@ def get_packges_updates_erratas(
                 for b in (
                     Bug(id=int(ref.id))
                     for ref in errata.references
-                    if ref.type == "bug"
+                    if ref.type == RT_BUG
                 )
             }
         )
@@ -386,8 +386,8 @@ def get_packges_updates_erratas(
     # build package update erratas result
     packages_updates: list[PackageUpdate] = []
     for errata in erratas:
-        pu_bugs = [bugs[int(ref.id)] for ref in errata.references if ref.type == "bug"]
-        pu_vulns = [vulns[ref.id] for ref in errata.references if ref.type == "vuln"]
+        pu_bugs = [bugs[int(ref.id)] for ref in errata.references if ref.type == RT_BUG]
+        pu_vulns = [vulns[ref.id] for ref in errata.references if ref.type == RT_VULN]
         packages_updates.append(
             PackageUpdate(errata=errata, bugs=pu_bugs, vulns=pu_vulns)
         )

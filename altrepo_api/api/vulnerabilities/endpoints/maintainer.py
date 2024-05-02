@@ -30,6 +30,7 @@ from .common import (
     get_packages_cpes,
     get_packages_vulnerabilities,
     get_vulnerability_fix_errata,
+    RT_VULN,
 )
 from ..sql import sql
 
@@ -119,7 +120,7 @@ class MaintainerOpenVulnerabilities(APIWorker):
 
         cve_ids = set(self.cve_cpems.keys())
         cve_ids.update(
-            {vuln_id for errata in self.erratas for vuln_id in errata.ref_ids("vuln")}
+            {vuln_id for errata in self.erratas for vuln_id in errata.ref_ids(RT_VULN)}  # type: ignore
         )
         get_cve_info_by_ids(self, cve_ids, False)
         if not self.sql_status:

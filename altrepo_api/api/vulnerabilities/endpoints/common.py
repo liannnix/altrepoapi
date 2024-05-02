@@ -44,6 +44,8 @@ BDU_ID_TYPE = "BDU"
 BDU_ID_PREFIX = f"{BDU_ID_TYPE}:"
 CVE_ID_TYPE = "CVE"
 CVE_ID_PREFIX = f"{CVE_ID_TYPE}-"
+RT_BUG = lut.errata_ref_type_bug
+RT_VULN = lut.errata_ref_type_vuln
 
 # type alias
 CPETriplet = tuple[str, str, str]
@@ -1018,7 +1020,7 @@ def get_vulnerability_fix_errata(
                 if (pkg.name, pkg.branch) == (
                     errata.pkg_name,
                     errata.branch,
-                ) and pkg.vuln_id in errata.ref_ids(ref_type="vuln"):
+                ) and pkg.vuln_id in errata.ref_ids(ref_type=RT_VULN):  # type: ignore
                     # no need to check version due to branch, package name and vulnerability id is equal already
                     pkg.fixed_in.append(errata)
 
@@ -1068,7 +1070,7 @@ def get_vulnerability_fix_errata(
             # if (pkg.branch, pkg.name) == (errata.branch, errata.pkg_name):
             if pkg.name == errata.pkg_name:
                 # get any vuln_id if it is linked with errata
-                vuln_ids = cve_ids_set.intersection(set(errata.ref_ids("vuln")))
+                vuln_ids = cve_ids_set.intersection(set(errata.ref_ids(RT_VULN)))  # type: ignore
                 if not vuln_ids:
                     continue
 
