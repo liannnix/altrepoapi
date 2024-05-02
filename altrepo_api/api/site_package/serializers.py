@@ -131,6 +131,7 @@ package_info_model = ns.model(
         "license": fields.String(description="package license"),
         "category": fields.String(description="package group"),
         "url": fields.String(description="package url"),
+        "vcs": fields.String(description="package vcs"),
         "summary": fields.String(description="package summary"),
         "description": fields.String(description="package description"),
         "packager": fields.String(description="package packager name"),

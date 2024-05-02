@@ -78,6 +78,7 @@ SELECT
     pkg_epoch,
     pkg_buildtime,
     pkg_url,
+    pkg_vcs,
     pkg_license,
     pkg_summary,
     pkg_description,
