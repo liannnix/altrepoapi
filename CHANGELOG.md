@@ -1,6 +1,38 @@
 # Changelog
 ALTrepo API changelog
 
+## [1.18.0] - 2024-05-02
+
+Regular API code updates and fixes.
+
+### Added
+- `site/package_info`: add VCS tag info
+- `dependencies/fast_lookup` route
+### Changed
+- `management/task`:
+  - `info`: return tasks in 'DONE', 'EPERM' and 'TESTED' states
+  - `list`: return tasks in 'DONE', 'EPERM' and 'TESTED' states; add filter by status
+- `management/packages/open_vulns`:
+  - add filter by image name
+  - retrieve hidden images
+- `errata/find_erratas`: extend search type options
+- `dependencies/what_depends_src`: make the `dp_type` argument optional
+- minor code refactoring
+### Fixed
+- `task_progress/find_tasks`: fix SQL query for deleted subtasks
+- `task/needs_approval`: fix server error on ceratin cases
+
+## [1.17.4] - 2024-04-05
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- update project dependencies
+### Fixed
+- bug introduced in v1.17.3
+- `management`: implement failsafe Errata ID update
+
 ## [1.17.3] - 2024-04-01
 
 Regular API code updates and fixes.
