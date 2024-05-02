@@ -25,6 +25,22 @@ FROM TaskStates
 WHERE task_id = {id}
 """
 
+    where_tasks_by_pkg = """
+AND task_id IN (
+    SELECT DISTINCT task_id 
+    FROM TaskIterations 
+    WHERE titer_srcrpm_hash IN (
+        SELECT pkg_hash 
+        FROM Packages 
+        WHERE (pkg_name = '{pkg_name}') 
+        AND (pkg_sourcepackage = 1)
+    )
+    AND (task_id, task_changed) IN (
+        SELECT task_id, max(task_changed) FROM TaskStates group by task_id
+    )
+)
+"""
+
     get_last_tasks_from_progress = """
 SELECT * FROM (
     SELECT
