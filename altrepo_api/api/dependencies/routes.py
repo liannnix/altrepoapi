@@ -139,7 +139,7 @@ class routePackageBuildDependency(Resource):
     "/fast_lookup",
     doc={
         "description": """
-        Fast search for dependencies by name (case sensitive) 
+        Fast search for dependencies by name (case sensitive)
         including partial occurrence.
         """,
         "responses": GET_RESPONSES_400_404,
