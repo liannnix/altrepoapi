@@ -141,6 +141,8 @@ SELECT * FROM (
 ) {where_clause_is_errata}
 """
 
+    # XXX: for 'EPERM' tasks use 'task_changed' from TaskStates table instead of
+    # temporary table due to GlobalSearch 'ts' is inconsistent with TaskIterations table
     get_subtasks = """
 WITH pkg_hashes AS (
     SELECT task_id,
@@ -148,7 +150,20 @@ WITH pkg_hashes AS (
            titer_srcrpm_hash,
            subtask_arch
     FROM TaskIterations
-    WHERE (task_id, task_changed) IN (SELECT task_id, changed FROM {tmp_table})
+    WHERE (task_id, task_changed) IN (
+        SELECT task_id, changed
+        FROM {tmp_table}
+        WHERE state IN ('DONE', 'TESTED')
+        UNION ALL
+        SELECT task_id, max(task_changed)
+        FROM TaskStates
+        WHERE (task_id, task_state) IN (
+            SELECT task_id, state
+            FROM {tmp_table}
+            WHERE state = 'EPERM'
+        )
+        GROUP BY task_id
+    )
         AND titer_srcrpm_hash != 0
 ),
 tasks_info AS (

@@ -19,6 +19,7 @@ from datetime import datetime
 from typing import Any, NamedTuple
 
 from altrepo_api.api.base import APIWorker
+from altrepo_api.utils import make_tmp_table_name
 from altrepo_api.libs.pagination import Paginator
 
 from .tools.constants import BDU_ID_PREFIX, CVE_ID_PREFIX, ERRATA_PACKAGE_UPDATE_PREFIX
@@ -207,15 +208,25 @@ class TaskList(APIWorker):
         page_obj = paginator.get_page(page)
 
         # get subtasks info by task_id
-        _tmp_table = "tmp_task_id"
+        _tmp_table = make_tmp_table_name("tmp_task_id")
+        # XXX: handle 'EPERM' tasks in specific way due to 'ts' field from GlobalSearch
+        # table is inconsistent with 'task_changed' field of TaskIterations table
         response = self.send_sql_request(
             self.sql.get_subtasks.format(tmp_table=_tmp_table),
             external_tables=[
                 {
                     "name": _tmp_table,
-                    "structure": [("task_id", "UInt32"), ("changed", "DateTime")],
+                    "structure": [
+                        ("task_id", "UInt32"),
+                        ("changed", "DateTime"),
+                        ("state", "String"),
+                    ],
                     "data": [
-                        {"task_id": el.task_id, "changed": el.changed}
+                        {
+                            "task_id": el.task_id,
+                            "changed": el.changed,
+                            "state": el.state,
+                        }
                         for el in page_obj
                     ],
                 }
