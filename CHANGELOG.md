@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+## [1.18.1] - 2024-05-03
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `management/task/list`: fix subtasks gathering for `EPERM` tasks
+
 ## [1.18.0] - 2024-05-02
 
 Regular API code updates and fixes.
