@@ -14,11 +14,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from flask import Blueprint
+from flask import Blueprint, send_from_directory
 from flask_restx import Api, Resource, fields
 
 from altrepo_api.api.management import ns as management_ns, __version__ as VERSION
 from altrepo_api.api.auth import ns as auth_ns
+from altrepo_api.settings import namespace as settings
 
 
 authorizations = {
@@ -59,3 +60,17 @@ class ApiVersion(Resource):
     @api.marshal_with(version_fields)
     def get(self):
         return api, 200
+
+
+@api.route("/license")
+@api.doc(description="get license")
+class ApiLicense(Resource):
+    @api.produces(["text/plain"])
+    def get(self):
+        licenseFile = "static/LICENSE"
+        return send_from_directory(
+            settings.PROJECT_DIR,
+            licenseFile,
+            as_attachment=False,
+            mimetype="text/plain",
+        )
