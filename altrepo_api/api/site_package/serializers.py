@@ -322,10 +322,12 @@ pkgs_binary_list_model = ns.model(
 bin_package_scripts_el_model = ns.model(
     "SiteBinPackageScriptsElementModel",
     {
-        "postin": fields.String(description="post install script"),
-        "postun": fields.String(description="post uninstall script"),
         "prein": fields.String(description="pre install script"),
+        "postin": fields.String(description="post install script"),
         "preun": fields.String(description="pre uninstall script"),
+        "postun": fields.String(description="post uninstall script"),
+        "pretrans": fields.String(description="pre transaction script"),
+        "posttrans": fields.String(description="post transaction script"),
     },
 )
 depends_packages_model = ns.model(

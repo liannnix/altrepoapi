@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from collections import namedtuple
+from typing import NamedTuple
 
 from altrepo_api.api.base import APIWorker
 from ..sql import sql
@@ -44,18 +44,17 @@ class BinaryPackageScripts(APIWorker):
                 }
             )
 
-        PkgScripts = namedtuple("PkgScripts", ["postin", "postun", "prein", "preun"])
-        pkg_scripts = [PkgScripts(*el)._asdict() for el in response]
+        class PkgScripts(NamedTuple):
+            postin: str
+            postun: str
+            prein: str
+            preun: str
+            pretrans: str
+            posttrans: str
 
-        # get package name and arch
-        response = self.send_sql_request(
-            self.sql.get_pkgs_name_and_arch.format(pkghash=self.pkghash)
-        )
-        if not self.sql_status:
-            return self.error
-
-        pkg_name = response[0][0]  # type: ignore
-        pkg_arch = response[0][1]  # type: ignore
+        pkg_name = response[0][0]
+        pkg_arch = response[0][1]
+        pkg_scripts = [PkgScripts(*el[2:])._asdict() for el in response]
 
         res = {
             "request_args": self.pkghash,

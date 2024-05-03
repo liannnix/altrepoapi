@@ -753,21 +753,17 @@ GROUP BY
 
     get_bin_pkg_scripts = """
 SELECT
+    pkg_name,
+    pkg_arch,
     pkg_postin,
     pkg_postun,
     pkg_prein,
-    pkg_preun
+    pkg_preun,
+    pkg_pretrans,
+    pkg_posttrans
 FROM Packages
 WHERE pkg_hash = {pkghash}
     AND pkg_sourcepackage = 0
-"""
-
-    get_pkgs_name_and_arch = """
-    SELECT
-        pkg_name,
-        pkg_arch
-    FROM Packages
-    WHERE pkg_hash = {pkghash}
 """
 
     get_bin_pkg_log = """
