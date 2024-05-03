@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+## [1.18.2] - 2024-05-03
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- **Breaking change** `api/site/binary_package_scripts`: add pretrans and postrans scripts support (closes #50149). Requires DB version 2.14.0
+### Fixed
+
 ## [1.18.1] - 2024-05-03
 
 Regular API code updates and fixes.
