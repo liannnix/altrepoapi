@@ -78,6 +78,36 @@ from .serializers import (
     vuln_ids_json_post_list_model,
     pkgs_unmapped_model,
 )
+from altrepo_api.api.errata.endpoints.branch import ErrataBranches, BranchesUpdates
+from altrepo_api.api.errata.serializers import (
+    errata_branches_model,
+    errata_last_changed_model,
+    erratas_ids_json_list_model,
+    errata_packages_updates_model,
+    errata_branches_updates_model,
+    errata_last_changed_el_model,
+    pkgs_el_model,
+    vulns_el_model,
+    errata_package_update_model,
+    errata_bug_model,
+    errata_vuln_model,
+    errata_branch_update_model,
+)
+from altrepo_api.api.errata.endpoints.package import PackagesUpdates
+from altrepo_api.api.errata.endpoints.search import FindErratas
+from altrepo_api.api.errata.parsers import find_erratas_args
+from altrepo_api.api.task_progress.endpoints.packageset import AllTasksBraches
+from altrepo_api.api.task_progress.serializers import all_tasks_branches_model
+from altrepo_api.api.vulnerabilities.endpoints.fixes import VulnFixes
+from altrepo_api.api.vulnerabilities.endpoints.vuln import VulnInfo
+from altrepo_api.api.vulnerabilities.parsers import cve_info_args, bdu_info_args
+from altrepo_api.api.vulnerabilities.serializers import (
+    vuln_fixes_model,
+    vuln_fixes_el_model,
+    vuln_pkg_last_version_model,
+    vulnerability_info_model,
+    vulnerability_model,
+)
 
 ns = get_namespace()
 
@@ -128,6 +158,23 @@ class routeTaskInfo(Resource):
         return run_worker(worker=w, args=args)
 
 
+@ns.route("/task/all_tasks_branches")
+@ns.doc(
+    description="Get branches list for last tasks",
+    responses=GET_RESPONSES_404,
+    security="Bearer",
+)
+class routeAllTasksBranches(Resource):
+    # @ns.expect()
+    @ns.marshal_with(ns.clone("AllTasksBranchesModel", all_tasks_branches_model))
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = {}
+        w = AllTasksBraches(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
 @ns.route(
     "/vuln/info",
     doc={
@@ -146,6 +193,114 @@ class routeVulnsInfo(Resource):
         return run_worker(
             worker=w, run_method=w.post, check_method=w.check_params_post, ok_code=200
         )
+
+
+@ns.route(
+    "/vuln/cve",
+    doc={
+        "description": "Get CVE information",
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routeCveInfo(Resource):
+    @ns.expect(cve_info_args)
+    @ns.marshal_with(
+        ns.clone(
+            "VulnerabilityInfoModel",
+            vulnerability_info_model,
+            ns.clone("VulnerabilityModel", vulnerability_model),
+        )
+    )
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = cve_info_args.parse_args(strict=True)
+        w = VulnInfo(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/vuln/cve/fixes",
+    doc={
+        "description": (
+            "Get a list of packages in which "
+            "the specified CVE vulnerability is closed."
+        ),
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routeVulnerableCveFixes(Resource):
+    @ns.expect(cve_info_args)
+    @ns.marshal_with(
+        ns.clone(
+            "VulnFixesPackagesModel",
+            vuln_fixes_model,
+            ns.clone("VulnFixesPackagesElementModel", vuln_fixes_el_model),
+            ns.clone("VulnPackageLastVersionModel", vuln_pkg_last_version_model),
+        )
+    )
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = cve_info_args.parse_args(strict=True)
+        w = VulnFixes(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/vuln/bdu",
+    doc={
+        "description": "Get BDU information",
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routeBduInfo(Resource):
+    @ns.expect(bdu_info_args)
+    @ns.marshal_with(
+        ns.clone(
+            "VulnerabilityInfoModel",
+            vulnerability_info_model,
+            ns.clone("VulnerabilityModel", vulnerability_model),
+        )
+    )
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = bdu_info_args.parse_args(strict=True)
+        w = VulnInfo(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/vuln/bdu/fixes",
+    doc={
+        "description": (
+            "Get a list of packages in which "
+            "the specified BDU vulnerability is closed."
+        ),
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routeVulnerableBduFixes(Resource):
+    @ns.expect(bdu_info_args)
+    @ns.marshal_with(
+        ns.clone(
+            "VulnFixesPackagesModel",
+            vuln_fixes_model,
+            ns.clone("VulnFixesPackagesElementModel", vuln_fixes_el_model),
+            ns.clone("VulnPackageLastVersionModel", vuln_pkg_last_version_model),
+        )
+    )
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = bdu_info_args.parse_args(strict=True)
+        w = VulnFixes(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 RESPONSES_400_404 = {
@@ -257,6 +412,103 @@ class routeErrataChangeHistory(Resource):
         args = errata_manage_get_args.parse_args(strict=True)
         w = ErrataChangeHistory(g.connection, **args)
         return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/errata/errata_branches",
+    doc={
+        "description": "Get list of branches form errata history.",
+        "responses": GET_RESPONSES_404,
+        "security": "Bearer",
+    },
+)
+class routeErrataBranches(Resource):
+    @ns.marshal_with(ns.clone("ErrataBranchesModel", errata_branches_model))
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = {}
+        w = ErrataBranches(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/errata/find_erratas",
+    doc={
+        "description": "Find errata by ID, vulnerability ID or package name.",
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routeFindErratas(Resource):
+    @ns.expect(find_erratas_args)
+    @ns.marshal_with(
+        ns.clone(
+            "ErrataLastChangedModel",
+            errata_last_changed_model,
+            ns.clone("ErrataLastChangedElementModel", errata_last_changed_el_model),
+            ns.clone("PackagesElementModel", pkgs_el_model),
+            ns.clone("VulnerabilitiesElementModel", vulns_el_model),
+        )
+    )
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = find_erratas_args.parse_args(strict=True)
+        w = FindErratas(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/errata/packages_updates",
+    doc={
+        "description": "Get information about package update erratas",
+        "responses": POST_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routePackagesUpdates(Resource):
+    @ns.expect(ns.clone("ErrataJsonPostListModel", erratas_ids_json_list_model))
+    @ns.marshal_with(
+        ns.clone(
+            "ErrataPackagesUpdatesModel",
+            errata_packages_updates_model,
+            ns.clone("ErrataPackageUpdateModel", errata_package_update_model),
+            ns.clone("ErrataBugModel", errata_bug_model),
+            ns.clone("ErrataVulnerabilityModel", errata_vuln_model),
+        )
+    )
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def post(self):
+        url_logging(logger, g.url)
+        args = {}
+        w = PackagesUpdates(g.connection, json_data=ns.payload)
+        return run_worker(worker=w, args=args, run_method=w.post, ok_code=200)
+
+
+@ns.route(
+    "/errata/branches_updates",
+    doc={
+        "description": "Get information about branch update erratas",
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routeBranchesUpdates(Resource):
+    @ns.expect(ns.clone("ErrataJsonPostListModel", erratas_ids_json_list_model))
+    @ns.marshal_with(
+        ns.clone(
+            "ErrataBranchesUpdatesModel",
+            errata_branches_updates_model,
+            ns.clone("ErrataBranchUpdateModel", errata_branch_update_model),
+        )
+    )
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def post(self):
+        url_logging(logger, g.url)
+        args = {}
+        w = BranchesUpdates(g.connection, json_data=ns.payload)
+        return run_worker(worker=w, args=args, run_method=w.post, ok_code=200)
 
 
 @ns.route(
