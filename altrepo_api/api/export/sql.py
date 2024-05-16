@@ -219,9 +219,10 @@ SELECT
     task_changed
 FROM TaskStates
 LEFT JOIN (SELECT * FROM task_and_repo) AS TR USING task_id
-WHERE task_state = 'DONE' and task_id IN (
-    SELECT task_id FROM task_and_repo
-)
+WHERE task_state = 'DONE'
+    AND task_id IN (
+        SELECT task_id FROM task_and_repo
+    )
 ORDER BY task_changed DESC
 """
 
