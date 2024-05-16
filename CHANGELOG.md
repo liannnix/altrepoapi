@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+## [1.18.3] - 2024-05-16
+
+Regular API code updates and fixes.
+
+### Added
+- `management`: clone several routes from `api` namespace for convenience
+### Changed
+### Fixed
+
 ## [1.18.2] - 2024-05-03
 
 Regular API code updates and fixes.
