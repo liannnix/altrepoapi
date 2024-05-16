@@ -14,6 +14,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import datetime
+
 from functools import cached_property
 from typing import Union, Any, NamedTuple
 
@@ -58,6 +60,7 @@ class PackageMeta(NamedTuple):
     pkg_name: str
     pkg_version: str
     pkg_release: str
+    modified: datetime.datetime
     branch: str
     vulns: list[VulnInfoMeta]
     images: list[PackageImagesMeta] = []
@@ -68,6 +71,7 @@ class PackageMeta(NamedTuple):
             "pkg_name": self.pkg_name,
             "pkg_version": self.pkg_version,
             "pkg_release": self.pkg_release,
+            "modified": self.modified,
             "branch": self.branch,
             "vulns": [el._asdict() for el in self.vulns],
             "images": sorted(

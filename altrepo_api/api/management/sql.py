@@ -897,15 +897,17 @@ SELECT * FROM (
            pkg_name,
            version,
            release,
+           max(VUL.vuln_modified_date) AS modified,
            branch,
-           groupUniqArray((vuln_id, VUL.vuln_type, VUL.vuln_severity)) AS vulns
+           arrayReverseSort((x) -> x.1, groupUniqArray((vuln_id, VUL.vuln_type, VUL.vuln_severity))) AS vulns
     FROM vulns
     LEFT JOIN (
         SELECT
             vuln_id,
             vuln_hash,
             vuln_type,
-            vuln_severity
+            vuln_severity,
+            vuln_modified_date
         FROM Vulnerabilities
     ) AS VUL ON VUL.vuln_id = vulns.vuln_id AND VUL.vuln_hash = vulns.vuln_hash
     GROUP BY pkg_name, pkg_hash, branch, version, release
@@ -944,15 +946,17 @@ SELECT * FROM (
            pkg_name,
            version,
            release,
+           max(VUL.vuln_modified_date) as modified,
            branch,
-           groupUniqArray((vuln_id, VUL.vuln_type, VUL.vuln_severity)) AS vulns
+           arrayReverseSort((x) -> x.1, groupUniqArray((vuln_id, VUL.vuln_type, VUL.vuln_severity))) AS vulns
     FROM vulns
     LEFT JOIN (
         SELECT
             vuln_id,
             vuln_hash,
             vuln_type,
-            vuln_severity
+            vuln_severity,
+            vuln_modified_date
         FROM Vulnerabilities
     ) AS VUL ON VUL.vuln_id = vulns.vuln_id AND VUL.vuln_hash = vulns.vuln_hash
     GROUP BY pkg_name, pkg_hash, branch, version, release
