@@ -1,6 +1,16 @@
 # Changelog
 ALTrepo API changelog
 
+## [1.18.4] - 2024-05-20
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `management/packages/open_vulns`: add vulnerability modified date field
+### Fixed
+- `api/bug`: SQL requests (closes #50388)
+
 ## [1.18.3] - 2024-05-16
 
 Regular API code updates and fixes.
