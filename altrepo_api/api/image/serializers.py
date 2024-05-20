@@ -266,6 +266,7 @@ pkgs_json_model = ns.model(
         ),
         "packages": fields.Nested(
             pkgs_json_el_model,
+            required=True,
             description="list of packages",
             as_list=True,
         ),
