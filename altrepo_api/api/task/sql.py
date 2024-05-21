@@ -1223,7 +1223,11 @@ uuid_with_package AS
         P.binpkg_arch AS binpkg_arch
     FROM {packages_tmp_table} AS P
     LEFT JOIN (
-        SELECT *
+        SELECT
+            pkgset_uuid,
+            img_file,
+            pkg_name,
+            pkg_arch
         FROM lv_all_image_packages
         WHERE img_edition IN (SELECT img_edition FROM editions_status)
             AND img_tag IN (SELECT img_tag FROM tags_status)
