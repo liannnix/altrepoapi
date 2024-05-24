@@ -232,6 +232,7 @@ def sort_branches(branches: Iterable[str]) -> tuple[str, ...]:
         "sisyphus_mipsel",
         "sisyphus_riscv64",
         "sisyphus_loongarch64",
+        "p11",
         "p10",
         "p10_e2k",
         "p9",

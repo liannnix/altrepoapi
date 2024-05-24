@@ -42,6 +42,7 @@ class LookupTables:
         "p9_e2k",
         "p10",
         "p10_e2k",
+        "p11",
         "sisyphus",
         "sisyphus_mipsel",
         "sisyphus_riscv64",
@@ -68,10 +69,22 @@ class LookupTables:
         "c10f1": "4",
         "c10f2": "5",
     }
+    # oval_export_branches = ["p9", "p10", "p11", "c9f2", "c10f1", "c10f2"]
+    # oval_export_branches_map = {
+    #     "p9": "1",
+    #     "p10": "2",
+    #     "p11": "3",
+    #     "c9f2": "4",
+    #     "c10f1": "5",
+    #     "c10f2": "6",
+    # }
     no_downloads_branches = ["sisyphus_e2k", "p9_e2k", "p10_e2k"]
 
+    # TODO: replace after Repology export enabled
     repology_export_branches = ["sisyphus", "p9", "p10"]
     repology_branches = ("alt_p9", "alt_p10", "altsisyphus")
+    # repology_export_branches = ["sisyphus", "p9", "p10", "p11"]
+    # repology_branches = ("alt_p9", "alt_p10", "alt_p11", "altsisyphus")
     repology_branch_map = {
         # P9
         "p9": "alt_p9",
@@ -84,6 +97,10 @@ class LookupTables:
         "c10f1": "alt_p10",
         "c10f2": "alt_p10",
         "p10_e2k": "alt_p10",
+        # P11
+        # TODO: map 'p11' to 'sisyphus' until Repology export enabled
+        # "p11": "alt_p11",
+        "p11": "sisyphus",
         # Sisyphus
         "sisyphus": "altsisyphus",
         "sisyphus_e2k": "altsisyphus",
@@ -96,6 +113,8 @@ class LookupTables:
         "alt_p9": ("p9", "c9f1", "c9f2", "p9_e2k", "p9_mipsel"),
         # P10
         "alt_p10": ("p10", "c10f1", "c10f2", "p10_e2k"),
+        # P11
+        "alt_p11": ("p11",),
         # Sisyphus
         "altsisyphus": (
             "sisyphus",
@@ -317,6 +336,7 @@ class LookupTables:
     ]
     known_beehive_branches = [
         "sisyphus",
+        "p11",
         "p10",
         "p9",
     ]
@@ -413,6 +433,7 @@ class LookupTables:
     ]
 
     known_approvers = {
+        "p11": ["@maint", "@tester"],
         "p10": ["@maint", "@tester"],
         "p9": ["@maint", "@tester"],
         "p8": ["snowmix", "amakeenk", "jenya"],
@@ -424,6 +445,7 @@ class LookupTables:
 
     branch_tree_branches = [
         "sisyphus",
+        "p11",
         "p10",
         "p9",
         "p8",
@@ -447,6 +469,7 @@ class LookupTables:
         # "c8": ["p8", "sisyphus"],
         # "c7.1": ["c7", "p7", "sisyphus"],
         # "c7": ["p7", "sisyphus"],
+        "p11": ["sisyphus"],
         "p10": ["sisyphus"],
         "p9": ["sisyphus"],
         # "p8": ["sisyphus"],
@@ -471,6 +494,7 @@ class LookupTables:
         "c10f2",
         "p9",
         "p10",
+        "p11",
         "sisyphus",
     )
     errata_manage_branches_without_tasks = (
