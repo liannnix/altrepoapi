@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.18.5] - 2024-05-24
+
+Regular API code updates and fixes.
+
+### Added
+- initial support for `p11` branch
+### Changed
+### Fixed
+
 ## [1.18.4] - 2024-05-20
 
 Regular API code updates and fixes.
