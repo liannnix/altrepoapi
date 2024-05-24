@@ -134,7 +134,7 @@ def test_source_package_dependencies(client, kwargs):
     [
         {
             "from_branch": "sisyphus",
-            "into_branch": "p10",
+            "into_branch": "p11",
             "packages_names": ["curl"],
             "dp_type": "both",
             "archs": ["x86_64"],
