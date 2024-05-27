@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.18.6] - 2024-05-27
+
+Regular API code updates and fixes.
+
+### Added
+- `api/export/repology`: support for `p11` branch
+### Changed
+### Fixed
+
 # [1.18.5] - 2024-05-24
 
 Regular API code updates and fixes.
