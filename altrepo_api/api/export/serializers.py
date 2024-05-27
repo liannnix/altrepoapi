@@ -26,7 +26,6 @@ repology_export_branch_stat_el_model = ns.model(
     {
         "arch": fields.String(description="source package arch"),
         "count": fields.Integer(
-            attribute="cnt",
             description="count of source packages by binary packages arch",
         ),
     },
@@ -58,7 +57,7 @@ repology_export_src_pkg_el_model = ns.model(
         "recipe": fields.String(description="package spec file"),
         "recipe_raw": fields.String(description="package spec file raw"),
         "bugzilla": fields.String(description="package bugs"),
-        "CPE": fields.String(description="package CPE"),
+        "CPE": fields.List(fields.String(description="package CPE"), attribute="cpe"),
         "binaries": fields.Nested(
             repology_export_bin_pkg_el_model,
             description="binary packages info",

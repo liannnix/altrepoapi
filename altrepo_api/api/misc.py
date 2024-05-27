@@ -80,11 +80,8 @@ class LookupTables:
     # }
     no_downloads_branches = ["sisyphus_e2k", "p9_e2k", "p10_e2k"]
 
-    # TODO: replace after Repology export enabled
-    repology_export_branches = ["sisyphus", "p9", "p10"]
-    repology_branches = ("alt_p9", "alt_p10", "altsisyphus")
-    # repology_export_branches = ["sisyphus", "p9", "p10", "p11"]
-    # repology_branches = ("alt_p9", "alt_p10", "alt_p11", "altsisyphus")
+    repology_branches = ("altsisyphus", "alt_p9", "alt_p10", "alt_p11")
+    repology_export_branches = ["sisyphus", "p9", "p10", "p11"]
     repology_branch_map = {
         # P9
         "p9": "alt_p9",
@@ -100,7 +97,7 @@ class LookupTables:
         # P11
         # TODO: map 'p11' to 'sisyphus' until Repology export enabled
         # "p11": "alt_p11",
-        "p11": "sisyphus",
+        "p11": "altsisyphus",
         # Sisyphus
         "sisyphus": "altsisyphus",
         "sisyphus_e2k": "altsisyphus",

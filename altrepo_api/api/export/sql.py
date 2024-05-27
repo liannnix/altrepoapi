@@ -116,6 +116,43 @@ WHERE pkg_sourcepackage = 1
     AND pkg_hash IN (SELECT * FROM src_hashes)
 """
 
+    get_packages_and_cpes = """
+WITH
+repology_names AS (
+    SELECT
+        alt_name,
+        repology_name
+    FROM (
+        SELECT
+            pkg_name AS alt_name,
+            pnc_result AS repology_name,
+            argMax(pnc_state, ts) AS state
+        FROM PackagesNameConversion
+        WHERE pnc_type IN {cpe_branches}
+        GROUP BY pkg_name, pnc_result
+    ) WHERE state = 'active'
+)
+SELECT
+    alt_name AS pkg_name,
+    arraySort(groupUniqArray(cpe))
+FROM (
+    SELECT
+        cpe_pkg_name,
+        cpe
+    FROM (
+        SELECT
+            pkg_name AS cpe_pkg_name,
+            argMax(pnc_result, ts) AS cpe,
+            argMax(pnc_state, ts) AS state
+        FROM PackagesNameConversion
+        WHERE pnc_type = 'cpe'
+        GROUP BY pkg_name, pnc_result
+    ) WHERE state = 'active'
+) AS CPE
+INNER JOIN repology_names AS EN ON EN.repology_name = cpe_pkg_name
+GROUP BY alt_name
+"""
+
     get_branch_source_packages = """
 SELECT
     toString(pkg_hash),
