@@ -1,4 +1,4 @@
-FROM alt:p10
+FROM registry.altlinux.org/alt/alt:p10
 
 # set version label
 ARG UID=1000
