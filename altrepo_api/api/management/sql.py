@@ -933,7 +933,7 @@ WITH vulns AS (
         FROM PackagesCveMatch
         GROUP BY pkg_name, vuln_id, pkg_hash
     ) AS ES
-     LEFT JOIN (
+    LEFT JOIN (
         SELECT pkg_hash, pkgset_name, pkg_version, pkg_release
         FROM static_last_packages
     ) AS TT ON TT.pkg_hash == ES.pkg_hash

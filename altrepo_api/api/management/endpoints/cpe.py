@@ -708,7 +708,7 @@ class ManageCpe(APIWorker):
             return self.error
 
         # create and store new CPE match records
-        self.trx.register_pnc_create(pnc=pncr, pnc_type=PncType.CPE)
+        self.trx.register_pnc_update(pnc=pncr, pnc_type=PncType.CPE)
         self.trx.commit(self.reason)
 
         # FIXME: ignore `package_name` argument here
