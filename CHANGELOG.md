@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.18.7] - 2024-05-30
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- use `registry.altlinux.org` instead of `Docker Hub`
+### Fixed
+
 # [1.18.6] - 2024-05-27
 
 Regular API code updates and fixes.
