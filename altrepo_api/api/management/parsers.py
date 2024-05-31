@@ -235,6 +235,20 @@ package_name_list = parser.register_item(
     help="package or list of package names",
     location="args",
 )
+vuln_input_val = parser.register_item(
+    "input",
+    type=cpe_search_type,
+    required=False,
+    help="vulnerability number or errata ID",
+    location="args",
+)
+vuln_our_opt = parser.register_item(
+    "our",
+    type=inputs.boolean,
+    required=False,
+    help="",
+    location="args",
+)
 
 task_list_args = parser.build_parser(
     task_input_val_opt,
@@ -272,4 +286,13 @@ pnc_manage_get_args = parser.build_parser(
 )
 pnc_list_args = parser.build_parser(
     pnc_input_opt, pnc_state_opt, branch_name_opt, page_opt, limit_opt, sort_opt
+)
+vuln_list_args = parser.build_parser(
+    vuln_input_val,
+    vuln_severity_opt,
+    is_errata_opt,
+    vuln_our_opt,
+    page_opt,
+    limit_opt,
+    sort_opt,
 )

@@ -33,6 +33,7 @@ from .endpoints.packages_open_vulns import (
     PackagesMaintainerList,
 )
 from .endpoints.packages_unmapped import PackagesUnmapped
+from .endpoints.vuln_list import VulnList
 
 from .namespace import get_namespace
 from .endpoints.cpe import CPECandidates, ManageCpe, CPEList
@@ -55,6 +56,7 @@ from .parsers import (
     pnc_manage_get_args,
     task_list_args,
     pkgs_unmapped_args,
+    vuln_list_args,
 )
 from .serializers import (
     cpe_manage_model,
@@ -77,6 +79,7 @@ from .serializers import (
     vuln_ids_json_list_model,
     vuln_ids_json_post_list_model,
     pkgs_unmapped_model,
+    vuln_list_model,
 )
 from altrepo_api.api.errata.endpoints.branch import ErrataBranches, BranchesUpdates
 from altrepo_api.api.errata.serializers import (
@@ -172,6 +175,25 @@ class routeAllTasksBranches(Resource):
         url_logging(logger, g.url)
         args = {}
         w = AllTasksBraches(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/vuln/list",
+    doc={
+        "description": "Get vulnerability list",
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routeVulnList(Resource):
+    @ns.expect(vuln_list_args)
+    @ns.marshal_with(vuln_list_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = vuln_list_args.parse_args(strict=True)
+        w = VulnList(g.connection, **args)
         return run_worker(worker=w, args=args)
 
 

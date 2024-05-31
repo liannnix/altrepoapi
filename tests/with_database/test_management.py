@@ -37,6 +37,7 @@ VALID_ACCESS_TOKEN = "valid_token"
 INVALID_ACCESS_TOKEN = "invalid_token"
 
 CPE_IN_DB = "cpe:2.3:a:curl:curl:*:*:*:*:*:*:*:*"
+CPE_IN_DB2 = "cpe:2.3:a:curl:curl:8.5.0:*:*:*:*:*:*:*"
 CPE_NOT_IN_DB = "cpe:2.3:a:test:test:*:*:*:*:*:*:*:*"
 
 PROJECT_NAME_IN_DB = "mongo-c-driver"
@@ -789,3 +790,103 @@ def test_packages_unmapped(client, kwargs, mocked_check_access_token):
     if response.status_code == 200:
         assert data != {}
         assert data["packages"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "input": None,
+            "limit": 10,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": VULN_IN_DB,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": VULN_IN_DB2,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": PU_ERRATA_ID_IN_DB_1,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": CPE_IN_DB2,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "severity": "CRITICAL",
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "is_errata": True,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": CPE_NOT_IN_DB,
+            "status_code": 404,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "is_errata": True,
+            "our": False,
+            "status_code": 404,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": BU_ERRATA_ID_IN_DB,
+            "status_code": 404,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": BU_ERRATA_ID_NOT_IN_DB,
+            "status_code": 404,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "status_code": 401,
+            "headers": {"Authorization": INVALID_ACCESS_TOKEN},
+        },
+        {
+            "status_code": 401,
+        },
+    ],
+)
+def test_vuln_list(client, kwargs, mocked_check_access_token):
+    params = {k: v for k, v in kwargs.items() if k not in ("status_code", "headers")}
+    url = url_for("manage.manage_route_vuln_list")
+    mocked_check_access_token.headers = kwargs.get("headers", {})
+    mocked_check_access_token.status_code = kwargs["status_code"]
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+
+    if response.status_code == 200:
+        assert data != {}
+        assert data["vulns"] != []
+        if params.get("limit", ""):
+            assert params["limit"] <= len(data["vulns"])
+
+        for el in data["vulns"]:
+            if params.get("input", "") == VULN_IN_DB:
+                assert params["input"] == el["id"]
+            if params.get("input", "") == PU_ERRATA_ID_IN_DB_1:
+                assert any(
+                    [
+                        params["input"].lower() == errata["id"].lower()
+                        for errata in el["erratas"]
+                    ]
+                )
+            if params.get("severity", ""):
+                assert params["severity"] == el["severity"]
+            if params.get("is_errata", False):
+                assert el["erratas"] != []
