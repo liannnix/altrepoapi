@@ -648,7 +648,7 @@ vuln_errata_el_model = ns.model(
     {
         "id": fields.String(description="errata id"),
         "task_state": fields.String(description="task state"),
-    }
+    },
 )
 vuln_list_el_model = ns.model(
     "VulnerabilityListElementModel",
@@ -661,7 +661,7 @@ vuln_list_el_model = ns.model(
         "erratas": fields.Nested(
             vuln_errata_el_model,
             description="list of errata IDs in which the vulnerability was fixed",
-            as_list=True
+            as_list=True,
         ),
         "cpes": fields.List(
             fields.String,

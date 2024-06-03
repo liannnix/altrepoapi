@@ -22,6 +22,7 @@ from altrepo_api.api.base import APIWorker
 from altrepo_api.libs.pagination import Paginator
 from altrepo_api.libs.sorting import rich_sort
 
+from .tools.constants import DT_NEVER
 from ..sql import sql
 
 
@@ -44,8 +45,8 @@ class VulnInfo(NamedTuple):
     id: str = ""
     severity: str = ""
     summary: str = ""
-    modified: datetime.datetime = None
-    published: datetime.datetime = None
+    modified: datetime.datetime = DT_NEVER
+    published: datetime.datetime = DT_NEVER
     erratas: list[ErrataInfo] = []
     cpes: list[str] = []
     our: bool = False
@@ -164,7 +165,7 @@ class VulnList(APIWorker):
         if not response:
             _ = self.store_error(
                 {
-                    "message": f"No vulnerabilities found",
+                    "message": "No vulnerabilities found",
                     "args": self.args._asdict(),
                 }
             )
@@ -216,7 +217,7 @@ class VulnList(APIWorker):
             if not response:
                 _ = self.store_error(
                     {
-                        "message": f"No vulnerabilities found",
+                        "message": "No vulnerabilities found",
                         "args": self.args._asdict(),
                     }
                 )
