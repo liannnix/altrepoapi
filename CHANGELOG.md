@@ -1,6 +1,16 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.18.8] - 2024-06-03
+
+Regular API code updates and fixes.
+
+### Added
+- `management`: add `vuln/list` route
+### Changed
+### Fixed
+- `management`: fix `cpe/manage[PUT]` route
+
 # [1.18.7] - 2024-05-30
 
 Regular API code updates and fixes.
