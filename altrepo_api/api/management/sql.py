@@ -1198,5 +1198,76 @@ WHERE {name_like}
 ORDER BY pkg_name
 """
 
+    get_vuln_list = """
+SELECT VULNS.*
+FROM (
+    SELECT vuln_id,
+           argMax(vuln_severity, ts) AS severity,
+           argMax(vuln_summary, ts) AS summary,
+           argMax(vuln_modified_date, ts) AS modified,
+           argMax(vuln_published_date, ts) AS published
+    FROM Vulnerabilities
+    GROUP BY vuln_id
+) AS VULNS
+{where_clause} {where_clause2}
+GROUP BY vuln_id, severity, summary, modified, published
+ORDER BY  modified DESC
+"""
+
+    get_erratas_vuln = """
+WITH cve_match AS (
+    SELECT cpm_cpe FROM (
+        SELECT cpm_cpe,
+               argMax(is_vulnerable, ts) AS is_vulnerable,
+               argMax(vuln_hash, ts) AS vuln_hash
+        FROM PackagesCveMatch
+        GROUP BY cpm_cpe
+    )
+)
+SELECT vuln_id, errata_ids, cpes, arrayAll(x -> (x in cve_match), cpes) as our 
+FROM (
+    SELECT vuln_id,
+           ERR.errata_ids as errata_ids,
+           groupUniqArray(cpm_cpe) as cpes
+    FROM CpeMatch
+    LEFT JOIN (
+        SELECT vuln_id,
+               groupUniqArray((errata_id, task_state)) AS errata_ids
+        FROM (
+            SELECT
+                errata_id,
+                task_state,
+                arrayJoin(links) AS vuln_id
+            FROM
+            (
+                SELECT errata_id,
+                       task_state,
+                       `eh_references.link` as links
+                FROM ErrataHistory
+                WHERE (errata_id, eh_updated) IN (
+                SELECT
+                    eid, updated
+                FROM (
+                    SELECT
+                        errata_id_noversion,
+                        argMax(errata_id, eh_updated) AS eid,
+                        max(eh_updated) AS updated
+                    FROM ErrataHistory
+                    WHERE eh_type IN ('branch', 'task')
+                    GROUP BY errata_id_noversion
+                )
+                WHERE eid NOT IN (
+                    SELECT errata_id FROM last_discarded_erratas
+                )
+            )
+            )
+        ) {tmp_table}
+        GROUP BY vuln_id
+    ) AS ERR ON ERR.vuln_id = CpeMatch.vuln_id
+    {tmp_table}
+    GROUP BY vuln_id, errata_ids
+) {where_clause}
+"""
+
 
 sql = SQL()

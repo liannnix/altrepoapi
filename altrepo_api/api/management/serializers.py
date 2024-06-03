@@ -512,7 +512,7 @@ pkgs_unmapped_model = ns.model(
             description="list of packages that not mapped to any project",
             as_list=True,
         ),
-    }
+    },
 )
 
 supported_branches_model = ns.model(
@@ -639,6 +639,46 @@ pnc_list_model = ns.model(
         "request_args": fields.Raw(description="request arguments"),
         "pncs": fields.Nested(
             pnc_list_el_model, description="list of PNC records", as_list=True
+        ),
+    },
+)
+
+vuln_errata_el_model = ns.model(
+    "VulnerabilityErrataElementModel",
+    {
+        "id": fields.String(description="errata id"),
+        "task_state": fields.String(description="task state"),
+    }
+)
+vuln_list_el_model = ns.model(
+    "VulnerabilityListElementModel",
+    {
+        "id": fields.String(description="vulnerability id"),
+        "severity": fields.String(description="vulnerability severity"),
+        "summary": fields.String(description="vulnerability summary"),
+        "modified": fields.DateTime(description="vulnerability modified date"),
+        "published": fields.DateTime(description="vulnerability published date"),
+        "erratas": fields.Nested(
+            vuln_errata_el_model,
+            description="list of errata IDs in which the vulnerability was fixed",
+            as_list=True
+        ),
+        "cpes": fields.List(
+            fields.String,
+            description="list of CPE records for this vulnerability",
+        ),
+        "our": fields.Boolean(description="Our"),
+    },
+)
+vuln_list_model = ns.model(
+    "VulnerabilityListModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(
+            description="number of vulnerabilities found on the page"
+        ),
+        "vulns": fields.Nested(
+            vuln_list_el_model, description="list of vulnerability", as_list=True
         ),
     },
 )
