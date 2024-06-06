@@ -16,6 +16,8 @@
 
 import zipfile
 from io import BytesIO
+from collections import defaultdict
+from datetime import datetime
 
 from altrepo_api.utils import make_tmp_table_name
 from altrepo_api.api.base import APIWorker
@@ -61,6 +63,36 @@ class OvalExport(APIWorker):
 
         return True
 
+    def branch_tasks_history(self, branch: str) -> list[int]:
+        branch_history: list[str] = [branch] + lut.branch_inheritance[branch]
+
+        response = self.send_sql_request(
+            self.sql.branches_tasks_histories.format(
+                branches=branch_history
+            ),
+        )
+
+        partial_branches_histories: dict[str, dict[int, int]]
+        partial_branches_histories = defaultdict(dict)
+
+        last_branch_task_ts: datetime = datetime.fromtimestamp(0)
+        last_branch_task_id: int = 0
+
+        for task_id, task_prev, task_repo, task_changed in response:
+            partial_branches_histories[task_repo][task_id] = task_prev
+
+            if task_repo == branch and task_changed > last_branch_task_ts:
+                last_branch_task_id, last_branch_task_ts = (task_id, task_changed)
+
+        full_branch_history: list[int] = []
+        current_task_id: int = last_branch_task_id
+        for b in branch_history:
+            while task_prev := partial_branches_histories[b].get(current_task_id):
+                full_branch_history.append(current_task_id)
+                current_task_id = task_prev
+
+        return full_branch_history
+
     def get(self):
         package_name = self.args["package_name"]
         one_file = self.args["one_file"]
@@ -73,10 +105,21 @@ class OvalExport(APIWorker):
             zip_file_name = ZIP_FILE_NAME.format(self.branch)
 
         # get ErrataHistory
+        tmp_table = make_tmp_table_name("tasks_ids")
         response = self.send_sql_request(
             self.sql.get_errata_history_by_branch_tasks.format(
-                branch=self.branch, pkg_name_clause=pkg_name_clause
-            )
+                tmp_table_name=tmp_table, pkg_name_clause=pkg_name_clause
+            ),
+            external_tables=[
+                {
+                    "name": tmp_table,
+                    "structure": [("task_id", "UInt32")],
+                    "data": [
+                        {"task_id": task_id}
+                        for task_id in self.branch_tasks_history(branch=self.branch)
+                    ]
+                }
+            ]
         )
         if not self.sql_status:
             return self.error
@@ -87,7 +130,9 @@ class OvalExport(APIWorker):
                 }
             )
         erratas = [
-            ErrataHistoryRecord(ErrataID.from_id(el[0]), *el[1:]) for el in response
+            ErrataHistoryRecord(
+                ErrataID.from_id(el[0]), *el[1:12], self.branch, *el[13:]
+            ) for el in response
         ]
         # collect bugzilla and vulnerability ids from errata
         bz_ids: list[int] = []

@@ -57,7 +57,7 @@ WHERE eh_type = 'task' AND errata_id IN (
             errata_id_noversion,
             argMax(errata_id, eh_updated) AS eid
         FROM ErrataHistory
-        WHERE task_state = 'DONE' AND pkgset_name = '{branch}'
+        WHERE task_id IN {tmp_table_name}
         GROUP BY errata_id_noversion
     )
     WHERE eid NOT IN (
@@ -483,6 +483,26 @@ WHERE hash in (
 )
 {where_clause}
 ORDER BY changed DESC
+"""
+
+    branches_tasks_histories = """
+SELECT DISTINCT
+    task_id,
+    prev,
+    task_repo,
+    task_changed
+FROM Tasks AS L
+INNER JOIN (
+    SELECT DISTINCT
+        task_id,
+        argMax(task_state, task_changed) AS state,
+        argMax(task_prev, task_changed) AS prev,
+        max(task_changed) AS changed
+    FROM TaskStates
+    GROUP BY task_id
+    HAVING state='DONE'
+) AS R ON (L.task_id, L.task_changed) = (R.task_id, R.changed)
+HAVING task_repo IN {branches}
 """
 
 
