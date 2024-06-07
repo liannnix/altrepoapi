@@ -16,8 +16,7 @@
 
 import zipfile
 from io import BytesIO
-from collections import defaultdict
-from datetime import datetime
+from typing import Union
 
 from altrepo_api.utils import make_tmp_table_name
 from altrepo_api.api.base import APIWorker
@@ -63,33 +62,37 @@ class OvalExport(APIWorker):
 
         return True
 
-    def branch_tasks_history(self, branch: str) -> list[int]:
+    def _get_branch_last_task(self) -> Union[int, None]:
+        response = self.send_sql_request(
+            self.sql.get_last_branch_task.format(branch=self.branch)
+        )
+        if not self.sql_status:
+            return None
+
+        return response[0][0]
+
+    def _branch_tasks_history(self, branch: str) -> Union[list[int], None]:
         branch_history: list[str] = [branch] + lut.branch_inheritance[branch]
 
         response = self.send_sql_request(
-            self.sql.branches_tasks_histories.format(
-                branches=branch_history
-            ),
+            self.sql.branches_tasks_histories.format(branches=branch_history),
         )
+        if not self.sql_status:
+            return None
 
-        partial_branches_histories: dict[str, dict[int, int]]
-        partial_branches_histories = defaultdict(dict)
-
-        last_branch_task_ts: datetime = datetime.fromtimestamp(0)
-        last_branch_task_id: int = 0
-
-        for task_id, task_prev, task_repo, task_changed in response:
-            partial_branches_histories[task_repo][task_id] = task_prev
-
-            if task_repo == branch and task_changed > last_branch_task_ts:
-                last_branch_task_id, last_branch_task_ts = (task_id, task_changed)
+        partial_branches_histories = {
+            task_id: task_prev for task_id, task_prev in response
+        }
 
         full_branch_history: list[int] = []
-        current_task_id: int = last_branch_task_id
-        for b in branch_history:
-            while task_prev := partial_branches_histories[b].get(current_task_id):
-                full_branch_history.append(current_task_id)
-                current_task_id = task_prev
+        current_task_id = self._get_branch_last_task()
+        # forward SQL error
+        if current_task_id is None:
+            return None
+
+        while task_prev := partial_branches_histories.get(current_task_id):
+            full_branch_history.append(current_task_id)
+            current_task_id = task_prev
 
         return full_branch_history
 
@@ -106,6 +109,17 @@ class OvalExport(APIWorker):
 
         # get ErrataHistory
         tmp_table = make_tmp_table_name("tasks_ids")
+        task_history = self._branch_tasks_history(branch=self.branch)
+        if task_history is None:
+            return self.error
+
+        if not task_history:
+            return self.store_error(
+                {
+                    "message": f"No tasks history data found in DB for {self.branch}",
+                }
+            )
+
         response = self.send_sql_request(
             self.sql.get_errata_history_by_branch_tasks.format(
                 tmp_table_name=tmp_table, pkg_name_clause=pkg_name_clause
@@ -114,25 +128,25 @@ class OvalExport(APIWorker):
                 {
                     "name": tmp_table,
                     "structure": [("task_id", "UInt32")],
-                    "data": [
-                        {"task_id": task_id}
-                        for task_id in self.branch_tasks_history(branch=self.branch)
-                    ]
+                    "data": [{"task_id": task_id} for task_id in task_history],
                 }
-            ]
+            ],
         )
         if not self.sql_status:
             return self.error
         if not response:
             return self.store_error(
                 {
-                    "message": f"No data found in DB for {self.args}",
+                    "message": f"No Errata' data found in DB for {self.branch}",
                 }
             )
+        # XXX: force current branch into Errata records due to it's used in OVAL distribution
+        # installed test build
         erratas = [
             ErrataHistoryRecord(
-                ErrataID.from_id(el[0]), *el[1:12], self.branch, *el[13:]
-            ) for el in response
+                ErrataID.from_id(el[0]), *el[1:12], self.branch, *el[13:]  # type: ignore
+            )
+            for el in response
         ]
         # collect bugzilla and vulnerability ids from errata
         bz_ids: list[int] = []

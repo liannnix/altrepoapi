@@ -485,12 +485,21 @@ WHERE hash in (
 ORDER BY changed DESC
 """
 
+    get_last_branch_task = """
+SELECT
+    argMax(
+        toUInt32(pkgset_kv.v[indexOf(pkgset_kv.k, 'task')]),
+        pkgset_date
+    ) AS task
+FROM PackageSetName
+WHERE (pkgset_nodename = '{branch}') AND (pkgset_depth = 0)
+GROUP BY pkgset_nodename
+"""
+
     branches_tasks_histories = """
 SELECT DISTINCT
     task_id,
-    prev,
-    task_repo,
-    task_changed
+    prev
 FROM Tasks AS L
 INNER JOIN (
     SELECT DISTINCT

@@ -625,7 +625,7 @@ class OVALBuilder:
                         )
                     )
                 else:
-                    logger.error(f"Failed to create reference for {link}")
+                    logger.warning(f"Failed to create reference for {link}")
             else:
                 logger.debug(f"Failed to get vulnerability details for {link}")
                 vulns_list.append(f"{link}: description unavailable")
@@ -646,7 +646,7 @@ class OVALBuilder:
                         )
                     )
                 else:
-                    logger.error(f"Failed to create reference for {link}")
+                    logger.warning(f"Failed to create reference for {link}")
 
         references.extend(sorted(vuln_references, key=lambda x: x.ref_id))
 
