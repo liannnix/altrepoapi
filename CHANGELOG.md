@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.18.9] - 2024-06-07
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `errata/export/oval`: use branch inheritance to collect errata for OVAL XML files export
+
 # [1.18.8] - 2024-06-03
 
 Regular API code updates and fixes.
