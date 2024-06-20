@@ -487,7 +487,7 @@ WHERE errata_id IN (
 )
 """
 
-    get_bulletin_by_branch_date__where_clause = """
+    get_bulletin_by_branch_date_where_clause = """
 WHERE errata_id IN (
     SELECT DISTINCT eid
     FROM (

@@ -234,7 +234,7 @@ def get_bulletin_by_branch_date(
 
     cls.status = False
 
-    where_clause = cls.sql.get_bulletin_by_branch_date__where_clause.format(
+    where_clause = cls.sql.get_bulletin_by_branch_date_where_clause.format(
         branch=branch_state.name, date=branch_state.date
     )
     response = cls.send_sql_request(
