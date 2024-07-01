@@ -69,7 +69,7 @@ def split_evr(evr: str) -> tuple[int, str, str]:
 
     if EVR_RE.match(evr):
         _epoch = evr.split(":")[0]
-        _evr = evr.lstrip(f"{_epoch}:").split("-")
+        _evr = evr.removeprefix(f"{_epoch}:").split("-")
         epoch = int(_epoch)
     else:
         _evr = evr.split("-")
