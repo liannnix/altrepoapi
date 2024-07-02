@@ -499,14 +499,14 @@ FROM (
     FROM t_state
     LEFT JOIN (
         SELECT
-        task_id,
-        any(task_repo) AS repo,
-        any(task_owner) AS owner
-    FROM Tasks
-    WHERE subtask_deleted = 0
-        AND (task_id, task_changed) = (SELECT t_id, changed FROM t_state)
-    GROUP BY task_id
-    ) AS TI USING task_id
+            task_id,
+            any(task_repo) AS repo,
+            any(task_owner) AS owner
+        FROM Tasks
+        WHERE subtask_deleted = 0
+            AND (task_id, task_changed) = (SELECT t_id, changed FROM t_state)
+        GROUP BY task_id
+    ) AS TI ON t_id=TI.task_id
 ) AS TS
 LEFT JOIN (
     SELECT

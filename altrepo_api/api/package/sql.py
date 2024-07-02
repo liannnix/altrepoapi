@@ -486,7 +486,7 @@ INNER JOIN
         pkg_release,
         pkg_epoch,
         pkg_serial_,
-        pkg_filename as filename,
+        pkg_filename AS filename,
         pkg_buildtime
     FROM Packages
     WHERE pkg_name IN
@@ -498,7 +498,7 @@ INNER JOIN
             SELECT pkg_hash FROM {tmp_table2}
         )
         AND pkg_sourcepackage = 1
-) AS SrcPkg USING filename
+) AS SrcPkg ON pkg_sourcerpm=SrcPkg.filename
 WHERE pkg_sourcepackage = 0
     AND pkg_hash IN
     (
