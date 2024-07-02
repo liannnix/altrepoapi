@@ -179,7 +179,19 @@ WHERE (task_id, subtask_id) IN
 WITH
 last_tasks AS
 {last_tasks_preselect}
-SELECT * FROM
+SELECT
+    task_id,
+    subtask_id,
+    RQ.task_owner,
+    task_changed,
+    RQ.subtask_userid,
+    RQ.subtask_type,
+    RQ.subtask_package,
+    RQ.subtask_srpm_name,
+    RQ.subtask_pkg_from,
+    titer_srcrpm_hash,
+    LST.task_message
+FROM
 (
     SELECT DISTINCT
         task_id,
