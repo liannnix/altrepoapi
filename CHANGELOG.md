@@ -1,6 +1,17 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.19.0] - 2024-07-03
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `api/management`: make `Errata` object hashable
+### Fixed
+- `api`: fix SQL requests to be compatible with ClickHouse v24.3.4
+- fix fragile tests
+
 # [1.18.9] - 2024-06-07
 
 Regular API code updates and fixes.
