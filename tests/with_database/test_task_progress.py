@@ -93,7 +93,9 @@ def test_fast_tasks_search_lookup(client, kwargs):
             if params["input"] == OWNER_IN_DB:
                 assert task["task_owner"] == OWNER_IN_DB
             if params["input"].isdigit():
-                assert params["input"] in str(task["task_id"])
+                assert params["input"] in str(task["task_id"]) or any(
+                    params["input"] in c for c in task["components"]
+                )
 
 
 @pytest.mark.parametrize(
