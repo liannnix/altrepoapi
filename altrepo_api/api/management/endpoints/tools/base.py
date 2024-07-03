@@ -183,6 +183,12 @@ class Errata(NamedTuple):
 
         return Errata(**res)
 
+    def __hash__(self) -> int:
+        if self.id is None:
+            return self.hash
+
+        return hash((self.id.id, self.hash))
+
     def __str__(self) -> str:
         return str(self.asdict())
 
