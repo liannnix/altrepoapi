@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.19.1] - 2024-08-11
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/vulnerabilities`: revert SQL request bug introduced in v1.19.0
+
 # [1.19.0] - 2024-07-03
 
 Regular API code updates and fixes.
