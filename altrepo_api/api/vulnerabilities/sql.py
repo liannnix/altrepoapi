@@ -228,7 +228,7 @@ last_task_subtasks AS (
         SELECT task_id, changed FROM last_task_states
     )
     GROUP BY task_id
-    HAVING argMax(subtask_deleted, task_changed) = 0
+    HAVING subtask_deleted = 0
 )
 SELECT
     task_id,
