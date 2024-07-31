@@ -223,12 +223,18 @@ last_task_subtasks AS (
     SELECT
         task_id,
         groupUniqArray(subtask_id) AS subtasks
-    FROM Tasks
-    WHERE (task_id, task_changed) IN (
-        SELECT task_id, changed FROM last_task_states
+    FROM (
+        SELECT
+            task_id,
+            subtask_id,
+            subtask_deleted
+        FROM Tasks
+        WHERE (task_id, task_changed) IN (
+            SELECT task_id, changed FROM last_task_states
+        )
     )
+    WHERE subtask_deleted = 0
     GROUP BY task_id
-    HAVING subtask_deleted = 0
 )
 SELECT
     task_id,
