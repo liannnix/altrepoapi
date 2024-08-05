@@ -1,7 +1,16 @@
 # Changelog
 ALTrepo API changelog
 
-# [1.19.1] - 2024-08-11
+# [1.19.2] - 2024-08-05
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/[package|task]/what_depends_src`: fix SQL errors with CH v24.3.4
+
+# [1.19.1] - 2024-07-11
 
 Regular API code updates and fixes.
 
