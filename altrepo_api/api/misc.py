@@ -153,10 +153,10 @@ class LookupTables:
         "p9_mipsel": ["noarch", "mipsel"],
         # E2K
         "sisyphus_e2k": ["noarch", "e2k", "e2kv4", "e2kv5", "e2kv6"],
-        # LOONGARCH
-        "sisyphus_loongarch64": ["noarch", "loongarch64"],
         "p10_e2k": ["noarch", "e2k", "e2kv4", "e2kv5", "e2kv6"],
         "p9_e2k": ["noarch", "e2k", "e2kv4", "e2kv5", "e2kv6"],
+        # LOONGARCH
+        "sisyphus_loongarch64": ["noarch", "loongarch64"],
         # MAIN
         "default": ["noarch", "x86_64"],
     }

@@ -85,9 +85,11 @@ class BuildDependency(APIWorker):
 
         # store source packages by level
         # store source packages level 0
-        src_pkgs_by_level = {0: tuple(input_pkgs)}
+        src_pkgs_by_level: dict[int, tuple[str, ...]] = {0: tuple(input_pkgs)}
 
-        def store_src_pkgs_levels(levels_dict: dict, tmp_table: str) -> bool:
+        def store_src_pkgs_levels(
+            levels_dict: dict[int, tuple[str, ...]], tmp_table: str
+        ) -> bool:
             """Select and store packages from temporary table splitted by dependecy levels.
 
             Args:
@@ -104,9 +106,9 @@ class BuildDependency(APIWorker):
                 return False
 
             pkgs = [el[0] for el in response]  # type: ignore
-            pkgs_prev_level = []
+            pkgs_prev_level: set[str] = set()
             for p in levels_dict.values():
-                pkgs_prev_level += p
+                pkgs_prev_level.update(p)
             levels_dict[max(levels_dict.keys()) + 1] = tuple(
                 [pkg for pkg in pkgs if pkg not in pkgs_prev_level]
             )
@@ -410,7 +412,9 @@ class BuildDependency(APIWorker):
                         "archs": tuple(self.arch),
                         "pkgs": list(input_pkgs),
                     },
-                )
+                ),
+                # XXX: fix compatibility with CH v24.3.4
+                settings={"allow_experimental_analyzer": 0},
             )
             if not self.sql_status:
                 return
