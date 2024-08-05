@@ -502,5 +502,7 @@ class LookupTables:
         "sisyphus_e2k",
     )
 
+    av_supported_branches = ("p10", "p11", "c9f2", "c10f1")
+
 
 lut = LookupTables()
