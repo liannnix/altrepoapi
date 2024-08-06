@@ -48,19 +48,6 @@ av_pkg_name_input_val = parser.register_item(
     help="package name or message",
     location="args",
 )
-av_type_opt = parser.register_item(
-    "type",
-    choices=(
-        "all",
-        "info",
-        "threat",
-        "error",
-    ),
-    default="all",
-    required=False,
-    help="detection type",
-    location="args",
-)
 av_scanner_opt = parser.register_item(
     "scanner",
     type=str,

@@ -83,6 +83,70 @@ class SQL:
     GROUP BY pkgset_name, pkg_hash, pkg_name, pkg_version, pkg_release, file_name
     """
 
+    img_av_detections = """
+         SELECT
+        pkgset_name,
+        pkg_hash,
+        pkg_name,
+        pkg_version,
+        pkg_release,
+        file_name,
+        groupUniqArray(
+            (
+                av_scanner,
+                av_type,
+                av_issue,
+                av_message,
+                av_target,
+                av_date
+            )
+        )
+    FROM Packages AS P 
+    INNER JOIN (
+        SELECT DISTINCT
+            pkg_hash,
+            av_scanner,
+            av_type,
+            av_issue,
+            av_message,
+            av_target,
+            file_name,
+            pkgset_name,
+            av_date
+        FROM static_last_packages
+        INNER JOIN (
+            SELECT * FROM AntivirusScanStatus
+            {where_clause}
+        ) AS AV
+        USING (pkgset_name, pkg_name, pkg_version, pkg_release) 
+        WHERE pkg_sourcepackage = 0
+        UNION ALL
+        SELECT DISTINCT
+            M.pkg_srcrpm_hash AS pkg_hash,
+            av_scanner,
+            av_type,
+            av_issue,
+            av_message,
+            av_target,
+            file_name,
+            pkgset_name,
+            av_date,
+        FROM (SELECT DISTINCT pkg_srcrpm_hash, pkg_hash FROM Packages) AS M
+        INNER JOIN (
+            SELECT DISTINCT *
+            FROM static_last_packages
+            INNER JOIN (
+                SELECT * FROM AntivirusScanStatus
+                {where_clause}
+            ) AS AV
+            USING (pkgset_name, pkg_name, pkg_version, pkg_release)
+        ) AS AV
+        ON M.pkg_srcrpm_hash = AV.pkg_hash
+    ) AS AV
+    USING pkg_hash
+    GROUP BY pkgset_name, pkg_hash, pkg_name, pkg_version, pkg_release, file_name
+    """
+
     get_all_av_issues = """
     SELECT DISTINCT
         av_issue

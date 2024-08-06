@@ -23,13 +23,14 @@ from altrepo_api.settings import namespace as settings
 from altrepo_api.api.auth.decorators import token_required
 
 from .endpoints.packages import AntivirusScanPkgList, AntivirusScanIssueList
+from .endpoints.images import AntivirusScanImgList
 from .namespace import get_namespace
 from .parsers import (
     avs_pkg_list_args,
 )
 from .serializers import (
     avs_issue_list_response_model,
-    avs_pkg_list_response_model,
+    avs_list_response_model,
 )
 
 ns = get_namespace()
@@ -47,12 +48,31 @@ logger = get_logger(__name__)
 )
 class routeAntivirusScanPkgList(Resource):
     @ns.expect(avs_pkg_list_args)
-    @ns.marshal_with(avs_pkg_list_response_model)
+    @ns.marshal_with(avs_list_response_model)
     @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
     def get(self):
         url_logging(logger, g.url)
         args = avs_pkg_list_args.parse_args(strict=True)
         w = AntivirusScanPkgList(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/img_list",
+    doc={
+        "description": "Get Antivirus detections list for images",
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routeAntivirusScanImgList(Resource):
+    @ns.expect(avs_pkg_list_args)
+    @ns.marshal_with(avs_list_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = avs_pkg_list_args.parse_args(strict=True)
+        w = AntivirusScanImgList(g.connection, **args)
         return run_worker(worker=w, args=args)
 
 

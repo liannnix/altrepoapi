@@ -47,8 +47,8 @@ source_pkg_model = ns.model(
         ),
     },
 )
-avs_pkg_list_response_model = ns.model(
-    "AvScannerPackagesListResponseModel",
+avs_list_response_model = ns.model(
+    "AvScannerListResponseModel",
     {
         "length": fields.Integer(
             description="Number of antivirus scanner detected matches found"
@@ -60,6 +60,7 @@ avs_pkg_list_response_model = ns.model(
         ),
     },
 )
+
 source_issue_model = ns.model(
     "AvScannerIssueModel",
     {
