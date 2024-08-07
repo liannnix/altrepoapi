@@ -14,7 +14,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import NamedTuple, Union
+from datetime import datetime
+from typing import Any, NamedTuple, Union
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.libs.pagination import Paginator
@@ -32,6 +33,36 @@ class AVScanArgs(NamedTuple):
     branch: Union[str, None]
     scanner: Union[str, None]
     issue: Union[str, None]
+
+
+class DetectInfo(NamedTuple):
+    av_scanner: str
+    av_type: str
+    av_issue: str
+    av_message: str
+    av_target: str
+    av_date: datetime
+
+
+class AVScanImgListResponse(NamedTuple):
+    pkgset_name: str
+    pkg_name: str
+    pkg_version: str
+    pkg_release: str
+    pkg_hash: str
+    fn_name: str
+    detect_info: list[DetectInfo]
+
+    def asdict(self) -> dict[str, Any]:
+        return {
+            "pkgset_name": self.pkgset_name,
+            "pkg_name": self.pkg_name,
+            "pkg_version": self.pkg_version,
+            "pkg_release": self.pkg_release,
+            "pkg_hash": self.pkg_hash,
+            "fn_name": self.fn_name,
+            "detect_info": [el._asdict() for el in self.detect_info],
+        }
 
 
 class AntivirusScanImgList(APIWorker):
@@ -73,10 +104,7 @@ class AntivirusScanImgList(APIWorker):
             )
 
         if conditions:
-            where_clause = (
-                "WHERE av_target='images' AND "
-                + " AND ".join(conditions)
-            )
+            where_clause = "WHERE av_target='images' AND " + " AND ".join(conditions)
         else:
             where_clause = "WHERE av_target='images'"
 
@@ -95,25 +123,25 @@ class AntivirusScanImgList(APIWorker):
             )
 
         res = [
-            {
-                "pkgset_name": pkgset_name,
-                "pkg_name": pkg_name,
-                "pkg_version": pkg_version,
-                "pkg_release": pkg_release,
-                "pkg_hash": pkg_hash,
-                "fn_name": fn_name,
-                "detect_info": [
-                    {
-                        "av_scanner": av_scanner,
-                        "av_type": av_type,
-                        "av_issue": av_issue,
-                        "av_message": av_message,
-                        "av_target": av_target,
-                        "date": date,
-                    }
+            AVScanImgListResponse(
+                pkgset_name=pkgset_name,
+                pkg_name=pkg_name,
+                pkg_version=pkg_version,
+                pkg_release=pkg_release,
+                pkg_hash=pkg_hash,
+                fn_name=fn_name,
+                detect_info=[
+                    DetectInfo(
+                        av_scanner=av_scanner,
+                        av_type=av_type,
+                        av_issue=av_issue,
+                        av_message=av_message,
+                        av_target=av_target,
+                        av_date=date,
+                    )
                     for av_scanner, av_type, av_issue, av_message, av_target, date in reports
                 ],
-            }
+            ).asdict()
             for pkgset_name, pkg_hash, pkg_name, pkg_version, pkg_release, fn_name, reports in response
         ]
 

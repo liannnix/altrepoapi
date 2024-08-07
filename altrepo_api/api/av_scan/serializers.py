@@ -28,7 +28,7 @@ avs_object_model = ns.model(
         "av_issue": fields.String(description="Antivirus detected issue"),
         "av_message": fields.String(description="Full message for current trigger"),
         "av_target": fields.String(description="Branch or image"),
-        "date": fields.DateTime(description="Detection date"),
+        "av_date": fields.DateTime(description="Detection date"),
     },
 )
 source_pkg_model = ns.model(
