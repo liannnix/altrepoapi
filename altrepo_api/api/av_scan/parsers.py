@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from altrepo_api.api.parser import parser, positive_integer_type, sort_type
+from altrepo_api.api.misc import lut
 
 sort_opt = parser.register_item(
     "sort",
@@ -41,7 +42,7 @@ page_opt = parser.register_item(
     help="number page",
     location="args",
 )
-av_pkg_name_input_val = parser.register_item(
+input_val = parser.register_item(
     "input",
     type=str,
     required=False,
@@ -51,6 +52,8 @@ av_pkg_name_input_val = parser.register_item(
 av_scanner_opt = parser.register_item(
     "scanner",
     type=str,
+    choices=("all", *lut.av_known_scanners),
+    default="all",
     required=False,
     help="scanner name",
     location="args",
@@ -62,8 +65,23 @@ av_issue_opt = parser.register_item(
     help="antivirus detection issue",
     location="args",
 )
-avs_pkg_list_args = parser.build_parser(
-    av_pkg_name_input_val,
+av_issue_type_opt = parser.register_item(
+    "type",
+    type=str,
+    choices=(
+        "all",
+        "threat",
+        "error",
+        "info",
+    ),
+    default="all",
+    required=False,
+    help="scanner issue type",
+    location="args",
+)
+
+av_results_args = parser.build_parser(
+    input_val,
     page_opt,
     limit_opt,
     sort_opt,
@@ -71,3 +89,4 @@ avs_pkg_list_args = parser.build_parser(
     av_scanner_opt,
     av_issue_opt,
 )
+av_issues_args = parser.build_parser(av_scanner_opt, av_issue_type_opt)

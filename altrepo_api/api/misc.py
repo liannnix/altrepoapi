@@ -503,6 +503,7 @@ class LookupTables:
     )
 
     av_supported_branches = ("p10", "p11", "c9f2", "c10f1")
+    av_known_scanners = ("drweb", "kesl")
 
 
 lut = LookupTables()

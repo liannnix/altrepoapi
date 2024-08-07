@@ -39,7 +39,7 @@ source_pkg_model = ns.model(
         "pkg_version": fields.String(description="Package version"),
         "pkg_release": fields.String(description="Package release"),
         "pkg_hash": fields.String(description="Package hash"),
-        "fn_name": fields.String(description="File name"),
+        "file_name": fields.String(description="File name"),
         "detect_info": fields.Nested(
             avs_object_model,
             description="Antivirus detection information",

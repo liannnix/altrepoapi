@@ -22,12 +22,9 @@ from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.settings import namespace as settings
 from altrepo_api.api.auth.decorators import token_required
 
-from .endpoints.packages import AntivirusScanPkgList, AntivirusScanIssueList
-from .endpoints.images import AntivirusScanImgList
+from .endpoints.av_results import AntivirusScanResults, AntivirusScanIssueList
 from .namespace import get_namespace
-from .parsers import (
-    avs_pkg_list_args,
-)
+from .parsers import av_results_args, av_issues_args
 from .serializers import (
     avs_issue_list_response_model,
     avs_list_response_model,
@@ -39,7 +36,7 @@ logger = get_logger(__name__)
 
 
 @ns.route(
-    "/pkg_list",
+    "/packages",
     doc={
         "description": "Get Antivirus detections list for packages",
         "responses": GET_RESPONSES_400_404,
@@ -47,18 +44,18 @@ logger = get_logger(__name__)
     },
 )
 class routeAntivirusScanPkgList(Resource):
-    @ns.expect(avs_pkg_list_args)
+    @ns.expect(av_results_args)
     @ns.marshal_with(avs_list_response_model)
     @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
     def get(self):
         url_logging(logger, g.url)
-        args = avs_pkg_list_args.parse_args(strict=True)
-        w = AntivirusScanPkgList(g.connection, **args)
+        args = av_results_args.parse_args(strict=True)
+        w = AntivirusScanResults(g.connection, **args)
         return run_worker(worker=w, args=args)
 
 
 @ns.route(
-    "/img_list",
+    "/images",
     doc={
         "description": "Get Antivirus detections list for images",
         "responses": GET_RESPONSES_400_404,
@@ -66,18 +63,18 @@ class routeAntivirusScanPkgList(Resource):
     },
 )
 class routeAntivirusScanImgList(Resource):
-    @ns.expect(avs_pkg_list_args)
+    @ns.expect(av_results_args)
     @ns.marshal_with(avs_list_response_model)
     @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
     def get(self):
         url_logging(logger, g.url)
-        args = avs_pkg_list_args.parse_args(strict=True)
-        w = AntivirusScanImgList(g.connection, **args)
-        return run_worker(worker=w, args=args)
+        args = av_results_args.parse_args(strict=True)
+        w = AntivirusScanResults(g.connection, **args)
+        return run_worker(worker=w, args=args, run_method=w.get_images)
 
 
 @ns.route(
-    "/issues_list",
+    "/issues",
     doc={
         "description": "Get Antivirus detections list for issues",
         "responses": GET_RESPONSES_404,
@@ -85,6 +82,7 @@ class routeAntivirusScanImgList(Resource):
     },
 )
 class routeAntivirusScanIssueList(Resource):
+    @ns.expect(av_issues_args)
     @ns.marshal_with(avs_issue_list_response_model)
     @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
     def get(self):

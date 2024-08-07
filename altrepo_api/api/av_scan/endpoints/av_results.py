@@ -44,13 +44,13 @@ class DetectInfo(NamedTuple):
     av_date: datetime
 
 
-class AVScanPkgListResponse(NamedTuple):
+class AVScanListResponse(NamedTuple):
     pkgset_name: str
     pkg_name: str
     pkg_version: str
     pkg_release: str
     pkg_hash: str
-    fn_name: str
+    file_name: str
     detect_info: list[DetectInfo]
 
     def asdict(self) -> dict[str, Any]:
@@ -60,12 +60,12 @@ class AVScanPkgListResponse(NamedTuple):
             "pkg_version": self.pkg_version,
             "pkg_release": self.pkg_release,
             "pkg_hash": self.pkg_hash,
-            "fn_name": self.fn_name,
+            "file_name": self.file_name,
             "detect_info": [el._asdict() for el in self.detect_info],
         }
 
 
-class AntivirusScanPkgList(APIWorker):
+class AntivirusScanResults(APIWorker):
     """
     Get a list of all Antivirus detected errors from the database.
     """
@@ -94,7 +94,7 @@ class AntivirusScanPkgList(APIWorker):
 
         if self.args.branch:
             conditions.append(f"pkgset_name = '{self.args.branch}'")
-        if self.args.scanner:
+        if self.args.scanner and self.args.scanner != "all":
             conditions.append(f"av_scanner = '{self.args.scanner}'")
         if self.args.issue:
             conditions.append(f"av_issue = '{self.args.issue}'")
@@ -113,11 +113,9 @@ class AntivirusScanPkgList(APIWorker):
 
         return where_clause
 
-    def get(self):
+    def _get(self, sql: str):
         limit = self.args.limit
-        response = self.send_sql_request(
-            self.sql.src_pkg_av_detections.format(where_clause=self._where_params)
-        )
+        response = self.send_sql_request(sql.format(where_clause=self._where_params))
         if not self.sql_status:
             return self.error
         if not response:
@@ -126,26 +124,16 @@ class AntivirusScanPkgList(APIWorker):
             )
 
         res = [
-            AVScanPkgListResponse(
+            AVScanListResponse(
                 pkgset_name=pkgset_name,
                 pkg_name=pkg_name,
                 pkg_version=pkg_version,
                 pkg_release=pkg_release,
                 pkg_hash=pkg_hash,
-                fn_name=fn_name,
-                detect_info=[
-                    DetectInfo(
-                        av_scanner=av_scanner,
-                        av_type=av_type,
-                        av_issue=av_issue,
-                        av_message=av_message,
-                        av_target=av_target,
-                        av_date=date,
-                    )
-                    for av_scanner, av_type, av_issue, av_message, av_target, date in reports
-                ],
+                file_name=file_name,
+                detect_info=[DetectInfo(*r) for r in reports],
             ).asdict()
-            for pkgset_name, pkg_hash, pkg_name, pkg_version, pkg_release, fn_name, reports in response
+            for pkgset_name, pkg_hash, pkg_name, pkg_version, pkg_release, file_name, reports in response
         ]
 
         if self.args.sort:
@@ -167,6 +155,12 @@ class AntivirusScanPkgList(APIWorker):
                 "X-Total-Count": int(paginator.count),
             },
         )
+
+    def get(self):
+        return self._get(self.sql.src_pkg_av_detections)
+
+    def get_images(self):
+        return self._get(self.sql.img_av_detections)
 
 
 class AntivirusScanIssueList(APIWorker):
