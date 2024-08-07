@@ -249,7 +249,7 @@ LEFT JOIN (
     WHERE subtask_deleted = 0
         AND (task_id, task_changed) = (SELECT t_id, changed FROM t_state)
     GROUP BY task_id
-) AS TI USING task_id
+) AS TI ON TI.task_id = t_state.t_id
 WHERE task_id IN (
     SELECT task_id FROM (
          SELECT

@@ -299,6 +299,7 @@ def test_task_info(client, kwargs, mocked_check_access_token):
     mocked_check_access_token.status_code = kwargs["status_code"]
     response = client.get(url, query_string=params)
     data = response.json
+    assert response.status_code == kwargs["status_code"]
     if response.status_code == 200:
         assert data != {}
         assert data["task_state"] == "DONE"
