@@ -31,9 +31,13 @@ AND task_state IN ['DONE', 'TESTED', 'EPERM']
 """
 
     supported_branches = """
-SELECT DISTINCT pkgset_name
-FROM RepositoryStatus
-WHERE rs_end_date > today()
+SELECT pkgset_name 
+FROM (
+    SELECT DISTINCT pkgset_name, argMax(rs_end_date, ts) AS end_date
+    FROM RepositoryStatus
+    GROUP BY pkgset_name
+) AS BR
+WHERE BR.end_date > today()
 {branch}
 """
 
@@ -916,52 +920,47 @@ SELECT * FROM (
 """
 
     get_all_open_vulns = """
-WITH vulns AS (
-    SELECT pkg_name,
-           pkg_hash,
-           TT.pkgset_name AS branch,
-           TT.pkg_version AS version,
-           TT.pkg_release AS release,
-           vuln_id,
-           vuln_hash
-    FROM (
-        SELECT pkg_name,
-               vuln_id,
-               pkg_hash,
-               argMax(is_vulnerable, ts) AS is_vulnerable,
-               argMax(vuln_hash, ts) AS vuln_hash
-        FROM PackagesCveMatch
-        GROUP BY pkg_name, vuln_id, pkg_hash
-    ) AS ES
-    LEFT JOIN (
-        SELECT pkg_hash, pkgset_name, pkg_version, pkg_release
-        FROM static_last_packages
-    ) AS TT ON TT.pkg_hash == ES.pkg_hash
-    WHERE is_vulnerable = 1
-    AND pkgset_name IN ({branches})
-    GROUP BY pkg_name, pkg_hash, vuln_id, vuln_hash, branch, version, release
-)
-SELECT * FROM (
+SELECT DISTINCT
+    RES.pkg_hash,
+    RES.pkg_name,
+    PKG.pkg_version,
+    PKG.pkg_release,
+    RES.modified_date,
+    RES.pkgset_name,
+    RES.vulns
+FROM (
+SELECT pkg_hash,
+       pkg_name,
+       pkgset_name,
+       arrayReverseSort((x) -> x.1, groupArray((vuln_id, 'CVE', vuln_severity))) as vulns,
+       max(TT.vuln_modified_date) as modified_date
+FROM (
     SELECT pkg_hash,
            pkg_name,
-           version,
-           release,
-           max(VUL.vuln_modified_date) as modified,
-           branch,
-           arrayReverseSort((x) -> x.1, groupUniqArray((vuln_id, VUL.vuln_type, VUL.vuln_severity))) AS vulns
-    FROM vulns
-    LEFT JOIN (
-        SELECT
-            vuln_id,
-            vuln_hash,
-            vuln_type,
-            vuln_severity,
-            vuln_modified_date
-        FROM Vulnerabilities
-    ) AS VUL ON VUL.vuln_id = vulns.vuln_id AND VUL.vuln_hash = vulns.vuln_hash
-    GROUP BY pkg_name, pkg_hash, branch, version, release
-)
-{where_clause}
+           pkgset_name,
+           vuln_id,
+           any(vuln_hash) as vuln_hash,
+           has(groupArray(is_vulnerable), 1) as is_vuln,
+           has(groupArray(is_fixed), 1) as is_fix
+    FROM PackagesVulnerabilityStatus
+    WHERE pkgset_name IN ({branches})
+    {where_clause}
+    GROUP BY pkg_name, pkgset_name, vuln_id, pkg_hash
+) AS vuln_status
+LEFT JOIN (
+    SELECT vuln_hash, vuln_severity, vuln_modified_date
+    FROM Vulnerabilities
+) AS TT ON TT.vuln_hash = vuln_status.vuln_hash
+WHERE is_fix = 0 and is_vuln = 1
+{severity}
+GROUP BY pkg_hash, pkg_name, pkgset_name
+) AS RES
+LEFT JOIN (
+    SELECT pkg_hash, pkg_version, pkg_release
+    FROM static_last_packages
+    WHERE pkgset_name IN ({branches})
+) AS PKG ON PKG.pkg_hash = RES.pkg_hash
+{maintainer_clause}
 """
 
     get_errata_packages = """

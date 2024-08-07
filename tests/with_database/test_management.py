@@ -10,14 +10,15 @@ TASK_NOT_IN_DB = "123456789"
 DELETED_TASK_IN_DB = "307229"
 OWNER_IN_DB = "rider"
 OWNER_NOT_IN_DB = "fakeowner"
-PACKAGE_IN_DB = "curl"
+PACKAGE_IN_DB = "python3"
 PACKAGE_NOT_IN_DB = "fakepackagename"
 PACKAGE_UNMAPPED_IN_DB = "python-module-Draco"
 PACKAGE_UNMAPPED_IN_DB2 = "python,draco"
 PACKAGE_UNMAPPED_NOT_IN_DB = "fakepackagename"
 
-VULN_IN_DB = "CVE-2019-17069"
-VULN_IN_DB2 = "BDU:2021-04545"
+VULN_IN_DB = "CVE-2019-18276"
+VULN_FIXED_IN_DB = "CVE-2024-4368"
+VULN_IN_DB2 = "BDU:2020-03946"
 VULN_NOT_IN_DB = "CVE-1111-11111"
 VULN_NOT_IN_DB2 = "BDU:1111-11111"
 
@@ -91,7 +92,7 @@ IMG_NOT_IN_DB = "test_image"
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },
         {
-            "input": VULN_IN_DB,
+            "input": VULN_FIXED_IN_DB,
             "status_code": 200,
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },
@@ -111,7 +112,7 @@ IMG_NOT_IN_DB = "test_image"
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },
         {
-            "input": TASK_IN_DB,
+            "input": VULN_IN_DB,
             "branch": BRANCH_IN_DB,
             "state": "fakestate",
             "status_code": 400,
@@ -500,6 +501,11 @@ def test_errata_change_history(client, kwargs, mocked_check_access_token):
         },
         {
             "input": VULN_NOT_IN_DB,
+            "status_code": 404,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": VULN_FIXED_IN_DB,
             "status_code": 404,
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },

@@ -95,7 +95,7 @@ class PackagesOpenVulns(APIWorker):
         self.all_images: list[dict[str, str]] = []
         super().__init__()
 
-    @cached_property
+    @property
     def _supported_branches(self) -> str:
         """
         Return SQL query to get supported branches.
@@ -105,22 +105,13 @@ class PackagesOpenVulns(APIWorker):
         )
         return self.sql.supported_branches.format(branch=branch_clause)
 
-    @cached_property
+    @property
     def _where_condition(self) -> str:
         """
         Search conditions for open vulnerabilities.
         """
         where_conditions = (
-            f"WHERE arrayExists(x -> tupleElement(x, 3) = '{self.args.severity}', vulns)"
-            if self.args.severity
-            else ""
-        )
-        where_conditions += (
-            (
-                f" AND pkg_name ILIKE '%{self.args.input}%'"
-                if where_conditions
-                else f"WHERE pkg_name ILIKE '%{self.args.input}%'"
-            )
+            f" AND pkg_name ILIKE '%{self.args.input}%'"
             if self.args.input
             and not self.args.input.startswith("CVE-")
             and not self.args.input.startswith("BDU:")
@@ -187,66 +178,31 @@ class PackagesOpenVulns(APIWorker):
             )
         return request_line
 
-    def _get_maintainer_pkgs(self) -> None:
-        """
-        Get maintainer packages with open vulnerabilities.
-        """
-        self.status = False
-        tmp_table = make_tmp_table_name("maintainer_pkgs")
-        _ = self.send_sql_request(self._maintainer_request_line(tmp_table))
-        if not self.sql_status:
-            return None
-
-        response = self.send_sql_request(
-            self.sql.get_maintainer_open_vulns.format(
-                tmp_table=tmp_table, where_clause=self._where_condition
-            )
-        )
-        if not response:
-            _ = self.store_error(
-                {
-                    "message": (
-                        f"No packages found with open vulnerabilities "
-                        f"for maintainer{self.args.maintainer_nickname}"
-                    ),
-                    "args": self.args._asdict(),
-                }
-            )
-            return None
-        if not self.sql_status:
-            return None
-
-        # drop temporary table
-        _ = self.send_sql_request(self.sql.drop_tmp_table.format(tmp_table=tmp_table))
-        if not self.sql_status:
-            return None
-
-        self.package_vulns = {
-            PackageBranchPair(el[0], el[-2]): PackageMeta(
-                *el[:-1], vulns=[VulnInfoMeta(*vuln) for vuln in el[-1]]
-            )
-            for el in response
-        }
-
-        self.package_vulns = {
-            PackageBranchPair(el[1], el[-2]): PackageMeta(
-                *el[:-1], vulns=[VulnInfoMeta(*vuln) for vuln in el[-1]]
-            )
-            for el in response
-        }
-
-        if not self.sql_status:
-            return None
-        self.status = True
-
-    def _get_all_open_vulns(self) -> None:
+    def _get_open_vulns(self) -> None:
         """
         Get all packages with open vulnerabilities.
         """
         self.status = False
+        severity_clause = (
+            f" AND vuln_severity = '{self.args.severity}'" if self.args.severity else ""
+        )
+
+        maintainer_clause = ""
+        if self.args.maintainer_nickname and self.args.by_acl:
+            tmp_table = make_tmp_table_name("maintainer_pkgs")
+            _ = self.send_sql_request(self._maintainer_request_line(tmp_table))
+            if not self.sql_status:
+                return None
+            maintainer_clause = (
+                f"WHERE PKG.pkg_hash IN (SELECT pkg_hash FROM {tmp_table})"
+            )
+
         response = self.send_sql_request(
             self.sql.get_all_open_vulns.format(
-                branches=self._supported_branches, where_clause=self._where_condition
+                branches=self._supported_branches,
+                where_clause=self._where_condition,
+                severity=severity_clause,
+                maintainer_clause=maintainer_clause,
             )
         )
         if not response:
@@ -315,50 +271,25 @@ class PackagesOpenVulns(APIWorker):
             pkg_vulns = []
             for vuln in pkg.vulns:
                 if vuln.id in vulns:
-                    pkg_vulns += vulns[vuln.id]
+                    new_vulns = [
+                        new_vuln
+                        for new_vuln in vulns[vuln.id]
+                        if new_vuln not in pkg_vulns
+                    ]
+                    pkg_vulns += new_vulns
             copy_vulns[key] = pkg._replace(vulns=pkg_vulns)
 
             # filter packages if a vulnerability number is specified in the search input
             if self.args.input and (
                 self.args.input.startswith("CVE-") or self.args.input.startswith("BDU:")
             ):
-                if self.args.input not in [el.id for el in copy_vulns[key].vulns]:
+                if not [
+                    el.id for el in copy_vulns[key].vulns if self.args.input in el.id
+                ]:
                     del copy_vulns[key]
         self.package_vulns = copy_vulns
 
         self.status = True
-
-    def _get_erratas(self) -> Union[None, dict[PackageBranchPair, list[str]]]:
-        """
-        Get a list of vulnerabilities for package hashes.
-        """
-        self.status = False
-        _tmp_table = "pkgs_hashes"
-        response = self.send_sql_request(
-            self.sql.get_errata_packages.format(tmp_table=_tmp_table),
-            external_tables=[
-                {
-                    "name": _tmp_table,
-                    "structure": [
-                        ("pkg_name", "String"),
-                        ("pkgset_name", "String"),
-                    ],
-                    "data": [
-                        {
-                            "pkg_name": el.pkg_name,
-                            "pkgset_name": el.branch,
-                        }
-                        for el in self.package_vulns.values()
-                    ],
-                }
-            ],
-        )
-        if not self.sql_status:
-            return None
-        self.status = True
-
-        if response:
-            return {PackageBranchPair(el[0], el[1]): el[2] for el in response}
 
     def _get_pkg_images(self) -> None:
         """
@@ -399,40 +330,9 @@ class PackagesOpenVulns(APIWorker):
         self.status = True
 
     def get(self):
-        if self.args.maintainer_nickname and self.args.by_acl:
-            self._get_maintainer_pkgs()
-            if not self.status:
-                return self.error
-        else:
-            self._get_all_open_vulns()
-            if not self.status:
-                return self.error
-
-        # get erratas list by package hash and branch
-        erratas = self._get_erratas()
+        self._get_open_vulns()
         if not self.status:
             return self.error
-
-        # remove vulnerabilities from the list if errata exists for them
-        if erratas:
-            for key, vulns in erratas.items():
-                if key in self.package_vulns:
-                    old_vulns = self.package_vulns[key].vulns
-                    # remove vulnerabilities found as closed from erratas
-                    new_vulns = [el for el in old_vulns if el.id not in set(vulns)]
-                    self.package_vulns[key] = self.package_vulns[key]._replace(
-                        vulns=new_vulns
-                    )
-
-        # filter vulnerabilities by severity if provided
-        if self.args.severity:
-            for key in self.package_vulns:
-                old_vulns = self.package_vulns[key].vulns
-                new_vulns = [v for v in old_vulns if v.severity == self.args.severity]
-                if len(old_vulns) != len(new_vulns):
-                    self.package_vulns[key] = self.package_vulns[key]._replace(
-                        vulns=new_vulns
-                    )
 
         # get related vulns for CVE
         self._get_related_vulns()
