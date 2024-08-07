@@ -277,7 +277,7 @@ class Transaction:
         elif self.errata_action == ErrataAction.DISCARD:
             self._errata_change_records.append(pu_ec_fn(type=ChangeType.DISCARD))
 
-        # add errata change history record for package update
+        # add errata change history record for branch update
         if self.bulletin_action == ErrataAction.CREATE:
             self._errata_change_records.append(bu_ec_fn(type=ChangeType.CREATE))
         elif self.bulletin_action == ErrataAction.UPDATE:
