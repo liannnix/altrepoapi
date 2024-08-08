@@ -1,6 +1,17 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.19.3] - 2024-08-08
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `api/management`: update `/packages/open_vulns` route
+### Fixed
+- `api/management`: fix SQL compatibility with new CH version
+- `tests/with_database/test_management`: fix missing assertions, update tests
+
 # [1.19.2] - 2024-08-05
 
 Regular API code updates and fixes.
