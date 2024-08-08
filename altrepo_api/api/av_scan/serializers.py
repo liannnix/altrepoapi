@@ -64,7 +64,9 @@ avs_list_response_model = ns.model(
 source_issue_model = ns.model(
     "AvScannerIssueModel",
     {
+        "av_scanner": fields.String(description="Antivirus name"),
         "av_issue": fields.String(description="Antivirus detected issue"),
+        "av_type": fields.String(description="Antivirus detected type"),
     },
 )
 avs_issue_list_response_model = ns.model(

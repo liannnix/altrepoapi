@@ -26,7 +26,13 @@ sort_opt = parser.register_item(
     location="args",
 )
 branch_name_opt = parser.register_item(
-    "branch", type=str, required=False, help="branch name", location="args"
+    "branch",
+    type=str,
+    choices=("all", *lut.av_supported_branches),
+    default="all",
+    required=False,
+    help="branch name",
+    location="args",
 )
 limit_opt = parser.register_item(
     "limit",
@@ -79,6 +85,19 @@ av_issue_type_opt = parser.register_item(
     help="scanner issue type",
     location="args",
 )
+av_target_opt = parser.register_item(
+    "target",
+    type=str,
+    choices=(
+        "all",
+        "branch",
+        "images",
+    ),
+    default="all",
+    required=False,
+    help="scanner target",
+    location="args",
+)
 
 av_results_args = parser.build_parser(
     input_val,
@@ -88,5 +107,6 @@ av_results_args = parser.build_parser(
     branch_name_opt,
     av_scanner_opt,
     av_issue_opt,
+    av_target_opt,
 )
 av_issues_args = parser.build_parser(av_scanner_opt, av_issue_type_opt)

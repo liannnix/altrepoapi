@@ -20,7 +20,6 @@ from typing import Any, NamedTuple, Union
 from altrepo_api.api.base import APIWorker
 from altrepo_api.libs.pagination import Paginator
 from altrepo_api.libs.sorting import rich_sort
-from altrepo_api.api.misc import lut
 
 from ..sql import sql
 
@@ -33,6 +32,7 @@ class AVScanArgs(NamedTuple):
     branch: Union[str, None]
     scanner: Union[str, None]
     issue: Union[str, None]
+    target: Union[str, None]
 
 
 class DetectInfo(NamedTuple):
@@ -78,44 +78,35 @@ class AntivirusScanResults(APIWorker):
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
-        if self.args.branch and self.args.branch not in lut.av_supported_branches:
-            self.validation_results.append(
-                f"unknown package set name : {self.args.branch}"
-            )
-
-        if self.validation_results != []:
-            return False
-
         return True
 
     @property
-    def _where_params(self) -> str:
+    def _where_clause(self) -> str:
         conditions = []
 
-        if self.args.branch:
+        if self.args.branch and self.args.branch != "all":
             conditions.append(f"pkgset_name = '{self.args.branch}'")
         if self.args.scanner and self.args.scanner != "all":
             conditions.append(f"av_scanner = '{self.args.scanner}'")
         if self.args.issue:
             conditions.append(f"av_issue = '{self.args.issue}'")
+        if self.args.target and self.args.target != "all":
+            conditions.append(f"av_target IN ('{self.args.target}')")
         if self.args.input:
             conditions.append(
                 f"(pkg_name ILIKE '%{self.args.input}%' OR av_message ILIKE '%{self.args.input}%')"
             )
 
         if conditions:
-            where_clause = (
-                "WHERE av_target='branch' AND pkg_arch='src' AND "
-                + " AND ".join(conditions)
-            )
-        else:
-            where_clause = "WHERE av_target='branch' AND pkg_arch='src'"
+            return "AND " + " AND ".join(conditions)
 
-        return where_clause
+        return "AND av_target in ('images', 'branch')"
 
-    def _get(self, sql: str):
+    def get(self):
         limit = self.args.limit
-        response = self.send_sql_request(sql.format(where_clause=self._where_params))
+        response = self.send_sql_request(
+            self.sql.src_av_detections.format(where_clause=self._where_clause)
+        )
         if not self.sql_status:
             return self.error
         if not response:
@@ -153,43 +144,5 @@ class AntivirusScanResults(APIWorker):
             {
                 "Access-Control-Expose-Headers": "X-Total-Count",
                 "X-Total-Count": int(paginator.count),
-            },
-        )
-
-    def get(self):
-        return self._get(self.sql.src_pkg_av_detections)
-
-    def get_images(self):
-        return self._get(self.sql.img_av_detections)
-
-
-class AntivirusScanIssueList(APIWorker):
-    def __init__(self, connection, **kwargs):
-        self.conn = connection
-        self.args = kwargs
-        self.sql = sql
-        super().__init__()
-
-    def get(self):
-        response = self.send_sql_request(self.sql.get_all_av_issues)
-        if not self.sql_status:
-            return self.error
-        if not response:
-            return self.store_error(
-                {"message": "No data not found in database"},
-            )
-
-        issues = [{"av_issue": issue[0]} for issue in response]
-
-        res = {
-            "length": len(issues),
-            "issues": issues,
-        }
-        return (
-            res,
-            200,
-            {
-                "Access-Control-Expose-Headers": "X-Total-Count",
-                "X-Total-Count": len(issues),
             },
         )
