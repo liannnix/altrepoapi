@@ -16,7 +16,6 @@
 
 import datetime
 
-from functools import cached_property
 from typing import Union, Any, NamedTuple
 
 from altrepo_api.api.base import APIWorker
