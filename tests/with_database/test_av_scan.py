@@ -1,6 +1,9 @@
 import pytest
 from flask import url_for
 
+from altrepo_api.api.misc import lut
+
+
 VALID_ACCESS_TOKEN = "valid_token"
 INVALID_ACCESS_TOKEN = "invalid_token"
 
@@ -206,3 +209,31 @@ def test_av_scan_issues(client, kwargs, mocked_check_access_token):
                 assert params["scanner"] == issue["av_scanner"]
             if params.get("type", ""):
                 assert params["type"] == issue["av_type"]
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "scanner": AV_SCAN_VALID_SCANNER2,
+            "status_code": 401,
+            "headers": {"Authorization": INVALID_ACCESS_TOKEN},
+        },
+    ],
+)
+def test_av_scan_branches(client, kwargs, mocked_check_access_token):
+    params = {k: v for k, v in kwargs.items() if k not in ("status_code", "headers")}
+    url = url_for("manage.antivirus_scan_route_antivirus_scan_issues_list")
+    mocked_check_access_token.headers = kwargs.get("headers", {})
+    mocked_check_access_token.status_code = kwargs["status_code"]
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["length"] != 0
+        assert data["issues"] != list[lut.av_supported_branches]

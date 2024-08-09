@@ -17,6 +17,7 @@
 from typing import Any, NamedTuple, Union
 
 from altrepo_api.api.base import APIWorker
+from altrepo_api.api.misc import lut
 
 from ..sql import sql
 
@@ -97,3 +98,15 @@ class AntivirusScanIssueList(APIWorker):
                 "X-Total-Count": len(issues),
             },
         )
+
+
+class AntivirusScanBranchesList(APIWorker):
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args: AVScanIssuesArgs = AVScanIssuesArgs(**kwargs)
+        self.sql = sql
+        super().__init__()
+
+    def get(self):
+        av_branches = [b for b in lut.av_supported_branches]
+        return {"length": len(av_branches), "branches": av_branches}, 200

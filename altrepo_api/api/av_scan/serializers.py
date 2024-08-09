@@ -82,3 +82,11 @@ avs_issue_list_response_model = ns.model(
         ),
     },
 )
+
+av_branches_response_model = ns.model(
+    "AvScannerBranchesListResponseModel",
+    {
+        "length": fields.Integer(description="Number of antivirus scanned branches"),
+        "branches": fields.List(fields.String, description="scanned branches list"),
+    },
+)

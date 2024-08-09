@@ -23,12 +23,13 @@ from altrepo_api.settings import namespace as settings
 from altrepo_api.api.auth.decorators import token_required
 
 from .endpoints.av_results import AntivirusScanResults
-from .endpoints.av_issues import AntivirusScanIssueList
+from .endpoints.av_issues import AntivirusScanIssueList, AntivirusScanBranchesList
 from .namespace import get_namespace
 from .parsers import av_results_args, av_issues_args
 from .serializers import (
     avs_issue_list_response_model,
     avs_list_response_model,
+    av_branches_response_model,
 )
 
 ns = get_namespace()
@@ -71,4 +72,23 @@ class routeAntivirusScanIssuesList(Resource):
         url_logging(logger, g.url)
         args = av_issues_args.parse_args(strict=True)
         w = AntivirusScanIssueList(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/branches",
+    doc={
+        "description": "Get Antivirus scanned branches list",
+        "responses": GET_RESPONSES_404,
+        "security": "Bearer",
+    },
+)
+class routeAntivirusScanBranchesList(Resource):
+    # @ns.expect()
+    @ns.marshal_with(av_branches_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = av_issues_args.parse_args(strict=True)
+        w = AntivirusScanBranchesList(g.connection, **args)
         return run_worker(worker=w, args=args)
