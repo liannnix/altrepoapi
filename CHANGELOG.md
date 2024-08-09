@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.19.4] - 2024-08-09
+
+Regular API code updates and fixes.
+
+### Added
+- `api/antivirus_scan` namespace and routes
+### Changed
+### Fixed
+
 # [1.19.3] - 2024-08-08
 
 Regular API code updates and fixes.
