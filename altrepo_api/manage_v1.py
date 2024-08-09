@@ -19,6 +19,7 @@ from flask_restx import Api, Resource, fields
 
 from altrepo_api.api.management import ns as management_ns, __version__ as VERSION
 from altrepo_api.api.auth import ns as auth_ns
+from altrepo_api.api.av_scan import ns as av_scan
 from altrepo_api.settings import namespace as settings
 
 
@@ -43,6 +44,7 @@ api = Api(
 
 api.add_namespace(auth_ns)
 api.add_namespace(management_ns)
+api.add_namespace(av_scan)
 
 version_fields = api.model(
     "APIVersion",
