@@ -227,7 +227,7 @@ def test_av_scan_issues(client, kwargs, mocked_check_access_token):
 )
 def test_av_scan_branches(client, kwargs, mocked_check_access_token):
     params = {k: v for k, v in kwargs.items() if k not in ("status_code", "headers")}
-    url = url_for("manage.antivirus_scan_route_antivirus_scan_issues_list")
+    url = url_for("manage.antivirus_scan_route_antivirus_scan_branches_list")
     mocked_check_access_token.headers = kwargs.get("headers", {})
     mocked_check_access_token.status_code = kwargs["status_code"]
     response = client.get(url, query_string=params)
@@ -236,4 +236,4 @@ def test_av_scan_branches(client, kwargs, mocked_check_access_token):
     if response.status_code == 200:
         assert data != {}
         assert data["length"] != 0
-        assert data["issues"] != list[lut.av_supported_branches]
+        assert data["branches"] == list(lut.av_supported_branches)
