@@ -1,6 +1,17 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.19.5] - 2024-08-29
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `tests`: fix av_scan tests
+- `altrepo_api/parser`: `file_name_wc_type` validator regexp
+- `altrepo_api/image`: fix SQL compatibility with new CH version
+
 # [1.19.4] - 2024-08-09
 
 Regular API code updates and fixes.
