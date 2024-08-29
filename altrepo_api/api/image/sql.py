@@ -215,11 +215,11 @@ LEFT JOIN
 
     get_pkgs_tasks = """
 SELECT DISTINCT
-    arrayJoin(titer_pkgs_hash) AS pkg_hash,
+    arrayJoin(arrayIntersect(titer_pkgs_hash, {hshs})) AS pkg_hash,
     task_id,
     subtask_id
 FROM TaskIterations
-WHERE pkg_hash IN {hshs}
+WHERE hasAny(titer_pkgs_hash, {hshs})
 """
 
     tmp_table_columns = (
