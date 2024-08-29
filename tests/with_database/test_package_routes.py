@@ -219,6 +219,12 @@ def test_package_by_file_md5(client, kwargs):
             "arch": None,
             "status_code": 200,
         },
+        {
+            "branch": BRANCH_IN_DB,
+            "file": "/usr/lib64/libstdc++.so*",
+            "arch": None,
+            "status_code": 200,
+        },
         {"branch": BRANCH_IN_DB, "file": None, "arch": None, "status_code": 400},
         {
             "branch": BRANCH_IN_DB,
@@ -229,12 +235,6 @@ def test_package_by_file_md5(client, kwargs):
         {
             "branch": BRANCH_NOT_IN_DB,
             "file": "/bin/bash",
-            "arch": None,
-            "status_code": 400,
-        },
-        {
-            "branch": BRANCH_IN_DB,
-            "file": "/bin/gcc++",
             "arch": None,
             "status_code": 400,
         },
