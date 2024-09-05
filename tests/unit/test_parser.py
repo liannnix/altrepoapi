@@ -266,6 +266,8 @@ def test_disttag_type(test_input, expected_exception, expected):
         ("test_test.123", None, "test_test.123"),
         ("/test/*/test.test*", None, "/test/*/test.test*"),
         ("/test/*/test.test++", None, "/test/*/test.test++"),
+        ("test@123", None, "test@123"),
+        ("test-{123_abc}", None, "test-{123_abc}"),
         ("x*", None, "x*"),
         ("", ValueError, None),
         ("x", ValueError, None),
