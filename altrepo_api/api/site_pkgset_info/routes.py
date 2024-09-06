@@ -26,9 +26,11 @@ from .endpoints.pkgset_info import (
     PkgsetCategoriesCount,
     AllPackagesetArchs,
 )
+from .endpoints.tasks_history import TasksHistory
 from .parsers import (
     all_archs_args,
     pkgset_categories_args,
+    task_id_args,
 )
 from .serializers import (
     all_archs_model,
@@ -36,6 +38,7 @@ from .serializers import (
     pkgset_categories_model,
     all_pkgsets_summary_model,
     pkgsets_summary_status_model,
+    tasks_history_model,
 )
 
 ns = get_namespace()
@@ -163,4 +166,21 @@ class routePkgsetCategoriesCount(Resource):
         url_logging(logger, g.url)
         args = pkgset_categories_args.parse_args(strict=True)
         w = PkgsetCategoriesCount(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/tasks_history",
+    doc={
+        "description": ("Get list of done tasks and active branches"),
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeTasksHistory(Resource):
+    @ns.expect(task_id_args)
+    @ns.marshal_with(tasks_history_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = task_id_args.parse_args(strict=True)
+        w = TasksHistory(g.connection, **args)
         return run_worker(worker=w, args=args)

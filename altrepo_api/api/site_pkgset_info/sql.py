@@ -112,5 +112,52 @@ WHERE img_show == 'show'
 GROUP BY img_branch
 """
 
+    get_done_tasks = """
+WITH task_and_repo AS (
+    SELECT DISTINCT
+        task_id,
+        task_repo
+    FROM Tasks
+    WHERE task_repo IN {branches}
+)
+{where_task_id}
+SELECT
+    task_id,
+    task_prev,
+    task_repo,
+    task_changed
+FROM TaskStates
+LEFT JOIN (SELECT * FROM task_and_repo) AS TR USING task_id
+WHERE task_state = 'DONE'
+    {last_task_changes}
+    AND task_id IN (
+        SELECT task_id FROM task_and_repo
+    )
+ORDER BY task_changed DESC
+"""
+
+    get_branch_history = """
+SELECT
+    pkgset_nodename,
+    pkgset_date,
+    toUInt32(pkgset_kv.v[indexOf(pkgset_kv.k, 'task')])
+FROM PackageSetName
+WHERE pkgset_depth = 0 AND pkgset_nodename IN {branches}
+ORDER BY pkgset_date DESC
+"""
+
+    get_active_pkgsets = """
+SELECT pkgset_name
+FROM
+(
+    SELECT
+        pkgset_name,
+        argMax(rs_show, ts) AS show
+    FROM RepositoryStatus
+    GROUP BY pkgset_name
+)
+WHERE show = 1
+"""
+
 
 sql = SQL()
