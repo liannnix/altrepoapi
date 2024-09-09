@@ -172,7 +172,7 @@ class routePkgsetCategoriesCount(Resource):
 @ns.route(
     "/tasks_history",
     doc={
-        "description": ("Get list of done tasks and active branches"),
+        "description": ("Get history of done tasks for an active branches"),
         "responses": GET_RESPONSES_400_404,
     },
 )

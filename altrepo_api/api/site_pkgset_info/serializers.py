@@ -160,9 +160,7 @@ pkgsets_summary_status_model = ns.model(
 tasks_history_model = ns.model(
     "SiteTasksHistoryModel",
     {
-        "active_branches": fields.List(
-            fields.String, description="list of active branches"
-        ),
+        "branches": fields.List(fields.String, description="list of active branches"),
         "tasks": fields.Nested(
             tasks_history_task_model, description="branches tasks list", as_list=True
         ),

@@ -119,8 +119,12 @@ WITH task_and_repo AS (
         task_repo
     FROM Tasks
     WHERE task_repo IN {branches}
-)
-{where_task_id}
+),
+(
+    SELECT max(task_changed)
+    FROM TaskStates
+    WHERE task_state = 'DONE' {where_clause}
+) AS last_task_changed
 SELECT
     task_id,
     task_prev,
@@ -129,7 +133,7 @@ SELECT
 FROM TaskStates
 LEFT JOIN (SELECT * FROM task_and_repo) AS TR USING task_id
 WHERE task_state = 'DONE'
-    {last_task_changes}
+    AND task_changed <= last_task_changed
     AND task_id IN (
         SELECT task_id FROM task_and_repo
     )
@@ -157,6 +161,12 @@ FROM
     GROUP BY pkgset_name
 )
 WHERE show = 1
+"""
+
+    get_count_task_id = """
+SELECT count(task_id)
+FROM TaskStates
+WHERE task_id = {task_id} AND task_state = 'DONE'
 """
 
 

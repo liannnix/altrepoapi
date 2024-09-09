@@ -6,7 +6,7 @@ BRANCH_IN_DB = "sisyphus"
 BRANCH_NOT_IN_DB = "fakebranch"
 TASK_ID_WITH_BRANCH_COMMITS_IN_DB = 102418
 TASK_ID_WITHOUT_BRANCH_COMMITS_IN_DB = 102404
-TASK_ID_NOT_IN_DB = 0
+TASK_ID_NOT_IN_DB = 1
 
 
 def test_all_pkgsets(client):
@@ -167,10 +167,10 @@ def test_tasks_history(client, kwargs):
     assert response.status_code == kwargs["status_code"]
     if response.status_code == 200:
         assert data != {}
-        assert data["active_branches"] != []
+        assert data["branches"] != []
         assert data["tasks"] != []
-        assert BRANCH_IN_DB in data["active_branches"]
-        assert BRANCH_NOT_IN_DB not in data["active_branches"]
+        assert BRANCH_IN_DB in data["branches"]
+        assert BRANCH_NOT_IN_DB not in data["branches"]
         if params.get("task_id", ""):
             assert data["tasks"][0]["id"] == params["task_id"]
         if params.get("task_id", "") == TASK_ID_WITH_BRANCH_COMMITS_IN_DB:
