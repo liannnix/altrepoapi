@@ -268,6 +268,111 @@ def test_package_by_file_name(client, kwargs):
 @pytest.mark.parametrize(
     "kwargs",
     [
+        {
+            "branch": BRANCH_IN_DB,
+            "files": ["/bin/bash"],
+            "arch": None,
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "files": [
+                "/bin/bash4",
+            ],
+            "arch": "x86_64",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "files": [
+                "/bin/bash*",
+            ],
+            "arch": None,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "files": [
+                "/usr/lib64/libstdc++.so*",
+            ],
+            "arch": None,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "files": [
+                "/usr/lib64/libstdc++.so*",
+                "/bin/bash4",
+            ],
+            "arch": None,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "files": [
+                "fakefile*",
+                "/bin/bash4",
+                "/bin/bash*",
+            ],
+            "arch": None,
+            "status_code": 400,
+        },
+        {"branch": BRANCH_IN_DB, "files": None, "arch": None, "status_code": 400},
+        {
+            "branch": BRANCH_IN_DB,
+            "files": [
+                "/bin/bash*",
+            ],
+            "arch": "fakearch",
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_NOT_IN_DB,
+            "files": [
+                "/bin/bash",
+            ],
+            "arch": None,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "files": [
+                "/usr/bin/curl",
+            ],
+            "arch": "noarch",
+            "status_code": 404,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "files": [
+                "fakefile",
+            ],
+            "arch": None,
+            "status_code": 404,
+        },
+    ],
+)
+def test_packages_by_file_names(client, kwargs):
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("pkghash", "status_code"):
+            continue
+        if v is not None:
+            params[k] = v
+    url = url_for("api.package_route_packages_by_file_names")
+    response = client.post(url, json=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["length"] != 0
+        assert data["request_args"]["json_data"]["branch"] == BRANCH_IN_DB
+        assert data["packages"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
         {"pkghash": BIN_PKG_HASH_IN_DB, "status_code": 200},
         {"pkghash": 1234567890, "status_code": 404},
     ],

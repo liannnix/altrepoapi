@@ -845,6 +845,13 @@ FROM FileNames
 WHERE fn_name LIKE %(elem)s
 """
 
+    gen_table_fnhsh_by_files = """
+CREATE TEMPORARY TABLE {tmp_table} AS
+SELECT fn_hash, fn_name
+FROM FileNames
+WHERE fn_name IN {ext_table}
+"""
+
     pkg_by_file_get_meta_by_hshs = """
 SELECT pkg_hash,
        lower(hex(pkg_cs)) AS pkg_cs,
