@@ -41,7 +41,7 @@ def test_build_dependency_set(client, kwargs):
     if response.status_code == 200:
         assert data != {}
         assert data["length"] != 0
-        assert data["request_args"]["branch"] == "sisyphus"
+        assert data["request_args"]["branch"] == BRANCH_IN_DB
         assert data["packages"] != []
 
 
@@ -199,7 +199,7 @@ def test_package_by_file_md5(client, kwargs):
     if response.status_code == 200:
         assert data != {}
         assert data["length"] != 0
-        assert data["request_args"]["branch"] == "sisyphus"
+        assert data["request_args"]["branch"] == BRANCH_IN_DB
         assert data["packages"] != []
 
 
@@ -261,7 +261,7 @@ def test_package_by_file_name(client, kwargs):
     if response.status_code == 200:
         assert data != {}
         assert data["length"] != 0
-        assert data["request_args"]["branch"] == "sisyphus"
+        assert data["request_args"]["branch"] == BRANCH_IN_DB
         assert data["packages"] != []
 
 
