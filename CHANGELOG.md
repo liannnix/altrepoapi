@@ -1,6 +1,18 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.19.6] - 2024-09-10
+
+Regular API code updates and fixes.
+
+### Added
+- `altrepo_api/site_pkgset_info`: new endpoint `tasks_history`
+- `altrepo_api/package`: new endpoint `packages_by_file_names`
+### Changed
+- project `flake8` settings
+### Fixed
+- `altrepo_api/parser`: `file_name_wc_type` validator regexp
+
 # [1.19.5] - 2024-08-29
 
 Regular API code updates and fixes.
