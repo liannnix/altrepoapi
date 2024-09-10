@@ -109,23 +109,6 @@ all_pkgsets_summary_model = ns.model(
         ),
     },
 )
-tasks_history_task_model = ns.model(
-    "TasksHistoryTaskModel",
-    {
-        "id": fields.Integer(description="task ID"),
-        "prev": fields.Integer(description="previous task ID"),
-        "branch": fields.String(description="task branch name"),
-        "date": fields.String(description="task build time"),
-    },
-)
-tasks_history_branch_commit_model = ns.model(
-    "TasksHistoryBranchCommitModel",
-    {
-        "name": fields.String(description="branch name"),
-        "date": fields.String(description="branch commit date"),
-        "task": fields.Integer(description="task ID"),
-    },
-)
 
 pkgsets_status_el_model = ns.model(
     "SitePackagesetStatusElementModel",
@@ -155,6 +138,24 @@ pkgsets_summary_status_model = ns.model(
             description="list of branches status",
             as_list=True,
         ),
+    },
+)
+
+tasks_history_task_model = ns.model(
+    "TasksHistoryTaskModel",
+    {
+        "id": fields.Integer(description="task ID"),
+        "prev": fields.Integer(description="previous task ID"),
+        "branch": fields.String(description="task branch name"),
+        "date": fields.String(description="task build time"),
+    },
+)
+tasks_history_branch_commit_model = ns.model(
+    "TasksHistoryBranchCommitModel",
+    {
+        "name": fields.String(description="branch name"),
+        "date": fields.String(description="branch commit date"),
+        "task": fields.Integer(description="branch commit task ID"),
     },
 )
 tasks_history_model = ns.model(
