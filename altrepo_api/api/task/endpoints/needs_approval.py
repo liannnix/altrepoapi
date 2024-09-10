@@ -151,9 +151,11 @@ class NeedsApproval(APIWorker):
         response = self.send_sql_request(
             self.sql.get_all_eperm_tasks_with_subtasks.format(
                 branches=tuple(branches),
-                datetime_clause=f"WHERE task_changed < '{before_datetime}'"
-                if before_datetime
-                else "",
+                datetime_clause=(
+                    f"WHERE task_changed < '{before_datetime}'"
+                    if before_datetime
+                    else ""
+                ),
             )
         )
         if not self.sql_status:
@@ -181,9 +183,9 @@ class NeedsApproval(APIWorker):
         response = self.send_sql_request(
             self.sql.get_all_approvals_for_tasks.format(
                 tmp_table=_tmp_table,
-                datetime_clause=f"AND ts < '{before_datetime}'"
-                if before_datetime
-                else "",
+                datetime_clause=(
+                    f"AND ts < '{before_datetime}'" if before_datetime else ""
+                ),
             ),
             external_tables=[
                 {

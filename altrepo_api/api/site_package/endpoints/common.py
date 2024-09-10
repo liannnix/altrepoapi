@@ -59,13 +59,11 @@ class _pAPIWorker(Protocol):
 
     def store_error(
         self, message: dict[str, Any], severity: int = ..., http_code: int = ...
-    ) -> tuple[Any, int]:
-        ...
+    ) -> tuple[Any, int]: ...
 
     def send_sql_request(
         self, request_line: Any, http_code: int = ..., **kwargs
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
 
 class _pPackageInfo(Protocol):
@@ -95,13 +93,11 @@ class _pParseTaskGearMixin(_pHasLUT, _pHasPackageInfo, Protocol):
 
 
 class _pFindBuildSubtaskMixin(_pHasBranchHashAndSrcFlag, _pAPIWorker, Protocol):
-    def _get_build_tasks(self) -> tuple[list[BuildTask], list[SubtaskInfo]]:
-        ...
+    def _get_build_tasks(self) -> tuple[list[BuildTask], list[SubtaskInfo]]: ...
 
 
 class _pFindBuildTaskMixixn(_pFindBuildSubtaskMixin, Protocol):
-    def _parse_task_gear(self, subtask: SubtaskInfo) -> str:
-        ...
+    def _parse_task_gear(self, subtask: SubtaskInfo) -> str: ...
 
 
 class ParseTaskGearMixin:

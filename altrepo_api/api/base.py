@@ -29,11 +29,9 @@ WorkerResult = Union[WorkerResultWithHeaders, WorkerResultWithoutHeaders]
 class ConnectionProtocol(Protocol):
     request_line: Union[str, tuple[str, Any]]
 
-    def send_request(self, **query_kwargs) -> tuple[bool, Any]:
-        ...
+    def send_request(self, **query_kwargs) -> tuple[bool, Any]: ...
 
-    def drop_connection(self) -> None:
-        ...
+    def drop_connection(self) -> None: ...
 
 
 class Response(NamedTuple):

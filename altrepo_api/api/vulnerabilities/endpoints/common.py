@@ -362,13 +362,11 @@ class _pAPIWorker(Protocol):
 
     def store_error(
         self, message: dict[str, Any], severity: int = ..., http_code: int = ...
-    ) -> tuple[Any, int]:
-        ...
+    ) -> tuple[Any, int]: ...
 
     def send_sql_request(
         self, request_line: Any, http_code: int = ..., **kwargs
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
 
 class _pHasBranch(Protocol):
@@ -399,24 +397,20 @@ class _pHasPackagesVulnerabilities(Protocol):
     packages_vulnerabilities: list[PackageVulnerability]
 
 
-class _pGetErratasCompatible(_pHasErratas, _pHasBranch, _pAPIWorker, Protocol):
-    ...
+class _pGetErratasCompatible(_pHasErratas, _pHasBranch, _pAPIWorker, Protocol): ...
 
 
-class _pDedupErratasCompatible(_pHasErratas, _pAPIWorker, Protocol):
-    ...
+class _pDedupErratasCompatible(_pHasErratas, _pAPIWorker, Protocol): ...
 
 
 class _pGetPackagesCpesCompatible(
     _pHasPackagesCpes, _pHasBranch, _pAPIWorker, Protocol
-):
-    ...
+): ...
 
 
 class _pGetCveInfoCompatible(
     _pHasCveInfo, _pHasCveCpems, _pHasBranch, _pAPIWorker, Protocol
-):
-    ...
+): ...
 
 
 class _pGetCveMatchingByPackageCpesCompatible(
@@ -424,12 +418,10 @@ class _pGetCveMatchingByPackageCpesCompatible(
     _pHasPackagesCpes,
     _pAPIWorker,
     Protocol,
-):
-    ...
+): ...
 
 
-class _pGetCveInfoByIdsCompatible(_pHasCveInfo, _pAPIWorker, Protocol):
-    ...
+class _pGetCveInfoByIdsCompatible(_pHasCveInfo, _pAPIWorker, Protocol): ...
 
 
 class _pGetLastPackageVersionsCompatible(
@@ -437,8 +429,7 @@ class _pGetLastPackageVersionsCompatible(
     _pHasBranch,
     _pAPIWorker,
     Protocol,
-):
-    ...
+): ...
 
 
 class _pGetMatchedPackagesNamesCompatible(
@@ -446,8 +437,7 @@ class _pGetMatchedPackagesNamesCompatible(
     _pHasPackagesCpes,
     _pAPIWorker,
     Protocol,
-):
-    ...
+): ...
 
 
 class _pGetPackagesVulnerabilitiesCompatible(
@@ -457,14 +447,12 @@ class _pGetPackagesVulnerabilitiesCompatible(
     _pHasPackagesVulnerabilities,
     _pAPIWorker,
     Protocol,
-):
-    ...
+): ...
 
 
 class _pDedupPackagesVulnerabilitiesCompatible(
     _pHasPackagesVulnerabilities, _pAPIWorker, Protocol
-):
-    ...
+): ...
 
 
 class _pGetVulnerabilityFixErrataCompatible(
@@ -474,12 +462,10 @@ class _pGetVulnerabilityFixErrataCompatible(
     _pHasBranch,
     _pAPIWorker,
     Protocol,
-):
-    ...
+): ...
 
 
-class _pGetTaskHistoryCompatible(_pHasBranch, _pAPIWorker, Protocol):
-    ...
+class _pGetTaskHistoryCompatible(_pHasBranch, _pAPIWorker, Protocol): ...
 
 
 # Mixin
@@ -853,9 +839,7 @@ def get_packages_cpes(
     if not cls.sql_status:
         return None
     if not response:
-        _ = cls.store_error(
-            {"message": "No CPE matches data info found in DB"}
-        )
+        _ = cls.store_error({"message": "No CPE matches data info found in DB"})
         return None
 
     for pkg_name, cpe in response:
@@ -1020,7 +1004,9 @@ def get_vulnerability_fix_errata(
                 if (pkg.name, pkg.branch) == (
                     errata.pkg_name,
                     errata.branch,
-                ) and pkg.vuln_id in errata.ref_ids(ref_type=RT_VULN):  # type: ignore
+                ) and pkg.vuln_id in errata.ref_ids(
+                    ref_type=RT_VULN  # type: ignore
+                ):
                     # no need to check version due to branch, package name and vulnerability id is equal already
                     pkg.fixed_in.append(errata)
 

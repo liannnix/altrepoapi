@@ -204,8 +204,12 @@ class routePackagesByFileNames(Resource):
     def post(self):
         url_logging(logger, g.url)
         w = PackageByFileName(g.connection, json_data=ns.payload)
-        return run_worker(worker=w, args=ns.payload, run_method=w.post,
-                          check_method=w.check_params_post)
+        return run_worker(
+            worker=w,
+            args=ns.payload,
+            run_method=w.post,
+            check_method=w.check_params_post,
+        )
 
 
 @ns.route(

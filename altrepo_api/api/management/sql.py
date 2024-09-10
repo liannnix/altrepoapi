@@ -31,7 +31,7 @@ AND task_state IN ['DONE', 'TESTED', 'EPERM']
 """
 
     supported_branches = """
-SELECT pkgset_name 
+SELECT pkgset_name
 FROM (
     SELECT DISTINCT pkgset_name, argMax(rs_end_date, ts) AS end_date
     FROM RepositoryStatus

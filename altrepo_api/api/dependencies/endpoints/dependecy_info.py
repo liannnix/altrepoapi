@@ -100,9 +100,7 @@ class PackagesDependence(APIWorker):
                     "args": self.args,
                 }
             )
-        DepsMeta = namedtuple(
-            "DepsMeta", ["pkg_hash", "dp_type"]
-        )
+        DepsMeta = namedtuple("DepsMeta", ["pkg_hash", "dp_type"])
         pkg_hashes: dict[int, list[str]] = {}
         for el in response:
             dp = DepsMeta(*el)

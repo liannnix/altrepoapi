@@ -149,9 +149,9 @@ class LicenseInfo(APIWorker):
                 "type": license_info.type,
                 "urls": license_info.urls,
                 "header": license_info.header if license_info.type == "license" else "",
-                "comment": license_info.header
-                if license_info.type == "exception"
-                else "",
+                "comment": (
+                    license_info.header if license_info.type == "exception" else ""
+                ),
             }
             return res, 200
         else:
