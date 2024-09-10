@@ -269,6 +269,16 @@ pkg_by_file_name_model = ns.model(
     },
 )
 
+pkgs_by_file_names_json_model = ns.model(
+    "PackagesByFileNamesJsonModel",
+    {
+        "files": fields.List(fields.String(description="file names"), required=True),
+        "branch": fields.String(description="name of packageset", required=True),
+        "arch": fields.String(description="packages architecture", required=False),
+    },
+)
+
+
 unpackaged_dirs_args_el_model = ns.model(
     "UnpackagedDirsElementModel",
     {

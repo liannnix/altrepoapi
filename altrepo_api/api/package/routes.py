@@ -31,7 +31,10 @@ from .endpoints.repocop import Repocop
 from .endpoints.package_info import PackageInfo
 from .endpoints.find_packageset import FindPackageset
 from .endpoints.unpackaged_dirs import UnpackagedDirs
-from .endpoints.package_by_file import PackageByFileName, PackageByFileMD5
+from .endpoints.package_by_file import (
+    PackageByFileName,
+    PackageByFileMD5,
+)
 from .endpoints.pkg_build_dependency import PackageBuildDependency
 from .endpoints.misconflict_packages import PackageMisconflictPackages
 from .endpoints.build_dependency_set import PackageBuildDependencySet
@@ -55,6 +58,7 @@ from .serializers import (
     misconflict_pkgs_model,
     pkg_find_pkgset_model,
     pkg_by_file_name_model,
+    pkgs_by_file_names_json_model,
     unpackaged_dirs_args_model,
     build_dep_set_model,
     repocop_json_list_model,
@@ -181,6 +185,27 @@ class routePackageByFileMD5(Resource):
         args = pkg_by_file_md5_args.parse_args(strict=True)
         w = PackageByFileMD5(g.connection, **args)
         return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/packages_by_file_names",
+    doc={
+        "description": (
+            "Get information about binary packages from  last package sets "
+            "by given file names array and package set name."
+            "\nFile name wildcars '*' is not allowed."
+        ),
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routePackagesByFileNames(Resource):
+    @ns.expect(pkgs_by_file_names_json_model)
+    @ns.marshal_with(pkg_by_file_name_model)
+    def post(self):
+        url_logging(logger, g.url)
+        w = PackageByFileName(g.connection, json_data=ns.payload)
+        return run_worker(worker=w, args=ns.payload, run_method=w.post,
+                          check_method=w.check_params_post)
 
 
 @ns.route(
