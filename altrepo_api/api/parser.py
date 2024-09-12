@@ -76,7 +76,9 @@ __packager_name_match = re.compile(r"^[a-zA-Z]+[\w\.\ \-\@]*$")
 __packager_email_match = re.compile(r"^[\w\.\-]+@[\w\.\-]+$")
 __packager_nickname_match = re.compile(r"^[\w\-]{2,}$")
 # file name match allows '*' wildcard symbol
-__file_name_wc_match = re.compile(r"^[\w\-\.\+\@\/\*\%\{\}]{2,}$")
+__file_name_wc_match = re.compile(
+    r"^[\\\/\w\-\.\,\#\:\+\@\&\$\!\*\%\'\~\:\=\{\}\[\]\(\)]{2,}$"
+)
 __dp_name_match = re.compile(r"^[\w\/\(\)\.\:\-\+]{2,}$")
 # image name
 __uuid_string_match = re.compile(
