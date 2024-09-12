@@ -51,8 +51,9 @@ class PackageByFileName(APIWorker):
 
     def get(self):
         self.file = self.args["file"]
-        # replacae wildcards '*' with SQL-like '%'
+        # escape `%` sign
         self.file = self.file.replace("%", "\\%")
+        # replacae wildcards '*' with SQL-like '%'
         self.file = self.file.replace("*", "%")
         self.arch = self.args["arch"]
         self.branch = self.args["branch"]
@@ -76,10 +77,9 @@ class PackageByFileName(APIWorker):
         return self._find_packages(tmp_file_names)
 
     def check_params_post(self):
-        self.logger.debug(f"args : {self.args['json_data']}")
         self.validation_results = []
 
-        self.files = []
+        self.files: list[str] = []
         for file in self.args["json_data"]["files"]:
             try:
                 file = file_name_wc_type(file)
@@ -150,7 +150,7 @@ class PackageByFileName(APIWorker):
                 }
             )
 
-        file_names = dict()
+        file_names: dict[int, str] = dict()
         for f in response:
             file_names[f[0]] = f[1]
 
@@ -182,14 +182,10 @@ class PackageByFileName(APIWorker):
                 }
             )
 
-        ids_filename_dict = tuplelist_to_dict(response, 1)  # type: ignore
+        ids_filename_dict: dict[str, list[str]] = {}
 
-        new_ids_filename_dict = {}
-
-        for k, v in ids_filename_dict.items():
-            new_ids_filename_dict[k] = [file_names[x] for x in v]
-
-        ids_filename_dict = new_ids_filename_dict
+        for k, v in tuplelist_to_dict(response, 1).items():
+            ids_filename_dict[k] = [file_names[x] for x in v]
 
         response = self.send_sql_request(
             (
@@ -200,18 +196,28 @@ class PackageByFileName(APIWorker):
         if not self.sql_status:
             return self.error
 
-        output_values = []
+        packages: list[PkgInfo] = []
         for package in response:
             package += (ids_filename_dict[package[0]],)
-            output_values.append(package[1:])
+            packages.append(PkgInfo(*package[1:]))
 
-        retval = [PkgInfo(*el)._asdict() for el in output_values]
         not_found = []
+        # get file name or file names count to include in response JSON
+        _files = ""
+        if hasattr(self, "file"):
+            _files = self.file
         if hasattr(self, "files"):
-            not_found = list(set(self.files) - set(file_names.values()))
+            _files = len(self.files)
+            not_found = list(
+                set(self.files) - set(f for p in packages for f in p.files)
+            )
 
-        res = {"request_args": self.args, "length": len(retval),
-               "packages": retval, "not_found": not_found}
+        res = {
+            "request_args": {"branch": self.branch, "arch": self.arch, "files": _files},
+            "length": len(packages),
+            "packages": [p._asdict() for p in packages],
+            "not_found": not_found,
+        }
         return res, 200
 
 

@@ -366,7 +366,7 @@ def test_packages_by_file_names(client, kwargs):
     if response.status_code == 200:
         assert data != {}
         assert data["length"] != 0
-        assert data["request_args"]["json_data"]["branch"] == BRANCH_IN_DB
+        assert data["request_args"]["branch"] == BRANCH_IN_DB
         assert data["packages"] != []
 
 
