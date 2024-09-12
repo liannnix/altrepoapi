@@ -266,6 +266,7 @@ pkg_by_file_name_model = ns.model(
             description="package set packages information",
             as_list=True,
         ),
+        "not_found": fields.List(fields.String, description="list of not found filenames")
     },
 )
 

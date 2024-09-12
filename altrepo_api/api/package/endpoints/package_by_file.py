@@ -52,6 +52,7 @@ class PackageByFileName(APIWorker):
     def get(self):
         self.file = self.args["file"]
         # replacae wildcards '*' with SQL-like '%'
+        self.file = self.file.replace("%", "\\%")
         self.file = self.file.replace("*", "%")
         self.arch = self.args["arch"]
         self.branch = self.args["branch"]
@@ -205,8 +206,12 @@ class PackageByFileName(APIWorker):
             output_values.append(package[1:])
 
         retval = [PkgInfo(*el)._asdict() for el in output_values]
+        not_found = []
+        if hasattr(self, "files"):
+            not_found = list(set(self.files) - set(file_names.values()))
 
-        res = {"request_args": self.args, "length": len(retval), "packages": retval}
+        res = {"request_args": self.args, "length": len(retval),
+               "packages": retval, "not_found": not_found}
         return res, 200
 
 
