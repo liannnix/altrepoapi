@@ -1,6 +1,17 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.19.7] - 2024-09-12
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `package/packages_by_file_names`:
+  - update file name validator
+  - add a list of files that are not belong to any package
+
 # [1.19.6] - 2024-09-10
 
 Regular API code updates and fixes.
