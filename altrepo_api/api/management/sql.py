@@ -549,7 +549,7 @@ INSERT INTO ErrataChangeHistory (* EXCEPT ts) VALUES
     get_package_info_by_task_and_subtask = """
 WITH
 (
-    SELECT DISTINCT task_changed
+    SELECT max(task_changed)
     FROM TaskStates
     WHERE task_id = {task_id} AND task_state = 'DONE'
 ) AS t_changed,
