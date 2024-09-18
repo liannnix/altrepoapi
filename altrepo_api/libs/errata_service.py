@@ -70,8 +70,6 @@ def _parse_url(url: str) -> tuple[str, str]:
     if not url:
         raise ErrataIDServiceError("Valid service URL should be specified")
 
-    url = url.rstrip("/")
-
     if url.startswith("http://"):
         schema = "http"
     elif url.startswith("https://"):
@@ -81,13 +79,11 @@ def _parse_url(url: str) -> tuple[str, str]:
 
     try:
         url = url.lstrip(f"{schema}://")
-        address, port = url.split(":")
-        if not port.isdigit():
-            raise ErrataIDServiceError("Failed to parse port from URL: %s" % url)
-    except ValueError:
+        address = url.rstrip("/").split("//", 1)[-1]
+    except (ValueError, TypeError, IndexError):
         raise ErrataIDServiceError("Failed to parse service URL: %s" % url)
 
-    return f"{schema}://{address}:{port}/", schema
+    return f"{schema}://{address}/", schema
 
 
 class ErrataIDService:
