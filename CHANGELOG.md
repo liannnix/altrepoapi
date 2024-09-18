@@ -1,6 +1,16 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.19.8] - 2024-09-18
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `altrepo_api/libs/errata_service`: ErrataID service URL handling
+- `api/management/sql`: fix gathering latests `task_changed` value for `DONE` task
+
 # [1.19.7] - 2024-09-12
 
 Regular API code updates and fixes.
