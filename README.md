@@ -8,7 +8,7 @@ API documentation is available through Swagger web-interface.
 
 # License
 
-GNU AGPLv3
+[GNU AGPLv3](https://www.gnu.org/licenses/agpl-3.0.html)
 
 # Dependencies
 
