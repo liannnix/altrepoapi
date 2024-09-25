@@ -73,6 +73,13 @@ class TaskInfo(APIWorker):
                     f"task iteration argument should be in range 1 to {MAX_TRY_ITER}"
                 )
 
+        states = self.args["states"]
+        valid_states = ("DONE", "EPERM", "TESTED")
+        if states:
+            for state in states:
+                if state not in valid_states:
+                    self.validation_results.append(f"Invalid task state '{state}'")
+
         return self.validation_results == []
 
     class TaskState(NamedTuple):
@@ -129,8 +136,17 @@ class TaskInfo(APIWorker):
     def _get_task_rebuilds(self, try_iter: Optional[tuple[int, int]]):
         self.status = False
         # get task rebuilds
+        if self.task_states:
+            iterations_where_clause = self.sql.task_iterations_where_clause.format(
+                id=self.task_id, states=self.task_states
+            )
+        else:
+            iterations_where_clause = ""
+
         response = self.send_sql_request(
-            self.sql.task_all_iterations.format(id=self.task_id)
+            self.sql.task_all_iterations.format(
+                id=self.task_id, where_clause=iterations_where_clause
+            )
         )
         if not self.sql_status:
             return None
@@ -331,6 +347,7 @@ class TaskInfo(APIWorker):
     def get(self):
         self.task_try = self.args["try"]
         self.task_iter = self.args["iteration"]
+        self.task_states = self.args["states"]
 
         self.task = {"id": self.task_id, "try": self.task_try, "iter": self.task_iter}
         if self.task_try is not None and self.task_iter is not None:

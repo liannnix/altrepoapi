@@ -77,6 +77,7 @@ SELECT DISTINCT
     max(task_changed)
 FROM TaskIterations
 WHERE task_id = {id}
+{where_clause}
 GROUP BY
     task_try,
     task_iter,
@@ -85,6 +86,15 @@ ORDER BY
     task_try,
     task_iter,
     subtask_id
+"""
+
+    task_iterations_where_clause = """
+AND task_changed IN (
+    SELECT DISTINCT task_changed
+    FROM TaskStates
+    WHERE task_id = {id}
+        AND task_state IN {states}
+)
 """
 
     task_iterations_by_ti = """

@@ -26,6 +26,7 @@ from altrepo_api.api.parser import (
     acl_group_type,
     datetime_string_type,
     task_id_type,
+    task_state_type,
 )
 
 # register parser items
@@ -185,9 +186,20 @@ before_datetime_opt = parser.register_item(
     help="show tasks' info before specified datetime (YYYY-MM-DD[ HH:MM:SS])",
     location="args",
 )
+task_states_opt = parser.register_item(
+    "states",
+    type=task_state_type,
+    action="split",
+    default=None,
+    required=False,
+    help="Filter task states by given list (valid values is `DONE`, `EPERM` and `TESTED`)",
+    location="args",
+)
 
 # build parsers
-task_info_args = parser.build_parser(try_opt, iteration_opt, no_chanche_opt)
+task_info_args = parser.build_parser(
+    try_opt, iteration_opt, no_chanche_opt, task_states_opt
+)
 task_repo_args = parser.build_parser(include_task_packages_opt)
 task_build_dep_args = parser.build_parser(
     depth_opt,

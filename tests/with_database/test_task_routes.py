@@ -5,13 +5,18 @@ TASKID_IN_DB = 200000
 TASKID_NOT_IN_DB = 100000
 TASKID_CURL_PKG = 290333
 TASKID_SYSLINUX_PKG = 284193
+TASK_ID_CURL_P10 = 345770
 
 
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"id": TASKID_IN_DB, "try": None, "iteration": None, "status_code": 200},
-        {"id": TASKID_IN_DB, "try": 1, "iteration": 1, "status_code": 200},
+        {"id": TASK_ID_CURL_P10, "try": None, "iteration": None, "status_code": 200},
+        {"id": TASK_ID_CURL_P10, "try": 3, "iteration": 1, "status_code": 200},
+        {"id": TASK_ID_CURL_P10, "try": 3, "iteration": 1, "states": ["DONE"], "status_code": 200},
+        {"id": TASK_ID_CURL_P10, "try": 2, "iteration": 1, "states": ["EPERM"], "status_code": 200},
+        {"id": TASK_ID_CURL_P10, "try": 3, "iteration": 1, "states": ["XXX"], "status_code": 400},
+        {"id": TASK_ID_CURL_P10, "try": 3, "iteration": 1, "states": ["EPERM"], "status_code": 404},
         {"id": TASKID_IN_DB, "try": "1", "iteration": None, "status_code": 400},
         {"id": TASKID_IN_DB, "try": None, "iteration": "1", "status_code": 400},
         {"id": TASKID_IN_DB, "try": 1, "iteration": None, "status_code": 400},
