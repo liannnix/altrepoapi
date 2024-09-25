@@ -7,8 +7,10 @@ Regular API code updates and fixes.
 
 ### Added
 ### Changed
+- update project license year and README
 - `task/task_info`: add support for `states` request argument that used to distinguish task contents for particular try and iteration
 ### Fixed
+- `tests\test_parser`: update `test_file_name_wc_type` test cases
 
 # [1.19.8] - 2024-09-18
 
