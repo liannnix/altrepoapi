@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.19.9] - 2024-09-25
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `task/task_info`: add support for `states` request argument that used to distinguish task contents for particular try and iteration
+### Fixed
+
 # [1.19.8] - 2024-09-18
 
 Regular API code updates and fixes.
