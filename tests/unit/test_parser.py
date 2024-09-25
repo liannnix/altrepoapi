@@ -272,9 +272,9 @@ def test_disttag_type(test_input, expected_exception, expected):
         ("", ValueError, None),
         ("x", ValueError, None),
         (" test", ValueError, None),
-        ("/A.b.c~123", ValueError, None),
-        ("/abc-Test!", ValueError, None),
-        ("/test-123\\x.y", ValueError, None),
+        ("/A.b.c~123", None, "/A.b.c~123"),
+        ("/abc-Test!", None, "/abc-Test!"),
+        ("/test-123\\x.y{aaa}", None, "/test-123\\x.y{aaa}"),
     ],
 )
 def test_file_name_wc_type(test_input, expected_exception, expected):
