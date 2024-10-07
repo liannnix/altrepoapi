@@ -187,7 +187,7 @@ class ManageCpe(APIWorker):
 
         # build change reason object
         self.reason = ChangeReason(
-            actor=UserInfo(
+            user=UserInfo(
                 name=self.payload.get("user", ""),
                 ip=get_real_ip(),
             ),
@@ -207,7 +207,7 @@ class ManageCpe(APIWorker):
 
         self.action = self.payload.get("action", "")
 
-        if not self.reason.actor.name:
+        if not self.reason.user.name:
             self.validation_results.append("User name should be specified")
 
         if not self.reason.message:
@@ -359,7 +359,7 @@ class ManageCpe(APIWorker):
                 f"All changes comitted to DB for transaction {self.trx.id}"
             )
             return {
-                "user": self.reason.actor.name,
+                "user": self.reason.user.name,
                 "action": self.action,
                 "reason": self.reason.message,
                 "message": "OK",
@@ -685,7 +685,7 @@ class ManageCpe(APIWorker):
         for p in db_cpes.get(self.cpe.project_name, []):
             if compare_pnc_records(pncr, p, include_state=True):
                 return {
-                    "user": self.reason.actor.name,
+                    "user": self.reason.user.name,
                     "action": self.action,
                     "reason": self.reason.message,
                     "message": "No changes found to be stored to DB",
@@ -845,7 +845,7 @@ class ManageCpe(APIWorker):
         for p in db_cpes.get(self.cpe.project_name, []):
             if compare_pnc_records(pncr, p, include_state=True):
                 return {
-                    "user": self.reason.actor.name,
+                    "user": self.reason.user.name,
                     "action": self.action,
                     "reason": self.reason.message,
                     "message": "No changes found to be stored to DB",

@@ -23,7 +23,11 @@ from typing import Any, NamedTuple, Protocol, Union
 from uuid import UUID
 
 from altrepo_api.api.misc import lut
-from .constants import CHANGE_SOURCE_AUTO, CHANGE_SOURCE_MANUAL
+from .constants import (
+    CHANGE_SOURCE_AUTO,
+    CHANGE_SOURCE_MANUAL,
+    ERRAT_CHANGE_ACTOR_DEFAULT,
+)
 
 UUID_T = Union[str, UUID]
 
@@ -220,18 +224,20 @@ class ChangeOrigin(IntEnum):
 
 
 class ChangeReason(NamedTuple):
-    actor: UserInfo
+    # actor: str
+    user: UserInfo
     message: str
     details: dict[str, Any]
 
     def clone(self) -> "ChangeReason":
         return ChangeReason(
-            actor=self.actor, message=self.message, details=copy.deepcopy(self.details)
+            user=self.user, message=self.message, details=copy.deepcopy(self.details)
         )
 
     def serialize(self) -> str:
         res = self._asdict()
-        res["actor"] = f"{self.actor.name}[{self.actor.ip}]"
+        res["actor"] = ERRAT_CHANGE_ACTOR_DEFAULT
+        res["user"] = self.user._asdict()
         return json.dumps(res, default=str)
 
 
@@ -316,6 +322,6 @@ class PncChangeRecord(NamedTuple):
         res["origin"] = self.origin.name
         res["pnc"] = self.pnc.asdict()
         res["reason"] = self.reason.serialize()
-        res["user"] = self.reason.actor.name
-        res["user_ip"] = self.reason.actor.ip
+        res["user"] = self.reason.user.name
+        res["user_ip"] = self.reason.user.ip
         return res

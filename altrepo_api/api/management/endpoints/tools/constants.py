@@ -20,6 +20,8 @@ from altrepo_api.api.misc import lut
 
 DT_NEVER = datetime.fromtimestamp(0, tz=timezone.utc)
 
+ERRAT_CHANGE_ACTOR_DEFAULT = "Errata management API"
+
 DRY_RUN_KEY = "dry_run"
 CHANGE_SOURCE_KEY = "change_source"
 CHANGE_SOURCE_AUTO = "auto"

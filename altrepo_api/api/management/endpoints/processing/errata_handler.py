@@ -104,7 +104,7 @@ class ErrataHandler(APIWorker):
     ) -> tuple[bool, dict[str, Any]]:
         args = {
             "payload": build_manage_errata_payload(
-                user=self.reason.actor.name,
+                user=self.reason.user.name,
                 reason=build_reason_string(et),
                 action=CHANGE_ACTION_CREATE,
                 errata=errata,
@@ -137,7 +137,7 @@ class ErrataHandler(APIWorker):
     ) -> tuple[bool, dict[str, Any]]:
         args = {
             "payload": build_manage_errata_payload(
-                user=self.reason.actor.name,
+                user=self.reason.user.name,
                 reason=build_reason_string(et),
                 action=CHANGE_ACTION_UPDATE,
                 errata=errata,
@@ -171,7 +171,7 @@ class ErrataHandler(APIWorker):
         # discard Errata
         args = {
             "payload": build_manage_errata_payload(
-                user=self.reason.actor.name,
+                user=self.reason.user.name,
                 reason=build_reason_string(et),
                 action=CHANGE_ACTION_DISCARD,
                 # XXX: use original errata state here to be discarded
