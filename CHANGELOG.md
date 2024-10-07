@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.19.10] - 2024-10-07
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/management`: Errata change originator and service info contents handling
+
 # [1.19.9] - 2024-09-25
 
 Regular API code updates and fixes.
