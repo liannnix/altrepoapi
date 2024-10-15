@@ -94,6 +94,9 @@ class PackageInfo(APIWorker):
             "packager_email": "pkg_packager_email",
         }
         for k, v in input_params.items():
+            if k == "arch" and self.args["source"]:
+                continue
+
             if self.args[k] is not None:
                 params_values.append(f"{v} = '{self.args[k]}'")
         if self.args["source"]:
