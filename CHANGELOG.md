@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.19.11] - 2024-10-16
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/package/package_info`: ignore architecture argument handling for source packages
+
 # [1.19.10] - 2024-10-07
 
 Regular API code updates and fixes.
