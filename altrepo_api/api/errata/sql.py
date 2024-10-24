@@ -48,6 +48,23 @@ GROUP BY bz_id
 """
 
     get_errata_history_by_branch_tasks = """
+WITH
+done_task_subtasks AS (
+    SELECT
+        task_id,
+        subtask_id
+    FROM Tasks
+    WHERE (task_id, task_changed) IN (
+        SELECT
+            task_id,
+            max(task_changed)
+        FROM TaskStates
+        WHERE task_id IN  {tmp_table_name}
+            AND task_state = 'DONE'
+        GROUP BY task_id
+    )
+    HAVING subtask_deleted = 0
+)
 SELECT DISTINCT * EXCEPT ts
 FROM ErrataHistory
 WHERE eh_type = 'task' AND errata_id IN (
@@ -57,7 +74,7 @@ WHERE eh_type = 'task' AND errata_id IN (
             errata_id_noversion,
             argMax(errata_id, eh_updated) AS eid
         FROM ErrataHistory
-        WHERE task_id IN {tmp_table_name}
+        WHERE (task_id, subtask_id) IN done_task_subtasks
         GROUP BY errata_id_noversion
     )
     WHERE eid NOT IN (
