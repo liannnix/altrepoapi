@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.19.11] - 2024-10-24
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/errata/export/oval`: Errata gathering SQL request to filter out deleted subtasks
+
 # [1.19.11] - 2024-10-16
 
 Regular API code updates and fixes.
