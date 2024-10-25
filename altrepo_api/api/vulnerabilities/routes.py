@@ -19,6 +19,7 @@ from flask_restx import Resource
 
 from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
+from altrepo_api.api.vulnerabilities.parsers import bdu_or_cve_info_args
 from .endpoints.fixes import VulnFixes
 from .endpoints.tasks import TaskVulnerabilities
 
@@ -38,10 +39,11 @@ from .serializers import (
     cve_task_model,
     branch_cve_packages_model,
     vuln_fixes_model,
+    vuln_open_model,
 )
 from .endpoints.vuln import VulnInfo
 from .endpoints.cve import VulnerablePackageByCve
-from .endpoints.packages import PackageOpenVulnerabilities
+from .endpoints.packages import PackageOpenVulnerabilities, PackagesByOpenVuln
 from .endpoints.branch import BranchOpenVulnerabilities
 from .endpoints.maintainer import MaintainerOpenVulnerabilities
 
@@ -235,4 +237,24 @@ class routeTaskVulnerabilities(Resource):
         w = TaskVulnerabilities(g.connection, id, **args)
         if not w.check_task_id():
             ns.abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/open/packages",
+    doc=False,  # XXX: hide from Swagger UI
+    # doc={
+    #     "description": (
+    #         "Get a list of packages in which the specified vulnerability is open."
+    #     ),
+    #     "responses": GET_RESPONSES_400_404,
+    # },
+)
+class routePackagesByOpenVuln(Resource):
+    @ns.expect(bdu_or_cve_info_args)
+    @ns.marshal_with(vuln_open_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = bdu_or_cve_info_args.parse_args(strict=True)
+        w = PackagesByOpenVuln(g.connection, **args)
         return run_worker(worker=w, args=args)

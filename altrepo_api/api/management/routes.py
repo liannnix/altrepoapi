@@ -103,13 +103,20 @@ from altrepo_api.api.task_progress.endpoints.packageset import AllTasksBraches
 from altrepo_api.api.task_progress.serializers import all_tasks_branches_model
 from altrepo_api.api.vulnerabilities.endpoints.fixes import VulnFixes
 from altrepo_api.api.vulnerabilities.endpoints.vuln import VulnInfo
-from altrepo_api.api.vulnerabilities.parsers import cve_info_args, bdu_info_args
+from altrepo_api.api.vulnerabilities.endpoints.packages import PackagesByOpenVuln
+from altrepo_api.api.vulnerabilities.parsers import (
+    cve_info_args,
+    bdu_info_args,
+    bdu_or_cve_info_args,
+)
 from altrepo_api.api.vulnerabilities.serializers import (
     vuln_fixes_model,
     vuln_fixes_el_model,
     vuln_pkg_last_version_model,
     vulnerability_info_model,
     vulnerability_model,
+    vuln_open_model,
+    vuln_open_el_model,
 )
 
 ns = get_namespace()
@@ -322,6 +329,34 @@ class routeVulnerableBduFixes(Resource):
         url_logging(logger, g.url)
         args = bdu_info_args.parse_args(strict=True)
         w = VulnFixes(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/vuln/open/packages",
+    doc={
+        "description": (
+            "Get a list of packages in which the specified vulnerability is open."
+        ),
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routePackagesByOpenVuln(Resource):
+    @ns.expect(bdu_or_cve_info_args)
+    @ns.marshal_with(
+        ns.clone(
+            "VulnOpenPackagesModel",
+            vuln_open_model,
+            ns.clone("VulnOpenPackagesElementModel", vuln_open_el_model),
+            ns.clone("VulnPackageLastVersionModel", vuln_pkg_last_version_model),
+        )
+    )
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = bdu_or_cve_info_args.parse_args(strict=True)
+        w = PackagesByOpenVuln(g.connection, **args)
         return run_worker(worker=w, args=args)
 
 

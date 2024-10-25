@@ -424,5 +424,60 @@ WHERE (vuln_id, vuln_hash) IN (
 )
 """
 
+    get_packages_with_open_vuln = """
+SELECT DISTINCT
+    RES.pkg_hash,
+    RES.pkg_name,
+    RES.pkgset_name,
+    PKG.pkg_version,
+    PKG.pkg_release,
+FROM (
+    SELECT pkg_hash,
+           pkg_name,
+           pkgset_name
+    FROM (
+        SELECT pkg_hash,
+               pkg_name,
+               pkgset_name,
+               vuln_id,
+               any(vuln_hash) as vuln_hash,
+               has(groupArray(is_vulnerable), 1) as is_vuln,
+               has(groupArray(is_fixed), 1) as is_fix
+        FROM PackagesVulnerabilityStatus
+        GROUP BY pkg_name, pkgset_name, vuln_id, pkg_hash
+    ) AS vuln_status
+    LEFT JOIN (
+        SELECT vuln_hash, vuln_severity, vuln_modified_date
+        FROM Vulnerabilities
+    ) AS TT ON TT.vuln_hash = vuln_status.vuln_hash
+    WHERE is_fix = 0 AND is_vuln = 1
+    AND vuln_id IN {tmp_table}
+    GROUP BY pkg_hash, pkg_name, pkgset_name
+    ) AS RES
+    LEFT JOIN (
+        SELECT pkg_hash, pkg_version, pkg_release
+        FROM static_last_packages
+    ) AS PKG ON PKG.pkg_hash = RES.pkg_hash
+"""
+
+    get_bdu_related_cves = """
+SELECT arrayReduce(
+    'groupUniqArray',
+    arrayMap(
+        x -> (x.2),
+        arrayFilter(
+            (t, l) -> (t = 'CVE'),
+            arrayZip(vuln_references.type, vuln_references.link)
+        )
+    )
+)
+FROM Vulnerabilities
+WHERE vuln_hash = (
+    SELECT argMax(vuln_hash, ts)
+    FROM Vulnerabilities
+    WHERE vuln_id = '{bdu_id}'
+)
+"""
+
 
 sql = SQL()

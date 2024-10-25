@@ -170,6 +170,33 @@ vuln_fixes_model = ns.model(
     },
 )
 
+vuln_open_el_model = ns.model(
+    "VulnOpenPackagesElementModel",
+    {
+        "pkghash": fields.String(description="package hash UInt64 as string"),
+        "name": fields.String(description="package name"),
+        "branch": fields.String(description="package set name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "last_version": fields.Nested(
+            vuln_pkg_last_version_model,
+            description="last package version and release from repository",
+        ),
+    },
+)
+vuln_open_model = ns.model(
+    "VulnOpenPackagesModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "packages": fields.Nested(
+            vuln_open_el_model,
+            description="vulnerable packages information",
+            as_list=True,
+        ),
+    },
+)
+
 
 cve_task_package_vulns_el_model = ns.model(
     "CveTaskPackageVulnerableElementModel",
