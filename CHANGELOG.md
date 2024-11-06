@@ -1,7 +1,16 @@
 # Changelog
 ALTrepo API changelog
 
-# [1.19.11] - 2024-10-24
+# [1.19.13] - 2024-11-06
+
+Regular API code updates and fixes.
+
+### Added
+- `manage` API: `/vuln/open/packages` route
+### Changed
+### Fixed
+
+# [1.19.12] - 2024-10-24
 
 Regular API code updates and fixes.
 
