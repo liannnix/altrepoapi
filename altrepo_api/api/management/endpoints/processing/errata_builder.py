@@ -379,11 +379,11 @@ class ErrataBuilder(APIWorker):
             pkg_branches = [v.branch for v in pkg_versions]
             existing_erratas = erratas_by_package.get(pkg_name, [])
             # check if errata exists and not contains mentioned vulns
-            for r, v in (
+            for record, vulns in (
                 (r, v) for r, v in zip(chlog.changelog, pkgs_vulns_from_chlog[h]) if v
             ):
                 # XXX: collect only CVE IDs from changlog
-                cves_from_chlog = tuple(cves_from_vulns(v))
+                cves_from_chlog = tuple(cves_from_vulns(vulns))
                 if not cves_from_chlog:
                     continue
 
@@ -392,21 +392,21 @@ class ErrataBuilder(APIWorker):
                     if branch in lut.taskless_branches:
                         continue
                     # check if current chlog record is already processed
-                    if (branch, pkg_name, r.evr, cves_from_chlog) in uniq_bnevrv:
+                    if (branch, pkg_name, record.evr, cves_from_chlog) in uniq_bnevrv:
                         continue
-                    uniq_bnevrv.add((branch, pkg_name, r.evr, cves_from_chlog))
+                    uniq_bnevrv.add((branch, pkg_name, record.evr, cves_from_chlog))
                     # check if errata exists already
                     errata = find_errata_by_package_chlog(
-                        branch, pkg_name, r.evr, existing_erratas
+                        branch, pkg_name, record.evr, existing_erratas
                     )
                     if errata is None:
                         # create new errata point
                         ep = make_errata_creation_point(
-                            branch, pkg_name, r.evr, cves_from_chlog
+                            branch, pkg_name, record.evr, cves_from_chlog
                         )
                         if ep is None:
                             self.logger.warning(
-                                f"Failed to create errata for in {branch} on {r}"
+                                f"Failed to create errata for {pkg_name} in {branch} on {record}"
                             )
                             continue
                         # check if created errata point has existing errata
@@ -422,7 +422,7 @@ class ErrataBuilder(APIWorker):
                                 continue
                             # update existing errata
                             e_, ep_ = make_errata_update_point(
-                                exact_errata, cves_diff, r.evr
+                                exact_errata, cves_diff, record.evr
                             )
                             if (e_, ep_) not in uniq_chlog_update:
                                 uniq_chlog_update.add((e_, ep_))
@@ -437,7 +437,7 @@ class ErrataBuilder(APIWorker):
                     if cves_diff is None:
                         continue
                     # update existing errata
-                    e_, ep_ = make_errata_update_point(errata, cves_diff, r.evr)
+                    e_, ep_ = make_errata_update_point(errata, cves_diff, record.evr)
                     if (e_, ep_) not in uniq_chlog_update:
                         uniq_chlog_update.add((e_, ep_))
                         self.eh.add_errata_update_from_chlog(e_, ep_)
