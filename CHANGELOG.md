@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.19.14] - 2024-11-14
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/management`: Errata processing error on CPE records changes
+
 # [1.19.13] - 2024-11-06
 
 Regular API code updates and fixes.
