@@ -478,16 +478,23 @@ WHERE errata_id = '{errata_id}'
 
     get_bulletin_by_pkg_update_where_clause = """
 WHERE errata_id IN (
-    SELECT DISTINCT eid
-    FROM (
+    WITH bulletins AS (
         SELECT
-            errata_id_noversion,
+            errata_id_noversion AS eid_no_ver,
             argMax(errata_id, eh_updated) AS eid
         FROM ErrataHistory
         WHERE eh_type = 'bulletin'
             AND has(eh_references.link, '{errata_id}')
         GROUP BY errata_id_noversion
     )
+    SELECT eid
+    FROM (
+        SELECT argMax(errata_id, eh_updated) AS eid
+        FROM ErrataHistory
+        WHERE errata_id_noversion IN (SELECT eid_no_ver FROM bulletins)
+        GROUP BY errata_id_noversion
+    )
+    WHERE eid IN (SELECT eid FROM bulletins)
 )
 """
 
