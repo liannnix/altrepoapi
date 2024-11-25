@@ -21,8 +21,8 @@ from .namespace import get_namespace
 ns = get_namespace()
 
 
-subtask_archs_model = ns.model(
-    "SubTaskArchitecturesModel",
+subtask_arch_model = ns.model(
+    "SubTaskArchitectureModel",
     {
         "stage_status": fields.String(description="stage status"),
         "arch": fields.String(description="subtask architecture"),
@@ -47,7 +47,7 @@ subtasks_el_model = ns.model(
         "subtask_changed": fields.DateTime(description="subtask changed"),
         "type": fields.String(description="subtask type"),
         "archs": fields.Nested(
-            subtask_archs_model, description="list of subtask architectures"
+            subtask_arch_model, description="list of subtask architectures", as_list=True
         ),
     },
 )
@@ -155,7 +155,7 @@ subtask_info_el_model = ns.model(
         "src_pkg_name": fields.String(description="source package name"),
         "src_pkg_hash": fields.String(description="source package hash"),
         "archs": fields.Nested(
-            subtask_archs_model, description="list of subtask architectures"
+            subtask_arch_model, description="list of subtask architectures", as_list=True
         ),
         "approval": fields.Nested(
             task_approval_el_model,
