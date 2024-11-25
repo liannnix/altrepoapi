@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.19.15] - 2024-11-25
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/task_progress`: serialization models
+
 # [1.19.14] - 2024-11-14
 
 Regular API code updates and fixes.
