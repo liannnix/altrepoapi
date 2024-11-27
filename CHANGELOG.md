@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.19.16] - 2024-11-27
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/site/site+package`: `site/binary_package_archs_and_versions` route error on certain branch and package with multiple versions
+
 # [1.19.15] - 2024-11-25
 
 Regular API code updates and fixes.
