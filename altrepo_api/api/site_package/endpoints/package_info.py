@@ -19,8 +19,6 @@ from typing import Any, NamedTuple
 
 from altrepo_api.utils import (
     datetime_to_iso,
-    tuplelist_to_dict,
-    sort_branches,
     get_nickname_from_packager,
     dp_flags_decode,
 )
@@ -685,15 +683,9 @@ class PackagesBinaryListInfo(APIWorker):
         if not self.sql_status:
             return self.error
 
-        # sort package versions by branch
-        pkg_branches = sort_branches([el[0] for el in response])
-        pkg_versions = tuplelist_to_dict(response, 3)
-
-        # XXX: workaround for multiple versions of returned for certain branch
+        # XXX: some branches could has multiple versions of a certain package
         PkgVersions = namedtuple("PkgVersions", ["branch", "version", "release"])
-        pkg_versions = [
-            PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
-        ]
+        pkg_versions = [PkgVersions(*el[:3])._asdict() for el in response]
 
         res = {
             "request_args": self.args,
