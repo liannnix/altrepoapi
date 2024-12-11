@@ -61,22 +61,14 @@ class LookupTables:
         "p9_e2k",
         "p10_e2k",
     ]
-    oval_export_branches = ["p9", "p10", "c9f2", "c10f1"]
+    oval_export_branches = ["p9", "p10", "p11", "c9f2", "c10f1"]
     oval_export_branches_map = {
         "p9": "1",
         "p10": "2",
-        "c9f2": "3",
-        "c10f1": "4",
+        "p11": "3",
+        "c9f2": "4",
+        "c10f1": "5",
     }
-    # oval_export_branches = ["p9", "p10", "p11", "c9f2", "c10f1", "c10f2"]
-    # oval_export_branches_map = {
-    #     "p9": "1",
-    #     "p10": "2",
-    #     "p11": "3",
-    #     "c9f2": "4",
-    #     "c10f1": "5",
-    #     "c10f2": "6",
-    # }
     no_downloads_branches = ["sisyphus_e2k", "p9_e2k", "p10_e2k"]
 
     repology_branches = ("altsisyphus", "alt_p9", "alt_p10", "alt_p11")
@@ -94,9 +86,7 @@ class LookupTables:
         "c10f2": "alt_p10",
         "p10_e2k": "alt_p10",
         # P11
-        # TODO: map 'p11' to 'sisyphus' until Repology export enabled
-        # "p11": "alt_p11",
-        "p11": "altsisyphus",
+        "p11": "alt_p11",
         # Sisyphus
         "sisyphus": "altsisyphus",
         "sisyphus_e2k": "altsisyphus",
