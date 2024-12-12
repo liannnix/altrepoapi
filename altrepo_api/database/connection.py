@@ -17,6 +17,7 @@
 from time import sleep
 from typing import Any, Iterable, Union
 from clickhouse_driver import Client, errors, __version__ as chd_version
+from clickhouse_driver.defines import DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET_V2
 
 from altrepo_api.settings import namespace as settings
 from altrepo_api.utils import get_logger, exception_to_logger, json_str_error
@@ -45,6 +46,7 @@ class DBConnection:
             database=clickhouse_name,
             user=dbuser,
             password=dbpass,
+            client_revision=DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET_V2
         )
 
         try_conn = self._connection_test()
