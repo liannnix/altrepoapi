@@ -1,6 +1,22 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.20.0] - 2024-12-12
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `errata/export/oval`: add `p11` branch support
+- `errata/export/oval`: update product' CPEs (closes #52399, #52400, #52401)
+- `Docker`: migrate to `p11` based images
+### Fixed
+- `bin`: fix gunicorn server argument parsing error
+- `tests\test_package_by_file_md5`: testcase data
+- `api\utils`: remove unused code
+- `api`: update Docker files
+- `api/database`: Clickhouse errors with `clickhouse-driver` version 0.2.9
+
 # [1.19.16] - 2024-11-27
 
 Regular API code updates and fixes.
