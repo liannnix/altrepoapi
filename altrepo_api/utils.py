@@ -30,11 +30,6 @@ from typing import Any, Iterable, Union
 from urllib.parse import unquote
 from uuid import UUID, uuid4
 
-try:
-    from ujson import dumps
-except ImportError:
-    from json import dumps
-
 from altrepo_api.settings import namespace as settings
 
 
@@ -161,21 +156,6 @@ def convert_to_dict(keys: list[Any], values: list[Any]) -> dict[Any, Any]:
         res[i] = dict([(keys[j], values[i][j]) for j in range(len(values[i]))])
 
     return res
-
-
-def convert_to_json(keys: list[str], values: list[Any], sort: bool = False) -> str:
-    js = {}
-
-    for i in range(len(values)):
-        js[i] = dict([(keys[j], values[i][j]) for j in range(len(values[i]))])
-
-        for key in js[i]:
-            if key == "date":
-                js[i]["date"] = datetime.datetime.strftime(
-                    js[i]["date"], "%Y-%m-%d %H:%M:%S"
-                )
-
-    return dumps(js, sort_keys=sort)
 
 
 def join_tuples(tuple_list: list[tuple[Any, ...]]) -> tuple[Any, ...]:

@@ -1,4 +1,3 @@
-import json
 import pytest
 import datetime
 
@@ -65,19 +64,6 @@ def test_sort_branches(test_input, expected):
 )
 def test_join_tuples(test_input, expected):
     assert utils.join_tuples(test_input) == expected
-
-
-def test_convert_to_json():
-    values = [
-        ("elem1", "elem2", "elem3"),
-        ("elem1.1", "elem2.1", "elem3.1"),
-        ("elem1.2", "elem2.2", "elem3.2"),
-    ]
-    js = json.loads(utils.convert_to_json(["key1", "key2", "key3"], values))
-
-    assert "elem1" == js["0"]["key1"]
-    assert "elem2.1" == js["1"]["key2"]
-    assert "elem3.2" == js["2"]["key3"]
 
 
 def test_tuplelist_to_dict():
