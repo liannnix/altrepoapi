@@ -26,12 +26,18 @@ RUN \
         python3-module-jwt \
         python3-module-redis-py \
         python3-module-flask-cors \
+        python3-module-requests \
+        python3-module-ujson \
         tzdata \
         python3-module-pytest \
         python3-module-pytest-flask \
-        python3-module-requests \
         openldap-servers \
         openldap-clients \
+    # install altrepodb_libs module from tasks
+        apt-repo \
+    && apt-repo add 302527 \
+    && apt-get update \
+    && yes | apt-get install python3-module-altrepodb_libs \
     # clean-up Apt caches
     && rm -f /var/cache/apt/archives/*.rpm \
         /var/cache/apt/*.bin \
