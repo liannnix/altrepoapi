@@ -27,7 +27,7 @@ RUN \
         python3-module-redis-py \
         python3-module-flask-cors \
         python3-module-requests \
-        python3-module-ujson \
+        python3-module-orjson \
         tzdata \
         python3-module-pytest \
         python3-module-pytest-flask \

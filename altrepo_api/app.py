@@ -14,6 +14,27 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+try:
+    from orjson import dumps as orjson_dumps
+    from orjson import OPT_SORT_KEYS, OPT_APPEND_NEWLINE, OPT_OMIT_MICROSECONDS
+    import json
+
+    def dumps(obj, **kwargs) -> str:
+        option = (
+            OPT_APPEND_NEWLINE
+            | OPT_OMIT_MICROSECONDS
+            | (OPT_SORT_KEYS if kwargs.get("sort_keys") else 0)
+        )
+
+        # default = kwargs.get("default", None)
+        default = None
+
+        return orjson_dumps(obj, default, option).decode("utf-8")
+
+    json.dumps = dumps
+except ImportError:
+    pass
+
 import time
 from flask import Flask, redirect, g, request
 from flask_cors import CORS

@@ -27,7 +27,7 @@ RUN \
         python3-module-redis-py \
         python3-module-flask-cors \
         python3-module-requests \
-        python3-module-ujson \
+        python3-module-orjson \
         tzdata \
     # install altrepodb_libs module from tasks
         apt-repo \
