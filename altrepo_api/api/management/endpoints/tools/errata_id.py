@@ -99,7 +99,7 @@ def _check_errata_id(
         logger.info(f"Check errata ID latest version for {id}")
         return eid_service.check(id)
     except ErrataIDServiceError as e:
-        logger.error(f"Failed to update errata ID version for {id}: {e}")
+        logger.error(f"Failed to check errata ID for {id}: {e}")
         raise ErrataManageError("error: %s" % e)
 
 
