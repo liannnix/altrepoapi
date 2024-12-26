@@ -26,8 +26,16 @@ try:
             | (OPT_SORT_KEYS if kwargs.get("sort_keys") else 0)
         )
 
-        # default = kwargs.get("default", None)
-        default = None
+        default = kwargs.get("default", None)
+
+        # workaround to handle `cls` argument in tests
+        # usually custom serializer class implements only `default` method
+        cls = kwargs.get("cls", None)
+        if cls:
+            try:
+                default = cls().default
+            except AttributeError:
+                pass
 
         return orjson_dumps(obj, default, option).decode("utf-8")
 
