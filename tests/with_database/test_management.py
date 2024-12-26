@@ -507,6 +507,7 @@ def test_errata_change_history(client, kwargs, mocked_check_access_token):
         },
         {
             "input": VULN_FIXED_IN_DB,
+            "branch": "sisyphus",
             "status_code": 404,
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },
