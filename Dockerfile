@@ -31,7 +31,7 @@ RUN \
         tzdata \
     # install altrepodb_libs module from tasks
         apt-repo \
-    && apt-repo add 360089 \
+    && apt-repo add 369524 \
     && apt-get update \
     && yes | apt-get install python3-module-altrepodb_libs \
     # clean-up Apt caches
