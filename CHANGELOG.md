@@ -1,6 +1,18 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.20.1] - 2025-01-27
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `api`: use `orjson` library for JSON serialization
+- `api/management`: remove dead code
+### Fixed
+- `tests`: fixup fragile tests
+- fix SQL for compatibility with new `ErrataHistory` table structure
+
 # [1.20.0] - 2024-12-12
 
 Regular API code updates and fixes.
