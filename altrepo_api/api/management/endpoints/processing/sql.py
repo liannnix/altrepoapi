@@ -22,7 +22,7 @@ class SQL:
     get_erratas_by_pkgs_names = """
 SELECT EI.*, DE.discarded_id as discarded_id
 FROM (
-    SELECT *
+    SELECT * EXCEPT eh_json
     FROM ErrataHistory
     WHERE errata_id IN (
         SELECT eid
@@ -34,35 +34,6 @@ FROM (
             WHERE eh_type = 'task' AND task_state = 'DONE'
                 AND pkgset_name IN {branches}
                 AND pkg_name IN {tmp_table}
-            GROUP BY errata_id_noversion
-        )
-    )
-) AS EI
-LEFT JOIN (
-    SELECT errata_id AS discarded_id
-    FROM last_discarded_erratas
-) AS DE ON errata_id = DE.discarded_id
-"""
-
-    get_erratas_by_cve_ids = """
-WITH
-(
-    SELECT groupUniqArray(cve_id) FROM {tmp_table}
-) AS cve_ids
-SELECT EI.*, DE.discarded_id as discarded_id
-FROM (
-    SELECT *
-    FROM ErrataHistory
-    WHERE errata_id IN (
-        SELECT eid
-        FROM (
-            SELECT
-                errata_id_noversion,
-                argMax(errata_id, errata_id_version) AS eid
-            FROM ErrataHistory
-            WHERE eh_type = 'task' AND task_state = 'DONE'
-                AND pkgset_name IN {branches}
-                AND hasAny(eh_references.link, cve_ids)
             GROUP BY errata_id_noversion
         )
     )

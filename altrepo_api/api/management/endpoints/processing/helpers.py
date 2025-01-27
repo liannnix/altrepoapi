@@ -96,58 +96,12 @@ def get_related_erratas_by_pkgs_names(
             task_id=el[13],
             subtask_id=el[14],
             task_state=el[15],
+            # ts = el[16],
             is_discarded=bool(el[17]),
         )
         # XXX: skip discarded erratas here
         if exclude_discarded and errata.is_discarded:
             continue
-        erratas[errata.id.id] = errata  # type: ignore
-
-    cls.status = True
-    return erratas
-
-
-def get_related_erratas_by_cve_ids(
-    cls: _pHasBranches, cve_ids: Iterable[str]
-) -> dict[str, Errata]:
-    cls.status = False
-    erratas = {}
-
-    tmp_table = make_tmp_table_name("cve_ids")
-
-    response = cls.send_sql_request(
-        cls.sql.get_erratas_by_cve_ids.format(
-            branches=cls.branches, tmp_table=tmp_table
-        ),
-        external_tables=[
-            {
-                "name": tmp_table,
-                "structure": [("cve_id", "String")],
-                "data": [{"cve_id": c} for c in cve_ids],
-            },
-        ],
-    )
-    if not cls.sql_status:
-        return {}
-    for el in response:
-        errata = Errata(
-            id=ErrataID.from_id(el[0]),
-            created=el[1],
-            updated=el[2],
-            hash=el[3],
-            type=el[4],
-            source=el[5],
-            references=[Reference(rt, rl) for rt, rl in zip(el[6], el[7])],
-            pkg_hash=el[8],
-            pkg_name=el[9],
-            pkg_version=el[10],
-            pkg_release=el[11],
-            pkgset_name=el[12],
-            task_id=el[13],
-            subtask_id=el[14],
-            task_state=el[15],
-            is_discarded=bool(el[17]),
-        )
         erratas[errata.id.id] = errata  # type: ignore
 
     cls.status = True

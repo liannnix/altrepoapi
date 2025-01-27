@@ -47,29 +47,6 @@ def get_pncs_by_package(
     return pncs_by_package
 
 
-def get_pncs_by_project(
-    cls: _pAPIWorker, project_name: str, states: tuple[str, ...]
-) -> list[PncRecord]:
-    """Collects active PNC records by given project name and tuple of states."""
-
-    cls.status = False
-    pncs_by_project = []
-
-    # collect PNC records by project name
-    where_clause = f"WHERE state IN {states} AND result = '{project_name}'"
-
-    response = cls.send_sql_request(
-        cls.sql.get_pnc_records.format(where_clause=where_clause)
-    )
-    if not cls.sql_status:
-        return []
-
-    pncs_by_project = [PncRecord(*el) for el in response]
-
-    cls.status = True
-    return pncs_by_project
-
-
 def get_cpes_by_projects(
     cls: _pAPIWorker, projects: Iterable[str], states: tuple[str, ...]
 ) -> dict[str, list[PncRecord]]:

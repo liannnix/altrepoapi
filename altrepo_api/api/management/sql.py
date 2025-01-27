@@ -384,7 +384,7 @@ LEFT JOIN (
             max(eh_created) AS eh_created
         FROM ErrataHistory
         WHERE eh_type = 'task'
-        AND task_id = {task_id}
+            AND task_id = {task_id}
         GROUP BY subtask_id, task_id
         ORDER BY subtask_id
     ) AS TT
@@ -546,7 +546,7 @@ GROUP BY ec_id_noversion
 """
 
     store_errata_history = """
-INSERT INTO ErrataHistory (* EXCEPT ts) VALUES
+INSERT INTO ErrataHistory (* EXCEPT ts, eh_json) VALUES
 """
 
     store_errata_change_history = """
@@ -968,37 +968,6 @@ LEFT JOIN (
     WHERE pkgset_name IN ({branches})
 ) AS PKG ON PKG.pkg_hash = RES.pkg_hash
 {maintainer_clause}
-"""
-
-    get_errata_packages = """
-SELECT
-    pkg_name,
-    branch,
-    arrayDistinct(arrayFlatten(groupArray(refs_links)))
-FROM (
-    SELECT
-        errata_id,
-        pkg_name,
-        argMax(pkgset_name, ts) AS branch,
-        argMax(eh_references.link, ts) AS refs_links
-    FROM ErrataHistory
-    WHERE eh_type != 'bulletin' AND errata_id IN (
-        SELECT eid
-        FROM (
-            SELECT
-                errata_id_noversion,
-                argMax(errata_id, errata_id_version) AS eid
-            FROM ErrataHistory
-            WHERE task_state NOT IN ('EPERM', 'TESTED') AND pkgset_name != 'icarus'
-            GROUP BY errata_id_noversion
-        )
-        WHERE eid NOT IN (
-            SELECT errata_id FROM last_discarded_erratas
-        )
-    )
-    GROUP BY errata_id, pkg_name
-) WHERE (pkg_name, branch) IN (SELECT pkg_name, pkgset_name FROM {tmp_table})
-GROUP BY pkg_name, branch
 """
 
     get_pkg_images = """
