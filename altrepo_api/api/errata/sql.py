@@ -65,7 +65,7 @@ done_task_subtasks AS (
     )
     HAVING subtask_deleted = 0
 )
-SELECT DISTINCT * EXCEPT ts
+SELECT DISTINCT * EXCEPT (ts, eh_json)
 FROM ErrataHistory
 WHERE eh_type = 'task' AND errata_id IN (
     SELECT eid
@@ -357,6 +357,7 @@ SELECT ER.*, if(DE.discarded_id != '', 1, 0) AS discard FROM (
                        argMax(pkg_version, ts) AS pkg_version,
                        argMax(pkg_release, ts) AS pkg_release
                 FROM ErrataHistory
+                WHERE eh_type IN ('branch', 'task')
                 GROUP BY errata_id
            ) AS PKGS ON PKGS.errata_id = ref_link
            GROUP BY errata_id,
