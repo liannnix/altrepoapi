@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.20.3] - 2025-01-28
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/management`: `/errata/change_history` route SQL request
+
 # [1.20.2] - 2025-01-28
 
 Regular API code updates and fixes.
