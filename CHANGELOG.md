@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.20.2] - 2025-01-28
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/management`: `ErrataHistory` table data insertion
+
 # [1.20.1] - 2025-01-27
 
 Regular API code updates and fixes.
