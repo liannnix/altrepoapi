@@ -546,7 +546,7 @@ GROUP BY ec_id_noversion
 """
 
     store_errata_history = """
-INSERT INTO ErrataHistory (* EXCEPT ts, eh_json) VALUES
+INSERT INTO ErrataHistory (* EXCEPT (ts, eh_json)) VALUES
 """
 
     store_errata_change_history = """
