@@ -53,19 +53,16 @@ class ErrataChangeHistory(APIWorker):
 
     def get(self):
         errata_id = self.args["errata_id"]
-        eh_type_clause = ""
         ec_origin_clause = ""
 
         if errata_id.startswith(ERRATA_PACKAGE_UPDATE_PREFIX):
-            eh_type_clause = "AND eh_type != 'bulletin'"
             ec_origin_clause = "AND ec_origin = 'parent'"
         if errata_id.startswith(ERRATA_BRANCH_BULLETIN_PREFIX):
-            eh_type_clause = "AND eh_type == 'bulletin'"
             ec_origin_clause = "AND ec_origin = 'child'"
 
         response = self.send_sql_request(
             self.sql.get_errata_history.format(
-                errata_id=errata_id, type=eh_type_clause, origin=ec_origin_clause
+                errata_id=errata_id, origin=ec_origin_clause
             ),
         )
         if not self.sql_status:

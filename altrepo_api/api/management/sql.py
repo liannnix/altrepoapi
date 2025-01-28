@@ -637,16 +637,18 @@ GROUP BY bz_id
 """
 
     get_errata_history = """
-WITH ec_ids AS (
+WITH
+(
+    SELECT DISTINCT errata_id_noversion
+    FROM ErrataHistory
+    WHERE errata_id = '{errata_id}'
+) AS eid_noversion,
+ec_ids AS (
     SELECT DISTINCT ec_id_noversion
     FROM ErrataChangeHistory
     WHERE ec_id_noversion IN (
         SELECT ec_id_noversion FROM ErrataChangeHistory
-        WHERE errata_id IN (
-            SELECT errata_id FROM ErrataHistory
-            WHERE errata_id = '{errata_id}'
-            {type}
-        )
+        WHERE errata_id  LIKE concat(eid_noversion, '-%')
     )
 ),
 parent_ids as (
@@ -667,13 +669,14 @@ parent_ids as (
         WHERE ec_id_noversion IN (SELECT ec_id_noversion FROM ec_ids)
         {origin}
     ) AS EP
-    LEFT JOIN (
+    INNER JOIN (
         SELECT
                errata_id,
                eh_references.link AS links,
                task_id,
                task_state
         FROM ErrataHistory
+        WHERE errata_id_noversion = eid_noversion
     ) AS EH ON EH.errata_id = EP.errata_id
 )
 SELECT * FROM (
@@ -692,11 +695,7 @@ SELECT * FROM (
     WHERE errata_id IN (
         SELECT errata_id
         FROM ErrataHistory
-        where errata_id_noversion IN (
-            SELECT DISTINCT errata_id_noversion
-            FROM ErrataHistory
-            WHERE errata_id = '{errata_id}'
-        )
+        where errata_id_noversion = eid_noversion
     )
     AND errata_id NOT IN (SELECT errata_id FROM parent_ids)
     UNION ALL
