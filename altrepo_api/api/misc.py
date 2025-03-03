@@ -61,13 +61,14 @@ class LookupTables:
         "p9_e2k",
         "p10_e2k",
     ]
-    oval_export_branches = ["p9", "p10", "p11", "c9f2", "c10f1"]
+    oval_export_branches = ["p9", "p10", "p11", "c9f2", "c10f1", "c10f2"]
     oval_export_branches_map = {
         "p9": "1",
         "p10": "2",
         "p11": "3",
         "c9f2": "4",
         "c10f1": "5",
+        "c10f2": "6",
     }
     no_downloads_branches = ["sisyphus_e2k", "p9_e2k", "p10_e2k"]
 
