@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.20.4] - 2025-03-03
+
+Regular API code updates and fixes.
+
+### Added
+- `/errata/export/oval`: `c10f2` branch support
+### Changed
+### Fixed
+
 # [1.20.3] - 2025-01-28
 
 Regular API code updates and fixes.
