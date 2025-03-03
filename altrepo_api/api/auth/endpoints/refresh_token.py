@@ -31,8 +31,6 @@ from ..token import (
     decode_jwt_token,
 )
 
-# from altrepo_api.utils import get_fingerprint_to_md5
-
 
 class RefreshToken(APIWorker):
     """Authenticate an existing user and return an access token."""
