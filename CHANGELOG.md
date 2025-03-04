@@ -1,6 +1,15 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.20.5] - 2025-03-04
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- remove predefined project name from docker compose files
+
 # [1.20.4] - 2025-03-03
 
 Regular API code updates and fixes.
