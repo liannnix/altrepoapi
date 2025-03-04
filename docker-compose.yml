@@ -1,5 +1,3 @@
-name: altrepo-api
-
 services:
   app:
     environment:

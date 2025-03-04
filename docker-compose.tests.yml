@@ -1,5 +1,3 @@
-name: altrepo-api
-
 services:
   app-test:
     container_name: app-test
