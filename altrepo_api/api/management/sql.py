@@ -1038,7 +1038,12 @@ SELECT DISTINCT
     cpm_version_hash,
     is_vulnerable
 FROM PackagesCveMatch
-WHERE key_hash IN {tmp_table}
+WHERE (key_hash, ts) IN (
+    SELECT key_hash, max(ts)
+    FROM PackagesCveMatch
+    WHERE key_hash IN {tmp_table}
+    GROUP BY key_hash
+)
 """
 
     get_cpes_by_vulns = """

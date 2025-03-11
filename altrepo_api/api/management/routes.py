@@ -112,16 +112,24 @@ from altrepo_api.api.vulnerabilities.parsers import (
 from altrepo_api.api.vulnerabilities.serializers import (
     vuln_fixes_model,
     vuln_fixes_el_model,
-    vuln_pkg_last_version_model,
+    vuln_pkg_last_version_model as _vuln_pkg_last_version_model,
     vulnerability_info_model,
     vulnerability_model,
-    vuln_open_model,
-    vuln_open_el_model,
+    vuln_open_model as _vuln_open_model,
+    vuln_open_el_model as _vuln_open_el_model,
 )
 
 ns = get_namespace()
 
 logger = get_logger(__name__)
+
+
+# register imported models
+vuln_open_model = ns.clone("VulnOpenPackagesModel", _vuln_open_model)
+vuln_open_el_model = ns.clone("VulnOpenPackagesElementModel", _vuln_open_el_model)
+vuln_pkg_last_version_model = ns.clone(
+    "VulnPackageLastVersionModel", _vuln_pkg_last_version_model
+)
 
 
 @ns.route(
@@ -344,14 +352,7 @@ class routeVulnerableBduFixes(Resource):
 )
 class routePackagesByOpenVuln(Resource):
     @ns.expect(bdu_or_cve_info_args)
-    @ns.marshal_with(
-        ns.clone(
-            "VulnOpenPackagesModel",
-            vuln_open_model,
-            ns.clone("VulnOpenPackagesElementModel", vuln_open_el_model),
-            ns.clone("VulnPackageLastVersionModel", vuln_pkg_last_version_model),
-        )
-    )
+    @ns.marshal_with(vuln_open_model)
     @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
     def get(self):
         url_logging(logger, g.url)
