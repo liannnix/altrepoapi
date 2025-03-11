@@ -1,6 +1,16 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.20.6] - 2025-03-11
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/vulnerabilities`: PackagesVulnerabilityStatus table related SQL request
+- `api/management`: `/vuln/open/packages` route serialisation model
+
 # [1.20.5] - 2025-03-04
 
 Regular API code updates and fixes.
