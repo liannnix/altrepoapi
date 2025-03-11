@@ -254,20 +254,20 @@ class PackagesByOpenVuln(APIWorker):
         if not self.status:
             return self.error
 
-        self.packages = {
+        packages = {
             (package.name, package.branch): package
             for package in self.packages
             if package.branch in lut.known_branches
         }
 
         self._get_last_packages_versions(
-            set([package.name for package in self.packages.values()])
+            set([package.name for package in packages.values()])
         )
 
-        for key in self.packages:
+        for key in packages:
             last_version = self.packages_versions.get(key)
             if last_version:
-                self.packages[key].last_version = PackageMeta(
+                packages[key].last_version = PackageMeta(
                     pkghash=last_version.hash,
                     name=last_version.name,
                     branch=last_version.branch,
@@ -277,7 +277,7 @@ class PackagesByOpenVuln(APIWorker):
 
         packages = [
             package.asdict()
-            for package in self.packages.values()
+            for package in packages.values()
             if package.last_version is not None
         ]
 
