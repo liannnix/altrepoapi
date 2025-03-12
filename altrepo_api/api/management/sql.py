@@ -419,7 +419,7 @@ WHERE (vuln_id, vuln_hash) IN (
 ORDER BY vuln_modified_date DESC
 """
 
-    get_related_vulns_for_cve = """
+    get_related_vulns_by_cves = """
 SELECT
     vuln_id,
     vuln_type,

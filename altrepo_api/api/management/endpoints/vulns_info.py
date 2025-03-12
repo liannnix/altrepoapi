@@ -143,18 +143,27 @@ class VulnsInfo(APIWorker):
                 }
 
                 # get BDU id's from CVE
+                tmp_table = make_tmp_table_name("vulns")
                 response = self.send_sql_request(
-                    self.sql.get_related_vulns_for_cve.format(
-                        tmp_table=tuple(vulns_found.keys())
-                    )
+                    self.sql.get_related_vulns_by_cves.format(tmp_table=tmp_table),
+                    external_tables=[
+                        {
+                            "name": tmp_table,
+                            "structure": [("vuln_id", "String")],
+                            "data": [{"vuln_id": el} for el in vulns_found.keys()],
+                        }
+                    ],
                 )
                 if not self.sql_status:
                     return self.error
 
                 for bdu in response:
                     bdu = VulnerabilityInfo(*bdu, is_valid=True)
+                    # skip non BDU records
+                    if bdu.type != BDU_ID_TYPE:
+                        continue
                     for ref_type, ref_link in zip(bdu.refs_type, bdu.refs_link):
-                        if ref_type == CVE_ID_TYPE:
+                        if ref_type == CVE_ID_TYPE and ref_link in vulns_found:
                             vulns_found[ref_link].related_vulns.append(bdu.id)
                     vulns_found[bdu.id] = bdu
                     if bdu.id in bdu_ids.copy():

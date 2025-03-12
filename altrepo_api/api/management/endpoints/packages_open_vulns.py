@@ -19,7 +19,11 @@ import datetime
 from typing import Union, Any, NamedTuple
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.libs.oval.altlinux_errata import CVE_ID_TYPE
+from altrepo_api.libs.oval.altlinux_errata import (
+    CVE_ID_TYPE,
+    CVE_ID_PREFIX,
+    BDU_ID_PREFIX,
+)
 from altrepo_api.libs.pagination import Paginator
 from altrepo_api.libs.sorting import rich_sort
 from altrepo_api.utils import make_tmp_table_name, sort_branches
@@ -215,12 +219,6 @@ class PackagesOpenVulns(APIWorker):
         if not self.sql_status:
             return None
         self.package_vulns = {
-            PackageBranchPair(el[0], el[-2]): PackageMeta(
-                *el[:-1], vulns=[VulnInfoMeta(*vuln) for vuln in el[-1]]
-            )
-            for el in response
-        }
-        self.package_vulns = {
             PackageBranchPair(el[1], el[-2]): PackageMeta(
                 *el[:-1], vulns=[VulnInfoMeta(*vuln) for vuln in el[-1]]
             )
@@ -230,19 +228,19 @@ class PackagesOpenVulns(APIWorker):
 
     def _get_related_vulns(self) -> None:
         """
-        Get BDU id's from CVE and append in the vulnerabilities list.
+        Get related vulnerability id's by CVE and append to the vulnerabilities list.
         """
         self.status = False
         vulns: dict[str, list[VulnInfoMeta]] = {
             vul.id: [vul] for el in self.package_vulns.values() for vul in el.vulns
         }
 
-        _tmp_table = "vulns"
+        tmp_table = make_tmp_table_name("vulns")
         response = self.send_sql_request(
-            self.sql.get_related_vulns_for_cve.format(tmp_table=_tmp_table),
+            self.sql.get_related_vulns_by_cves.format(tmp_table=tmp_table),
             external_tables=[
                 {
-                    "name": _tmp_table,
+                    "name": tmp_table,
                     "structure": [
                         ("vuln_id", "String"),
                     ],
@@ -253,17 +251,17 @@ class PackagesOpenVulns(APIWorker):
         if not self.sql_status:
             return None
 
-        for bdu in response:
-            bdu = VulnInfoMeta(
-                id=bdu[0],
-                type=bdu[1],
-                severity=bdu[4],
-                refs_link=bdu[-2],
-                refs_type=bdu[-1],
+        for vuln in response:
+            vuln = VulnInfoMeta(
+                id=vuln[0],
+                type=vuln[1],
+                severity=vuln[4],
+                refs_link=vuln[-2],
+                refs_type=vuln[-1],
             )
-            for ref_type, ref_link in zip(bdu.refs_type, bdu.refs_link):
+            for ref_type, ref_link in zip(vuln.refs_type, vuln.refs_link):
                 if ref_type == CVE_ID_TYPE and ref_link in vulns:
-                    vulns[ref_link].append(bdu)
+                    vulns[ref_link].append(vuln)
 
         copy_vulns = self.package_vulns.copy()
         for key, pkg in self.package_vulns.items():
@@ -280,7 +278,8 @@ class PackagesOpenVulns(APIWorker):
 
             # filter packages if a vulnerability number is specified in the search input
             if self.args.input and (
-                self.args.input.startswith("CVE-") or self.args.input.startswith("BDU:")
+                self.args.input.startswith(CVE_ID_PREFIX)
+                or self.args.input.startswith(BDU_ID_PREFIX)
             ):
                 if not [
                     el.id for el in copy_vulns[key].vulns if self.args.input in el.id
@@ -295,12 +294,12 @@ class PackagesOpenVulns(APIWorker):
         Get a list of images with the max version based on package hashes.
         """
         self.status = False
-        _tmp_table = "pkgs_hashes"
+        tmp_table = "pkgs_hashes"
         response = self.send_sql_request(
-            self.sql.get_pkg_images.format(tmp_table=_tmp_table),
+            self.sql.get_pkg_images.format(tmp_table=tmp_table),
             external_tables=[
                 {
-                    "name": _tmp_table,
+                    "name": tmp_table,
                     "structure": [
                         ("pkg_hash", "UInt64"),
                     ],
