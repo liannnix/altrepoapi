@@ -173,7 +173,7 @@ WHERE (vuln_id, vuln_hash) IN (
         SELECT vuln_id
         FROM Vulnerabilities
         WHERE arrayExists(x -> (x IN {tmp_table}), `vuln_references.link`)
-    )
+    ) AND vuiln_type = 'BDU'
     GROUP BY vuln_id
 )
 """

@@ -557,7 +557,10 @@ def build_errata_create(
     for cve_id in cve_ids:
         references.append(Reference(VULN_REFERENCE_TYPE, cve_id))
         for bdu_id in bdus_by_cve.get(cve_id, set()):
-            references.append(Reference(VULN_REFERENCE_TYPE, bdu_id))
+            bdu_ref = Reference(VULN_REFERENCE_TYPE, bdu_id)
+            # deduplicate BDU references if matches by containing multiple CVE references
+            if bdu_ref not in references:
+                references.append(bdu_ref)
 
     references = sorted(references)
 
@@ -594,11 +597,12 @@ def build_errata_discard(
     for cve_id in cve_ids.intersection(linked_vulns):
         references.remove(Reference(VULN_REFERENCE_TYPE, cve_id))
         for bdu_id in bdus_by_cve.get(cve_id, set()).intersection(linked_vulns):
-            try:
-                references.remove(Reference(VULN_REFERENCE_TYPE, bdu_id))
-            except ValueError:
-                # skip repetitve related BDU removal
-                pass
+            while True:
+                try:
+                    references.remove(Reference(VULN_REFERENCE_TYPE, bdu_id))
+                except ValueError:
+                    # all BDU entries were removed
+                    break
 
     errata = errata.update(references=sorted(references))
     errata = errata.update(hash=errata_hash(errata))
@@ -617,7 +621,10 @@ def build_errata_update(
     for cve_id in cve_ids.difference(linked_vulns):
         references.append(Reference(VULN_REFERENCE_TYPE, cve_id))
         for bdu_id in bdus_by_cve.get(cve_id, set()).difference(linked_vulns):
-            references.append(Reference(VULN_REFERENCE_TYPE, bdu_id))
+            bdu_ref = Reference(VULN_REFERENCE_TYPE, bdu_id)
+            # deduplicate BDU references if matches by containing multiple CVE references
+            if bdu_ref not in references:
+                references.append(bdu_ref)
 
     errata = errata.update(references=sorted(references))
     errata = errata.update(hash=errata_hash(errata))
