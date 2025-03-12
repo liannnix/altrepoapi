@@ -19,6 +19,7 @@ PACKAGE_UNMAPPED_NOT_IN_DB = "fakepackagename"
 VULN_IN_DB = "CVE-2019-18276"
 VULN_FIXED_IN_DB = "CVE-2024-4368"
 VULN_IN_DB2 = "BDU:2020-03946"
+VULN_IN_DB3 = "BDU:2015-05839"  # BDU that contains mulyiple CVE references
 VULN_NOT_IN_DB = "CVE-1111-11111"
 VULN_NOT_IN_DB2 = "BDU:1111-11111"
 
@@ -320,7 +321,7 @@ def test_task_info(client, kwargs, mocked_check_access_token):
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },
         {
-            "payload": {"vuln_ids": [VULN_IN_DB, VULN_IN_DB2]},
+            "payload": {"vuln_ids": [VULN_IN_DB, VULN_IN_DB3]},
             "status_code": 200,
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },
@@ -486,6 +487,11 @@ def test_errata_change_history(client, kwargs, mocked_check_access_token):
         },
         {
             "input": VULN_IN_DB2,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": VULN_IN_DB3,
             "status_code": 200,
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },
