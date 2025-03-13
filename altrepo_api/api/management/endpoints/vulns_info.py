@@ -214,7 +214,7 @@ class VulnsInfo(APIWorker):
         vulns = list(vulns_found.values())
 
         # add not found CVEs to the resulting list of vulnerabilities
-        # FIXME: may be put it inot `not_found` IDs list?
+        # FIXME: maybe put it into `not_found` IDs list?
         for cve in cve_ids:
             if cve not in vulns_found:
                 vulns.insert(0, VulnerabilityInfo(id=cve, type=CVE_ID_TYPE))
