@@ -97,6 +97,39 @@ class VulnsInfo(APIWorker):
 
         return True
 
+    def __get_vuln_ino_by_ids(
+        self, vuln_ids: list[str], sql: str
+    ) -> dict[str, VulnerabilityInfo]:
+        vulns: dict[str, VulnerabilityInfo] = {}
+
+        tmp_table = make_tmp_table_name("vuln_ids")
+        response = self.send_sql_request(
+            sql.format(tmp_table=tmp_table),
+            external_tables=[
+                {
+                    "name": tmp_table,
+                    "structure": [("vuln_id", "String")],
+                    "data": [{"vuln_id": v_id} for v_id in vuln_ids],
+                },
+            ],
+        )
+
+        if not self.sql_status:
+            raise RuntimeError("SQL request error")
+
+        if response:
+            vulns = {el[0]: VulnerabilityInfo(*el, is_valid=True) for el in response}
+
+        return vulns
+
+    def _collect_vuln_by_ids(self, vuln_ids: list[str]) -> dict[str, VulnerabilityInfo]:
+        return self.__get_vuln_ino_by_ids(vuln_ids, self.sql.get_vuln_info_by_ids)
+
+    def _collect_related_cve_by_ids(
+        self, cve_ids: list[str]
+    ) -> dict[str, VulnerabilityInfo]:
+        return self.__get_vuln_ino_by_ids(cve_ids, self.sql.get_related_vulns_by_cves)
+
     def post(self):
         bugs: dict[int, Bug] = {}
         vulns_found: dict[str, VulnerabilityInfo] = {}
@@ -123,154 +156,65 @@ class VulnsInfo(APIWorker):
                 return self.error
             bugs = {row[0]: Bug(*row, is_valid=True) for row in response}
 
-        if cve_ids:
-            # get CVE info
-            tmp_table = make_tmp_table_name("cve_ids")
-            response = self.send_sql_request(
-                self.sql.get_vuln_info_by_ids.format(tmp_table=tmp_table),
-                external_tables=[
-                    {
-                        "name": tmp_table,
-                        "structure": [("vuln_id", "String")],
-                        "data": [{"vuln_id": v_id} for v_id in cve_ids],
-                    },
-                ],
-            )
-            if not self.sql_status:
-                return self.error
+        def process_vulns(vuiln_ids: list[str]) -> dict[str, VulnerabilityInfo]:
+            vulns_found: dict[str, VulnerabilityInfo] = dict()
+
+            response = self._collect_vuln_by_ids(vuiln_ids)
 
             if response:
-                vulns_found = {
-                    el[0]: VulnerabilityInfo(*el, is_valid=True) for el in response
-                }
-
-                # get BDU id's from CVE
-                tmp_table = make_tmp_table_name("vulns")
-                response = self.send_sql_request(
-                    self.sql.get_related_vulns_by_cves.format(tmp_table=tmp_table),
-                    external_tables=[
-                        {
-                            "name": tmp_table,
-                            "structure": [("vuln_id", "String")],
-                            "data": [{"vuln_id": el} for el in vulns_found.keys()],
-                        }
-                    ],
-                )
-                if not self.sql_status:
-                    return self.error
-
-                for bdu in response:
-                    bdu = VulnerabilityInfo(*bdu, is_valid=True)
-                    # skip non BDU records
-                    if bdu.type != BDU_ID_TYPE:
-                        continue
-                    for ref_type, ref_link in zip(bdu.refs_type, bdu.refs_link):
-                        if ref_type == CVE_ID_TYPE and ref_link in vulns_found:
-                            vulns_found[ref_link].related_vulns.append(bdu.id)
-                    vulns_found[bdu.id] = bdu
-                    if bdu.id in bdu_ids.copy():
-                        bdu_ids.remove(bdu.id)
-        if ghsa_ids:
-            # get GHSA info
-            tmp_table = make_tmp_table_name("ghsa_ids")
-            response = self.send_sql_request(
-                self.sql.get_vuln_info_by_ids.format(tmp_table=tmp_table),
-                external_tables=[
-                    {
-                        "name": tmp_table,
-                        "structure": [("vuln_id", "String")],
-                        "data": [{"vuln_id": v_id} for v_id in ghsa_ids],
-                    },
-                ],
-            )
-            if not self.sql_status:
-                return self.error
-
-            if response:
-                _aliases_ids: list[str] = []
-                for row in response:
-                    ghsa = VulnerabilityInfo(*row, is_valid=True)
-                    for ref_type, ref_link in zip(ghsa.refs_type, ghsa.refs_link):
+                cve_ids = list()
+                for v in response.values():
+                    for ref_type, ref_link in zip(v.refs_type, v.refs_link):
                         if ref_type == CVE_ID_TYPE:
-                            _aliases_ids.append(ref_link)
-                            ghsa.related_vulns.append(ref_link)
-                    vulns_found[ghsa.id] = ghsa
+                            cve_ids.append(ref_link)
+                            v.related_vulns.append(ref_link)
+                    vulns_found[v.id] = v
 
-                # get CVE id's from GHSA
-                tmp_table = make_tmp_table_name("ghsa_ids")
-                response = self.send_sql_request(
-                    self.sql.get_vuln_info_by_ids.format(tmp_table=tmp_table),
-                    external_tables=[
-                        {
-                            "name": tmp_table,
-                            "structure": [("vuln_id", "String")],
-                            "data": [{"vuln_id": v_id} for v_id in _aliases_ids],
-                        },
-                    ],
-                )
-                if not self.sql_status:
-                    return self.error
+                # get related CVEs
+                response = self._collect_vuln_by_ids(cve_ids)
                 if response:
-                    vulns_found = {
-                        **vulns_found,
-                        **{
-                            el[0]: VulnerabilityInfo(*el, is_valid=True)
-                            for el in response
-                        },
-                    }
+                    vulns_found = {**vulns_found, **response}
 
-        if bdu_ids:
-            # get BDU info
-            tmp_table = make_tmp_table_name("bdu_ids")
-            response = self.send_sql_request(
-                self.sql.get_vuln_info_by_ids.format(tmp_table=tmp_table),
-                external_tables=[
-                    {
-                        "name": tmp_table,
-                        "structure": [("vuln_id", "String")],
-                        "data": [{"vuln_id": v_id} for v_id in bdu_ids],
-                    },
-                ],
-            )
-            if not self.sql_status:
-                return self.error
+            return vulns_found
 
-            if response:
-                _cves = []
-                for bdu in response:
-                    bdu = VulnerabilityInfo(*bdu, is_valid=True)
-                    for ref_type, ref_link in zip(bdu.refs_type, bdu.refs_link):
-                        if ref_type == CVE_ID_TYPE:
-                            _cves.append(ref_link)
-                            bdu.related_vulns.append(ref_link)
-                    vulns_found[bdu.id] = bdu
+        try:
+            if cve_ids:
+                # get CVE info
+                response = self._collect_vuln_by_ids(cve_ids)
 
-                # get CVE id's from BDU
-                tmp_table = make_tmp_table_name("cve_ids")
-                response = self.send_sql_request(
-                    self.sql.get_vuln_info_by_ids.format(tmp_table=tmp_table),
-                    external_tables=[
-                        {
-                            "name": tmp_table,
-                            "structure": [("vuln_id", "String")],
-                            "data": [{"vuln_id": v_id} for v_id in _cves],
-                        },
-                    ],
-                )
-                if not self.sql_status:
-                    return self.error
                 if response:
-                    vulns_found = {
-                        **vulns_found,
-                        **{
-                            el[0]: VulnerabilityInfo(*el, is_valid=True)
-                            for el in response
-                        },
-                    }
+                    vulns_found = response
+
+                    # get related vulnerability id's from CVE
+                    response = self._collect_related_cve_by_ids(
+                        list(vulns_found.keys())
+                    )
+
+                    for vuln in response.values():
+                        for ref_type, ref_link in zip(vuln.refs_type, vuln.refs_link):
+                            if ref_type == CVE_ID_TYPE and ref_link in vulns_found:
+                                vulns_found[ref_link].related_vulns.append(vuln.id)
+                        vulns_found[vuln.id] = vuln
+                        # remove non CVE IDs from input if found as related through give CVE IDs
+                        if vuln.id in bdu_ids.copy():
+                            bdu_ids.remove(vuln.id)
+                        if vuln.id in ghsa_ids.copy():
+                            ghsa_ids.remove(vuln.id)
+
+            if bdu_ids:
+                # get BDU info
+                vulns_found = {**vulns_found, **process_vulns(bdu_ids)}
+
+            if ghsa_ids:
+                # get GHSA info
+                vulns_found = {**vulns_found, **process_vulns(ghsa_ids)}
+        except RuntimeError:
+            return self.error
 
         vulns = list(vulns_found.values())
 
         # add not found CVEs to the resulting list of vulnerabilities
+        # FIXME: may be put it inot `not_found` IDs list?
         for cve in cve_ids:
             if cve not in vulns_found:
                 vulns.insert(0, VulnerabilityInfo(id=cve, type=CVE_ID_TYPE))
@@ -283,7 +227,6 @@ class VulnsInfo(APIWorker):
             VulnerabilityInfo(id=v.link, type=v.type)
             for v in self.vulns
             if v.type in (MFSA_ID_TYPE, OVE_ID_TYPE)
-            # if v.type not in (BUG_ID_TYPE, BDU_ID_TYPE, CVE_ID_TYPE)
         )
 
         if not vulns:
@@ -293,10 +236,10 @@ class VulnsInfo(APIWorker):
                 }
             )
 
-        # BDUs and Bugzilla vulnerabilities not found in the DB
-        not_found_vulns = [bdu for bdu in bdu_ids if bdu not in vulns_found.keys()] + [
-            str(bug) for bug in bug_ids if bug not in bugs.keys()
-        ]
+        # BDU, GHSA and Bugzilla vulnerabilities not found in the DB
+        not_found_vulns = [
+            v_id for v_id in bdu_ids + ghsa_ids if v_id not in vulns_found.keys()
+        ] + [str(bug) for bug in bug_ids if bug not in bugs.keys()]
 
         res = {
             "vulns": [v.asdict() for v in vulns],
