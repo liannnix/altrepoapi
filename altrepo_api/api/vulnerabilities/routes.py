@@ -19,7 +19,7 @@ from flask_restx import Resource
 
 from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
-from altrepo_api.api.vulnerabilities.parsers import bdu_or_cve_info_args
+from altrepo_api.api.vulnerabilities.parsers import vuln_info_args
 from .endpoints.fixes import VulnFixes
 from .endpoints.tasks import TaskVulnerabilities
 
@@ -251,10 +251,10 @@ class routeTaskVulnerabilities(Resource):
     # },
 )
 class routePackagesByOpenVuln(Resource):
-    @ns.expect(bdu_or_cve_info_args)
+    @ns.expect(vuln_info_args)
     @ns.marshal_with(vuln_open_model)
     def get(self):
         url_logging(logger, g.url)
-        args = bdu_or_cve_info_args.parse_args(strict=True)
+        args = vuln_info_args.parse_args(strict=True)
         w = PackagesByOpenVuln(g.connection, **args)
         return run_worker(worker=w, args=args)
