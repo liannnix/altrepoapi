@@ -22,7 +22,7 @@ from altrepo_api.api.base import APIWorker
 from altrepo_api.libs.pagination import Paginator
 from altrepo_api.libs.sorting import rich_sort
 
-from .tools.constants import DT_NEVER
+from .tools.constants import BDU_ID_PREFIX, CVE_ID_PREFIX, DT_NEVER, GHSA_ID_PREFIX
 from ..sql import sql
 
 
@@ -64,6 +64,14 @@ class VulnInfo(NamedTuple):
         }
 
 
+def is_any_vuln_id(id: str) -> bool:
+    return (
+        id.startswith(CVE_ID_PREFIX)
+        or id.startswith(BDU_ID_PREFIX)
+        or id.startswith(GHSA_ID_PREFIX)
+    )
+
+
 class VulnList(APIWorker):
     """
     Get a list of all vulnerabilities from the database.
@@ -91,10 +99,7 @@ class VulnList(APIWorker):
                 if where_clause
                 else f"WHERE vuln_id ILIKE '{self.args.input}%'"
             )
-            if self.args.input
-            and (
-                self.args.input.startswith("CVE-") or self.args.input.startswith("BDU:")
-            )
+            if self.args.input and is_any_vuln_id(self.args.input)
             else ""
         )
         return where_clause
@@ -111,9 +116,7 @@ class VulnList(APIWorker):
                     f"WHERE arrayExists(x -> "
                     f"(x.1 LIKE '{self.args.input}%'), errata_ids)"
                 )
-            elif not self.args.input.startswith(
-                "CVE-"
-            ) and not self.args.input.startswith("BDU:"):
+            elif not is_any_vuln_id(self.args.input):
                 where_clause = (
                     f"WHERE arrayExists(x -> (x ILIKE '%{self.args.input}%'), cpes)"
                 )
@@ -245,11 +248,7 @@ class VulnList(APIWorker):
         # if filters related to errata or cpe are installed,
         # then first execute the `_get_erratas_and_cpes` method
         if (
-            (
-                self.args.input
-                and not self.args.input.startswith("CVE-")
-                and not self.args.input.startswith("BDU:")
-            )
+            (self.args.input and not is_any_vuln_id(self.args.input))
             or self.args.is_errata
             or self.args.our is not None
         ):

@@ -31,6 +31,7 @@ from .constants import (
     SUPPORTED_BRANCHES_WITHOUT_TASKS,
     BDU_ID_TYPE,
     CVE_ID_TYPE,
+    GHSA_ID_TYPE,
     MFSA_ID_TYPE,
     OVE_ID_TYPE,
     BUG_ID_TYPE,
@@ -40,6 +41,7 @@ logger = get_logger(__name__)
 
 re_errata_id = re.compile(r"^ALT-[A-Z]+-2\d{3}-\d{4,}-\d{1,}$")
 re_cve_id = re.compile(r"^CVE-\d{4}-\d{4,}$", re.IGNORECASE)
+re_ghsa_id = re.compile(r"^GHSA(-[23456789cfghjmpqrvwx]{4}){3}$")
 re_bdu_id = re.compile(r"^BDU:\d{4}-\d{5}$", re.IGNORECASE)
 re_mfsa_id = re.compile(r"^MFSA[- ]+\d{4}-\d{2}$", re.IGNORECASE)
 re_ove_id = re.compile(r"^OVE-\d{8}-\d{4}$", re.IGNORECASE)
@@ -48,6 +50,7 @@ re_bug_id = re.compile(r"^\d{4,}$")
 VULN_ID_REGEXS = (
     (BDU_ID_TYPE, re_bdu_id),
     (CVE_ID_TYPE, re_cve_id),
+    (GHSA_ID_TYPE, re_ghsa_id),
     (MFSA_ID_TYPE, re_mfsa_id),
     (OVE_ID_TYPE, re_ove_id),
     (BUG_ID_TYPE, re_bug_id),

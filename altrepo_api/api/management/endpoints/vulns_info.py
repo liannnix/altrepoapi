@@ -27,6 +27,7 @@ from .tools.constants import (
     BDU_ID_TYPE,
     BUG_ID_TYPE,
     CVE_ID_TYPE,
+    GHSA_ID_TYPE,
     MFSA_ID_TYPE,
     OVE_ID_TYPE,
     DT_NEVER,
@@ -103,6 +104,7 @@ class VulnsInfo(APIWorker):
         bug_ids = [int(v.link) for v in self.vulns if v.type == BUG_ID_TYPE]
         bdu_ids = [v.link for v in self.vulns if v.type == BDU_ID_TYPE]
         cve_ids = [v.link for v in self.vulns if v.type == CVE_ID_TYPE]
+        ghsa_ids = [v.link for v in self.vulns if v.type == GHSA_ID_TYPE]
 
         # get a list of found bugs in Bugzilla
         if bug_ids:
@@ -168,6 +170,54 @@ class VulnsInfo(APIWorker):
                     vulns_found[bdu.id] = bdu
                     if bdu.id in bdu_ids.copy():
                         bdu_ids.remove(bdu.id)
+        if ghsa_ids:
+            # get GHSA info
+            tmp_table = make_tmp_table_name("ghsa_ids")
+            response = self.send_sql_request(
+                self.sql.get_vuln_info_by_ids.format(tmp_table=tmp_table),
+                external_tables=[
+                    {
+                        "name": tmp_table,
+                        "structure": [("vuln_id", "String")],
+                        "data": [{"vuln_id": v_id} for v_id in ghsa_ids],
+                    },
+                ],
+            )
+            if not self.sql_status:
+                return self.error
+
+            if response:
+                _aliases_ids: list[str] = []
+                for row in response:
+                    ghsa = VulnerabilityInfo(*row, is_valid=True)
+                    for ref_type, ref_link in zip(ghsa.refs_type, ghsa.refs_link):
+                        if ref_type == CVE_ID_TYPE:
+                            _aliases_ids.append(ref_link)
+                            ghsa.related_vulns.append(ref_link)
+                    vulns_found[ghsa.id] = ghsa
+
+                # get CVE id's from GHSA
+                tmp_table = make_tmp_table_name("ghsa_ids")
+                response = self.send_sql_request(
+                    self.sql.get_vuln_info_by_ids.format(tmp_table=tmp_table),
+                    external_tables=[
+                        {
+                            "name": tmp_table,
+                            "structure": [("vuln_id", "String")],
+                            "data": [{"vuln_id": v_id} for v_id in _aliases_ids],
+                        },
+                    ],
+                )
+                if not self.sql_status:
+                    return self.error
+                if response:
+                    vulns_found = {
+                        **vulns_found,
+                        **{
+                            el[0]: VulnerabilityInfo(*el, is_valid=True)
+                            for el in response
+                        },
+                    }
 
         if bdu_ids:
             # get BDU info

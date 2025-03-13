@@ -104,7 +104,11 @@ __cve_id_match = re.compile(r"^CVE-\d{4}-\d{4,}$")
 __cve_id_list_match = re.compile(r"^(CVE-\d{4}-\d{4,},?)+$")
 __bdu_id_match = re.compile(r"^BDU:\d{4}-\d{5}$")
 __bdu_id_list_match = re.compile(r"^(BDU:\d{4}-\d{5},?)+$")
-__bdu_or_cve_id_match = re.compile(r"^(CVE-|BDU:)\d{4}-\d{4,}$")
+__ghsa_id_match = re.compile(r"^GHSA(-[23456789cfghjmpqrvwx]{4}){3}$")
+__ghsa_id_list_match = re.compile(r"^(GHSA(-[23456789cfghjmpqrvwx]{4}){3},?)+$")
+__vuln_id_match = re.compile(
+    r"^(CVE-|BDU:)\d{4}-\d{4,}$|^GHSA(-[23456789cfghjmpqrvwx]{4}){3}$"
+)
 __errata_id_match = re.compile(r"^ALT-[A-Z]+-2\d{3}-\d{4,}-\d{1,}$")
 __errata_search_match = re.compile(r"^([\w\.\+\-\_:]{2,},?)+$")
 __password_match = re.compile(r"^([\w|\W]+)$")
@@ -686,18 +690,45 @@ def bdu_id_list_type(value: Any) -> str:
 bdu_id_list_type.__schema__ = {"type": "string", "pattern": __bdu_id_list_match.pattern}
 
 
-def bdu_or_cve_id_type(value: Any) -> str:
-    """Vuln id validator"""
+def ghsa_id_type(value: Any) -> str:
+    """GHSA id validator."""
 
     value = __get_string(value)
-    if not __bdu_or_cve_id_match.search(value):
+    if not __ghsa_id_match.search(value):
         raise ValueError("Invalid input: {0}".format(value))
     return value
 
 
-bdu_or_cve_id_type.__schema__ = {
+ghsa_id_type.__schema__ = {"type": "string", "pattern": __ghsa_id_match.pattern}
+
+
+def ghsa_id_list_type(value: Any) -> str:
+    """GHSA id list validator."""
+
+    value = __get_string(value)
+    if not __ghsa_id_list_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+ghsa_id_list_type.__schema__ = {
     "type": "string",
-    "pattern": __bdu_or_cve_id_match.pattern,
+    "pattern": __ghsa_id_list_match.pattern,
+}
+
+
+def vuln_id_type(value: Any) -> str:
+    """Vuln id validator"""
+
+    value = __get_string(value)
+    if not __vuln_id_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+vuln_id_type.__schema__ = {
+    "type": "string",
+    "pattern": __vuln_id_match.pattern,
 }
 
 

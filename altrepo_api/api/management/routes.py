@@ -107,7 +107,8 @@ from altrepo_api.api.vulnerabilities.endpoints.packages import PackagesByOpenVul
 from altrepo_api.api.vulnerabilities.parsers import (
     cve_info_args,
     bdu_info_args,
-    bdu_or_cve_info_args,
+    ghsa_info_args,
+    vuln_info_args,
 )
 from altrepo_api.api.vulnerabilities.serializers import (
     vuln_fixes_model,
@@ -341,6 +342,31 @@ class routeVulnerableBduFixes(Resource):
 
 
 @ns.route(
+    "/vuln/ghsa",
+    doc={
+        "description": "Get GHSA information",
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routeGHSAInfo(Resource):
+    @ns.expect(ghsa_info_args)
+    @ns.marshal_with(
+        ns.clone(
+            "VulnerabilityInfoModel",
+            vulnerability_info_model,
+            ns.clone("VulnerabilityModel", vulnerability_model),
+        )
+    )
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = ghsa_info_args.parse_args(strict=True)
+        w = VulnInfo(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
     "/vuln/open/packages",
     doc={
         "description": (
@@ -351,12 +377,12 @@ class routeVulnerableBduFixes(Resource):
     },
 )
 class routePackagesByOpenVuln(Resource):
-    @ns.expect(bdu_or_cve_info_args)
+    @ns.expect(vuln_info_args)
     @ns.marshal_with(vuln_open_model)
     @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
     def get(self):
         url_logging(logger, g.url)
-        args = bdu_or_cve_info_args.parse_args(strict=True)
+        args = vuln_info_args.parse_args(strict=True)
         w = PackagesByOpenVuln(g.connection, **args)
         return run_worker(worker=w, args=args)
 

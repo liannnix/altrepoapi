@@ -20,10 +20,12 @@ from altrepo_api.api.parser import (
     cve_id_list_type,
     bdu_id_type,
     bdu_id_list_type,
+    ghsa_id_type,
+    ghsa_id_list_type,
+    vuln_id_type,
     branch_name_type,
     maintainer_nick_type,
     pkg_name_type,
-    bdu_or_cve_id_type,
 )
 
 cve_id = parser.register_item(
@@ -56,8 +58,27 @@ bdu_id_list = parser.register_item(
     help="BDU id",
     location="args",
 )
-bdu_or_cve_id = parser.register_item(
-    "vuln_id", type=bdu_or_cve_id_type, required=True, help="Vuln id", location="args"
+ghsa_id = parser.register_item(
+    "vuln_id",
+    type=ghsa_id_type,
+    required=True,
+    help="GHSA id",
+    location="args",
+)
+ghsa_id_list = parser.register_item(
+    "vuln_id",
+    type=ghsa_id_list_type,
+    action="split",
+    required=True,
+    help="GHSA id",
+    location="args",
+)
+vuln_id = parser.register_item(
+    "vuln_id",
+    type=vuln_id_type,
+    required=True,
+    help="Vuln id",
+    location="args",
 )
 branch = parser.register_item(
     "branch",
@@ -98,7 +119,8 @@ maintainer_nick = parser.register_item(
 
 cve_info_args = parser.build_parser(cve_id)
 bdu_info_args = parser.build_parser(bdu_id)
-bdu_or_cve_info_args = parser.build_parser(bdu_or_cve_id)
+ghsa_info_args = parser.build_parser(ghsa_id)
+vuln_info_args = parser.build_parser(vuln_id)
 cve_vulnerable_packages_args = parser.build_parser(cve_id_list, branch)
 bdu_vulnerable_packages_args = parser.build_parser(bdu_id_list, branch)
 package_vulnerabilities_args = parser.build_parser(pkg_name, branch)
