@@ -84,17 +84,17 @@ from .serializers import (
 from altrepo_api.api.errata.endpoints.branch import ErrataBranches, BranchesUpdates
 from altrepo_api.api.errata.serializers import (
     errata_branches_model,
-    errata_last_changed_model,
+    errata_last_changed_model as _errata_last_changed_model,
     erratas_ids_json_list_model,
-    errata_packages_updates_model,
-    errata_branches_updates_model,
-    errata_last_changed_el_model,
-    pkgs_el_model,
-    vulns_el_model,
-    errata_package_update_model,
-    errata_bug_model,
-    errata_vuln_model,
-    errata_branch_update_model,
+    errata_packages_updates_model as _errata_packages_updates_model,
+    errata_branches_updates_model as _errata_branches_updates_model,
+    errata_last_changed_el_model as _errata_last_changed_el_model,
+    pkgs_el_model as _pkgs_el_model,
+    vulns_el_model as _vulns_el_model,
+    errata_package_update_model as _errata_package_update_model,
+    errata_bug_model as _errata_bug_model,
+    errata_vuln_model as _errata_vuln_model,
+    errata_branch_update_model as _errata_branch_update_model,
 )
 from altrepo_api.api.errata.endpoints.package import PackagesUpdates
 from altrepo_api.api.errata.endpoints.search import FindErratas
@@ -111,11 +111,11 @@ from altrepo_api.api.vulnerabilities.parsers import (
     vuln_info_args,
 )
 from altrepo_api.api.vulnerabilities.serializers import (
-    vuln_fixes_model,
-    vuln_fixes_el_model,
+    vuln_fixes_model as _vuln_fixes_model,
+    vuln_fixes_el_model as _vuln_fixes_el_model,
     vuln_pkg_last_version_model as _vuln_pkg_last_version_model,
-    vulnerability_info_model,
-    vulnerability_model,
+    vulnerability_info_model as _vulnerability_info_model,
+    vulnerability_model as _vulnerability_model,
     vuln_open_model as _vuln_open_model,
     vuln_open_el_model as _vuln_open_el_model,
 )
@@ -126,11 +126,43 @@ logger = get_logger(__name__)
 
 
 # register imported models
+errata_last_changed_model = ns.clone(
+    "ErrataLastChangedModel", _errata_last_changed_model
+)
+errata_last_changed_el_model = ns.clone(
+    "ErrataLastChangedElementModel", _errata_last_changed_el_model
+)
+pkgs_el_model = ns.clone("PackagesElementModel", _pkgs_el_model)
+vulns_el_model = ns.clone("VulnerabilitiesElementModel", _vulns_el_model)
+
+errata_packages_updates_model = ns.clone(
+    "ErrataPackagesUpdatesModel", _errata_packages_updates_model
+)
+errata_package_update_model = ns.clone(
+    "ErrataPackageUpdateModel", _errata_package_update_model
+)
+errata_bug_model = ns.clone("ErrataBugModel", _errata_bug_model)
+errata_vuln_model = ns.clone("ErrataVulnerabilityModel", _errata_vuln_model)
+
+errata_branches_updates_model = ns.clone(
+    "ErrataBranchesUpdatesModel", _errata_branches_updates_model
+)
+errata_branch_update_model = ns.clone(
+    "ErrataBranchUpdateModel", _errata_branch_update_model
+)
+
 vuln_open_model = ns.clone("VulnOpenPackagesModel", _vuln_open_model)
 vuln_open_el_model = ns.clone("VulnOpenPackagesElementModel", _vuln_open_el_model)
 vuln_pkg_last_version_model = ns.clone(
     "VulnPackageLastVersionModel", _vuln_pkg_last_version_model
 )
+vuln_fixes_model = ns.clone("VulnFixesPackagesModel", _vuln_fixes_model)
+vuln_fixes_el_model = ns.clone("VulnFixesPackagesElementModel", _vuln_fixes_el_model)
+vuln_pkg_last_version_model = ns.clone(
+    "VulnPackageLastVersionModel", _vuln_pkg_last_version_model
+)
+vulnerability_info_model = ns.clone("VulnerabilityInfoModel", _vulnerability_info_model)
+vulnerability_model = ns.clone("VulnerabilityModel", _vulnerability_model)
 
 
 @ns.route(
@@ -243,13 +275,7 @@ class routeVulnsInfo(Resource):
 )
 class routeCveInfo(Resource):
     @ns.expect(cve_info_args)
-    @ns.marshal_with(
-        ns.clone(
-            "VulnerabilityInfoModel",
-            vulnerability_info_model,
-            ns.clone("VulnerabilityModel", vulnerability_model),
-        )
-    )
+    @ns.marshal_with(vulnerability_info_model)
     @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
     def get(self):
         url_logging(logger, g.url)
@@ -271,14 +297,7 @@ class routeCveInfo(Resource):
 )
 class routeVulnerableCveFixes(Resource):
     @ns.expect(cve_info_args)
-    @ns.marshal_with(
-        ns.clone(
-            "VulnFixesPackagesModel",
-            vuln_fixes_model,
-            ns.clone("VulnFixesPackagesElementModel", vuln_fixes_el_model),
-            ns.clone("VulnPackageLastVersionModel", vuln_pkg_last_version_model),
-        )
-    )
+    @ns.marshal_with(vuln_fixes_model)
     @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
     def get(self):
         url_logging(logger, g.url)
@@ -297,13 +316,7 @@ class routeVulnerableCveFixes(Resource):
 )
 class routeBduInfo(Resource):
     @ns.expect(bdu_info_args)
-    @ns.marshal_with(
-        ns.clone(
-            "VulnerabilityInfoModel",
-            vulnerability_info_model,
-            ns.clone("VulnerabilityModel", vulnerability_model),
-        )
-    )
+    @ns.marshal_with(vulnerability_info_model)
     @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
     def get(self):
         url_logging(logger, g.url)
@@ -325,14 +338,7 @@ class routeBduInfo(Resource):
 )
 class routeVulnerableBduFixes(Resource):
     @ns.expect(bdu_info_args)
-    @ns.marshal_with(
-        ns.clone(
-            "VulnFixesPackagesModel",
-            vuln_fixes_model,
-            ns.clone("VulnFixesPackagesElementModel", vuln_fixes_el_model),
-            ns.clone("VulnPackageLastVersionModel", vuln_pkg_last_version_model),
-        )
-    )
+    @ns.marshal_with(vuln_fixes_model)
     @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
     def get(self):
         url_logging(logger, g.url)
@@ -351,13 +357,7 @@ class routeVulnerableBduFixes(Resource):
 )
 class routeGHSAInfo(Resource):
     @ns.expect(ghsa_info_args)
-    @ns.marshal_with(
-        ns.clone(
-            "VulnerabilityInfoModel",
-            vulnerability_info_model,
-            ns.clone("VulnerabilityModel", vulnerability_model),
-        )
-    )
+    @ns.marshal_with(vulnerability_info_model)
     @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
     def get(self):
         url_logging(logger, g.url)
@@ -526,15 +526,7 @@ class routeErrataBranches(Resource):
 )
 class routeFindErratas(Resource):
     @ns.expect(find_erratas_args)
-    @ns.marshal_with(
-        ns.clone(
-            "ErrataLastChangedModel",
-            errata_last_changed_model,
-            ns.clone("ErrataLastChangedElementModel", errata_last_changed_el_model),
-            ns.clone("PackagesElementModel", pkgs_el_model),
-            ns.clone("VulnerabilitiesElementModel", vulns_el_model),
-        )
-    )
+    @ns.marshal_with(errata_last_changed_model)
     @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
     def get(self):
         url_logging(logger, g.url)
@@ -553,15 +545,7 @@ class routeFindErratas(Resource):
 )
 class routePackagesUpdates(Resource):
     @ns.expect(ns.clone("ErrataJsonPostListModel", erratas_ids_json_list_model))
-    @ns.marshal_with(
-        ns.clone(
-            "ErrataPackagesUpdatesModel",
-            errata_packages_updates_model,
-            ns.clone("ErrataPackageUpdateModel", errata_package_update_model),
-            ns.clone("ErrataBugModel", errata_bug_model),
-            ns.clone("ErrataVulnerabilityModel", errata_vuln_model),
-        )
-    )
+    @ns.marshal_with(errata_packages_updates_model)
     @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
     def post(self):
         url_logging(logger, g.url)
@@ -580,13 +564,7 @@ class routePackagesUpdates(Resource):
 )
 class routeBranchesUpdates(Resource):
     @ns.expect(ns.clone("ErrataJsonPostListModel", erratas_ids_json_list_model))
-    @ns.marshal_with(
-        ns.clone(
-            "ErrataBranchesUpdatesModel",
-            errata_branches_updates_model,
-            ns.clone("ErrataBranchUpdateModel", errata_branch_update_model),
-        )
-    )
+    @ns.marshal_with(errata_branches_updates_model)
     @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
     def post(self):
         url_logging(logger, g.url)
