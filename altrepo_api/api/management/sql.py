@@ -1240,12 +1240,12 @@ FROM (
                 )
             )
             )
-        ) {tmp_table}
+        ) {where_clause1}
         GROUP BY vuln_id
     ) AS ERR ON ERR.vuln_id = CpeMatch.vuln_id
-    {tmp_table}
+    {where_clause1}
     GROUP BY vuln_id, errata_ids
-) {where_clause}
+) {where_clause2}
 """
 
 

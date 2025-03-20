@@ -21,6 +21,7 @@ from typing import Any, NamedTuple, Union
 from altrepo_api.api.base import APIWorker
 from altrepo_api.libs.pagination import Paginator
 from altrepo_api.libs.sorting import rich_sort
+from altrepo_api.utils import make_tmp_table_name
 
 from .tools.constants import BDU_ID_PREFIX, CVE_ID_PREFIX, DT_NEVER, GHSA_ID_PREFIX
 from ..sql import sql
@@ -196,16 +197,16 @@ class VulnList(APIWorker):
         """
         self.status = False
 
-        _tmp_table = "vuln_ids"
-        where_clause = f"WHERE vuln_id in {_tmp_table}" if self.vulns else ""
+        tmp_table = make_tmp_table_name("vuln_ids")
+        where_clause = f"WHERE vuln_id in {tmp_table}" if self.vulns else ""
         response = self.send_sql_request(
             self.sql.get_erratas_vuln.format(
-                where_clause=self._where_errata,
-                tmp_table=where_clause,
+                where_clause1=where_clause,
+                where_clause2=self._where_errata,
             ),
             external_tables=[
                 {
-                    "name": _tmp_table,
+                    "name": tmp_table,
                     "structure": [
                         ("id", "String"),
                     ],
