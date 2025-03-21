@@ -19,9 +19,11 @@ PACKAGE_UNMAPPED_NOT_IN_DB = "fakepackagename"
 VULN_IN_DB = "CVE-2019-18276"
 VULN_FIXED_IN_DB = "CVE-2024-4368"
 VULN_IN_DB2 = "BDU:2020-03946"
+VULN_IN_DB3 = "GHSA-q34m-jh98-gwm2"
 VULN_IN_DB3 = "BDU:2015-05839"  # BDU that contains mulyiple CVE references
 VULN_NOT_IN_DB = "CVE-1111-11111"
 VULN_NOT_IN_DB2 = "BDU:1111-11111"
+VULN_NOT_IN_DB3 = "GHSA-2222-2222-2222"
 
 BUG_IN_DB = "36250"
 BUG_NOT_IN_DB = "11111111"
@@ -342,6 +344,11 @@ def test_task_info(client, kwargs, mocked_check_access_token):
         },
         {
             "payload": {"vuln_ids": [BUG_NOT_IN_DB, VULN_NOT_IN_DB2]},
+            "status_code": 404,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "payload": {"vuln_ids": [VULN_NOT_IN_DB3]},
             "status_code": 404,
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },
@@ -826,6 +833,16 @@ def test_packages_unmapped(client, kwargs, mocked_check_access_token):
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },
         {
+            "input": VULN_IN_DB3,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": VULN_NOT_IN_DB2,
+            "status_code": 404,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
             "input": PU_ERRATA_ID_IN_DB_1,
             "status_code": 200,
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
@@ -864,6 +881,11 @@ def test_packages_unmapped(client, kwargs, mocked_check_access_token):
         {
             "input": BU_ERRATA_ID_NOT_IN_DB,
             "status_code": 404,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": "GHSA-",
+            "status_code": 200,
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },
         {
