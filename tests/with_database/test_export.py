@@ -108,3 +108,29 @@ def test_translation_packages_po_file(client, kwargs):
         data = BytesIO(response.get_data())
         zip = zipfile.ZipFile(file=data, mode="r")
         assert len(zip.filelist) > 10
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"branch": BRANCH_IN_DB, "arch": None, "status_code": 200},
+        {"branch": BRANCH_IN_DB_2, "arch": "x86_64", "status_code": 200},
+        {"branch": BRANCH_NOT_IN_DB, "arch": None, "status_code": 400},
+        {"branch": BRANCH_IN_DB, "arch": "fakearch", "status_code": 400},
+    ],
+)
+def test_beehive_ftbfs(client, kwargs):
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("status_code",):
+            continue
+        if v is not None:
+            params[k] = v
+    url = url_for("api.export_route_beehive_ftbfs")
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["length"] != 0
+        assert data["ftbfs"] != []
