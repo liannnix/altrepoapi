@@ -273,5 +273,51 @@ WHERE pkgset_depth = 0 AND pkgset_nodename IN {branches}
 ORDER BY pkgset_date DESC
 """
 
+    get_beehive_errors_by_branch_and_arch = """
+WITH
+last_bh_updated AS
+(
+    SELECT
+        pkgset_name,
+        bh_arch as arch,
+        max(bh_updated) AS updated
+    FROM BeehiveStatus
+    WHERE pkgset_name = '{branch}' AND bh_arch IN {archs}
+    GROUP BY
+        pkgset_name,
+        bh_arch
+),
+src_packages AS
+(
+    SELECT
+        pkg_hash,
+        pkg_epoch
+    FROM last_packages
+    WHERE pkgset_name = '{branch}' AND pkg_sourcepackage = 1
+)
+SELECT
+    pkgset_name,
+    pkg_hash,
+    pkg_name,
+    Pkg.pkg_epoch,
+    pkg_version,
+    pkg_release,
+    bh_arch,
+    bh_updated,
+    bh_ftbfs_since
+FROM BeehiveStatus
+LEFT JOIN
+(SELECT pkg_hash, pkg_epoch FROM src_packages) AS Pkg USING (pkg_hash)
+WHERE pkgset_name = '{branch}'
+    AND bh_status = 'error'
+    AND (bh_arch, bh_updated) IN (
+        SELECT arch, updated FROM last_bh_updated
+    )
+    AND pkg_hash IN (
+        SELECT pkg_hash FROM src_packages
+    )
+ORDER BY pkg_name
+"""
+
 
 sql = SQL()

@@ -176,3 +176,31 @@ branch_tree_model = ns.model(
         ),
     },
 )
+
+beehive_ftbfs_el_model = ns.model(
+    "ExportBeehiveFTBFSElementModel",
+    {
+        "branch": fields.String(description="Beehive branch"),
+        "hash": fields.String(description="package hash"),
+        "name": fields.String(description="package name"),
+        "epoch": fields.Integer(description="package epoch"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "arch": fields.String(description="Beehive arch"),
+        "updated": fields.String(description="Beehive rebuild date"),
+        "ftbfs_since": fields.String(description="Package FTBFS since date"),
+        "url": fields.String(description="Beehive package build error log URL"),
+    },
+)
+beehive_ftbfs_list_model = ns.model(
+    "ExportBeehiveFTBFSListModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "ftbfs": fields.Nested(
+            beehive_ftbfs_el_model,
+            description="Beehive packages rebuild errors",
+            as_list=True,
+        ),
+    },
+)

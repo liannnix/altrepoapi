@@ -47,6 +47,15 @@ from_date_opt = parser.register_item(
     location="args",
 )
 
+branch_name = parser.register_item(
+    "branch",
+    type=branch_name_type,
+    required=True,
+    help="branch name",
+    location="args",
+)
+
 # build parsers
 pkgset_packages_args = parser.build_parser(arch_opt)
 translation_export_args = parser.build_parser(branch_list, from_date_opt)
+beehive_args = parser.build_parser(branch_name, arch_opt)
