@@ -624,7 +624,7 @@ class ErrataBuilder(APIWorker):
                 if (pcm.vuln_id, errata.id.id) in processed_cve_to_errata_pairs:
                     continue
                 processed_cve_to_errata_pairs.add((pcm.vuln_id, errata.id.id))
-                # current CVE ID not Errata references -> skip it
+                # current CVE ID not in Errata references -> skip it
                 if not cve_in_errata_references(pcm.vuln_id, errata):
                     continue
                 # current CVE ID added to Errata by changelog -> skip it
