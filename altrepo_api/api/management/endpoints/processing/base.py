@@ -23,6 +23,7 @@ from altrepodb_libs import (
     VersionCompareResult,
     mmhash64,
     evrdt_compare,
+    version_compare,
     version_less_or_equal,
 )
 
@@ -222,7 +223,7 @@ def get_closest_task(
             return tasks[b][0]
 
 
-def package_is_vulnerable(pkg: PackageTask, cpm: CpeMatchVersions) -> bool:
+def is_package_vulnerable(pkg: PackageTask, cpm: CpeMatchVersions) -> bool:
     # XXX: always match the package for CPE with version unspecified
     if (
         cpm.version_start == ""
@@ -241,6 +242,29 @@ def package_is_vulnerable(pkg: PackageTask, cpm: CpeMatchVersions) -> bool:
         version2=pkg.version,
         strictly_less=cpm.version_start_excluded,
     )
+
+
+def is_cpm_version_upper_boung_gt(
+    new_cmv: CpeMatchVersions, prev_cmv: CpeMatchVersions
+) -> bool:
+    cmp = version_compare(version1=new_cmv.version_end, version2=prev_cmv.version_end)
+    if cmp == VersionCompareResult.GREATER_THAN:
+        # if new version range upper bound is greater that previous use it no matter
+        # what bound flags are
+        return True
+
+    if cmp == VersionCompareResult.EQUAL:
+        # bound flags are equial -> only version comparison is mater
+        if new_cmv.version_end_excluded == prev_cmv.version_end_excluded:
+            return False
+        # new version bound exclusion flag is not set and old is set
+        if not new_cmv.version_end_excluded and prev_cmv.version_end_excluded:
+            return True
+        # new version bound exclusion flag is set and old is not set
+        pass
+
+    # new version is less or equal with version bound exclusion flags [new, prev] == [True, False]
+    return False
 
 
 def dedup_pcms(pcms: list[PackageCveMatch]) -> list[PackageCveMatch]:

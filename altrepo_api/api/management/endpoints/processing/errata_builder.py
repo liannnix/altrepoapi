@@ -27,6 +27,7 @@ from .base import (
     ErrataBuilderError,
     ErrataHandlerError,
     ChangelogErrataPoint,
+    CveVersionsMatch,
     CveCpmHashes,
     ErrataPoint,
     PackageTask,
@@ -36,7 +37,8 @@ from .base import (
     dedup_pcms,
     find_errata_by_package_task,
     get_closest_task,
-    package_is_vulnerable,
+    is_package_vulnerable,
+    is_cpm_version_upper_boung_gt,
     version_release_less_or_equal,
 )
 from .errata_handler import ErrataHandler
@@ -153,10 +155,7 @@ class ErrataBuilder(APIWorker):
         pkgs_cve_matches: Iterable[PackageCveMatch],
         pkgs_versions: dict[int, list[PackageVersion]],
     ):
-        """Collect possible Errata creation points usin given packages' CVE matches.
-        Collected set of ErrataPoint objects could have 'prev_task' field to 'None' -
-        that indicates there is no previous task with vulnerable package version found.
-        """
+        """Collect possible Errata creation points using given packages' CVE matches."""
 
         errata_points: set[tuple[ErrataPoint, int]] = set()
 
@@ -178,10 +177,26 @@ class ErrataBuilder(APIWorker):
         # get CVE versions matches
         cve_cpm_versions = self._get_cve_matchings(cpm_hashes)
 
-        # loop through matches and find possible errata creation point
+        # contains CVE match version range with highest upper bound
+        # for a given branch, package and CVE
+        pkg_cve_match_max_versions: dict[
+            tuple[str, str, str], tuple[int, CveVersionsMatch]
+        ] = {}
+
+        # TODO: use existing exclusion rules from DB
+        def skip_by_exclusion_rules(pcm: PackageCveMatch) -> bool:
+            """Filter out PCM that excluded by existing rules."""
+            return False
+
+        def skip_cpm_version_by_upper_bound(cvm: CveVersionsMatch) -> bool:
+            """Filter out version ranges with open upper bound."""
+            return cvm.versions.version_end == ""
+
+        # loop through matches and find suitable matches to be processed for errata points
         for idx, m in enumerate(pkgs_cve_matches):
             # skip matches that marked as vulnerable from possible Errata creation points
-            if m.is_vulnerable:
+            # skip matches closed by exclusion rules set
+            if m.is_vulnerable or skip_by_exclusion_rules(m):
                 continue
 
             branches = [v.branch for v in pkgs_versions[m.pkg_hash]]
@@ -193,42 +208,56 @@ class ErrataBuilder(APIWorker):
                 if not branch_tasks:
                     continue
 
-                # loop through CVE' matches and search for suitable package' task
-                for cpm_ver in cve_cpm_versions.get(m.vuln_hash, []):
-                    # skip CVE' CPE matches by version hashes
-                    if cpm_ver.hashes.cpm_version_hash != m.cpm_version_hash:
+                # loop through CVE' matches and search for highest version range upper bound
+                for cvm in (
+                    c
+                    for c in cve_cpm_versions.get(m.vuln_hash, [])
+                    if (
+                        # skip CVE' CPE matches by version hashes check
+                        c.hashes.cpm_version_hash == m.cpm_version_hash
+                        # skip CVE' CPE matches by version range bounds check
+                        and not skip_cpm_version_by_upper_bound(c)
+                    )
+                ):
+                    key_t = (branch, m.pkg_name, cvm.id)
+                    if key_t not in pkg_cve_match_max_versions:
+                        pkg_cve_match_max_versions[key_t] = (idx, cvm)
                         continue
 
-                    next_task = branch_tasks[0]
+                    _, prev_cvm = pkg_cve_match_max_versions[key_t]
+                    if is_cpm_version_upper_boung_gt(cvm.versions, prev_cvm.versions):
+                        pkg_cve_match_max_versions[key_t] = (idx, cvm)
 
-                    # only one task found in history
-                    if len(branch_tasks) == 1:
-                        if not package_is_vulnerable(next_task, cpm_ver.versions):
-                            # got only one task in current branch and it has not
-                            # vulnerable package' version -> set 'prev_task' to 'None'
-                            errata_points.add(
-                                (ErrataPoint(next_task, None, cpm_ver), idx)
-                            )
-                        continue
+        # use found suitable matches to build proper errata creation points
+        for (branch, package, cve), (idx, cvm) in pkg_cve_match_max_versions.items():
+            branch_tasks = tasks_by_branch[branch]
 
-                    # look for a pair of tasks which closes vulnerability by version update
-                    vulnerable_found = False
-                    for task in branch_tasks[1:]:
-                        # skip tasks with package version is not vulnerable
-                        if not package_is_vulnerable(task, cpm_ver.versions):
-                            next_task = task
-                            continue
-                        # finally got task with vulnerable package' version -> good point
-                        # to create an Errata
-                        errata_points.add((ErrataPoint(next_task, task, cpm_ver), idx))
-                        vulnerable_found = True
-                        break
-                    # got no task in current branch that has vulnerable package' version
-                    # -> use the last one and set 'prev_task' to 'None'
-                    if not vulnerable_found:
-                        errata_points.add(
-                            (ErrataPoint(branch_tasks[-1], None, cpm_ver), idx)
-                        )
+            next_task = branch_tasks[0]
+
+            # only one task found in history
+            if len(branch_tasks) == 1:
+                self.logger.info(
+                    f"No suitable task found to create errata for {cve} on {package} in {branch}"
+                )
+                continue
+
+            # look for a pair of tasks which closes vulnerability by version update
+            vulnerable_found = False
+            for task in branch_tasks[1:]:
+                # skip tasks with package version is not vulnerable
+                if not is_package_vulnerable(task, cvm.versions):
+                    next_task = task
+                    continue
+                # finally got task with vulnerable package' version -> good point
+                # to create an Errata
+                errata_points.add((ErrataPoint(next_task, task, cvm), idx))
+                vulnerable_found = True
+                break
+            # got no task in current branch that has vulnerable package' version
+            if not vulnerable_found:
+                self.logger.info(
+                    f"No task for package {package} found for {cve} in {branch} as vulnerable"
+                )
 
         return errata_points
 
@@ -480,6 +509,18 @@ class ErrataBuilder(APIWorker):
                     return True
             return False
 
+        def is_already_closed_by_existing_errata(
+            branch: str, cve: str, erratas: list[Errata]
+        ) -> bool:
+            if not erratas:
+                return False
+
+            for errata in (e for e in erratas if e.pkgset_name == branch):
+                if cve_in_errata_references(cve, errata):
+                    return True
+
+            return False
+
         any_pkg_has_cve_in_chlog = any_package_has_match_cves_in_chlog()
 
         # get possible errata creation points
@@ -487,15 +528,16 @@ class ErrataBuilder(APIWorker):
             pkgs_cve_matches, pkgs_versions
         )
 
-        # collect existing Erratas by packages' names
-        erratas_by_package = self._get_existing_erratas(pkgs_names)
-
         if not possible_errata_points and not any_pkg_has_cve_in_chlog:
             self.logger.debug(
                 f"No possible Errata creation points found for {pkgs_names}"
             )
             return None
 
+        # collect existing Erratas by packages' names
+        erratas_by_package = self._get_existing_erratas(pkgs_names)
+
+        # FIXME: review changelog processing code!!!
         if any_pkg_has_cve_in_chlog:
             # check packages' changelogs for possible errata create or update
             self._build_erratas_from_changelogs(
@@ -506,29 +548,29 @@ class ErrataBuilder(APIWorker):
         if not possible_errata_points:
             return None
 
-        # collect exact existing Erratas for possible Errata points
-        exact_erratas_for_update = self._get_exact_erratas_for_update(
-            erratas_by_package, possible_errata_points
-        )
-
-        # handle found existing Erratas to be updated
-        for errata, ep, idx in exact_erratas_for_update:
-            self.logger.debug(f"Found exact errata to be updated: {ep}: {errata}")
-            self.eh.add_errata_update_from_ep(errata, ep, pkgs_cve_matches[idx])
-            # remove errata point from set as processed
-            possible_errata_points.discard((ep, idx))
-
         # iterate through a copy of 'possible_errata_points'
         for ep, idx in list(possible_errata_points):
             # drop errata points that has no previous task
             if ep.prev_task is None:
-                possible_errata_points.discard((ep, idx))
+                continue
+
+            pcm = pkgs_cve_matches[idx]
+            existing_erratas = erratas_by_package.get(ep.task.name, [])
+
+            # check if exist Errata that closes particular CVE in a given branch
+            if is_already_closed_by_existing_errata(
+                ep.task.branch, ep.cvm.id, existing_erratas
+            ):
+                continue
+
+            # check if package' changelog closes a given CVE
+            if any_pkg_has_cve_in_chlog and ep.cvm.id in all_vulns_from_changelog(
+                pkgs_changelogs[pcm.pkg_hash]
+            ):
                 continue
 
             # filter existing erratas by exact task
-            exact_errata = find_errata_by_package_task(
-                ep.task, erratas_by_package.get(ep.task.name, [])
-            )
+            exact_errata = find_errata_by_package_task(ep.task, existing_erratas)
             # got existing errata for errata point
             if exact_errata is not None:
                 # CVE ID already in existintg errata for given package -> skip it
@@ -536,12 +578,13 @@ class ErrataBuilder(APIWorker):
                     continue
                 else:
                     # update existing errata
-                    self.eh.add_errata_update_from_ep(
-                        exact_errata, ep, pkgs_cve_matches[idx]
+                    self.logger.debug(
+                        f"Found exact errata to be updated: {ep}: {exact_errata}"
                     )
+                    self.eh.add_errata_update_from_ep(exact_errata, ep, pcm)
                     continue
             # no existing errata was found -> create new one
-            self.eh.add_errata_create_from_ep(ep, pkgs_cve_matches[idx])
+            self.eh.add_errata_create_from_ep(ep, pcm)
 
     def build_erratas_on_delete(
         self, pkgs_cve_matches: list[PackageCveMatch], pkg_name: Optional[str]
@@ -617,7 +660,7 @@ class ErrataBuilder(APIWorker):
                 continue
             # check errata contents
             for errata in erratas:
-                # FIXME: check errata.id is not None, just to make type-checker happy
+                # XXX: check errata.id is not None, just to make type-checker happy
                 if errata.id is None:
                     raise ValueError("Errata ID object is 'None'")
                 # skip CVE-to-Errata pairs if processed already
@@ -647,7 +690,7 @@ class ErrataBuilder(APIWorker):
 
         def get_errata_and_cpe(eid: str, cve: str) -> tuple[Errata, str]:
             for errata, cpe in erratas_by_cve.get(cve, []):
-                # FIXME: check errata.id is not None, just to make type-checker happy
+                # XXX: check errata.id is not None, just to make type-checker happy
                 if errata.id and errata.id.id == eid:
                     return errata, cpe
             raise ValueError(f"No Errata {eid} found for {cve}")
