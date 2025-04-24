@@ -223,6 +223,24 @@ def get_closest_task(
             return tasks[b][0]
 
 
+def group_tasks_by_branch(
+    tasks: dict[str, list[PackageTask]]
+) -> dict[str, list[PackageTask]]:
+    res: dict[str, list[PackageTask]] = {}
+    for task in (t for tt in tasks.values() for t in tt):
+        res.setdefault(task.branch, []).append(task)
+    return res
+
+
+def group_tasks_by_branch_and_name(
+    tasks: dict[str, list[PackageTask]]
+) -> dict[str, dict[str, list[PackageTask]]]:
+    res: dict[str, dict[str, list[PackageTask]]] = {}
+    for task in (t for tt in tasks.values() for t in tt):
+        res.setdefault(task.branch, {}).setdefault(task.name, []).append(task)
+    return res
+
+
 def is_package_vulnerable(pkg: PackageTask, cpm: CpeMatchVersions) -> bool:
     # XXX: always match the package for CPE with version unspecified
     if (
