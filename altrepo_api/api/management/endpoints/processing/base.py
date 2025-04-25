@@ -15,8 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from datetime import datetime
-from functools import cmp_to_key
-from typing import Any, Iterator, NamedTuple, Optional, Union
+from typing import Any, Iterable, Iterator, NamedTuple, Optional, Union
 
 from altrepodb_libs import (
     PackageCveMatch,
@@ -31,6 +30,9 @@ from altrepo_api.api.misc import lut
 from altrepo_api.api.vulnerabilities.endpoints.common import CPE, CpeMatchVersions
 
 from ..tools.base import Errata, PncRecord
+
+
+CVE_ID_PREFIX = "CVE-"
 
 
 class ErrataProcessingError(Exception):
@@ -141,10 +143,11 @@ def version_release_compare(
     return evrdt_compare(version1=v1, release1=r1, version2=v2, release2=r2)
 
 
-def version_release_less_or_equal(e: Errata, p: PackageVersion) -> bool:
-    return version_release_compare(
-        v1=e.pkg_version, r1=e.pkg_release, v2=p.version, r2=p.release
-    ) in (VersionCompareResult.EQUAL, VersionCompareResult.LESS_THAN)
+def is_version_release_eq(*, v1: str, r1: str, v2: str, r2: str) -> bool:
+    return (
+        evrdt_compare(version1=v1, release1=r1, version2=v2, release2=r2)
+        == VersionCompareResult.EQUAL
+    )
 
 
 def branch_inheritance_list(b: str) -> dict[str, int]:
@@ -155,42 +158,6 @@ def branch_inheritance_list(b: str) -> dict[str, int]:
         return {b: 0}
 
     return {x: i for i, x in enumerate([b] + lut.branch_inheritance[b])}
-
-
-def collect_erratas(branch: str, erratas: list[Errata]) -> list[Errata]:
-    """Collect existing erratas by branch and sorts it descending by package'
-    version and release in accordance to branch inheritance order.
-    """
-
-    inheritance_list = branch_inheritance_list(branch)
-
-    def compare_erratas(a: Errata, b: Errata) -> int:
-        if a.pkg_name != b.pkg_name:
-            raise ValueError("Failed to compare Erratas for different packages")
-
-        vr_cmp = int(
-            version_release_compare(
-                v1=a.pkg_version, r1=a.pkg_release, v2=b.pkg_version, r2=b.pkg_release
-            )
-        )
-
-        if vr_cmp != 0:
-            return vr_cmp
-
-        a_branch_idx = inheritance_list[a.pkgset_name]
-        b_branch_idx = inheritance_list[b.pkgset_name]
-
-        if a_branch_idx < b_branch_idx:
-            return 1
-        elif a_branch_idx > b_branch_idx:
-            return -1
-        return 0
-
-    return sorted(
-        [e for e in erratas if e.pkgset_name in inheritance_list],
-        key=cmp_to_key(compare_erratas),
-        reverse=True,
-    )
 
 
 def find_errata_by_package_task(
@@ -211,16 +178,21 @@ def find_errata_by_package_task(
     return None
 
 
-def cve_in_errata_references(cve_id: str, e: Errata) -> bool:
-    return cve_id in (r.link for r in e.references)
+def is_cve_in_errata_references(cve_id: str, errata: Errata) -> bool:
+    return cve_id in (r.link for r in errata.references)
 
 
-def get_closest_task(
-    branch: str, tasks: dict[str, list[PackageTask]]
-) -> Union[PackageTask, None]:
-    for b in branch_inheritance_list(branch).keys():
-        if b in tasks and tasks[b]:
-            return tasks[b][0]
+def cves_from_vulns(vulns: Iterable[str]) -> set[str]:
+    return {v for v in vulns if v.startswith(CVE_ID_PREFIX)}
+
+
+def errata_cves_diff(cves: Iterable[str], errata: Errata) -> Optional[set[str]]:
+    res = set()
+    refs = {e.link for e in errata.references}
+    for cve in cves:
+        if cve not in refs:
+            res.add(cve)
+    return res if res else None
 
 
 def group_tasks_by_branch(
