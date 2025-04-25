@@ -21,7 +21,6 @@ from uuid import UUID
 from altrepodb_libs import PackageCveMatch
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.errata.endpoints.common import CVE_ID_PREFIX
 
 from .base import (
     ErrataBuilderError,
@@ -257,8 +256,8 @@ class ErrataBuilder(APIWorker):
                 break
             # got no task in current branch that has vulnerable package' version
             if not vulnerable_found:
-                self.logger.info(
-                    f"No task for package {package} found for {cve} in {branch} as vulnerable"
+                self.logger.debug(
+                    f"No task for package {package} found for {cve}[{cvm.versions}] in {branch} as vulnerable"
                 )
 
         return errata_points
@@ -279,7 +278,7 @@ class ErrataBuilder(APIWorker):
             for errata in erratas:
                 if errata.task_id == task_id:
                     return errata
-                return None
+            return None
 
         def build_chlog_slice(
             tasks: list[PackageTask], chlog_zip: list[tuple[ChangelogRecord, set[str]]]
@@ -295,7 +294,6 @@ class ErrataBuilder(APIWorker):
                     if idx < last_idx:
                         continue
                     _, version, release = split_evr(rec.evr)
-                    all_cves.update(cves)
                     # got previous task EVR in a changelog
                     if is_version_release_eq(
                         v1=version,
@@ -307,30 +305,14 @@ class ErrataBuilder(APIWorker):
                         if all_cves:
                             chlog_slice.append((task, all_cves, rec.evr))
                         break
+                    # collect CVEs from changelog
+                    all_cves.update(cves)
             # process the very first task in a branch history
             rec, cves = chlog_zip[last_idx]
             if cves:
                 chlog_slice.append((tasks[-1], cves, rec.evr))
 
             return chlog_slice
-
-        def make_errata_update_point(
-            errata: Errata, cve_ids: Iterable[str], evr: str
-        ) -> tuple[Errata, ChangelogErrataPoint]:
-            return errata, ChangelogErrataPoint(
-                task=PackageTask(
-                    task_id=errata.task_id,
-                    subtask_id=errata.subtask_id,
-                    branch=errata.pkgset_name,
-                    hash=errata.pkg_hash,
-                    name=errata.pkg_name,
-                    version=errata.pkg_version,
-                    release=errata.pkg_release,
-                    changed=errata.created,
-                ),
-                evr=evr,
-                cve_ids=tuple(cve_ids),
-            )
 
         # group build tasks
         # tasks_by_branch = group_tasks_by_branch(pkgs_tasks)
@@ -356,7 +338,7 @@ class ErrataBuilder(APIWorker):
                 continue
 
             # use only branches that has any build tasks in DB
-            branches = [v.branch for v in pkg_versions if v.branch in pkgs_tasks]
+            branches = [v.branch for v in pkg_versions if v.branch in tasks_by_branch_and_package]
             existing_erratas = erratas_by_package.get(pkg_name, [])
 
             for branch in branches:
@@ -403,9 +385,11 @@ class ErrataBuilder(APIWorker):
 
                 # do something with found tasks, CVEs and erratas
                 for task, cves, evr in chlog_slice:
+                    self.logger.debug(f"Processing changelog errata point: {task}, {cves}, {evr}")
                     errata = get_errata_by_task(erratas, task.task_id)
                     if errata is None:
                         # add errata create point
+                        self.logger.debug(f"Create new Errata from changelog for {task}")
                         create_errata_eps.append(
                             ChangelogErrataPoint(
                                 task=task, evr=evr, cve_ids=tuple(cves)
@@ -414,7 +398,9 @@ class ErrataBuilder(APIWorker):
                     else:
                         # check if existing errata should be updated
                         if errata_cves_diff(cves, errata) is None:
+                            self.logger.debug(f"All CVEs from changelog already in Errata {errata}")
                             continue
+                        self.logger.debug(f"Update Errata from changelog for {task}: {cves}")
                         update_errata_eps.append(
                             (
                                 errata,
@@ -453,18 +439,6 @@ class ErrataBuilder(APIWorker):
         pkgs_versions = self._get_packages_versions(pkgs_hashes)
         pkgs_changelogs = self._get_pkgs_changelogs(pkgs_hashes)
 
-        # check if any package has changelog record that closes CVE from matches
-        def any_package_has_match_cves_in_chlog() -> bool:
-            # check if any packages has CVEs mentioned in changelog
-            for chlog in pkgs_changelogs.values():
-                # TODO: handle other vulnerabilities types other than CVE
-                # if all_vulns_from_changelog(chlog):
-                if any(
-                    v.startswith(CVE_ID_PREFIX) for v in all_vulns_from_changelog(chlog)
-                ):
-                    return True
-            return False
-
         def is_already_closed_by_existing_errata(
             branch: str, cve: str, erratas: list[Errata]
         ) -> bool:
@@ -473,18 +447,17 @@ class ErrataBuilder(APIWorker):
 
             for errata in (e for e in erratas if e.pkgset_name == branch):
                 if is_cve_in_errata_references(cve, errata):
+                    self.logger.debug(f"CVE {cve} is already closed in {branch} by {errata.id}")
                     return True
 
             return False
-
-        any_pkg_has_cve_in_chlog = any_package_has_match_cves_in_chlog()
 
         # get possible errata creation points
         possible_errata_points = self._get_possible_errata_points(
             pkgs_cve_matches, pkgs_versions, pkgs_tasks
         )
 
-        if not possible_errata_points and not any_pkg_has_cve_in_chlog:
+        if not possible_errata_points:
             self.logger.debug(
                 f"No possible Errata creation points found for {pkgs_names}"
             )
@@ -493,15 +466,19 @@ class ErrataBuilder(APIWorker):
         # collect existing Erratas by packages' names
         erratas_by_package = self._get_existing_erratas(pkgs_names)
 
-        if any_pkg_has_cve_in_chlog:
-            # check packages' changelogs for possible errata create or update
-            erratas_to_create, erratas_to_update = self._build_erratas_from_changelogs(
-                pkgs_tasks, pkgs_versions, pkgs_changelogs, erratas_by_package
-            )
-            for ep in erratas_to_create:
-                self.eh.add_errata_create_from_chlog(ep)
-            for errata, ep in erratas_to_update:
-                self.eh.add_errata_update_from_chlog(errata, ep)
+        # XXX: We've dicided do not process packages changelogs for Errata points
+        # due to various reasons that can't be handled by any menaningful algorithm.
+        # The package' latest changelog contents is used later on to exclude CVEs that
+        # found from CVE matching algo
+        # if any_pkg_has_cve_in_chlog:
+        #     # check packages' changelogs for possible errata create or update
+        #     erratas_to_create, erratas_to_update = self._build_erratas_from_changelogs(
+        #         pkgs_tasks, pkgs_versions, pkgs_changelogs, erratas_by_package
+        #     )
+        #     for ep in erratas_to_create:
+        #         self.eh.add_errata_create_from_chlog(ep)
+        #     for errata, ep in erratas_to_update:
+        #         self.eh.add_errata_update_from_chlog(errata, ep)
 
         # nothing left to do
         if not possible_errata_points:
@@ -523,8 +500,7 @@ class ErrataBuilder(APIWorker):
                 continue
 
             # check if package' changelog closes a given CVE
-            # XXX: ensure that all CVE closing records from changelog processed properly
-            if any_pkg_has_cve_in_chlog and ep.cvm.id in all_vulns_from_changelog(
+            if ep.cvm.id in all_vulns_from_changelog(
                 pkgs_changelogs[pcm.pkg_hash]
             ):
                 continue

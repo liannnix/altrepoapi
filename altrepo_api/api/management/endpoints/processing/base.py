@@ -28,11 +28,9 @@ from altrepodb_libs import (
 
 from altrepo_api.api.misc import lut
 from altrepo_api.api.vulnerabilities.endpoints.common import CPE, CpeMatchVersions
+from altrepo_api.api.errata.endpoints.common import CVE_ID_PREFIX
 
 from ..tools.base import Errata, PncRecord
-
-
-CVE_ID_PREFIX = "CVE-"
 
 
 class ErrataProcessingError(Exception):
