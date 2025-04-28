@@ -541,7 +541,7 @@ SELECT
     ec_id_noversion,
     argMax(ec_id, ec_updated)
 FROM ErrataChangeHistory
-WHERE errata_id LIKE '{errata_id_noversion}%%'
+WHERE errata_id LIKE '{errata_id_noversion}-%%'
 GROUP BY ec_id_noversion
 """
 
