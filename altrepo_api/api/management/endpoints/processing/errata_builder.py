@@ -385,9 +385,6 @@ class ErrataBuilder(APIWorker):
         # collect all CVE IDs from matches
         pcms_cve_ids = {m.vuln_id for m in pkgs_cve_matches}
 
-        # get packages' changelogs
-        pkgs_changelogs = self._get_pkgs_changelogs(pkgs_hashes)
-
         # collect existing Erratas by packages' names, excluding those are has
         # no intersection by CVE IDs from packages' CVE matches
         def any_cve_ids_in_errata_references(cve_ids: set[str], e: Errata) -> bool:
@@ -405,20 +402,31 @@ class ErrataBuilder(APIWorker):
         if not erratas_by_package:
             return None
 
+        # extend packages hashes form found related erratas to collect all
+        # related changelogs
+        pkgs_hashes.update(
+            e.pkg_hash for erratas in erratas_by_package.values() for e in erratas
+        )
+
+        # get packages' changelogs
+        pkgs_changelogs = self._get_pkgs_changelogs(pkgs_hashes)
+
         cves_by_errata_ids: dict[str, set[str]] = {}
         erratas_by_cve: dict[str, list[tuple[Errata, str]]] = {}
         processed_cve_to_errata_pairs: set[tuple[str, str]] = set()
 
-        # check if CVE ID added to errata from package' changel using EVR
+        # check if CVE ID added to errata from package' changelog using EVR
         def check_cve_by_chlog(
             cve_id: str, e: Errata, changelog: PackageChangelog
         ) -> bool:
             # try to find changelog record by EVR
             for record in changelog.changelog:
                 _, version, release = split_evr(record.evr)
-                if (e.pkg_version, e.pkg_release) == (version, release):
-                    if cve_id in vulns_from_changelog_record(record):
-                        return True
+                if (e.pkg_version, e.pkg_release) == (
+                    version,
+                    release,
+                ) and cve_id in vulns_from_changelog_record(record):
+                    return True
             return False
 
         # collect existing erratas if any update is required
@@ -444,8 +452,9 @@ class ErrataBuilder(APIWorker):
                 if not is_cve_in_errata_references(pcm.vuln_id, errata):
                     continue
                 # current CVE ID added to Errata by changelog -> skip it
+                # XXX: use actual package' changelog that has been used for Errata build
                 if check_cve_by_chlog(
-                    pcm.vuln_id, errata, pkgs_changelogs[pcm.pkg_hash]
+                    pcm.vuln_id, errata, pkgs_changelogs[errata.pkg_hash]
                 ):
                     self.logger.debug(
                         f"{pcm.vuln_id} added to {errata.id.id} from package changelog"
