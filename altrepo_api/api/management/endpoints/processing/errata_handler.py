@@ -22,7 +22,7 @@ from altrepodb_libs import PackageCveMatch
 from altrepo_api.api.base import APIWorker
 
 from .sql import sql
-from .base import ErrataHandlerError, ErrataPoint, ChangelogErrataPoint
+from .base import ErrataHandlerError, ErrataPoint
 from .helpers import get_bdus_by_cves
 from ..errata import ManageErrata
 from ..tools.base import Errata, ChangeReason, PncRecordType
@@ -57,14 +57,14 @@ from ..tools.errata import Reference, errata_hash
 
 class ErrataCreate(NamedTuple):
     reason: ChangeReason
-    ep: Union[ErrataPoint, ChangelogErrataPoint]
+    ep: ErrataPoint
     cve_ids: tuple[str, ...]
 
 
 class ErrataUpdate(NamedTuple):
     reason: ChangeReason
     errata: Errata
-    ep: Union[ErrataPoint, ChangelogErrataPoint]
+    ep: ErrataPoint
     cve_ids: tuple[str, ...]
 
 
@@ -342,15 +342,6 @@ class ErrataHandler(APIWorker):
             ErrataCreate(reason=reason, ep=ep, cve_ids=(pcm.vuln_id,))
         )
 
-    def add_errata_create_from_chlog(self, ep: ChangelogErrataPoint):
-        reason = self.reason.clone()
-        reason.details["from"] = build_errata_details(
-            CHANGE_ACTION_CREATE, SOURCE_CHANGELOG, ep=ep
-        )
-        self._erratas_to_create.append(
-            ErrataCreate(reason=reason, ep=ep, cve_ids=ep.cve_ids)
-        )
-
     def add_errata_update_from_ep(
         self, errata: Errata, ep: ErrataPoint, pcm: PackageCveMatch
     ):
@@ -360,15 +351,6 @@ class ErrataHandler(APIWorker):
         )
         self._erratas_to_update.append(
             ErrataUpdate(reason=reason, errata=errata, ep=ep, cve_ids=(pcm.vuln_id,))
-        )
-
-    def add_errata_update_from_chlog(self, errata: Errata, ep: ChangelogErrataPoint):
-        reason = self.reason.clone()
-        reason.details["from"] = build_errata_details(
-            CHANGE_ACTION_UPDATE, SOURCE_CHANGELOG, errata=errata, ep=ep
-        )
-        self._erratas_to_update.append(
-            ErrataUpdate(reason=reason, errata=errata, ep=ep, cve_ids=ep.cve_ids)
         )
 
     def add_errata_discard(
@@ -437,7 +419,7 @@ def build_validation_error_report(worker: APIWorker, args: Any) -> dict[str, Any
 def build_errata_details(action: str, source: str, **kwargs) -> dict[str, Any]:
     class BuildDetailsKwargs(TypedDict):
         errata: Errata
-        ep: Union[ErrataPoint, ChangelogErrataPoint]
+        ep: ErrataPoint
         pcm: PackageCveMatch
         cpe: str
         cve_ids: tuple[str, ...]
@@ -482,17 +464,14 @@ def build_errata_details(action: str, source: str, **kwargs) -> dict[str, Any]:
 
         result["match"] = {}
 
-        if isinstance(ep, ChangelogErrataPoint):
-            result["match"]["cves"] = ep.cve_ids
-        else:
-            result["match"]["cve"] = ep.cvm.id
-            result["match"]["cpe"] = pcm.pkg_cpe if pcm else ep.cvm.versions.cpe
-            result["match"]["versions"] = {
-                "version_start": ep.cvm.versions.version_start,
-                "version_start_excluded": ep.cvm.versions.version_start_excluded,
-                "version_end": ep.cvm.versions.version_end,
-                "version_end_excluded": ep.cvm.versions.version_end_excluded,
-            }
+        result["match"]["cve"] = ep.cvm.id
+        result["match"]["cpe"] = pcm.pkg_cpe if pcm else ep.cvm.versions.cpe
+        result["match"]["versions"] = {
+            "version_start": ep.cvm.versions.version_start,
+            "version_start_excluded": ep.cvm.versions.version_start_excluded,
+            "version_end": ep.cvm.versions.version_end,
+            "version_end_excluded": ep.cvm.versions.version_end_excluded,
+        }
 
     if "cpe" in args or "cve_ids" in args:
         if "match" not in result:

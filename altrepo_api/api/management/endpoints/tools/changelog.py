@@ -51,10 +51,6 @@ def vulns_from_changelog_record(chlog_record: ChangelogRecord) -> set[str]:
     return _mentioned_vulns(chlog_record.text)
 
 
-def vulns_from_changelog(package_changelog: PackageChangelog) -> list[set[str]]:
-    return [vulns_from_changelog_record(r) for r in package_changelog.changelog]
-
-
 def all_vulns_from_changelog(package_changelog: PackageChangelog) -> set[str]:
     all_vulns: set[str] = set()
 

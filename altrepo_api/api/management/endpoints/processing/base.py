@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from datetime import datetime
-from typing import Any, Iterable, Iterator, NamedTuple, Optional, Union
+from typing import Any, Iterator, NamedTuple, Optional, Union
 
 from altrepodb_libs import (
     PackageCveMatch,
@@ -28,7 +28,6 @@ from altrepodb_libs import (
 
 from altrepo_api.api.misc import lut
 from altrepo_api.api.vulnerabilities.endpoints.common import CPE, CpeMatchVersions
-from altrepo_api.api.errata.endpoints.common import CVE_ID_PREFIX
 
 from ..tools.base import Errata, PncRecord
 
@@ -80,12 +79,6 @@ class ErrataPoint(NamedTuple):
     task: PackageTask
     prev_task: Union[PackageTask, None]
     cvm: CveVersionsMatch
-
-
-class ChangelogErrataPoint(NamedTuple):
-    task: PackageTask
-    evr: str
-    cve_ids: tuple[str, ...]
 
 
 class CpeRecord(NamedTuple):
@@ -141,13 +134,6 @@ def version_release_compare(
     return evrdt_compare(version1=v1, release1=r1, version2=v2, release2=r2)
 
 
-def is_version_release_eq(*, v1: str, r1: str, v2: str, r2: str) -> bool:
-    return (
-        evrdt_compare(version1=v1, release1=r1, version2=v2, release2=r2)
-        == VersionCompareResult.EQUAL
-    )
-
-
 def branch_inheritance_list(b: str) -> dict[str, int]:
     if b not in lut.branch_inheritance:
         return {lut.branch_inheritance_root: 0}
@@ -178,19 +164,6 @@ def find_errata_by_package_task(
 
 def is_cve_in_errata_references(cve_id: str, errata: Errata) -> bool:
     return cve_id in (r.link for r in errata.references)
-
-
-def cves_from_vulns(vulns: Iterable[str]) -> set[str]:
-    return {v for v in vulns if v.startswith(CVE_ID_PREFIX)}
-
-
-def errata_cves_diff(cves: Iterable[str], errata: Errata) -> Optional[set[str]]:
-    res = set()
-    refs = {e.link for e in errata.references}
-    for cve in cves:
-        if cve not in refs:
-            res.add(cve)
-    return res if res else None
 
 
 def group_tasks_by_branch(
