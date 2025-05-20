@@ -493,16 +493,22 @@ class ManagePnc(APIWorker):
             return self.error
 
         # check if new PNC records is consistent with DB contents
+        pncs = []
         for pnc in self.pncs:
-            for pnc_db in pncs_by_package:
-                # 1. check if PNC record already exists in DB
-                if compare_pnc_records(pnc, pnc_db, include_state=True):
-                    return self.store_error(
-                        {
-                            "message": f"PNC record already exists in DB: {pnc_db}.",
-                        },
-                        http_code=409,
-                    )
+            # PNC record already exists in DB with same state -> skip it
+            if any(compare_pnc_records(pnc, pnc_db, include_state=True) for pnc_db in pncs_by_package):
+                continue
+            pncs.append(pnc)
+
+        if not pncs:
+            return self.store_error(
+                {
+                    "message": "PNC records already exists in DB",
+                },
+                http_code=409,
+            )
+
+        for pnc in pncs:
             # add new PNC records to transaction
             self.trx.register_pnc_discard(pnc=pnc, pnc_type=PncType.NAME)
 
@@ -648,7 +654,11 @@ class PncList(APIWorker):
 
         # get PNC records from DB
         response = self.send_sql_request(
-            self.sql.get_pnc_list.format(where_clause=where_clause, branch=branch)
+            self.sql.get_pnc_list.format(
+                where_clause=where_clause,
+                branch=branch,
+                pnc_branches=tuple(lut.repology_branches),
+            )
         )
         if not self.sql_status:
             return self.error

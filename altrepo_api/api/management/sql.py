@@ -1112,11 +1112,11 @@ FROM (
     SELECT
         pkg_name AS name,
         argMax(pnc_state, ts) AS state,
-        argMax(pnc_result, ts) AS result,
-        argMax(pnc_type, ts) AS type,
+        pnc_result AS result,
+        pnc_type AS type,
         argMax(pnc_source, ts) AS source
     FROM PackagesNameConversion
-    WHERE pnc_type != 'cpe'
+    WHERE pnc_type IN {pnc_branches}
     GROUP BY
         pkg_name,
         pnc_type,
@@ -1136,11 +1136,11 @@ SELECT * FROM (
         SELECT
             pkg_name AS name,
             argMax(pnc_state, ts) AS state,
-            argMax(pnc_result, ts) AS result,
-            argMax(pnc_type, ts) AS type,
+            pnc_result AS result,
+            pnc_type AS type,
             argMax(pnc_source, ts) AS source
         FROM PackagesNameConversion
-        WHERE pnc_type != 'cpe'
+        WHERE pnc_type IN {pnc_branches}
         GROUP BY
             pkg_name,
             pnc_type,
@@ -1165,8 +1165,7 @@ WHERE {name_like}
                 pkg_name,
                 argMax(pnc_state, ts) AS state
             FROM PackagesNameConversion
-            WHERE pnc_type != 'cpe'
-            AND pnc_type IN {pnc_branches}
+            WHERE pnc_type IN {pnc_branches}
             GROUP BY
                 pkg_name,
                 pnc_type,

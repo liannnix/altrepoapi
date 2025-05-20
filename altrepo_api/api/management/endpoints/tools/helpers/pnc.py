@@ -19,6 +19,7 @@ from typing import Iterable
 from altrepodb_libs import PackageCveMatch
 
 from altrepo_api.utils import make_tmp_table_name
+from altrepo_api.api.misc import lut
 
 from .base import _pAPIWorker
 from ..base import PncRecord
@@ -36,7 +37,9 @@ def get_pncs_by_package(
     where_clause = f"WHERE state IN {states} AND name = '{package_name}'"
 
     response = cls.send_sql_request(
-        cls.sql.get_pnc_records.format(where_clause=where_clause)
+        cls.sql.get_pnc_records.format(
+            where_clause=where_clause, pnc_branches=tuple(lut.repology_branches)
+        )
     )
     if not cls.sql_status:
         return []
