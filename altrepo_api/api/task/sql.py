@@ -683,7 +683,7 @@ pkgset_history AS
 (
     SELECT
         pkgset_date,
-        toUInt32(pkgset_kv.v[indexOf(pkgset_kv.k, 'task')]) AS pkgset_task
+        toUInt32OrZero(pkgset_kv.v[indexOf(pkgset_kv.k, 'task')]) AS pkgset_task
     FROM PackageSetName
     WHERE pkgset_nodename = '{branch}'
         AND pkgset_depth = 0
