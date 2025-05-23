@@ -127,7 +127,7 @@ vuln_ids_json_post_list_model = ns.model(
 )
 
 vuln_model = ns.model(
-    "VulnerabilityModel",
+    "ManageVulnerabilityModel",
     {
         "id": fields.String(description="vulnerability id"),
         "type": fields.String(description="vulnerability type"),
