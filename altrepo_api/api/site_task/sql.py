@@ -171,7 +171,6 @@ WHERE (task_id, subtask_id) IN
         ORDER BY task_changed DESC
         LIMIT {limit}
     )
-    ORDER BY task_changed DESC
 )
 """
 
@@ -234,12 +233,12 @@ FROM
                 task_changed
             FROM last_tasks
         )
-    ORDER BY task_changed DESC, subtask_id ASC
 ) AS RQ
 LEFT JOIN
 (
     SELECT * from last_tasks
 ) AS LST USING (task_id, task_changed)
+ORDER BY task_changed DESC, subtask_id ASC
 """
 
     get_last_pkgs_info = """
