@@ -35,6 +35,10 @@ class VulnListArgs(NamedTuple):
     limit: Union[int, None]
     page: Union[int, None]
     sort: Union[list[str], None]
+    modified_start_date: Union[datetime.datetime, None]
+    modified_end_date: Union[datetime.datetime, None]
+    published_start_date: Union[datetime.datetime, None]
+    published_end_date: Union[datetime.datetime, None]
 
 
 class ErrataInfo(NamedTuple):
@@ -103,6 +107,29 @@ class VulnList(APIWorker):
             if self.args.input and is_any_vuln_id(self.args.input)
             else ""
         )
+
+        if self.args.modified_start_date and self.args.modified_end_date:
+            date_condition = self._make_date_condition(
+                self.args.modified_start_date, self.args.modified_end_date
+            )
+
+            where_clause += (
+                f" AND VULNS.modified {date_condition}"
+                if where_clause
+                else f"WHERE VULNS.modified {date_condition}"
+            )
+
+        if self.args.published_start_date and self.args.published_end_date:
+            date_condition = self._make_date_condition(
+                self.args.published_start_date, self.args.published_end_date
+            )
+
+            where_clause += (
+                f" AND VULNS.published {date_condition}"
+                if where_clause
+                else f"WHERE VULNS.published {date_condition}"
+            )
+
         return where_clause
 
     @property
@@ -135,6 +162,18 @@ class VulnList(APIWorker):
                 else f"{operator} our = 0 AND errata_ids = []"
             )
         return where_clause
+
+    def _make_date_condition(self, start: str, end: str) -> str:
+        """
+        Make date range condition for a field.
+        """
+        if start and end:
+            return f" BETWEEN '{start}' AND '{end}' "
+        elif start:
+            return f" >= '{start}' "
+        elif end:
+            return f" <= '{end}' "
+        return ""
 
     def _get_vulnerability_list(self):
         """
