@@ -682,3 +682,147 @@ vuln_list_model = ns.model(
         ),
     },
 )
+
+sa_manage_pcm_el_model = ns.model(
+    "SamanageAffectedPcmElementModel",
+    {
+        "package": fields.String(description="package name"),
+        "cve": fields.String(description="CVE id"),
+    },
+)
+sa_manage_pkg_version_el_model = ns.model(
+    "SaManagePackageVersionRangeModel",
+    {
+        "begin": fields.String(description="version range begin"),
+        "begin_exclude": fields.Boolean(description="is version range begin excluded"),
+        "end": fields.String(description="version range end"),
+        "end_exclude": fields.Boolean(description="is version range end excluded"),
+    },
+)
+sa_manage_errata_json_model = ns.model(
+    "SaManageErrataJsonModel",
+    {
+        "type": fields.String(description="SA errata type", required=True),
+        "action": fields.String(description="SA errata type", required=True),
+        "is_public": fields.Boolean(description="is SA errata public", required=True),
+        "reason": fields.String(description=" SA errata reason", required=True),
+        "description": fields.String(
+            description=" SA errata description", required=True
+        ),
+        "vuln_id": fields.String(description="vulnerability identifier", required=True),
+        "vuln_cpe": fields.String(
+            description="CPE string", required=False, default=None
+        ),
+        "branches": fields.List(
+            fields.String,
+            description="list of branches",
+            # XXX: make it optional here due to unused on server for a now
+            required=False,
+            default=list(),
+        ),
+        "pkg_name": fields.String(
+            description="package name", required=False, default=""
+        ),
+        "pkg_evr": fields.String(
+            description="package EVR string", required=False, default=""
+        ),
+        "pkg_versions": fields.Nested(
+            sa_manage_pkg_version_el_model,
+            description="list of package version ranges",
+            as_list=True,
+            # XXX: make it optional here due to unused on server for a now
+            required=False,
+            default=list(),
+        ),
+        "references": fields.Nested(
+            errata_manage_reference_el_model,
+            description="list of references",
+            as_list=True,
+            required=False,
+            default=list(),
+        ),
+        "extra": fields.Raw(
+            description="SA errata extra details mapping", required=False, default=None
+        ),
+    },
+)
+sa_manage_errata_model = ns.clone(
+    "SaManageErrataModel",
+    errata_manage_errata_model,
+    {
+        "json": fields.Nested(
+            sa_manage_errata_json_model,
+            description="errata SA JSON contents",
+            as_list=False,
+        )
+    },
+)
+sa_manage_list_model = ns.model(
+    "SaManageListResponseModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of SA errata records found in DB"),
+        "errata": fields.Nested(
+            sa_manage_errata_model,
+            description="errata contents",
+            as_list=True,
+        ),
+    },
+)
+sa_manage_create_model = ns.model(
+    "SaManageCreatePayloadModel",
+    {
+        "errata_json": fields.Nested(
+            sa_manage_errata_json_model,
+            description="new SA errata JSON contents",
+            required=True,
+        )
+    },
+)
+sa_manage_discard_model = ns.clone(
+    "SaManageDiscardPayloadModel",
+    sa_manage_create_model,
+    {
+        "reason": fields.String(
+            description="SA errata discard reason",
+            required=True,
+        )
+    },
+)
+sa_manage_update_model = ns.clone(
+    "SaManageUpdatePayloadModel",
+    sa_manage_create_model,
+    {
+        "reason": fields.String(
+            description="SA errata update reason",
+            required=True,
+        ),
+        "prev_errata_json": fields.Nested(
+            sa_manage_errata_json_model,
+            description="previous SA Errata JSON state contents",
+            required=True,
+        ),
+    },
+)
+sa_manage_response_model = ns.model(
+    "SaManageResponseModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of SA errata records found in DB"),
+        "errata": fields.Nested(
+            sa_manage_errata_model,
+            description="errata records",
+            as_list=True,
+        ),
+        "errata_change": fields.Nested(
+            errata_manage_errata_change_model,
+            description="errata change records",
+            as_list=True,
+        ),
+        "errata_pcm": fields.Nested(
+            sa_manage_pcm_el_model,
+            description="affected package to CVE matches",
+            as_list=True,
+        ),
+    },
+)

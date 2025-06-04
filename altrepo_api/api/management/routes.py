@@ -42,6 +42,7 @@ from .endpoints.pnc import ManagePnc, PncList
 from .endpoints.task_info import TaskInfo
 from .endpoints.task_list import TaskList
 from .endpoints.vulns_info import VulnsInfo
+from .endpoints.sa import ManageSa
 from .parsers import (
     errata_manage_args,
     errata_manage_get_args,
@@ -57,6 +58,8 @@ from .parsers import (
     task_list_args,
     pkgs_unmapped_args,
     vuln_list_args,
+    sa_list_args,
+    sa_manage_args,
 )
 from .serializers import (
     cpe_manage_model,
@@ -80,6 +83,11 @@ from .serializers import (
     vuln_ids_json_post_list_model,
     pkgs_unmapped_model,
     vuln_list_model,
+    sa_manage_list_model,
+    sa_manage_create_model,
+    sa_manage_discard_model,
+    sa_manage_update_model,
+    sa_manage_response_model,
 )
 from altrepo_api.api.errata.endpoints.branch import ErrataBranches, BranchesUpdates
 from altrepo_api.api.errata.serializers import (
@@ -840,4 +848,69 @@ class routeManagePnc(Resource):
             run_method=w.delete,
             check_method=w.check_params_delete,
             ok_code=200,
+        )
+
+
+@ns.route("/sa/manage")
+class routeSaList(Resource):
+    @ns.doc(
+        description="Get SA errata records list.",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(sa_list_args)
+    @ns.marshal_with(sa_manage_list_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = sa_list_args.parse_args(strict=True)
+        w = ManageSa(g.connection, payload={}, **args)
+        return run_worker(worker=w, args=args)
+
+    @ns.doc(
+        description="Create SA errata record.",
+        responses=RESPONSES_400_409,
+        security="Bearer",
+    )
+    @ns.expect(sa_manage_create_model, sa_manage_args)
+    @ns.marshal_with(sa_manage_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    def post(self):
+        url_logging(logger, g.url)
+        args = sa_manage_args.parse_args(strict=False)
+        w = ManageSa(g.connection, payload=ns.payload, **args)
+        return run_worker(
+            worker=w, run_method=w.post, check_method=w.check_params_post, ok_code=200
+        )
+
+    @ns.doc(
+        description="Update SA errata record.",
+        responses=RESPONSES_400_404_409,
+        security="Bearer",
+    )
+    @ns.expect(sa_manage_update_model, sa_manage_args)
+    @ns.marshal_with(sa_manage_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    def put(self):
+        url_logging(logger, g.url)
+        args = sa_manage_args.parse_args(strict=False)
+        w = ManageSa(g.connection, payload=ns.payload, **args)
+        return run_worker(
+            worker=w, run_method=w.put, check_method=w.check_params_post, ok_code=200
+        )
+
+    @ns.doc(
+        description="Discard SA errata record.",
+        responses=RESPONSES_400_404_409,
+        security="Bearer",
+    )
+    @ns.expect(sa_manage_discard_model, sa_manage_args)
+    @ns.marshal_with(sa_manage_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    def delete(self):
+        url_logging(logger, g.url)
+        args = sa_manage_args.parse_args(strict=False)
+        w = ManageSa(g.connection, payload=ns.payload, **args)
+        return run_worker(
+            worker=w, run_method=w.delete, check_method=w.check_params_post, ok_code=200
         )

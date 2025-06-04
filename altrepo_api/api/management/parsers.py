@@ -249,6 +249,40 @@ vuln_our_opt = parser.register_item(
     help="",
     location="args",
 )
+errata_state_opt = parser.register_item(
+    "state",
+    choices=(
+        "all",
+        "active",
+        "inactive",
+    ),
+    default="all",
+    required=False,
+    help="Errata record state",
+    location="args",
+)
+sa_type_opt = parser.register_item(
+    "type",
+    choices=("all", "cve", "cpe", "package"),
+    default="all",
+    required=False,
+    help="Errata SA record type",
+    location="args",
+)
+sa_filter_entry_opt = parser.register_item(
+    "filter",
+    type=str,
+    required=False,
+    help="Errata SA type filter contents: CVE ID, CPE string or package name",
+    location="args",
+)
+manage_user = parser.register_item(
+    "user",
+    type=str,
+    required=True,
+    help="Management request user name",
+    location="args",
+)
 
 task_list_args = parser.build_parser(
     task_input_val_opt,
@@ -296,3 +330,5 @@ vuln_list_args = parser.build_parser(
     limit_opt,
     sort_opt,
 )
+sa_list_args = parser.build_parser(errata_state_opt, sa_type_opt, sa_filter_entry_opt)
+sa_manage_args = parser.build_parser(manage_user, dry_run)
