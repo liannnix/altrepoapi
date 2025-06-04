@@ -88,8 +88,10 @@ class BasePathNamespace:
     MAX_REFRESH_SESSIONS_COUNT = 2
     # redis
     REDIS_URL = ""
-    # errata service
+    # errata server services
+    ERRATA_SERVER_TOKEN = ""
     ERRATA_ID_URL = ""
+    ERRATA_MANAGE_URL = ""
     # Flask CORS origins
     CORS_ORIGINS = "*"
     AUTH_COOKIES_OPTIONS = "HttpOnly;"

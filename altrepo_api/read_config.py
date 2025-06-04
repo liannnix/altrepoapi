@@ -68,7 +68,11 @@ PARAMS = {
         "auth_cookies_options": ("AUTH_COOKIES_OPTIONS", "str"),
     },
     "redis": {"redis_url": ("REDIS_URL", "str")},
-    "errata": {"errata_id_url": ("ERRATA_ID_URL", "str")},
+    "errata": {
+        "errata_server_token": ("ERRATA_SERVER_TOKEN", "str"),
+        "errata_id_url": ("ERRATA_ID_URL", "str"),
+        "errata_manage_url": ("ERRATA_MANAGE_URL", "str"),
+    },
 }
 
 
