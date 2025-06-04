@@ -20,9 +20,9 @@ from typing import Optional, Protocol
 
 from altrepo_api.api.misc import lut
 from altrepo_api.settings import namespace
-from altrepo_api.libs.errata_service import (
+from altrepo_api.libs.errata_server.errata_id_service import (
     ErrataIDService,
-    ErrataIDServiceError,
+    ErrataServerError,
     ErrataIDServiceResult,
 )
 from altrepo_api.utils import get_logger
@@ -87,7 +87,7 @@ def get_errataid_service(dry_run: bool) -> ErrataIDServiceProtocol:
 
     try:
         return Service(url=namespace.ERRATA_ID_URL)
-    except ErrataIDServiceError as e:
+    except ErrataServerError as e:
         logger.error(f"Failed to connect to ErrataID service: {e}")
         raise ErrataManageError("error: %s" % e)
 
@@ -98,7 +98,7 @@ def _check_errata_id(
     try:
         logger.info(f"Check errata ID latest version for {id}")
         return eid_service.check(id)
-    except ErrataIDServiceError as e:
+    except ErrataServerError as e:
         logger.error(f"Failed to check errata ID for {id}: {e}")
         raise ErrataManageError("error: %s" % e)
 
@@ -114,7 +114,7 @@ def _reister_errata_id(
     try:
         logger.info(f"Register new errata ID for {prefix}-{year}")
         return eid_service.register(prefix=prefix, year=year)
-    except ErrataIDServiceError as e:
+    except ErrataServerError as e:
         logger.error(f"Failed to register new errata ID for {prefix}-{year}: {e}")
         raise ErrataManageError("error: %s" % e)
 
@@ -163,7 +163,7 @@ def update_errata_id(
     try:
         logger.info(f"Update errata identificator version for {id}")
         return eid_service.update(id)
-    except ErrataIDServiceError as e:
+    except ErrataServerError as e:
         logger.error(f"Failed to update errata ID version for {id}: {e}")
         raise ErrataManageError("error: %s" % e)
 
@@ -176,6 +176,6 @@ def discard_errata_id(
     try:
         logger.info(f"Discrad errata identificator version for {id}")
         return eid_service.discard(id)
-    except ErrataIDServiceError as e:
+    except ErrataServerError as e:
         logger.error(f"Failed to discard errata ID version for {id}: {e}")
         raise ErrataManageError("error: %s" % e)
