@@ -808,7 +808,7 @@ sa_manage_response_model = ns.model(
     "SaManageResponseModel",
     {
         "request_args": fields.Raw(description="request arguments"),
-        "length": fields.Integer(description="number of SA errata records found in DB"),
+        "result": fields.String(description="Errata Server operation result"),
         "errata": fields.Nested(
             sa_manage_errata_model,
             description="errata records",
@@ -819,7 +819,7 @@ sa_manage_response_model = ns.model(
             description="errata change records",
             as_list=True,
         ),
-        "errata_pcm": fields.Nested(
+        "affected_pcm": fields.Nested(
             sa_manage_pcm_el_model,
             description="affected package to CVE matches",
             as_list=True,

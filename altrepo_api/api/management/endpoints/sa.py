@@ -189,7 +189,7 @@ class ManageSa(APIWorker):
                 http_code=e.status_code if e.status_code else 500,
             )
 
-        return {"request_args": self.args, "result": serialize(response)}, 200  # type: ignore
+        return {"request_args": self.args, **serialize(response)}, 200  # type: ignore
 
     def put(self):
         reason = self.payload["reason"]
@@ -224,7 +224,7 @@ class ManageSa(APIWorker):
                 http_code=e.status_code if e.status_code else 500,
             )
 
-        return {"request_args": self.args, "result": serialize(response)}, 200  # type: ignore
+        return {"request_args": self.args, **serialize(response)}, 200  # type: ignore
 
     def delete(self):
         reason = self.payload["reason"]
@@ -257,4 +257,4 @@ class ManageSa(APIWorker):
                 http_code=e.status_code if e.status_code else 500,
             )
 
-        return {"request_args": self.args, "result": serialize(response)}, 200  # type: ignore
+        return {"request_args": self.args, **serialize(response)}, 200  # type: ignore
