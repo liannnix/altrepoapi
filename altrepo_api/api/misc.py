@@ -334,11 +334,21 @@ class LookupTables:
 
     known_image_components = ["iso", "rpms", "altinst", "live", "rescue"]
 
-    known_image_platform = ["tegra", "rpi4", "baikalm", "mcom02"]
+    known_image_platform = [
+        "tegra",
+        "rpi4",
+        "baikalm",
+        "mcom02",
+        "hifive",
+        "qemu",
+        "docker",
+        "k8s",
+    ]
 
     known_image_editions = [
         "alt-server",
         "alt-server-v",
+        "alt-container",
         "alt-education",
         "alt-workstation",
         "alt-kworkstation",
@@ -356,7 +366,7 @@ class LookupTables:
         "riscv64",
         "mipsel",
     ]
-    known_image_types = ["iso", "tar", "img", "qcow"]
+    known_image_types = ["iso", "tar", "img", "qcow", "docker"]
     known_image_releases = ["alpha", "beta", "rc", "release"]
     known_image_variants = ["install", "live", "rescue"]
 
