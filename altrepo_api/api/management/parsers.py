@@ -31,6 +31,7 @@ from altrepo_api.api.parser import (
     uuid_type,
     pkg_name_list_type,
     image_file_type,
+    date_string_type,
 )
 
 from .endpoints.tools.constants import DRY_RUN_KEY
@@ -283,6 +284,34 @@ manage_user = parser.register_item(
     help="Management request user name",
     location="args",
 )
+vuln_modified_start_date_opt = parser.register_item(
+    "modified_start_date",
+    type=date_string_type,
+    required=False,
+    help="Start of the date range for modified date.",
+    location="args",
+)
+vuln_modified_end_date_opt = parser.register_item(
+    "modified_end_date",
+    type=date_string_type,
+    required=False,
+    help="End of the date range for modified date.",
+    location="args",
+)
+vuln_published_start_date_opt = parser.register_item(
+    "published_start_date",
+    type=date_string_type,
+    required=False,
+    help="Start of the date range for published date.",
+    location="args",
+)
+vuln_published_end_date_opt = parser.register_item(
+    "published_end_date",
+    type=date_string_type,
+    required=False,
+    help="End of the date range for published date.",
+    location="args",
+)
 
 task_list_args = parser.build_parser(
     task_input_val_opt,
@@ -329,6 +358,10 @@ vuln_list_args = parser.build_parser(
     page_opt,
     limit_opt,
     sort_opt,
+    vuln_modified_start_date_opt,
+    vuln_modified_end_date_opt,
+    vuln_published_start_date_opt,
+    vuln_published_end_date_opt,
 )
 sa_list_args = parser.build_parser(errata_state_opt, sa_type_opt, sa_filter_entry_opt)
 sa_manage_args = parser.build_parser(manage_user, dry_run)
