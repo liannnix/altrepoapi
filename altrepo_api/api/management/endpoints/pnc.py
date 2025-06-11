@@ -496,7 +496,10 @@ class ManagePnc(APIWorker):
         pncs = []
         for pnc in self.pncs:
             # PNC record already exists in DB with same state -> skip it
-            if any(compare_pnc_records(pnc, pnc_db, include_state=True) for pnc_db in pncs_by_package):
+            if any(
+                compare_pnc_records(pnc, pnc_db, include_state=True)
+                for pnc_db in pncs_by_package
+            ):
                 continue
             pncs.append(pnc)
 
