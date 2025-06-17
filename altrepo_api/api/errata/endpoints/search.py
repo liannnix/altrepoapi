@@ -363,7 +363,7 @@ class FindImageErratas(APIWorker):
             where_conditions += f" AND ({' OR '.join(conditions)})"
         return where_conditions
 
-    def _tmp_last_image_cmp_pkg_diff(self, tmp_table: str) -> None:
+    def _tmp_image_pkg_hashes(self) -> Union[str, None]:
         """
         Record the package hashes included in the image in a temporary table.
         """
@@ -373,10 +373,11 @@ class FindImageErratas(APIWorker):
         else:
             component_clause = ""
 
+        tmp_table = make_tmp_table_name("pkg_img_hashes")
+
         _ = self.send_sql_request(
-            self.sql.tmp_last_image_cmp_pkg_diff.format(
+            self.sql.tmp_image_pkg_hashes.format(
                 tmp_table=tmp_table,
-                columns="(pkg_srcrpm_hash UInt64, pkg_hash UInt64, pkg_name String)",
                 uuid=self.args.uuid,
                 branch=self.args.branch,
                 component=component_clause,
@@ -385,6 +386,7 @@ class FindImageErratas(APIWorker):
         if not self.sql_status:
             return None
         self.status = True
+        return tmp_table
 
     def _get_erratas(self, tmp_pkg_hashes: str) -> None:
         """
@@ -404,14 +406,21 @@ class FindImageErratas(APIWorker):
         if not self.sql_status:
             return None
         self.status = True
-        self.erratas = {el[0]: ImageErrataInfo(*el[2:]) for el in response}
+
+        for el in response:
+            pkg_hash, _, pkg_buildtime, src_hash = el[:4]
+            errata = ImageErrataInfo(*el[4:])
+            # filter erratas that has source package hashes greater that image binaries source
+            # and errata created later than binary package build time
+            if errata.pkg_hash > src_hash and pkg_buildtime <= errata.changed:
+                self.erratas[pkg_hash] = errata
 
     def _get_errata_pkgs_info(self) -> Union[list[dict[str, Any]], None]:
         """
         Get information about image packages that have erratas available.
         """
         self.status = False
-        tmp_table = "errata_pkg_hashes"
+        tmp_table = make_tmp_table_name("errata_pkg_hashes")
         response = self.send_sql_request(
             self.sql.get_last_image_pkgs_info.format(
                 tmp_table=tmp_table, branch=self.args.branch
@@ -450,9 +459,8 @@ class FindImageErratas(APIWorker):
         return pkgs
 
     def get(self):
-        tmp_pkg_hashes = make_tmp_table_name("pkg_img_hashes")
-        self._tmp_last_image_cmp_pkg_diff(tmp_pkg_hashes)
-        if not self.status:
+        tmp_pkg_hashes = self._tmp_image_pkg_hashes()
+        if not self.status or not tmp_pkg_hashes:
             return self.error
 
         self._get_erratas(tmp_pkg_hashes)

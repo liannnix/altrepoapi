@@ -376,23 +376,49 @@ LEFT JOIN (
 ORDER BY changed DESC
 """
 
-    tmp_last_image_cmp_pkg_diff = """
-CREATE TEMPORARY TABLE {tmp_table} {columns} AS
-SELECT pkg_srcrpm_hash, pkg_hash, pkg_name
-FROM Packages
-WHERE pkg_hash IN (
-    SELECT DISTINCT pkg_hash
-    FROM PackageSet
-    WHERE pkgset_uuid IN (
-        SELECT pkgset_uuid
-        FROM PackageSetName
-        WHERE pkgset_ruuid = '{uuid}'
-        AND has(pkgset_kv.v, '{branch}')
-        {component}
+    tmp_image_pkg_hashes = """
+CREATE TEMPORARY TABLE {tmp_table}
+(src_pkg_hash UInt64, src_pkg_name String, pkg_hash UInt64, pkg_name String, pkg_buildtime DateTime32)
+AS (
+    WITH
+    bin_src_hashes AS (
+        SELECT DISTINCT
+            pkg_srcrpm_hash,
+            pkg_hash,
+            pkg_name,
+            toDateTime32(pkg_buildtime) AS buildtime
+        FROM Packages
+        WHERE pkg_hash IN (
+            SELECT DISTINCT pkg_hash
+            FROM PackageSet
+            WHERE pkgset_uuid IN (
+                SELECT pkgset_uuid
+                FROM PackageSetName
+                WHERE pkgset_ruuid = '{uuid}'
+                    AND has(pkgset_kv.v, '{branch}')
+                    {component}
+            )
+        )
+        AND pkg_sourcepackage = 0
+        AND pkg_srcrpm_hash != 0
+    ),
+    src_pkgss AS (
+        SELECT DISTINCT pkg_hash, pkg_name
+        FROM Packages
+        WHERE pkg_hash IN (
+            SELECT pkg_srcrpm_hash FROM bin_src_hashes
+        )
     )
+    SELECT
+        SP.pkg_hash AS src_pkg_hash,
+        SP.pkg_name AS src_pkg_name,
+        BSH.pkg_hash AS pkg_hash,
+        BSH.pkg_name AS pkg_name,
+        BSH.buildtime AS pkg_buildtime
+    FROM src_pkgss AS SP
+    INNER JOIN bin_src_hashes AS BSH
+    ON SP.pkg_hash = BSH.pkg_srcrpm_hash
 )
-AND pkg_sourcepackage = 0
-ORDER BY pkg_srcrpm_hash ASC;
 """
 
     get_last_image_pkgs_info = """
@@ -448,56 +474,24 @@ WITH errata_tasks AS (
         )
     )
     GROUP BY errata_id
-),
-errata_branches AS (
-    SELECT
-        errata_id,
-        argMax(eh_type, ts)  AS type,
-        argMax(task_id, ts) AS tsk_id,
-        argMax(pkgset_name, ts) AS branch,
-        argMax(pkg_hash, ts) AS hash,
-        argMax(pkg_name, ts) AS name,
-        argMax(pkg_version, ts) AS ver,
-        argMax(pkg_release, ts) AS rel,
-        argMax(eh_references.link, ts) AS refs_links,
-        argMax(eh_references.type, ts) AS refs_types,
-        max(eh_updated) AS changed
-    FROM ErrataHistory
-    WHERE errata_id IN (
-        SELECT eid
-        FROM (
-            SELECT
-                errata_id_noversion,
-                argMax(errata_id, errata_id_version) AS eid
-            FROM ErrataHistory
-            WHERE eh_type = 'branch' AND pkgset_name != 'icarus'
-            AND pkgset_name = '{branch}'
-            GROUP BY errata_id_noversion
-        )
-    )
-    GROUP BY errata_id
 )
 SELECT
     HSH.pkg_hash,
     HSH.pkg_name AS bin_pkg_name,
+    HSH.pkg_buildtime AS bin_pkg_buildtime,
+    HSH.src_pkg_hash,
     ER.*,
     if(DE.discarded_id != '', 1, 0) AS discard
-FROM (
-    SELECT * FROM errata_tasks
-    UNION ALL
-    SELECT * FROM errata_branches
-) AS ER
+FROM errata_tasks AS ER
 LEFT JOIN (
     SELECT errata_id AS discarded_id
     FROM last_discarded_erratas
 ) AS DE ON ER.errata_id = DE.discarded_id
 LEFT JOIN (
-    SELECT pkg_srcrpm_hash, pkg_hash, pkg_name
-    FROM {tmp_table}
-) AS HSH ON HSH.pkg_srcrpm_hash = ER.hash
-WHERE hash in (
-    SELECT pkg_srcrpm_hash
-    FROM {tmp_table}
+    SELECT * FROM {tmp_table}
+) AS HSH ON HSH.src_pkg_name = ER.name
+WHERE name in (
+    SELECT src_pkg_name FROM {tmp_table}
 )
 {where_clause}
 ORDER BY changed DESC
