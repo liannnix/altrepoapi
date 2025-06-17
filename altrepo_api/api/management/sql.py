@@ -1202,7 +1202,7 @@ WITH cve_match AS (
         GROUP BY cpm_cpe
     )
 )
-SELECT vuln_id, errata_ids, cpes, arrayAll(x -> (x in cve_match), cpes) as our
+SELECT vuln_id, errata_ids, cpes, arrayExists(x -> (x in cve_match), cpes) as our
 FROM (
     SELECT vuln_id,
            ERR.errata_ids as errata_ids,
