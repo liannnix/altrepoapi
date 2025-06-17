@@ -14,9 +14,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import datetime
-
-from typing import Any, NamedTuple, Union
+from datetime import datetime
+from typing import Any, NamedTuple, Optional
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.libs.pagination import Paginator
@@ -28,17 +27,17 @@ from ..sql import sql
 
 
 class VulnListArgs(NamedTuple):
-    input: Union[str, None]
-    severity: Union[str, None]
+    input: Optional[str]
+    severity: Optional[str]
     is_errata: bool
-    our: Union[bool, None]
-    limit: Union[int, None]
-    page: Union[int, None]
-    sort: Union[list[str], None]
-    modified_start_date: Union[datetime.datetime, None]
-    modified_end_date: Union[datetime.datetime, None]
-    published_start_date: Union[datetime.datetime, None]
-    published_end_date: Union[datetime.datetime, None]
+    our: Optional[bool]
+    limit: Optional[int]
+    page: Optional[int]
+    sort: Optional[list[str]]
+    modified_start_date: Optional[datetime]
+    modified_end_date: Optional[datetime]
+    published_start_date: Optional[datetime]
+    published_end_date: Optional[datetime]
 
 
 class ErrataInfo(NamedTuple):
@@ -50,8 +49,8 @@ class VulnInfo(NamedTuple):
     id: str = ""
     severity: str = ""
     summary: str = ""
-    modified: datetime.datetime = DT_NEVER
-    published: datetime.datetime = DT_NEVER
+    modified: datetime = DT_NEVER
+    published: datetime = DT_NEVER
     erratas: list[ErrataInfo] = []
     cpes: list[str] = []
     our: bool = False
@@ -108,7 +107,7 @@ class VulnList(APIWorker):
             else ""
         )
 
-        if self.args.modified_start_date and self.args.modified_end_date:
+        if self.args.modified_start_date or self.args.modified_end_date:
             date_condition = self._make_date_condition(
                 self.args.modified_start_date, self.args.modified_end_date
             )
@@ -119,7 +118,7 @@ class VulnList(APIWorker):
                 else f"WHERE VULNS.modified {date_condition}"
             )
 
-        if self.args.published_start_date and self.args.published_end_date:
+        if self.args.published_start_date or self.args.published_end_date:
             date_condition = self._make_date_condition(
                 self.args.published_start_date, self.args.published_end_date
             )
@@ -163,7 +162,9 @@ class VulnList(APIWorker):
             )
         return where_clause
 
-    def _make_date_condition(self, start: str, end: str) -> str:
+    def _make_date_condition(
+        self, start: Optional[datetime], end: Optional[datetime]
+    ) -> str:
         """
         Make date range condition for a field.
         """
