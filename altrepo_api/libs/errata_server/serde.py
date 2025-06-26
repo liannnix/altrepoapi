@@ -17,7 +17,7 @@
 import inspect
 
 from enum import Enum
-from typing import Any, NamedTuple, Type, TypeVar, Union, get_type_hints
+from typing import Any, List, NamedTuple, Type, TypeVar, Union, get_type_hints
 
 from .base import JSONValue, JSONObject
 from .result import Result, Ok, Err
@@ -70,7 +70,22 @@ def _is_namedtuple_instance(obj) -> bool:
     )
 
 
+def _get_underlying_namedtuple(type_hint):
+    """Extract NamedTuple from List[NamedTuple] or Optional[List[NamedTuple]]"""
+    if hasattr(type_hint, "__origin__"):
+        if type_hint.__origin__ is list or type_hint.__origin__ is List:
+            args = type_hint.__args__
+            if len(args) == 1 and _is_namedtuple_type(args[0]):
+                return args[0]
+        elif type_hint.__origin__ is Union:
+            for arg in type_hint.__args__:
+                if result := _get_underlying_namedtuple(arg):
+                    return result
+    return None
+
+
 def _maybe_deserialize(obj: Type, value) -> Result[Any, str]:
+    """Deserialize Enum if in implements `deserialize` method or primitive type value."""
     if _is_enum_type(obj):
         if deserialize := getattr(obj, "deserialize"):
             return deserialize(value)
@@ -81,7 +96,6 @@ T = TypeVar("T", bound=NamedTuple)
 
 
 def deserialize(cls: Type[T], data: JSONObject) -> Result[T, str]:
-
     if not _is_namedtuple_type(cls):
         return Err(f"{cls.__name__} is not a NamedTuple class")
 
@@ -91,23 +105,37 @@ def deserialize(cls: Type[T], data: JSONObject) -> Result[T, str]:
     for field, field_type in field_types.items():
         if field not in data:
             if field in cls._field_defaults:
-                continue  # Use default value
+                continue  # use default value
             return Err(f"Missing required field: {field}")
 
         value = data[field]
 
-        # Handle nested NamedTuples
-        if _is_namedtuple_type(field_type):
+        # handle list[NamedTuple]
+        if namedtuple_cls := _get_underlying_namedtuple(field_type):
+            if not isinstance(value, list):
+                return Err(f"Expected list for {field}, got {type(value)}")
+
+            deserialized_list = []
+            for item in value:
+                if not isinstance(item, dict):
+                    return Err(f"Expected dict in list for {field}, got {type(item)}")
+                d = deserialize(namedtuple_cls, item)
+                if d.is_err():
+                    return d
+                deserialized_list.append(d.unwrap())
+            kwargs[field] = deserialized_list
+        # handle nested NamedTuples
+        elif _is_namedtuple_type(field_type):
             if not isinstance(value, dict):
                 return Err(f"Expected dict for {field}, got {type(value)}")
             d = deserialize(field_type, value)
             if d.is_err():
                 return d
             kwargs[field] = d.unwrap()
-
-        # Handle Optional[SomeNamedTuple] cases
+        # handle Optional[Something] cases
         elif hasattr(field_type, "__origin__") and field_type.__origin__ is Union:
             for arg in field_type.__args__:
+                # handle Optional[NamedTuple] case
                 if _is_namedtuple_type(arg):
                     if isinstance(value, dict):
                         d = deserialize(arg, value)
@@ -115,15 +143,28 @@ def deserialize(cls: Type[T], data: JSONObject) -> Result[T, str]:
                             return d
                         kwargs[field] = d.unwrap()
                         break
+                # handle Optional[List[NamedTuple]] case
+                elif namedtuple_cls := _get_underlying_namedtuple(arg):
+                    if isinstance(value, list):
+                        deserialized_list = []
+                        for item in value:
+                            if not isinstance(item, dict):
+                                return Err(
+                                    f"Expected dict in list for {field}, got {type(item)}"
+                                )
+                            d = deserialize(namedtuple_cls, item)
+                            if d.is_err():
+                                return d
+                            deserialized_list.append(d.unwrap())
+                        kwargs[field] = deserialized_list
+                        break
             else:
+                # handle optional Enum or regular value
                 v = _maybe_deserialize(field_type, value)
                 if v.is_err():
                     return v
                 kwargs[field] = v.unwrap()
-
-        # Handle enum types that implements
-
-        # Handle primitive types
+        # handle enum types that implements 'deserialize' method and primitive types
         else:
             v = _maybe_deserialize(field_type, value)
             if v.is_err():
@@ -141,7 +182,13 @@ def serialize(cls: Type[T], skip_nones: bool = False) -> JSONObject:
         skip_nones = cls.SKIP_SERILIZING_IF_NONE  # type: ignore
 
     for key, value in cls._asdict().items():  # type: ignore
-        if _is_namedtuple_instance(value):
+        if isinstance(value, list):
+            # handle list ov serializable values
+            serialized_list = []
+            for item in value:
+                serialized_list.append(serialize(item))
+            v = serialized_list
+        elif _is_namedtuple_instance(value):
             # handle handle nested objects recursively
             v = serialize(value, skip_nones)
         elif hasattr(value, "serialize"):

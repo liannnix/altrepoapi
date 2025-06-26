@@ -69,6 +69,19 @@ class SaReferenceType(Enum):
     def deserialize(value: JSONValue) -> Result["SaReferenceType", str]:
         return deserialize_enum(SaReferenceType, value)  # type: ignore
 
+    def __lt__(self, other):
+        if isinstance(other, SaReferenceType):
+            return _SA_REF_TYPE_CMP[self] < _SA_REF_TYPE_CMP[other]
+        return NotImplemented
+
+
+_SA_REF_TYPE_CMP = {
+    SaReferenceType.ERRATA: 0,
+    SaReferenceType.VULN: 1,
+    SaReferenceType.BUG: 2,
+    SaReferenceType.WEB: 3,
+}
+
 
 class UserInfo(NamedTuple):
     name: str
