@@ -22,6 +22,15 @@ from typing import Any
 from altrepo_api.api.misc import lut
 
 
+UINT32_MAX = (1 << 32) - 1
+
+MIN_BUG_ID = 1
+MAX_BUG_ID = UINT32_MAX
+
+MIN_TASK_ID = 1
+MAX_TASK_ID = UINT32_MAX
+
+
 class ParserFactory:
     """Registers request parser argument items and builds RequestParser by list of items."""
 
@@ -135,8 +144,20 @@ def __get_string(value: Any) -> str:
         raise ValueError("{0} is not a valid string".format(value))
 
 
-MIN_TASK_ID = 1
-MAX_TASK_ID = 4_000_000_000
+def bug_id_type(value: Any) -> int:
+    """Bug ID validator."""
+
+    value = __get_int(value)
+    if value < MIN_BUG_ID or value > MAX_BUG_ID:
+        raise ValueError("Invalid Bug ID: {0}".format(value))
+    return value
+
+
+bug_id_type.__schema__ = {
+    "type": "integer",
+    "minimum": MIN_BUG_ID,
+    "maximum": MAX_BUG_ID,
+}
 
 
 def task_id_type(value: Any) -> int:
