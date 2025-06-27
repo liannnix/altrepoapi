@@ -168,6 +168,14 @@ class ErrataJson(NamedTuple):
 ErrataJson.SKIP_SERILIZING_IF_NONE = True  # type: ignore
 
 
+def sanitize_ej(e: ErrataJson) -> ErrataJson:
+    """Fix ErrataJson.extra filed contents if it is an empty dict."""
+    if e.extra or e.extra is None:
+        return e
+    # replace an empty dictionary in `extra` field to None
+    return e._replace(extra=None)
+
+
 class ErrataHistory(NamedTuple):
     id: str
     hash: str
@@ -246,7 +254,7 @@ class ErrataSAService:
                 "dry_run": dry_run_str,
                 "access_token": self.access_token,
             },
-            json={"errata_json": serialize(errata_json)},  # type: ignore
+            json={"errata_json": serialize(sanitize_ej(errata_json))},  # type: ignore
         )
         d = deserialize(SaManageResponse, response)  # type: ignore
         if d.is_err():
@@ -263,7 +271,7 @@ class ErrataSAService:
                 "dry_run": dry_run_str,
                 "access_token": self.access_token,
             },
-            json={"reason": reason, "errata_json": serialize(errata_json)},  # type: ignore
+            json={"reason": reason, "errata_json": serialize(sanitize_ej(errata_json))},  # type: ignore
         )
         d = deserialize(SaManageResponse, response)  # type: ignore
         if d.is_err():
@@ -284,8 +292,8 @@ class ErrataSAService:
             },
             json={
                 "reason": reason,
-                "prev_errata_json": serialize(prev_errata_json),  # type: ignore
-                "errata_json": serialize(errata_json),  # type: ignore
+                "prev_errata_json": serialize(sanitize_ej(prev_errata_json)),  # type: ignore
+                "errata_json": serialize(sanitize_ej(errata_json)),  # type: ignore
             },
         )
         d = deserialize(SaManageResponse, response)  # type: ignore
