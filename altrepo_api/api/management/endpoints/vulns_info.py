@@ -20,6 +20,7 @@ from typing import Any
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
+from altrepo_api.api.parser import bug_id_type
 from altrepo_api.utils import make_tmp_table_name
 
 from .tools.base import Reference
@@ -91,6 +92,11 @@ class VulnsInfo(APIWorker):
     def check_params_post(self):
         try:
             self.vulns = set(parse_vuln_id_list(self.args["json_data"]["vuln_ids"]))
+            # validate Bug ID is within safe range of DB representation
+            _ = [
+                bug_id_type(b)
+                for b in (int(v.link) for v in self.vulns if v.type == BUG_ID_TYPE)
+            ]
         except (AttributeError, KeyError, TypeError, ValueError) as e:
             self.validation_results.append(f"Payload data parsing error: {e}")
             return False
