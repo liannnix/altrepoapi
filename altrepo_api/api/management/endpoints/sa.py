@@ -24,6 +24,8 @@ from altrepo_api.libs.errata_server.errata_sa_service import (
     ErrataSAService,
     Errata,
     ErrataJson,
+    SaAction,
+    SaType,
     UserInfo,
     serialize,
     deserialize,
@@ -82,13 +84,7 @@ class ManageSa(APIWorker):
         filter = self.args.get("filter", None)
 
         if type:
-            type = ErrataJsonType[type.upper()]
-            if type != ErrataJsonType.ALL and not filter:
-                self.validation_results.append(
-                    f"Entry value should be specified for filter of type '{type.name}'"
-                )
-                return False
-            if type == ErrataJsonType.ALL and filter:
+            if ErrataJsonType[type.upper()] == ErrataJsonType.ALL and filter:
                 self.validation_results.append(
                     "Entry value should be specified only for filter type is not 'ALL'"
                 )
@@ -139,22 +135,35 @@ class ManageSa(APIWorker):
                 )
             ):
                 return False
-            # filter errata by type
+
+            def filter_by_type_and_value(ej: ErrataJson) -> bool:
+                if type_filter == ErrataJsonType.CVE:
+                    return ej.vuln_id != filter_value
+                elif type_filter == ErrataJsonType.CPE:
+                    return ej.vuln_cpe != filter_value
+                elif type_filter == ErrataJsonType.PACKAGE:
+                    return ej.pkg_name != filter_value
+                return True
+
+            def filter_by_type(ej: ErrataJson) -> bool:
+                sa_type_map = {
+                    ErrataJsonType.ALL: None,
+                    ErrataJsonType.CVE: SaAction.CVE,
+                    ErrataJsonType.CPE: SaAction.CPE,
+                    ErrataJsonType.PACKAGE: SaAction.PACKAGE,
+                }
+                return (
+                    ej.type == SaType.EXCLUSION
+                    and ej.action != sa_type_map[type_filter]
+                )
+
+            # filter errata by type and filter value if specified
             if type_filter != ErrataJsonType.ALL and (
-                (
-                    errata.eh.json is None
-                    or (
-                        type_filter == ErrataJsonType.CVE
-                        and errata.eh.json.vuln_id != filter_value
-                    )
-                    or (
-                        type_filter == ErrataJsonType.CPE
-                        and errata.eh.json.vuln_cpe != filter_value
-                    )
-                    or (
-                        type_filter == ErrataJsonType.PACKAGE
-                        and errata.eh.json.pkg_name != filter_value
-                    )
+                errata.eh.json is None
+                or (
+                    filter_by_type_and_value(errata.eh.json)
+                    if filter_value
+                    else filter_by_type(errata.eh.json)
                 )
             ):
                 return False
