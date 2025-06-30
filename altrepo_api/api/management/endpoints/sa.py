@@ -183,7 +183,10 @@ class ManageSa(APIWorker):
         paginator = Paginator(res, limit)
         res = paginator.get_page(page)
 
-        return {"request_args": self.args, "length": len(res), "errata": res}, 200
+        return {"request_args": self.args, "length": len(res), "errata": res}, 200, {
+                "Access-Control-Expose-Headers": "X-Total-Count",
+                "X-Total-Count": int(paginator.count),
+            },
 
     def post(self):
         d = deserialize(ErrataJson, self.payload["errata_json"])
