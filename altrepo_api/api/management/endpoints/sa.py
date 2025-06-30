@@ -28,6 +28,8 @@ from altrepo_api.libs.errata_server.errata_sa_service import (
     serialize,
     deserialize,
 )
+from altrepo_api.libs.pagination import Paginator
+from altrepo_api.libs.sorting import rich_sort
 from altrepo_api.utils import get_logger, get_real_ip
 
 from .tools.constants import DRY_RUN_KEY
@@ -105,9 +107,12 @@ class ManageSa(APIWorker):
         return True
 
     def get(self):
-        state = self.args.get("state", None)
-        type = self.args.get("type", None)
-        filter_value = self.args.get("filter", None)
+        state = self.args.get("state")
+        type = self.args.get("type")
+        filter_value = self.args.get("filter")
+        limit = self.args.get("limit")
+        page = self.args.get("page")
+        sort = self.args.get("sort")
 
         state_filter = (
             ErrataRecordState[state.upper()] if state else ErrataRecordState.ALL
@@ -162,6 +167,12 @@ class ManageSa(APIWorker):
             return self.store_error(
                 {"message": f"No data found in DB for {self.args}"}, http_code=404
             )
+
+        if sort:
+            res = rich_sort(res, sort)
+
+        paginator = Paginator(res, limit)
+        res = paginator.get_page(page)
 
         return {"request_args": self.args, "length": len(res), "errata": res}, 200
 

@@ -363,5 +363,7 @@ vuln_list_args = parser.build_parser(
     vuln_published_start_date_opt,
     vuln_published_end_date_opt,
 )
-sa_list_args = parser.build_parser(errata_state_opt, sa_type_opt, sa_filter_entry_opt)
+sa_list_args = parser.build_parser(
+    errata_state_opt, sa_type_opt, sa_filter_entry_opt, page_opt, limit_opt, sort_opt
+)
 sa_manage_args = parser.build_parser(manage_user, dry_run)
