@@ -85,7 +85,7 @@ def _get_underlying_namedtuple(type_hint):
 
 
 def _maybe_deserialize(obj: Type, value) -> Result[Any, str]:
-    """Deserialize Enum if in implements `deserialize` method or primitive type value."""
+    """Deserialize Enum if it implements `deserialize` method or primitive type value."""
     if _is_enum_type(obj):
         if deserialize := getattr(obj, "deserialize"):
             return deserialize(value)
