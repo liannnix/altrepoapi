@@ -230,7 +230,7 @@ class ManageErrata(APIWorker):
         if not self.status or last_errata_id is None:
             return self.error
 
-        # 2. check if current errat is not discarded yet
+        # 2. check if current errata is not discarded yet
         is_discarded = check_errata_is_discarded(self)
         if not self.status or not self.sql_status:
             return self.error
@@ -269,12 +269,10 @@ class ManageErrata(APIWorker):
         if not self.status or not self.sql_status:
             return self.error
         if is_discarded:
-            return self.store_error(
-                {
-                    "message": f"Errata {self.errata.id} is discarded already.",
-                },
-                http_code=404,
-            )
+            # XXX: handle errata 'undiscard' here
+            # There is no meaningful way to process discarded errata record within this
+            # API endpoint, and it is better handled via the POST method.
+            return self.post(undiscard=True)
 
         # 1. check if current errata version is the latest one and
         # check if errata contents have been changed in fact (ensure request is idempotent)
@@ -376,7 +374,7 @@ class ManageErrata(APIWorker):
             "errata_change": [e.asdict() for e in self.trx.errata_change_records],
         }, 200
 
-    def post(self):
+    def post(self, *, undiscard: bool = False):
         """Handles errata record create.
         Returns:
             - 200 (OK) if errata record created successfully
@@ -446,14 +444,15 @@ class ManageErrata(APIWorker):
                     http_code=409,
                 )
             elif is_equal and errata_exists.is_discarded:
-                # FIXME: handle errata 'undiscard' somehow?
-                return self.store_error(
-                    {
-                        "message": "Errata for given package is exists in DB but was discarded already",
-                        "errata": errata_exists.asdict(),
-                    },
-                    http_code=409,
-                )
+                # bail out here if not called from the self.post() method
+                if not undiscard:
+                    return self.store_error(
+                        {
+                            "message": "Errata for given package is exists in DB but was discarded already",
+                            "errata": errata_exists.asdict(),
+                        },
+                        http_code=409,
+                    )
             else:
                 return self.store_error(
                     {
@@ -497,7 +496,12 @@ class ManageErrata(APIWorker):
             should_has_bulletin = False
 
         # 5.create and register new package update errata
-        self.trx.register_errata_create(self.errata, task_changed.year)
+        if undiscard:
+            # handle errata undiscard if called from the self.post() method
+            # use `register_errata_update` for discarded errata
+            self.trx.register_errata_update(self.errata)
+        else:
+            self.trx.register_errata_create(self.errata, task_changed.year)
 
         if should_has_bulletin:
             # 6. update and register updated branch update errata record
