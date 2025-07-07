@@ -336,7 +336,7 @@ pkgs_open_vulns_args = parser.build_parser(
     sort_opt,
 )
 pkgs_unmapped_args = parser.build_parser(package_name_list)
-cpe_candidates_args = parser.build_parser(all_candidates_opt)
+cpe_candidates_args = parser.build_parser(all_candidates_opt, page_opt, limit_opt)
 cpe_manage_args = parser.build_parser(dry_run, package_name_opt)
 cpe_manage_get_args = parser.build_parser(package_name, branch_name_opt)
 maintainer_list_args = parser.build_parser(branch_name_opt, page_opt, limit_opt)

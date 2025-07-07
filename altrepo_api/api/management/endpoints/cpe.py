@@ -93,21 +93,16 @@ class CPECandidates(APIWorker):
         cpes: dict[tuple[str, str], Any] = {}
 
         all_candidates = self.args.get("all", False)
+        limit = self.args.get("limit")
+        page = self.args.get("page")
 
-        if all_candidates:
-            sql = self.sql.get_cpes.format(
-                cpe_branches=lut.repology_branches,
-                pkg_name_conversion_clause="",
-                cpe_states=(PNC_STATE_CANDIDATE,),
-                join_type=JOIN_TYPE_LEFT,
-            )
-        else:
-            sql = self.sql.get_cpes.format(
-                cpe_branches=lut.repology_branches,
-                pkg_name_conversion_clause="",
-                cpe_states=(PNC_STATE_CANDIDATE,),
-                join_type=JOIN_TYPE_INNER,
-            )
+        sql = self.sql.get_cpes.format(
+            cpe_branches=lut.repology_branches,
+            pkg_name_conversion_clause="",
+            cpe_states=(PNC_STATE_CANDIDATE,),
+            join_type=JOIN_TYPE_LEFT if all_candidates else JOIN_TYPE_INNER,
+        )
+
         response = self.send_sql_request(sql)
         if not self.sql_status:
             return self.error
@@ -145,14 +140,24 @@ class CPECandidates(APIWorker):
                 self.logger.info(f"Failed to parse CPE from {el}")
                 continue
 
+        cpes_list = [{"cpe": k[0], "repology_name": k[1], **v} for k, v in cpes.items()]
+
+        paginator = Paginator(cpes_list, limit)
+        res = paginator.get_page(page)
+
         res = {
-            "length": len(cpes),
-            "cpes": [
-                {"cpe": k[0], "repology_name": k[1], **v} for k, v in cpes.items()
-            ],
+            "length": len(res),
+            "cpes": res,
         }
 
-        return res, 200
+        return (
+            res,
+            200,
+            {
+                "Access-Control-Expose-Headers": "X-Total-Count",
+                "X-Total-Count": int(paginator.count),
+            },
+        )
 
 
 class ManageCpe(APIWorker):
