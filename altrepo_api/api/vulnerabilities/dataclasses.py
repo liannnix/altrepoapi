@@ -14,9 +14,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Union
+from typing import Any, Union
 
 
 @dataclass
@@ -53,3 +53,10 @@ class PackageScheme(PackageMeta):
 
     def asdict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+@dataclass
+class ExcludedPackagesSchema(PackageMeta):
+    vuln_id: str
+    cpe: str
+    cpe_hash: int

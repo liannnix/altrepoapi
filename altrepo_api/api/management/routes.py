@@ -17,121 +17,143 @@
 from flask import g
 from flask_restx import Resource
 
-from altrepo_api.api.base import (
-    run_worker,
-    GET_RESPONSES_404,
-    GET_RESPONSES_400_404,
-    POST_RESPONSES_400_404,
-)
-from altrepo_api.utils import get_logger, url_logging
-from altrepo_api.settings import namespace as settings
 from altrepo_api.api.auth.decorators import token_required
-from .endpoints.change_history import ErrataChangeHistory
-from .endpoints.packages_open_vulns import (
-    PackagesOpenVulns,
-    PackagesSupportedBranches,
-    PackagesMaintainerList,
+from altrepo_api.api.base import (
+    GET_RESPONSES_400_404,
+    GET_RESPONSES_404,
+    POST_RESPONSES_400_404,
+    run_worker,
 )
-from .endpoints.packages_unmapped import PackagesUnmapped
-from .endpoints.vuln_list import VulnList
-
-from .namespace import get_namespace
-from .endpoints.cpe import CPECandidates, ManageCpe, CPEList
-from .endpoints.errata import ManageErrata
-from .endpoints.pnc import ManagePnc, PncList
-from .endpoints.task_info import TaskInfo
-from .endpoints.task_list import TaskList
-from .endpoints.vulns_info import VulnsInfo
-from .endpoints.sa import ManageSa
-from .parsers import (
-    errata_manage_args,
-    errata_manage_get_args,
-    cpe_candidates_args,
-    cpe_list_args,
-    cpe_manage_args,
-    cpe_manage_get_args,
-    maintainer_list_args,
-    pkgs_open_vulns_args,
-    pnc_list_args,
-    pnc_manage_args,
-    pnc_manage_get_args,
-    task_list_args,
-    pkgs_unmapped_args,
-    vuln_list_args,
-    sa_list_args,
-    sa_manage_args,
-)
-from .serializers import (
-    cpe_manage_model,
-    cpe_manage_response_model,
-    cpe_candidates_response_model,
-    cpe_manage_get_response_model,
-    errata_manage_model,
-    errata_manage_response_model,
-    errata_manage_get_response_model,
-    errata_change_history_model,
-    maintainer_list_model,
-    pkg_open_vulns,
-    pnc_manage_model,
-    pnc_manage_get_model,
-    pnc_manage_response_model,
-    pnc_list_model,
-    supported_branches_model,
-    task_list_model,
-    task_info_model,
-    vuln_ids_json_list_model,
-    vuln_ids_json_post_list_model,
-    pkgs_unmapped_model,
-    vuln_list_model,
-    sa_manage_list_model,
-    sa_manage_create_model,
-    sa_manage_discard_model,
-    sa_manage_update_model,
-    sa_manage_response_model,
-)
-from altrepo_api.api.errata.endpoints.branch import ErrataBranches, BranchesUpdates
-from altrepo_api.api.errata.serializers import (
-    errata_branches_model,
-    errata_last_changed_model as _errata_last_changed_model,
-    erratas_ids_json_list_model,
-    errata_packages_updates_model as _errata_packages_updates_model,
-    errata_branches_updates_model as _errata_branches_updates_model,
-    errata_last_changed_el_model as _errata_last_changed_el_model,
-    pkgs_el_model as _pkgs_el_model,
-    vulns_el_model as _vulns_el_model,
-    errata_package_update_model as _errata_package_update_model,
-    errata_bug_model as _errata_bug_model,
-    errata_vuln_model as _errata_vuln_model,
-    errata_branch_update_model as _errata_branch_update_model,
-)
+from altrepo_api.api.errata.endpoints.branch import BranchesUpdates, ErrataBranches
 from altrepo_api.api.errata.endpoints.package import PackagesUpdates
 from altrepo_api.api.errata.endpoints.search import FindErratas
 from altrepo_api.api.errata.parsers import find_erratas_args
+from altrepo_api.api.errata.serializers import (
+    errata_branch_update_model as _errata_branch_update_model,
+)
+from altrepo_api.api.errata.serializers import errata_branches_model
+from altrepo_api.api.errata.serializers import (
+    errata_branches_updates_model as _errata_branches_updates_model,
+)
+from altrepo_api.api.errata.serializers import errata_bug_model as _errata_bug_model
+from altrepo_api.api.errata.serializers import (
+    errata_last_changed_el_model as _errata_last_changed_el_model,
+)
+from altrepo_api.api.errata.serializers import (
+    errata_last_changed_model as _errata_last_changed_model,
+)
+from altrepo_api.api.errata.serializers import (
+    errata_package_update_model as _errata_package_update_model,
+)
+from altrepo_api.api.errata.serializers import (
+    errata_packages_updates_model as _errata_packages_updates_model,
+)
+from altrepo_api.api.errata.serializers import errata_vuln_model as _errata_vuln_model
+from altrepo_api.api.errata.serializers import erratas_ids_json_list_model
+from altrepo_api.api.errata.serializers import pkgs_el_model as _pkgs_el_model
+from altrepo_api.api.errata.serializers import vulns_el_model as _vulns_el_model
 from altrepo_api.api.task_progress.endpoints.packageset import AllTasksBraches
 from altrepo_api.api.task_progress.serializers import all_tasks_branches_model
+from altrepo_api.api.vulnerabilities.endpoints.excluded import VulnExcluded
 from altrepo_api.api.vulnerabilities.endpoints.fixes import VulnFixes
-from altrepo_api.api.vulnerabilities.endpoints.vuln import VulnInfo
 from altrepo_api.api.vulnerabilities.endpoints.packages import PackagesByOpenVuln
+from altrepo_api.api.vulnerabilities.endpoints.vuln import VulnInfo
 from altrepo_api.api.vulnerabilities.parsers import (
-    cve_info_args,
     bdu_info_args,
+    cve_info_args,
     ghsa_info_args,
     vuln_info_args,
 )
 from altrepo_api.api.vulnerabilities.serializers import (
-    vuln_fixes_model as _vuln_fixes_model,
     vuln_fixes_el_model as _vuln_fixes_el_model,
-    vuln_pkg_last_version_model as _vuln_pkg_last_version_model,
-    vulnerability_info_model as _vulnerability_info_model,
-    vulnerability_model as _vulnerability_model,
-    vuln_open_model as _vuln_open_model,
+)
+from altrepo_api.api.vulnerabilities.serializers import (
+    vuln_fixes_model as _vuln_fixes_model,
+)
+from altrepo_api.api.vulnerabilities.serializers import (
     vuln_open_el_model as _vuln_open_el_model,
+)
+from altrepo_api.api.vulnerabilities.serializers import (
+    vuln_open_model as _vuln_open_model,
+)
+from altrepo_api.api.vulnerabilities.serializers import (
+    vuln_pkg_last_version_model as _vuln_pkg_last_version_model,
+)
+from altrepo_api.api.vulnerabilities.serializers import (
+    vulnerability_info_model as _vulnerability_info_model,
+)
+from altrepo_api.api.vulnerabilities.serializers import (
+    vulnerability_model as _vulnerability_model,
+)
+from altrepo_api.settings import namespace as settings
+from altrepo_api.utils import get_logger, url_logging
+
+from .endpoints.change_history import ErrataChangeHistory
+from .endpoints.cpe import CPECandidates, CPEList, ManageCpe
+from .endpoints.errata import ManageErrata
+from .endpoints.packages_open_vulns import (
+    PackagesMaintainerList,
+    PackagesOpenVulns,
+    PackagesSupportedBranches,
+)
+from .endpoints.packages_unmapped import PackagesUnmapped
+from .endpoints.pnc import ManagePnc, PncList
+from .endpoints.sa import ManageSa
+from .endpoints.task_info import TaskInfo
+from .endpoints.task_list import TaskList
+from .endpoints.vuln_list import VulnList
+from .endpoints.vulns_info import VulnsInfo
+from .namespace import get_namespace
+from .parsers import (
+    cpe_candidates_args,
+    cpe_list_args,
+    cpe_manage_args,
+    cpe_manage_get_args,
+    errata_manage_args,
+    errata_manage_get_args,
+    maintainer_list_args,
+    pkgs_open_vulns_args,
+    pkgs_unmapped_args,
+    pnc_list_args,
+    pnc_manage_args,
+    pnc_manage_get_args,
+    sa_list_args,
+    sa_manage_args,
+    task_list_args,
+    vuln_list_args,
+)
+from .serializers import (
+    cpe_candidates_response_model,
+    cpe_manage_get_response_model,
+    cpe_manage_model,
+    cpe_manage_response_model,
+    errata_change_history_model,
+    errata_manage_get_response_model,
+    errata_manage_model,
+    errata_manage_response_model,
+    maintainer_list_model,
+    pkg_open_vulns,
+    pkgs_unmapped_model,
+    pnc_list_model,
+    pnc_manage_get_model,
+    pnc_manage_model,
+    pnc_manage_response_model,
+    sa_manage_create_model,
+    sa_manage_discard_model,
+    sa_manage_list_model,
+    sa_manage_response_model,
+    sa_manage_update_model,
+    supported_branches_model,
+    task_info_model,
+    task_list_model,
+    vuln_ids_json_list_model,
+    vuln_ids_json_post_list_model,
+    vuln_list_model,
 )
 
 ns = get_namespace()
 
 logger = get_logger(__name__)
-
 
 # register imported models
 errata_last_changed_model = ns.clone(
@@ -311,6 +333,28 @@ class routeVulnerableCveFixes(Resource):
         url_logging(logger, g.url)
         args = cve_info_args.parse_args(strict=True)
         w = VulnFixes(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/vuln/cve/excluded",
+    doc={
+        "description": (
+            "Get a list of packages where the "
+            "specified CVE vulnerability is excluded."
+        ),
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routeVulnerableCveExcluded(Resource):
+    @ns.expect(cve_info_args)
+    @ns.marshal_with(vuln_fixes_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = cve_info_args.parse_args(strict=True)
+        w = VulnExcluded(g.connection, **args)
         return run_worker(worker=w, args=args)
 
 
