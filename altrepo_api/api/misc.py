@@ -352,6 +352,7 @@ class LookupTables:
         "alt-education",
         "alt-workstation",
         "alt-kworkstation",
+        "alt-virt-pve",
         "slinux",
         "cloud",
         "starterkit",
