@@ -145,15 +145,19 @@ PRODUCT_CPE = {
     "p11": ["cpe:/o:alt:container:11"],
     "c9f2": ["cpe:/o:alt:spworkstation:8.4", "cpe:/o:alt:spserver:8.4"],
     "c10f1": ["cpe:/o:alt:spworkstation:10", "cpe:/o:alt:spserver:10"],
-    "c10f2": ["cpe:/o:alt:spworkstation:10.2", "cpe:/o:alt:spserver:10.2"],
+    "c10f2": [
+        "cpe:/o:alt:spworkstation:10.2",
+        "cpe:/o:alt:spserver:10.2",
+        "cpe:/o:alt:spcontainer:10.2",
+    ],
 }
 BRANCH_CHECK_REGEX = {
     "p9": (r"cpe:\/o:alt:(?!sp)[a-z\-]+:p?(\d+)(?:\.\d)*", "9"),
     "p10": (r"cpe:\/o:alt:(?!sp)[a-z\-]+:p?(\d+)(?:\.\d)*", "10"),
     "p11": (r"cpe:\/o:alt:(?!sp)[a-z\-]+:p?(\d+)(?:\.\d)*", "11"),
     "c9f2": (r"cpe:\/o:alt:sp(?:server|workstation):(\d\.\d)", "8.4"),
-    "c10f1": (r"cpe:\/o:alt:sp(?:server|workstation):(\d+)", "10"),
-    "c10f2": ((r"cpe:\/o:alt:sp(?:server|workstation):(\d\.\d)", "10.2")),
+    "c10f1": (r"cpe:\/o:alt:sp(?:server|workstation):(\d+)(?!.)", "10"),
+    "c10f2": ((r"cpe:\/o:alt:sp(?:server|workstation|container):(\d+\.\d)", "10.2")),
 }
 NUM_TO_SEVERITY = {0: "NONE", 1: "LOW", 2: "MEDUM", 3: "HIGH", 4: "CRITICAL"}
 SEVERITY_TO_NUM = {v: k for k, v in NUM_TO_SEVERITY.items()}
@@ -278,7 +282,7 @@ def build_test_altlinux_distr_installed(
 ) -> tuple[TestType, ObjectType, StateType]:
     # ALT linux distribution branch test is always the fisrt one
     seq = 1
-    # ID's prefix  defined with `lut.oval_export_branches_map` dict
+    # ID's prefix is defined with `lut.oval_export_branches_map` dict
     serial = lut.oval_export_branches_map.get(branch, "999")
 
     cpe_version_pattern, version_value = BRANCH_CHECK_REGEX[branch]
