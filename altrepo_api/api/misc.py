@@ -367,7 +367,7 @@ class LookupTables:
         "riscv64",
         "mipsel",
     ]
-    known_image_types = ["iso", "tar", "img", "qcow", "docker"]
+    known_image_types = ["iso", "tar", "img", "qcow", "oci"]
     known_image_releases = ["alpha", "beta", "rc", "release"]
     known_image_variants = ["install", "live", "rescue"]
 
