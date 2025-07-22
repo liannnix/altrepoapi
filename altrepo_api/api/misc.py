@@ -341,7 +341,7 @@ class LookupTables:
         "mcom02",
         "hifive",
         "qemu",
-        "docker",
+        "oci",
         "k8s",
     ]
 
