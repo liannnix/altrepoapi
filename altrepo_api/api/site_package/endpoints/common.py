@@ -146,7 +146,7 @@ class FindBuildSubtaskMixin:
     def find_build_subtask(
         self: Union[
             _pFindBuildSubtaskMixin, Any
-        ]  # XXX: 'Any' here is a hack to fix type checking errors
+        ],  # XXX: 'Any' here is a hack to fix type checking errors
     ) -> Union[SubtaskInfo, None]:
         pkg_task = 0
 
@@ -177,7 +177,7 @@ class FindBuildTaskMixixn(FindBuildSubtaskMixin, ParseTaskGearMixin):
     def find_and_parse_build_task(
         self: Union[
             _pFindBuildTaskMixixn, Any
-        ]  # XXX: 'Any' here is a hack to fix type checking errors
+        ],  # XXX: 'Any' here is a hack to fix type checking errors
     ) -> tuple[int, int, str, str, list[dict[str, Any]]]:
         pkg_task = 0
         pkg_tasks = []

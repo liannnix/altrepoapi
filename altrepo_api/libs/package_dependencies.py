@@ -372,7 +372,7 @@ class PackageDependencies:
         PkgNames = namedtuple("PkgNames", ["bin", "src"])
 
         def reorder_pkg_names(
-            pkgs_names: dict[int, tuple[str, str]]
+            pkgs_names: dict[int, tuple[str, str]],
         ) -> tuple[dict[int, PkgNames], dict[str, int]]:
             res = {}
             # build lookup for hashes by binary package name

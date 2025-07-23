@@ -167,7 +167,7 @@ def is_cve_in_errata_references(cve_id: str, errata: Errata) -> bool:
 
 
 def group_tasks_by_branch(
-    tasks: dict[str, list[PackageTask]]
+    tasks: dict[str, list[PackageTask]],
 ) -> dict[str, list[PackageTask]]:
     res: dict[str, list[PackageTask]] = {}
     for task in (t for tt in tasks.values() for t in tt):
@@ -176,7 +176,7 @@ def group_tasks_by_branch(
 
 
 def group_tasks_by_branch_and_name(
-    tasks: dict[str, list[PackageTask]]
+    tasks: dict[str, list[PackageTask]],
 ) -> dict[str, dict[str, list[PackageTask]]]:
     res: dict[str, dict[str, list[PackageTask]]] = {}
     for task in (t for tt in tasks.values() for t in tt):

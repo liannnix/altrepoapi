@@ -46,7 +46,7 @@ class DBConnection:
             database=clickhouse_name,
             user=dbuser,
             password=dbpass,
-            client_revision=DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET_V2
+            client_revision=DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET_V2,
         )
 
         try_conn = self._connection_test()
