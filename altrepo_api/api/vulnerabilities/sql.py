@@ -479,5 +479,47 @@ WHERE vuln_hash = (
 )
 """
 
+    get_cpe_hash = """
+SELECT DISTINCT
+    cpm_cpe,
+    pkg_cpe_hash
+FROM PackagesCveMatch
+WHERE cpm_cpe IN {tmp_table}
+"""
+
+    get_excluded_packages = """
+WITH vulns as (
+    SELECT pkg_name,
+           vuln_id,
+           pkg_cpe_hash,
+           pkg_hash,
+           cpm_cpe,
+           argMax(is_vulnerable, ts) AS is_vulnerable,
+           argMax(vuln_hash, ts) AS vuln_hash
+     FROM PackagesCveMatch
+     WHERE vuln_id = '{vuln_id}'
+     {where_clause}
+     GROUP BY pkg_name, vuln_id, pkg_cpe_hash, cpm_cpe, pkg_hash
+)
+SELECT 
+    pkg_hash,
+    pkg_name,
+    TT.pkgset_name as pkgset_name,
+    TT.pkg_version as pkg_version,
+    TT.pkg_release as pkg_release,
+    vuln_id,
+    cpm_cpe,
+    pkg_cpe_hash
+FROM vulns
+LEFT JOIN (
+        SELECT pkg_hash, pkgset_name, pkg_version, pkg_release
+        FROM static_last_packages
+        WHERE pkg_hash IN (
+            SELECT DISTINCT pkg_hash from vulns
+        )
+) AS TT ON TT.pkg_hash == pkg_hash
+WHERE is_vulnerable = 0    
+"""
+
 
 sql = SQL()

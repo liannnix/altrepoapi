@@ -14,57 +14,17 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from dataclasses import dataclass, asdict
-from datetime import datetime
-from typing import Union, Any, Iterable, NamedTuple
+from dataclasses import asdict
+from typing import Iterable, NamedTuple, Union
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
-from altrepo_api.libs.librpm_functions import compare_versions, VersionCompareResult
+from altrepo_api.libs.librpm_functions import VersionCompareResult, compare_versions
 from altrepo_api.utils import make_tmp_table_name, sort_branches
 
-from .common import (
-    Errata,
-    PackageVersion,
-    get_errata_by_cve_id,
-)
+from ..dataclasses import PackageMeta, PackageScheme, Task, TaskHistory
 from ..sql import sql
-
-
-@dataclass
-class Task:
-    id: int
-    branch: str
-    package: str
-
-
-@dataclass
-class TaskHistory:
-    id: int
-    prev: int
-    branch: str
-    changed: datetime
-
-
-@dataclass
-class PackageMeta:
-    pkghash: str
-    name: str
-    branch: str
-    version: str
-    release: str
-
-
-@dataclass
-class PackageScheme(PackageMeta):
-    errata_id: str
-    task_id: int
-    subtask_id: int
-    task_state: str
-    last_version: Union[PackageMeta, None] = None
-
-    def asdict(self) -> dict[str, Any]:
-        return asdict(self)
+from .common import Errata, PackageVersion, get_errata_by_cve_id
 
 
 class VulnFixes(APIWorker):
@@ -79,7 +39,7 @@ class VulnFixes(APIWorker):
 
     @staticmethod
     def _get_package_names(
-        errata_packages: dict[tuple[str, str], PackageScheme]
+        errata_packages: dict[tuple[str, str], PackageScheme],
     ) -> dict[str, list[tuple[str, int]]]:
         """
         Get a dictionary where the key is the package name
@@ -92,7 +52,7 @@ class VulnFixes(APIWorker):
 
     @staticmethod
     def _get_pkgs_branches(
-        pkg_names: dict[str, list[tuple[str, int]]]
+        pkg_names: dict[str, list[tuple[str, int]]],
     ) -> dict[str, set[str]]:
         pkgs_branches: dict[str, set[str]] = {}
         for pkg, pkg_branches in pkg_names.items():
