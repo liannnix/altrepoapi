@@ -18,15 +18,15 @@ from collections import defaultdict
 from typing import Any
 
 from altrepo_api.api.base import APIWorker, WorkerResult
+from altrepo_api.api.misc import lut
+from altrepo_api.api.management.endpoints.sa import get_errata_service
 from altrepo_api.libs.errata_server import ErrataServerError
 from altrepo_api.libs.errata_server.errata_sa_service import Errata as SaErrata
 from altrepo_api.libs.errata_server.errata_sa_service import SaAction
 from altrepo_api.utils import make_tmp_table_name, sort_branches
 
-from ...management.endpoints.sa import get_errata_service
 from ..dataclasses import ExcludedPackagesSchema, PackageScheme
 from ..sql import sql
-from ...misc import lut
 
 
 class VulnExcluded(APIWorker):
