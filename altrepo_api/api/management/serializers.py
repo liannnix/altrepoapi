@@ -164,8 +164,8 @@ vuln_ids_json_list_model = ns.model(
 errata_manage_reference_el_model = ns.model(
     "ErrataManageReferenceElementModel",
     {
-        "type": fields.String(description="errata reference type"),
-        "link": fields.String(description="errata reference link"),
+        "type": fields.String(description="errata reference type", required=True),
+        "link": fields.String(description="errata reference link", required=True),
     },
 )
 errata_manage_errata_model = ns.model(
@@ -174,24 +174,25 @@ errata_manage_errata_model = ns.model(
         "is_discarded": fields.Boolean(
             description="is errata discarded", default=False
         ),
-        "id": fields.String(description="errata id"),
-        "created": fields.DateTime(description="errata created date"),
-        "updated": fields.DateTime(description="errata updated date"),
-        "type": fields.String(description="errata type"),
-        "source": fields.String(description="errata source"),
+        "id": fields.String(description="errata id", required=True),
+        "created": fields.DateTime(description="errata created date", required=True),
+        "updated": fields.DateTime(description="errata updated date", required=True),
+        "type": fields.String(description="errata type", required=True),
+        "source": fields.String(description="errata source", required=True),
         "references": fields.Nested(
             errata_manage_reference_el_model,
             description="list of errata references",
             as_list=True,
+            required=True,
         ),
-        "pkg_hash": fields.String(description="package hash"),
-        "pkg_name": fields.String(description="package name"),
-        "pkg_version": fields.String(description="package version"),
-        "pkg_release": fields.String(description="package release"),
-        "pkgset_name": fields.String(description="packageset name"),
-        "task_id": fields.Integer(description="task id"),
-        "subtask_id": fields.Integer(description="subtask id"),
-        "task_state": fields.String(description="task state"),
+        "pkg_hash": fields.String(description="package hash", required=True),
+        "pkg_name": fields.String(description="package name", required=True),
+        "pkg_version": fields.String(description="package version", required=True),
+        "pkg_release": fields.String(description="package release", required=True),
+        "pkgset_name": fields.String(description="packageset name", required=True),
+        "task_id": fields.Integer(description="task id", required=True),
+        "subtask_id": fields.Integer(description="subtask id", required=True),
+        "task_state": fields.String(description="task state", required=True),
     },
 )
 errata_manage_errata_change_model = ns.model(
@@ -213,11 +214,11 @@ errata_manage_errata_change_model = ns.model(
 errata_manage_model = ns.model(
     "ErrataManageModel",
     {
-        "user": fields.String(description="errata change originator"),
-        "action": fields.String(description="errata manage action"),
-        "reason": fields.String(description="errata change reason"),
+        "user": fields.String(description="errata change originator", required=True),
+        "action": fields.String(description="errata manage action", required=True),
+        "reason": fields.String(description="errata change reason", required=True),
         "errata": fields.Nested(
-            errata_manage_errata_model, description="errata contents"
+            errata_manage_errata_model, description="errata contents", required=True
         ),
     },
 )
@@ -365,11 +366,11 @@ cpe_manage_get_response_model = ns.model(
 cpe_manage_cpe_model = ns.model(
     "CpeManageCpeModel",
     {
-        "cpe": fields.String(description="CPE match string"),
+        "cpe": fields.String(description="CPE match string", required=True),
         "project_name": fields.String(
-            description="Repology' common project package name"
+            description="Repology' common project package name", required=True
         ),
-        "state": fields.String(description="CPE match state"),
+        "state": fields.String(description="CPE match state", required=True),
     },
 )
 cpe_manage_pkg_cve_match_el_model = ns.model(
@@ -391,10 +392,12 @@ cpe_manage_pkg_cve_match_el_model = ns.model(
 cpe_manage_model = ns.model(
     "CpeManageModel",
     {
-        "user": fields.String(description="CPE change originator"),
-        "action": fields.String(description="CPE manage action"),
-        "reason": fields.String(description="CPE change reason"),
-        "cpe": fields.Nested(cpe_manage_cpe_model, description="CPE match record"),
+        "user": fields.String(description="CPE change originator", required=True),
+        "action": fields.String(description="CPE manage action", required=True),
+        "reason": fields.String(description="CPE change reason", required=True),
+        "cpe": fields.Nested(
+            cpe_manage_cpe_model, description="CPE match record", required=True
+        ),
     },
 )
 
@@ -546,20 +549,24 @@ maintainer_list_model = ns.model(
 pnc_manage_pnc_model = ns.model(
     "PncManagePncModel",
     {
-        "package_name": fields.String(description="PNC source package name"),
-        "project_name": fields.String(description="PNC common project name"),
-        "state": fields.String(description="PNC record state"),
-        "source": fields.String(description="PNC record source"),
+        "package_name": fields.String(
+            description="PNC source package name", required=True
+        ),
+        "project_name": fields.String(
+            description="PNC common project name", required=True
+        ),
+        "state": fields.String(description="PNC record state", required=True),
+        "source": fields.String(description="PNC record source", required=True),
     },
 )
 pnc_manage_model = ns.model(
     "PncManageModel",
     {
-        "user": fields.String(description="PNC change originator"),
-        "action": fields.String(description="PNC manage action"),
-        "reason": fields.String(description="PNC change reason"),
+        "user": fields.String(description="PNC change originator", required=True),
+        "action": fields.String(description="PNC manage action", required=True),
+        "reason": fields.String(description="PNC change reason", required=True),
         "pnc": fields.Nested(
-            pnc_manage_pnc_model, description="PNC record", as_list=False
+            pnc_manage_pnc_model, description="PNC record", as_list=False, required=True
         ),
     },
 )
