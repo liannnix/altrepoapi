@@ -116,6 +116,11 @@ PRODUCTS = {
     ],
     "p11": [
         "ALT Container",
+        "ALT Education",
+        "ALT Workstation",
+        "ALT Workstation K",
+        "ALT Server",
+        "ALT Virtualization PVE Edition",
     ],
     "c9f2": ["ALT SPWorkstation", "ALT SPServer"],
     "c10f1": ["ALT SP Workstation", "ALT SP Server"],
@@ -142,7 +147,14 @@ PRODUCT_CPE = {
         "cpe:/o:alt:starterkit:p10",
         "cpe:/o:alt:container:10",
     ],
-    "p11": ["cpe:/o:alt:container:11"],
+    "p11": [
+        "cpe:/o:alt:container:11",
+        "cpe:/o:alt:education:11.0",
+        "cpe:/o:alt:workstation:11.1",
+        "cpe:/o:alt:kworkstation:11",
+        "cpe:/o:alt:server:11.0",
+        "cpe:/o:alt:virtualization-pve:11.0",
+    ],
     "c9f2": ["cpe:/o:alt:spworkstation:8.4", "cpe:/o:alt:spserver:8.4"],
     "c10f1": ["cpe:/o:alt:spworkstation:10", "cpe:/o:alt:spserver:10"],
     "c10f2": [
