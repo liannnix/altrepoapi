@@ -88,7 +88,7 @@ depends_packages_model = ns.model(
 )
 
 pkg_info_model = ns.model(
-    "PackageInfoModel",
+    "DependenciesPackageInfoModel",
     {
         "name": fields.String(description="package name"),
         "epoch": fields.Integer(description="package epoch"),
