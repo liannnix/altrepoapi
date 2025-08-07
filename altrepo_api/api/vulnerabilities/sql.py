@@ -501,7 +501,7 @@ WITH vulns as (
      {where_clause}
      GROUP BY pkg_name, vuln_id, pkg_cpe_hash, cpm_cpe, pkg_hash
 )
-SELECT 
+SELECT
     pkg_hash,
     pkg_name,
     TT.pkgset_name as pkgset_name,
@@ -518,7 +518,7 @@ LEFT JOIN (
             SELECT DISTINCT pkg_hash from vulns
         )
 ) AS TT ON TT.pkg_hash == pkg_hash
-WHERE is_vulnerable = 0    
+WHERE is_vulnerable = 0
 """
 
 
