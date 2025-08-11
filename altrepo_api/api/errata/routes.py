@@ -17,12 +17,7 @@
 from flask import g
 from flask_restx import Resource, abort
 
-from altrepo_api.api.base import (
-    GET_RESPONSES_400_404,
-    GET_RESPONSES_404,
-    POST_RESPONSES_400_404,
-    run_worker,
-)
+from altrepo_api.api.base import GET_RESPONSES_400_404, GET_RESPONSES_404, run_worker
 from altrepo_api.utils import (
     get_logger,
     response_error_parser,
@@ -114,7 +109,7 @@ class routeOvalExport(Resource):
     "/packages_updates",
     doc={
         "description": "Get information about package update erratas",
-        "responses": POST_RESPONSES_400_404,
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routePackagesUpdates(Resource):
