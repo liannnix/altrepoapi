@@ -18,12 +18,7 @@ from flask import g
 from flask_restx import Resource
 
 from altrepo_api.api.auth.decorators import token_required
-from altrepo_api.api.base import (
-    GET_RESPONSES_400_404,
-    GET_RESPONSES_404,
-    POST_RESPONSES_400_404,
-    run_worker,
-)
+from altrepo_api.api.base import GET_RESPONSES_400_404, GET_RESPONSES_404, run_worker
 from altrepo_api.api.errata.endpoints.branch import BranchesUpdates, ErrataBranches
 from altrepo_api.api.errata.endpoints.package import PackagesUpdates
 from altrepo_api.api.errata.endpoints.search import FindErratas
@@ -279,7 +274,7 @@ class routeVulnList(Resource):
     "/vuln/info",
     doc={
         "description": "Find vulnerability information.",
-        "responses": POST_RESPONSES_400_404,
+        "responses": GET_RESPONSES_400_404,
         "security": "Bearer",
     },
 )
@@ -591,7 +586,7 @@ class routeFindErratas(Resource):
     "/errata/packages_updates",
     doc={
         "description": "Get information about package update erratas",
-        "responses": POST_RESPONSES_400_404,
+        "responses": GET_RESPONSES_400_404,
         "security": "Bearer",
     },
 )
