@@ -1247,5 +1247,58 @@ FROM (
 ) {where_clause2}
 """
 
+    get_change_history = """
+WITH base_data AS (
+    SELECT * FROM (
+        SELECT DISTINCT
+            toStartOfSecond(any(ts)) as event_date,
+            any(author) as author,
+            groupUniqArray(module) as modules,
+            arrayReverseSort(x -> x['module'], groupArray(details)) as changes,
+            transaction_id
+        FROM (
+            SELECT
+                ts,
+                ec_user as author,
+                'errata' as module,
+                map(
+                    'change_type', toString(ec_type),
+                    'module', 'errata',
+                    'errata_id', errata_id,
+                    'message', JSONExtractString(ec_reason, 'message'),
+                    'details', JSONExtractRaw(ec_reason, 'details')
+                ) as details,
+                transaction_id
+            FROM ErrataChangeHistory
+            UNION ALL
+            SELECT DISTINCT
+                ts,
+                pncc_user as author,
+                'pnc' as module,
+                map(
+                    'change_type', toString(pncc_type),
+                    'module', 'pnc',
+                    'package_name', pkg_name,
+                    'result', pnc_result,
+                    'message', JSONExtractString(pncc_reason, 'message'),
+                    'details', JSONExtractRaw(pncc_reason, 'details')
+                ) as details,
+                transaction_id
+            FROM PncChangeHistory
+        )
+        GROUP BY transaction_id
+    ) {where_clause}
+),
+total_count AS (
+    SELECT count() as total FROM base_data
+)
+SELECT
+    *,
+    (SELECT total FROM total_count) as total_count
+FROM base_data
+{order_by}
+{limit} {page}
+"""
+
 
 sql = SQL()

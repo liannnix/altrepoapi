@@ -15,9 +15,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import datetime
+import json
 from dataclasses import dataclass, asdict, field
+from typing import Optional, Any
 
-from altrepo_api.api.base import APIWorker
+from altrepo_api.api.base import APIWorker, WorkerResult
 from .tools.constants import ERRATA_PACKAGE_UPDATE_PREFIX, ERRATA_BRANCH_BULLETIN_PREFIX
 
 from ..sql import sql
@@ -98,3 +100,234 @@ class ErrataChangeHistory(APIWorker):
             "history": [asdict(el) for el in ErrataChngHist],
         }
         return res, 200
+
+
+@dataclass
+class CpeInfo:
+    cpe: str
+    state: str
+    project_name: str
+
+
+@dataclass
+class PncInfo:
+    state: str
+    package: str
+    project_name: str
+
+
+@dataclass
+class Details:
+    cpe: Optional[CpeInfo] = None
+    pnc: Optional[PncInfo] = None
+    name: Optional[str] = None
+    hash: Optional[str] = None
+    task_id: Optional[str] = None
+    version: Optional[str] = None
+    branch: Optional[str] = None
+    subtask_id: Optional[str] = None
+    release: Optional[str] = None
+    task_state: Optional[str] = None
+
+    def __init__(self, js: dict[str, Any]):
+        if cpe := js.get("cpe"):
+            self.cpe = CpeInfo(**cpe)
+        if pnc := js.get("pnc"):
+            self.pnc = PncInfo(**pnc)
+        for key, val in js.items():
+            if key in ["cpe", "pnc"]:
+                continue
+            setattr(self, key, val)
+
+
+@dataclass
+class ChangeItem:
+    change_type: str
+    module: str
+    errata_id: Optional[str] = None
+    message: Optional[str] = None
+    package_name: Optional[str] = None
+    result: Optional[str] = None
+    details: Optional[Details] = None
+
+    def __init__(self, js: dict[str, Any]):
+        if details := js.get("details"):
+            self.details = Details(json.loads(details))
+        for key, val in js.items():
+            if key == "details":
+                continue
+            setattr(self, key, val)
+
+
+@dataclass
+class ChangeHistoryResponse:
+    event_date: datetime.datetime
+    author: str
+    modules: list[str]
+    changes: list[ChangeItem]
+    transaction_id: str
+
+
+@dataclass
+class ChangeHistoryArgs:
+    module: str
+    change_type: str
+    user: Optional[str]
+    input: Optional[list[str]]
+    event_start_date: Optional[datetime.datetime]
+    event_end_date: Optional[datetime.datetime]
+    limit: Optional[int]
+    page: Optional[int]
+    sort: Optional[list[str]]
+
+
+class ChangeHistory(APIWorker):
+
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.args = ChangeHistoryArgs(**kwargs)
+        self.sql = sql
+        super().__init__()
+
+    @property
+    def _limit(self) -> str:
+        """
+        Generate the LIMIT clause for SQL query if limit is specified.
+        """
+        return f"LIMIT {self.args.limit}" if self.args.limit else ""
+
+    @property
+    def _page(self) -> str:
+        """
+        Generate the OFFSET clause for pagination if both limit and page are specified.
+        """
+        if self.args.limit and self.args.page:
+            page = self.args.page
+            per_page = self.args.limit
+            offset = (page - 1) * per_page
+            return f"OFFSET {offset}"
+        return ""
+
+    @property
+    def _order_by(self) -> str:
+        """
+        Generate the ORDER BY clause based on requested sort fields.
+        """
+        allowed_fields = ChangeHistoryResponse.__annotations__.keys()
+        default_sorting = "ORDER BY event_date DESC"
+        if not self.args.sort:
+            return default_sorting
+
+        order_clauses = []
+
+        for sort_field in self.args.sort:
+            direction = "ASC"
+            field_name = sort_field
+
+            if sort_field.startswith("-"):
+                direction = "DESC"
+                field_name = sort_field[1:]
+            if field_name in allowed_fields:
+                escaped_field = (
+                    f"{field_name}" if not field_name.islower() else field_name
+                )
+                order_clauses.append(f"{escaped_field} {direction}, transaction_id")
+
+        if not order_clauses:
+            return default_sorting
+
+        return f"ORDER BY {', '.join(order_clauses)}, transaction_id"
+
+    @property
+    def _create_input_conditions(self) -> list[str]:
+        """Creates search conditions for the input filter."""
+        if not self.args.input:
+            return []
+        conditions = []
+        for term in self.args.input:
+            # Search by errata_id and package_name
+            term_conditions = [
+                f"arrayExists(x -> x['errata_id'] ILIKE '%{term}%', changes)",
+                f"arrayExists(x -> x['package_name'] ILIKE '%{term}%', changes)",
+                f"arrayExists(x -> x['details'] ILIKE '%{term}%', changes)",
+            ]
+            conditions.append(f"({' OR '.join(term_conditions)})")
+
+        return conditions
+
+    @property
+    def _where_clause(self):
+        conditions = []
+
+        # Filter by module (array contains)
+        if self.args.module != "all":
+            conditions.append(f"has(modules, '{self.args.module}')")
+
+        # Filter by user (exact match)
+        if self.args.user:
+            conditions.append(f"author = '{self.args.user}'")
+
+        # Filter by change type
+        if self.args.change_type != "all":
+            conditions.append(
+                f"arrayExists(x -> x['change_type'] = '{self.args.change_type}', changes)"
+            )
+
+        # Filter by date range
+        if self.args.event_start_date:
+            conditions.append(
+                f"event_date >= '{self.args.event_start_date.isoformat()}'"
+            )
+        if self.args.event_end_date:
+            conditions.append(f"event_date <= '{self.args.event_end_date.isoformat()}'")
+
+        # Filter by input
+        conditions.extend(self._create_input_conditions)
+
+        # Combine all conditions
+        if conditions:
+            return "WHERE " + " AND ".join(conditions)
+        return ""
+
+    def get(self) -> WorkerResult:
+        response = self.send_sql_request(
+            self.sql.get_change_history.format(
+                where_clause=self._where_clause,
+                order_by=self._order_by,
+                limit=self._limit,
+                page=self._page,
+            )
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error(
+                {
+                    "message": "No change history data found for given parameters",
+                    "args": asdict(self.args),
+                }
+            )
+        total_count = response[0][-1]
+        changes = [
+            ChangeHistoryResponse(
+                event_date=hist[0],
+                author=hist[1],
+                modules=hist[2],
+                changes=[ChangeItem(change) for change in hist[3]],
+                transaction_id=hist[4],
+            )
+            for hist in response
+        ]
+        res: dict[str, Any] = {
+            "request_args": asdict(self.args),
+            "length": len(changes),
+            "change_history": [asdict(el) for el in changes],
+        }
+        return (
+            res,
+            200,
+            {
+                "Access-Control-Expose-Headers": "X-Total-Count",
+                "X-Total-Count": total_count,
+            },
+        )

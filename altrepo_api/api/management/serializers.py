@@ -826,3 +826,110 @@ sa_manage_response_model = ns.model(
         ),
     },
 )
+
+change_history_cpe_info_model = ns.model(
+    "ChangeHistoryCpeInfoModel",
+    {
+        "cpe": fields.String(description="CPE identifier", required=True),
+        "state": fields.String(
+            description="current state of the CPE (active/inactive)",
+            enum=["active", "inactive"],
+            required=True,
+        ),
+        "project_name": fields.String(description="associated project name"),
+    },
+)
+change_history_pnc_info_model = ns.model(
+    "ChangeHistoryPncInfoModel",
+    {
+        "state": fields.String(
+            description="Package name conversion state (active/inactive)",
+            enum=["active", "inactive"],
+            required=True,
+        ),
+        "package": fields.String(description="Package name"),
+        "project_name": fields.String(
+            description="Project name associated with the package"
+        ),
+    },
+)
+change_history_detail_model = ns.model(
+    "ChangeHistoryDetailModel",
+    {
+        "cpe": fields.Nested(
+            change_history_cpe_info_model,
+            allow_null=True,
+            description="CPE-related information",
+        ),
+        "pnc": fields.Nested(
+            change_history_pnc_info_model,
+            allow_null=True,
+            description="PNC-related information",
+        ),
+        "name": fields.String(description="package name"),
+        "hash": fields.String(description="package unique hash identifier"),
+        "task_id": fields.String(description="task number"),
+        "version": fields.String(description="package version"),
+        "branch": fields.String(description="package set name"),
+        "subtask_id": fields.String(description="subtask number"),
+        "release": fields.String(description="package release"),
+        "task_state": fields.String(description="current task state"),
+    },
+)
+change_history_el_model = ns.model(
+    "ChangeHistoryElementModel",
+    {
+        "change_type": fields.String(
+            required=True,
+            enum=["create", "update", "discard"],
+            description="type of change operation",
+        ),
+        "module": fields.String(
+            required=True, enum=["errata", "pnc"], description="affected system module"
+        ),
+        "errata_id": fields.String(description="errata identifier"),
+        "message": fields.String(description="change description"),
+        "package_name": fields.String(description="package name (for PNC changes)"),
+        "result": fields.String(
+            description="operation result status (for PNC changes)"
+        ),
+        "details": fields.Nested(
+            change_history_detail_model,
+            required=True,
+            description="detailed change information",
+        ),
+    },
+)
+change_history_model = ns.model(
+    "ChangeHistoryModel",
+    {
+        "transaction_id": fields.String(required=True, description="transaction ID"),
+        "event_date": fields.DateTime(
+            required=True, description="timestamp of the change event"
+        ),
+        "author": fields.String(
+            required=True, description="user who initiated the change"
+        ),
+        "changes": fields.Nested(
+            change_history_el_model,
+            description="a detailed list of the history of changes in transaction",
+            as_list=True,
+            required=True,
+        ),
+    },
+)
+change_history_response_model = ns.model(
+    "ChangeHistoryResponseModel",
+    {
+        "request_args": fields.Raw(required=True, description="request arguments"),
+        "length": fields.Integer(
+            required=True, description="number of changes history found"
+        ),
+        "change_history": fields.Nested(
+            change_history_model,
+            description="list of history of transactions changes",
+            as_list=True,
+            required=True,
+        ),
+    },
+)
