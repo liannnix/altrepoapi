@@ -238,9 +238,7 @@ class ErrataSAService:
     def list(self) -> list[Errata]:
         return (
             into_iter(self.server.get(SA_LIST_ROUTE).unwrap())
-            .map(
-                lambda el: deserialize(Errata, el).unwrap()  # type: ignore
-            )
+            .map(lambda el: deserialize(Errata, el).unwrap())  # type: ignore
             .collect()
         )
 

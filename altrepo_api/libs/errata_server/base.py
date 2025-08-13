@@ -64,9 +64,7 @@ def _parse_url(url: str) -> Result[tuple[str, str, str], Exception]:
 # base service connection class
 class ErrataServer:
     def __init__(self, url: str) -> None:
-        schema, self._base_url, self._path = (
-            _parse_url(url).unwrap()
-        )
+        schema, self._base_url, self._path = _parse_url(url).unwrap()
         self.session = Session()
         # config session retries
         self.session.mount(
