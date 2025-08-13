@@ -226,7 +226,7 @@ class ManageSa(APIWorker):
             return self.store_error(
                 {
                     "message": "Failed to decode request payload",
-                    "errors": [x.error for x in (prev, new) if x.is_err()],  # type: ignore
+                    "errors": [str(x.error) for x in (prev, new) if x.is_err()],  # type: ignore
                 },
                 severity=self.LL.ERROR,
                 http_code=400,
@@ -260,7 +260,7 @@ class ManageSa(APIWorker):
             return self.store_error(
                 {
                     "message": "Failed to decode request payload",
-                    "errors": [d.error],  # type: ignore
+                    "errors": [str(d.error)],  # type: ignore
                 },
                 severity=self.LL.ERROR,
                 http_code=400,
