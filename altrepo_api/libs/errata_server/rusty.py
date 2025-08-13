@@ -37,6 +37,8 @@ E = TypeVar("E")  # Error value type
 U = TypeVar("U")  # Mapping return type
 F = TypeVar("F")  # New error type
 
+Result: TypeAlias = Union["Ok[T]", "Err[E]"]
+
 
 class Ok(NamedTuple, Generic[T]):
     """
@@ -184,11 +186,8 @@ class Err(NamedTuple, Generic[E]):
         return op()
 
 
-Result: TypeAlias = Union[Ok[T], Err[E]]
-
-
 def resultify(f: Callable[..., T]) -> Callable[..., Result[T, Exception]]:
-    """Decorator to convert exceptions to Err results"""
+    """Decorator to wrap function that may raise an exception into a Result value."""
 
     @wraps(f)
     def wrapper(*args: Any, **kwargs: Any) -> Result[T, Exception]:
@@ -201,7 +200,7 @@ def resultify(f: Callable[..., T]) -> Callable[..., Result[T, Exception]]:
 
 
 def resultify_method(f: Callable[..., T]) -> Callable[..., Result[T, Exception]]:
-    """Decorator for class method to convert exceptions to Err results"""
+    """Decorator to wrap class' method that may raise an exception into a Resul value."""
 
     @wraps(f)
     def wrapper(self, *args: Any, **kwargs: Any) -> Result[T, Exception]:
@@ -302,7 +301,7 @@ class Option(NamedTuple, Generic[T]):
 
 
 def optionable(func: Callable[..., Optional[T]]) -> Callable[..., Option[T]]:
-    """Decorator to wrap functions that may return None into Option"""
+    """Decorator to wrap function that may return None into an Option value."""
 
     @wraps(func)
     def wrapper(*args, **kwargs) -> Option[T]:
@@ -312,7 +311,7 @@ def optionable(func: Callable[..., Optional[T]]) -> Callable[..., Option[T]]:
 
 
 def optionable_method(func: Callable[..., Optional[T]]) -> Callable[..., Option[T]]:
-    """Decorator to wrap functions that may return None into Option"""
+    """Decorator to wrap class' method that may return None into an Option value."""
 
     @wraps(func)
     def wrapper(self, *args, **kwargs) -> Option[T]:
@@ -321,7 +320,7 @@ def optionable_method(func: Callable[..., Optional[T]]) -> Callable[..., Option[
     return wrapper
 
 
-def sliding_window(iterable: Iterable[T], size: int) -> Iterator[tuple[T, ...]]:
+def _sliding_window(iterable: Iterable[T], size: int) -> Iterator[tuple[T, ...]]:
     """
     Yield sliding windows of width 'size' over the iterable.
     Similar to Rust's slice::windows() method.
@@ -377,7 +376,7 @@ class Iter(Generic[T]):
     def filter_map(self, f: Callable[[T], Option[U]]) -> "Iter[U]":
         return Iter(y.unwrap() for x in self._iterable if (y := f(x)).is_some())
 
-    # TODO: deal with the type inference for for `flat_map` and `flatten` methods
+    # TODO: deal with the type inference for `flat_map` and `flatten` methods
     #
     # For single level depth iterables with simple types it is better use `flat_map`
     # method:
@@ -387,11 +386,11 @@ class Iter(Generic[T]):
     # it is better use `flatten` method:
     #   > x = Iter([Ok(123), Ok(321), Err(None)]).flatten().collect() => list[int]
     #
-    # For deeper level nestied iterables use `flat_map` in chain with `flat_map` or
-    # `flatten` in according to underlying contents.
+    # For deeper level nested iterables use `flat_map` in chain with `flat_map` or
+    # `flatten` in accordance to underlying contents.
 
     @staticmethod
-    def into_iter(v: Union[Iterable[U], Result[U, E], Option[U], T]) -> Iterable[U]:
+    def _into_iter(v: Union[Iterable[U], Result[U, E], Option[U], T]) -> Iterable[U]:
         """
         Handles Rust-like implementation of `IntoIter` trait for `Result[T,E]`
         and `Option[T]` types.
@@ -404,7 +403,7 @@ class Iter(Generic[T]):
         raise ValueError("Type %s is not iterable" % type(v))
 
     def flat_map(self, f: Callable[[T], Iterable[U]]) -> "Iter[U]":
-        return Iter(y for x in self._iterable for y in self.into_iter(f(x)))
+        return Iter(y for x in self._iterable for y in self._into_iter(f(x)))
 
     @overload
     def flatten(self: "Iter[Iterable[U]]") -> "Iter[U]": ...
@@ -419,7 +418,7 @@ class Iter(Generic[T]):
     def flatten(self: "Iter[Any]") -> Any: ...
 
     def flatten(self):
-        return Iter(y for x in self._iterable for y in self.into_iter(x))
+        return Iter(y for x in self._iterable for y in self._into_iter(x))
 
     def take(self, n: int) -> "Iter[T]":
         return Iter(islice(self._iterable, n))
@@ -499,7 +498,7 @@ class Iter(Generic[T]):
         return Option(next(islice(self._iterable, n, None), None))
 
     def windows(self, size: int) -> "Iter[tuple[T, ...]]":
-        return Iter(sliding_window(self._iterable, size))
+        return Iter(_sliding_window(self._iterable, size))
 
     def partition(self, predicate: Callable[[T], bool]) -> tuple[list[T], list[T]]:
         a, b = [], []
@@ -513,4 +512,5 @@ class Iter(Generic[T]):
 
 
 def into_iter(v: Iterable[T]) -> Iter[T]:
+    """Wraps iterable into an Iter class instance."""
     return Iter(v)
