@@ -18,9 +18,10 @@
 from enum import Enum
 from typing import Any, NamedTuple, Optional
 
-from .base import JSONObject, JSONValue, ErrataServer, ErrataServerError
+from .base import JSONValue, ErrataServer
+from .base import ErrataServerError  # noqa: F401
+from .rusty import into_iter
 from .serde import serialize_enum, deserialize_enum, serialize, deserialize
-from .result import Result
 
 
 SA_LIST_ROUTE = "sa"
@@ -38,8 +39,8 @@ class SaType(Enum):
         return serialize_enum(self)
 
     @staticmethod
-    def deserialize(value: JSONValue) -> Result["SaType", str]:
-        return deserialize_enum(SaType, value)  # type: ignore
+    def deserialize(value: JSONValue):
+        return deserialize_enum(SaType, value)
 
 
 class SaAction(Enum):
@@ -52,8 +53,8 @@ class SaAction(Enum):
         return serialize_enum(self)
 
     @staticmethod
-    def deserialize(value: JSONValue) -> Result["SaAction", str]:
-        return deserialize_enum(SaAction, value)  # type: ignore
+    def deserialize(value: JSONValue):
+        return deserialize_enum(SaAction, value)
 
 
 class SaReferenceType(Enum):
@@ -66,8 +67,8 @@ class SaReferenceType(Enum):
         return serialize_enum(self)
 
     @staticmethod
-    def deserialize(value: JSONValue) -> Result["SaReferenceType", str]:
-        return deserialize_enum(SaReferenceType, value)  # type: ignore
+    def deserialize(value: JSONValue):
+        return deserialize_enum(SaReferenceType, value)
 
     def __lt__(self, other):
         if isinstance(other, SaReferenceType):
@@ -235,68 +236,70 @@ class ErrataSAService:
         self.access_token = access_token
 
     def list(self) -> list[Errata]:
-        res = []
-        response: list[JSONObject] = self.server.get(SA_LIST_ROUTE)  # type: ignore
-        for el in [deserialize(Errata, e) for e in response]:
-            if el.is_err():
-                raise ErrataServerError(el.error)  # type: ignore
-            else:
-                res.append(el.unwrap())
-        return res
+        return (
+            into_iter(self.server.get(SA_LIST_ROUTE).unwrap())
+            .map(
+                lambda el: deserialize(Errata, el).unwrap()  # type: ignore
+            )
+            .collect()
+        )
 
     def create(self, errata_json: ErrataJson) -> SaManageResponse:
         dry_run_str = "true" if self.dry_run else "false"
-        response = self.server.post(
-            SA_CREATE_ROUTE,
-            params={
-                "user": self.user,
-                "user_ip": self.user_ip,
-                "dry_run": dry_run_str,
-                "access_token": self.access_token,
-            },
-            json={"errata_json": serialize(sanitize_ej(errata_json))},  # type: ignore
+        return (
+            self.server.post(
+                SA_CREATE_ROUTE,
+                params={
+                    "user": self.user,
+                    "user_ip": self.user_ip,
+                    "dry_run": dry_run_str,
+                    "access_token": self.access_token,
+                },
+                json={"errata_json": serialize(sanitize_ej(errata_json))},
+            )
+            .and_then(lambda r: deserialize(SaManageResponse, r))  # type: ignore
+            .unwrap()
         )
-        d = deserialize(SaManageResponse, response)  # type: ignore
-        if d.is_err():
-            raise ErrataServerError(d.error)  # type: ignore
-        return d.unwrap()
 
     def discard(self, reason: str, errata_json: ErrataJson) -> SaManageResponse:
         dry_run_str = "true" if self.dry_run else "false"
-        response = self.server.post(
-            SA_DISCARD_ROUTE,
-            params={
-                "user": self.user,
-                "user_ip": self.user_ip,
-                "dry_run": dry_run_str,
-                "access_token": self.access_token,
-            },
-            json={"reason": reason, "errata_json": serialize(sanitize_ej(errata_json))},  # type: ignore
+        return (
+            self.server.post(
+                SA_DISCARD_ROUTE,
+                params={
+                    "user": self.user,
+                    "user_ip": self.user_ip,
+                    "dry_run": dry_run_str,
+                    "access_token": self.access_token,
+                },
+                json={
+                    "reason": reason,
+                    "errata_json": serialize(sanitize_ej(errata_json)),
+                },
+            )
+            .and_then(lambda r: deserialize(SaManageResponse, r))  # type: ignore
+            .unwrap()
         )
-        d = deserialize(SaManageResponse, response)  # type: ignore
-        if d.is_err():
-            raise ErrataServerError(d.error)  # type: ignore
-        return d.unwrap()
 
     def update(
         self, reason: str, prev_errata_json: ErrataJson, errata_json: ErrataJson
     ) -> SaManageResponse:
         dry_run_str = "true" if self.dry_run else "false"
-        response = self.server.post(
-            SA_UPDATE_ROUTE,
-            params={
-                "user": self.user,
-                "user_ip": self.user_ip,
-                "dry_run": dry_run_str,
-                "access_token": self.access_token,
-            },
-            json={
-                "reason": reason,
-                "prev_errata_json": serialize(sanitize_ej(prev_errata_json)),  # type: ignore
-                "errata_json": serialize(sanitize_ej(errata_json)),  # type: ignore
-            },
+        return (
+            self.server.post(
+                SA_UPDATE_ROUTE,
+                params={
+                    "user": self.user,
+                    "user_ip": self.user_ip,
+                    "dry_run": dry_run_str,
+                    "access_token": self.access_token,
+                },
+                json={
+                    "reason": reason,
+                    "prev_errata_json": serialize(sanitize_ej(prev_errata_json)),
+                    "errata_json": serialize(sanitize_ej(errata_json)),
+                },
+            )
+            .and_then(lambda r: deserialize(SaManageResponse, r))  # type: ignore
+            .unwrap()
         )
-        d = deserialize(SaManageResponse, response)  # type: ignore
-        if d.is_err():
-            raise ErrataServerError(d.error)  # type: ignore
-        return d.unwrap()

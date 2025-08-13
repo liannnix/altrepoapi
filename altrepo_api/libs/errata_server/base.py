@@ -19,6 +19,8 @@ from requests.adapters import HTTPAdapter, Retry
 from typing import Any, Optional, Union
 from urllib.parse import urlparse
 
+from .rusty import Ok, Err, Result
+
 
 RETRY_ATTEMPTS_TOTAL = 5
 RETRY_ALLOWED_METHODS = frozenset(["GET", "HEAD", "POST", "PUT"])
@@ -45,7 +47,7 @@ class ErrataServerError(Exception):
 
 
 # helpers
-def _parse_url(url: str) -> tuple[str, str, str]:
+def _parse_url(url: str) -> Result[tuple[str, str, str], Exception]:
     """Parse URL and return tuple of schema, base URL and path."""
 
     try:
@@ -54,15 +56,17 @@ def _parse_url(url: str) -> tuple[str, str, str]:
         base_url = f"{schema}://{parsed.netloc}"
         path = parsed.path.removeprefix("/")
     except (ValueError, TypeError):
-        raise ErrataServerError("Failed to parse service URL: %s" % url)
+        return Err(ErrataServerError("Failed to parse service URL: %s" % url))
 
-    return schema, base_url, path
+    return Ok((schema, base_url, path))
 
 
 # base service connection class
 class ErrataServer:
     def __init__(self, url: str) -> None:
-        schema, self._base_url, self._path = _parse_url(url)
+        schema, self._base_url, self._path = (
+            _parse_url(url).unwrap()
+        )
         self.session = Session()
         # config session retries
         self.session.mount(
@@ -92,16 +96,16 @@ class ErrataServer:
 
     def get(
         self, route: str, *, params: Optional[dict[str, Any]] = None
-    ) -> JSONResponse:
+    ) -> Result[JSONResponse, ErrataServerError]:
         url = self.url + route.removeprefix("/")
         status_code = 500
         try:
             response = self.session.get(url, params=params)
             status_code = response.status_code
             response.raise_for_status()
-            return response.json()
+            return Ok(response.json())
         except Exception as e:
-            raise ErrataServerError("Failed on %s: %s" % (url, e), status_code) from e
+            return Err(ErrataServerError("Failed on %s: %s" % (url, e), status_code))
 
     def post(
         self,
@@ -109,16 +113,16 @@ class ErrataServer:
         *,
         params: Optional[dict[str, Any]] = None,
         json: Optional[JSONObject] = None,
-    ) -> JSONResponse:
+    ) -> Result[JSONResponse, ErrataServerError]:
         url = self.url + route.removeprefix("/")
         status_code = 500
         try:
             response = self.session.post(url, params=params, json=json)
             status_code = response.status_code
             response.raise_for_status()
-            return response.json()
+            return Ok(response.json())
         except Exception as e:
-            raise ErrataServerError("Failed on %s: %s" % (url, e), status_code) from e
+            return Err(ErrataServerError("Failed on %s: %s" % (url, e), status_code))
 
     def put(
         self,
@@ -126,13 +130,13 @@ class ErrataServer:
         *,
         params: Optional[dict[str, Any]] = None,
         json: Optional[JSONObject] = None,
-    ) -> JSONResponse:
+    ) -> Result[JSONResponse, ErrataServerError]:
         url = self.url + route.removeprefix("/")
         status_code = 500
         try:
             response = self.session.put(url, params=params, json=json)
             status_code = response.status_code
             response.raise_for_status()
-            return response.json()
+            return Ok(response.json())
         except Exception as e:
-            raise ErrataServerError("Failed on %s: %s" % (url, e), status_code) from e
+            return Err(ErrataServerError("Failed on %s: %s" % (url, e), status_code))

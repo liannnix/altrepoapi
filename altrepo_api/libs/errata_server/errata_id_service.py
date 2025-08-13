@@ -19,7 +19,8 @@ import re
 from datetime import datetime
 from typing import NamedTuple, Optional, Union
 
-from .base import ErrataServer, ErrataServerError, JSONObject
+from .base import ErrataServer, JSONObject
+from .base import ErrataServerError  # noqa: F401
 
 
 CHECK_ROUTE = "check"
@@ -48,7 +49,7 @@ def _result(response: JSONObject) -> ErrataIDServiceResult:
 
 def _validate_prefix(prefix: str):
     if not re_errata_prefix.match(prefix):
-        raise ErrataServerError("Invalid prefix: %s" % prefix)
+        raise ErrataServerError("Invalid prefix: %s" % prefix, 400)
     return prefix
 
 
@@ -59,7 +60,7 @@ def _validate_year(year: Union[int, None]) -> int:
     if 2000 <= year <= 2999:
         return year
 
-    raise ErrataServerError("Invalid year value: %s" % year)
+    raise ErrataServerError("Invalid year value: %s" % year, 400)
 
 
 class ErrataIDService:
@@ -69,7 +70,9 @@ class ErrataIDService:
         self.server = ErrataServer(url)
 
     def check(self, id: str) -> ErrataIDServiceResult:
-        return _result(self.server.get(CHECK_ROUTE, params={"name": id}))  # type: ignore
+        return _result(
+            self.server.get(CHECK_ROUTE, params={"name": id}).unwrap()  # type: ignore
+        )
 
     def register(self, prefix: str, year: Optional[int]) -> ErrataIDServiceResult:
         prefix = _validate_prefix(prefix)
@@ -77,11 +80,17 @@ class ErrataIDService:
             self.server.get(
                 REGISTER_ROUTE,
                 params={"prefix": prefix, "year": _validate_year(year)},
-            )  # type: ignore
+            ).unwrap()  # type: ignore
         )
 
     def update(self, id: str) -> ErrataIDServiceResult:
-        return _result(self.server.post(UPDATE_ROUTE, params={"name": id}))  # type: ignore
+        return _result(
+            self.server.post(UPDATE_ROUTE, params={"name": id}).unwrap()  # type: ignore
+        )
 
     def discard(self, id: str) -> ErrataIDServiceResult:
-        return _result(self.server.post(DISCARD_ROUTE, params={"name": id}))  # type: ignore
+        return _result(
+            self.server.post(
+                DISCARD_ROUTE, params={"name": id}
+            ).unwrap()  # type: ignore
+        )
