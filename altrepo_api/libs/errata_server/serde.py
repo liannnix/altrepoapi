@@ -20,25 +20,31 @@ from enum import Enum
 from typing import Any, List, NamedTuple, Type, TypeVar, Union, get_type_hints
 
 from .base import JSONValue, JSONObject
-from .result import Result, Ok, Err
+from .rusty import Result, Ok, Err
 
 SKIP_SERILIZING_IF_NONE = "SKIP_SERILIZING_IF_NONE"
 
 EN = TypeVar("EN", bound=Enum)
 
 
+class SerdeError(Exception):
+    pass
+
+
 def serialize_enum(cls: Enum) -> str:
     return cls.value
 
 
-def deserialize_enum(cls: EN, value: JSONValue) -> Result[EN, str]:
+def deserialize_enum(cls: Type[EN], value: JSONValue) -> Result[EN, SerdeError]:
     if not isinstance(value, str):
-        return Err(f"Expected string, got {type(value)}")
+        return Err(SerdeError(f"Expected string, got {type(value)}"))
     v = value.upper()
     try:
         return Ok(cls[v])  # type: ignore
     except KeyError:
-        return Err(f"'{v}'[{value}] is not a valid {cls.__name__} enum member")
+        return Err(
+            SerdeError(f"'{v}'[{value}] is not a valid {cls.__name__} enum member")
+        )
 
 
 def _is_enum_type(obj: Type) -> bool:
@@ -84,7 +90,7 @@ def _get_underlying_namedtuple(type_hint):
     return None
 
 
-def _maybe_deserialize(obj: Type, value) -> Result[Any, str]:
+def _maybe_deserialize(obj: Type, value) -> Result[Any, SerdeError]:
     """Deserialize Enum if it implements `deserialize` method or primitive type value."""
     if _is_enum_type(obj):
         if deserialize := getattr(obj, "deserialize"):
@@ -95,9 +101,9 @@ def _maybe_deserialize(obj: Type, value) -> Result[Any, str]:
 T = TypeVar("T", bound=NamedTuple)
 
 
-def deserialize(cls: Type[T], data: JSONObject) -> Result[T, str]:
+def deserialize(cls: Type[T], data: JSONObject) -> Result[T, SerdeError]:
     if not _is_namedtuple_type(cls):
-        return Err(f"{cls.__name__} is not a NamedTuple class")
+        return Err(SerdeError(f"{cls.__name__} is not a NamedTuple class"))
 
     field_types = get_type_hints(cls)
     kwargs = {}
@@ -106,19 +112,23 @@ def deserialize(cls: Type[T], data: JSONObject) -> Result[T, str]:
         if field not in data:
             if field in cls._field_defaults:
                 continue  # use default value
-            return Err(f"Missing required field: {field}")
+            return Err(SerdeError(f"Missing required field: {field}"))
 
         value = data[field]
 
         # handle list[NamedTuple]
         if namedtuple_cls := _get_underlying_namedtuple(field_type):
             if not isinstance(value, list):
-                return Err(f"Expected list for {field}, got {type(value)}")
+                return Err(SerdeError(f"Expected list for {field}, got {type(value)}"))
 
             deserialized_list = []
             for item in value:
                 if not isinstance(item, dict):
-                    return Err(f"Expected dict in list for {field}, got {type(item)}")
+                    return Err(
+                        SerdeError(
+                            f"Expected dict in list for {field}, got {type(item)}"
+                        )
+                    )
                 d = deserialize(namedtuple_cls, item)
                 if d.is_err():
                     return d
@@ -127,7 +137,7 @@ def deserialize(cls: Type[T], data: JSONObject) -> Result[T, str]:
         # handle nested NamedTuples
         elif _is_namedtuple_type(field_type):
             if not isinstance(value, dict):
-                return Err(f"Expected dict for {field}, got {type(value)}")
+                return Err(SerdeError(f"Expected dict for {field}, got {type(value)}"))
             d = deserialize(field_type, value)
             if d.is_err():
                 return d
@@ -150,7 +160,9 @@ def deserialize(cls: Type[T], data: JSONObject) -> Result[T, str]:
                         for item in value:
                             if not isinstance(item, dict):
                                 return Err(
-                                    f"Expected dict in list for {field}, got {type(item)}"
+                                    SerdeError(
+                                        f"Expected dict in list for {field}, got {type(item)}"
+                                    )
                                 )
                             d = deserialize(namedtuple_cls, item)
                             if d.is_err():
@@ -174,7 +186,7 @@ def deserialize(cls: Type[T], data: JSONObject) -> Result[T, str]:
     return Ok(cls(**kwargs))  # type: ignore
 
 
-def serialize(cls: Type[T], skip_nones: bool = False) -> JSONObject:
+def serialize(cls: NamedTuple, skip_nones: bool = False) -> JSONObject:
     json: dict[str, JSONValue] = {}
 
     # use class var if not forced to skip None value fields from serialization
