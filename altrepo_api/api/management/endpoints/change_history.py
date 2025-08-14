@@ -120,6 +120,8 @@ class PncInfo:
 class Details:
     cpe: Optional[CpeInfo] = None
     pnc: Optional[PncInfo] = None
+    # TODO: Group the following fields into a TaskInfo nested class, since the DB
+    # contains only one of CPE, PNC, or Task-related change details at a time.
     name: Optional[str] = None
     hash: Optional[str] = None
     task_id: Optional[str] = None
