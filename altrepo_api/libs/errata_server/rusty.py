@@ -26,7 +26,6 @@ from typing import (
     NamedTuple,
     NoReturn,
     Optional,
-    TypeAlias,
     TypeVar,
     Union,
     overload,
@@ -36,8 +35,6 @@ T = TypeVar("T")  # Contained value type
 E = TypeVar("E")  # Error value type
 U = TypeVar("U")  # Mapping return type
 F = TypeVar("F")  # New error type
-
-Result: TypeAlias = Union["Ok[T]", "Err[E]"]
 
 
 class Ok(NamedTuple, Generic[T]):
@@ -184,6 +181,9 @@ class Err(NamedTuple, Generic[E]):
 
     def or_else(self, op: Callable[[], "Result[U, E]"]) -> "Result[U, E]":
         return op()
+
+
+Result = Union[Ok[T], Err[E]]
 
 
 def resultify(f: Callable[..., T]) -> Callable[..., Result[T, Exception]]:
