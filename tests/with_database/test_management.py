@@ -34,6 +34,21 @@ PU_ERRATA_ID_NOT_IN_DB = "ALT-PU-2999-1000-1"
 PU_ERRATA_ID_NOT_VALID_1 = "ALT-PU-123-1000-1"
 PU_ERRATA_ID_NOT_VALID_2 = "ALT-XX-2000-9999-9"
 
+CH_PU_ERRATA_ID_IN_DB_1 = "ALT-PU-2025-1942-2"
+CH_BU_ERRATA_ID_IN_DB_1 = "ALT-BU-2013-1467-1"
+
+CH_USER_IN_DB = "altrepodb"
+CH_USER_NOT_IN_DB = "test_user"
+
+CH_MODULE_IN_DB_1 = "errata"
+CH_MODULE_IN_DB_2 = "pnc"
+CH_MODULE_NOT_IN_DB = "test"
+
+CH_CHANGE_TYPE_IN_DB_1 = "create"
+CH_CHANGE_TYPE_IN_DB_2 = "discard"
+CH_CHANGE_TYPE_IN_DB_3 = "update"
+CH_CHANGE_TYPE_NOT_IN_DB = "test_change_type"
+
 BU_ERRATA_ID_IN_DB = "ALT-BU-2013-1338-1"
 BU_ERRATA_ID_NOT_IN_DB = "ALT-BU-2999-1000-1"
 
@@ -926,3 +941,128 @@ def test_vuln_list(client, kwargs, mocked_check_access_token):
                 assert params["severity"] == el["severity"]
             if params.get("is_errata", False):
                 assert el["erratas"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "limit": 10,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": CH_PU_ERRATA_ID_IN_DB_1,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": CH_BU_ERRATA_ID_IN_DB_1,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "user": CH_USER_IN_DB,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "module": CH_MODULE_IN_DB_1,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "module": CH_MODULE_IN_DB_2,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "change_type": CH_CHANGE_TYPE_IN_DB_1,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "change_type": CH_CHANGE_TYPE_IN_DB_2,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "change_type": CH_CHANGE_TYPE_IN_DB_3,
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "event_start_date": "2024-09-09",
+            "event_end_date": "2024-09-10",
+            "status_code": 200,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": PU_ERRATA_ID_NOT_IN_DB,
+            "status_code": 404,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "input": BU_ERRATA_ID_NOT_IN_DB,
+            "status_code": 404,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "user": CH_USER_NOT_IN_DB,
+            "status_code": 404,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "module": CH_MODULE_NOT_IN_DB,
+            "status_code": 400,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "change_type": CH_CHANGE_TYPE_NOT_IN_DB,
+            "status_code": 400,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+        },
+        {
+            "status_code": 401,
+            "headers": {"Authorization": INVALID_ACCESS_TOKEN},
+        },
+        {
+            "status_code": 401,
+        },
+    ],
+)
+def test_change_history(client, kwargs, mocked_check_access_token):
+    params = {k: v for k, v in kwargs.items() if k not in ("status_code", "headers")}
+    url = url_for("manage.manage_route_change_history")
+    mocked_check_access_token.headers = kwargs.get("headers", {})
+    mocked_check_access_token.status_code = kwargs["status_code"]
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["change_history"] != []
+        if params.get("limit", ""):
+            assert params["limit"] <= len(data["change_history"])
+        for el in data["change_history"]:
+            if params.get("input", "") == CH_PU_ERRATA_ID_IN_DB_1:
+                assert any(
+                    [
+                        params["input"].lower() == change["errata_id"].lower()
+                        for change in el["changes"]
+                    ]
+                )
+            if params.get("user", ""):
+                assert params["user"] == el["author"]
+            if params.get("module", ""):
+                assert params["module"] in [
+                    change["module"] for change in el["changes"]
+                ]
+            if params.get("change_type", ""):
+                assert params["change_type"] in [
+                    change["change_type"] for change in el["changes"]
+                ]
+            if params.get("event_start_date", ""):
+                assert params["event_start_date"] <= el["event_date"]
+            if params.get("event_end_date", ""):
+                assert params["event_end_date"] >= el["event_date"]

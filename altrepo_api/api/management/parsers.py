@@ -312,6 +312,64 @@ vuln_published_end_date_opt = parser.register_item(
     help="End of the date range for published date.",
     location="args",
 )
+manage_user_opt = parser.register_item(
+    "user",
+    type=str,
+    required=False,
+    help="Management request user name",
+    location="args",
+)
+event_start_date_opt = parser.register_item(
+    "event_start_date",
+    type=date_string_type,
+    required=False,
+    help="Start of the date range for event date.",
+    location="args",
+)
+event_end_date_opt = parser.register_item(
+    "event_end_date",
+    type=date_string_type,
+    required=False,
+    help="End of the date range for event date.",
+    location="args",
+)
+chngs_module_opt = parser.register_item(
+    "module",
+    choices=(
+        "all",
+        "errata",
+        "pnc",
+    ),
+    default="all",
+    required=False,
+    help="change module",
+    location="args",
+)
+chngs_change_type_opt = parser.register_item(
+    "change_type",
+    choices=(
+        "all",
+        "create",
+        "discard",
+        "update",
+    ),
+    default="all",
+    required=False,
+    help="change type",
+    location="args",
+)
+input_val_opt = parser.register_item(
+    "input",
+    type=cpe_search_type,
+    action="split",
+    required=False,
+    help=(
+        "Search across multiple fields. Looks for matches in: "
+        "Errata ID, package name, CPE identifier, task ID package name, "
+        "PNC project name."
+    ),
+    location="args",
+)
 
 task_list_args = parser.build_parser(
     task_input_val_opt,
@@ -367,3 +425,14 @@ sa_list_args = parser.build_parser(
     errata_state_opt, sa_type_opt, sa_filter_entry_opt, page_opt, limit_opt, sort_opt
 )
 sa_manage_args = parser.build_parser(manage_user, dry_run)
+change_history_args = parser.build_parser(
+    input_val_opt,
+    manage_user_opt,
+    chngs_module_opt,
+    chngs_change_type_opt,
+    event_start_date_opt,
+    event_end_date_opt,
+    page_opt,
+    limit_opt,
+    sort_opt,
+)

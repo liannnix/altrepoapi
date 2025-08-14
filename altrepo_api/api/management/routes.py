@@ -86,6 +86,7 @@ from altrepo_api.utils import get_logger, url_logging
 from .endpoints.change_history import ErrataChangeHistory
 from .endpoints.cpe import CPECandidates, CPEList, ManageCpe
 from .endpoints.errata import ManageErrata
+from .endpoints.change_history import ChangeHistory
 from .endpoints.packages_open_vulns import (
     PackagesMaintainerList,
     PackagesOpenVulns,
@@ -116,6 +117,7 @@ from .parsers import (
     sa_manage_args,
     task_list_args,
     vuln_list_args,
+    change_history_args,
 )
 from .serializers import (
     cpe_candidates_response_model,
@@ -144,6 +146,7 @@ from .serializers import (
     vuln_ids_json_list_model,
     vuln_ids_json_post_list_model,
     vuln_list_model,
+    change_history_response_model,
 )
 
 ns = get_namespace()
@@ -953,3 +956,20 @@ class routeSaList(Resource):
         return run_worker(
             worker=w, run_method=w.delete, check_method=w.check_params_post, ok_code=200
         )
+
+
+@ns.route("/change_history")
+class routeChangeHistory(Resource):
+    @ns.doc(
+        description="Retrieve unified change logs from both Errata and PNC.",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(change_history_args)
+    @ns.marshal_with(change_history_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = change_history_args.parse_args(strict=True)
+        w = ChangeHistory(g.connection, **args)
+        return run_worker(worker=w, args=args)
