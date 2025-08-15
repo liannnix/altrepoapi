@@ -40,6 +40,11 @@ from altrepo_api.api.errata.serializers import (
     pkgs_el_model as _pkgs_el_model,
     vulns_el_model as _vulns_el_model,
 )
+from altrepo_api.api.errata.serializers import errata_vuln_model as _errata_vuln_model
+from altrepo_api.api.errata.serializers import erratas_ids_json_list_model
+from altrepo_api.api.errata.serializers import pkgs_el_model as _pkgs_el_model
+from altrepo_api.api.errata.serializers import vulns_el_model as _vulns_el_model
+from altrepo_api.api.management.endpoints.comment_list import CommentsList
 from altrepo_api.api.task_progress.endpoints.packageset import AllTasksBraches
 from altrepo_api.api.task_progress.serializers import all_tasks_branches_model
 from altrepo_api.api.vulnerabilities.endpoints.excluded import VulnExcluded
@@ -77,6 +82,7 @@ from .endpoints.task_info import TaskInfo
 from .endpoints.task_list import TaskList
 from .endpoints.vuln_list import VulnList
 from .endpoints.vulns_info import VulnsInfo
+from .endpoints.comments import Comments
 from .namespace import get_namespace
 from .parsers import (
     change_history_args,
@@ -96,6 +102,8 @@ from .parsers import (
     sa_manage_args,
     task_list_args,
     vuln_list_args,
+    change_history_args,
+    comments_list_args,
 )
 from .serializers import (
     change_history_response_model,
@@ -125,6 +133,12 @@ from .serializers import (
     vuln_ids_json_list_model,
     vuln_ids_json_post_list_model,
     vuln_list_model,
+    change_history_response_model,
+    comment_manage_create_model,
+    comment_list_model,
+    comment_manage_response_model,
+    comment_manage_discard_model,
+    comment_manage_update_model,
 )
 
 ns = get_namespace()
@@ -952,3 +966,100 @@ class routeChangeHistory(Resource):
         args = change_history_args.parse_args(strict=True)
         w = ChangeHistory(g.connection, **args)
         return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/comments/list",
+    doc={
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routeListComments(Resource):
+    @ns.doc(
+        description="Get comments list.",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(comments_list_args)
+    @ns.marshal_with(comment_list_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = comments_list_args.parse_args(strict=True)
+        w = CommentsList(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/comments",
+    doc={
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routePostComment(Resource):
+    @ns.doc(
+        description="Post a comment.",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(comment_manage_create_model)
+    @ns.marshal_with(comment_manage_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def post(self):
+        url_logging(logger, g.url)
+        args = {}
+        w = Comments(g.connection, payload=ns.payload, **args)
+        return run_worker(
+            worker=w, run_method=w.post, check_method=w.check_payload, ok_code=200
+        )
+
+
+@ns.route(
+    "/comments/<string:id>",
+    doc={
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routeUpdateAndDiscardComments(Resource):
+    @ns.doc(
+        description="Discard a comment.",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(comment_manage_discard_model)
+    @ns.marshal_with(comment_manage_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    def delete(self, id):
+        url_logging(logger, g.url)
+        args = {}
+        w = Comments(g.connection, payload=ns.payload, id=id, **args)
+        if not w.check_comment_id():
+            ns.abort(
+                404, message=f"Comment ID '{id}' not found in database", comment_id=id
+            )
+        return run_worker(
+            worker=w, run_method=w.delete, check_method=w.check_payload, ok_code=200
+        )
+
+    @ns.doc(
+        description="Enable disabled comment.",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(comment_manage_update_model)
+    @ns.marshal_with(comment_manage_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    def put(self, id):
+        url_logging(logger, g.url)
+        args = {}
+        w = Comments(g.connection, payload=ns.payload, id=id, **args)
+        if not w.check_comment_id():
+            ns.abort(
+                404, message=f"Comment ID '{id}' not found in database", comment_id=id
+            )
+        return run_worker(
+            worker=w, run_method=w.put, check_method=w.check_payload, ok_code=200
+        )
