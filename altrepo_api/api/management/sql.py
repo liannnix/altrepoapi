@@ -1308,5 +1308,66 @@ SELECT * FROM (
 ) ORDER BY lower(author)
 """
 
+    check_comment_exists = """
+SELECT count(comment_id)
+FROM Comments
+WHERE comment_id = '{id}'
+"""
+
+    check_root_comment_exists = """
+SELECT count(comment_id)
+FROM Comments
+WHERE
+    comment_entity_type = '{entity_type}'
+    AND
+    comment_entity_link = '{entity_link}'
+"""
+
+    check_comment_has_child = """
+SELECT count(comment_id)
+FROM Comments
+WHERE comment_pid = {pid}
+AND comment_pid != comment_id
+"""
+
+    get_comment_by_id = """
+SELECT * FROM Comments
+WHERE comment_id = {id}
+"""
+
+    get_comments_list = """
+SELECT
+    c.comment_id,
+    c.comment_pid,
+    c.comment_rid,
+    c.comment_entity_type,
+    c.comment_entity_link,
+    c.comment_author,
+    c.comment_text,
+    c.comment_references,
+    c.comment_created,
+    last_action = 'discard' AS is_discarded
+FROM Comments c
+LEFT JOIN (
+    SELECT
+        comment_id,
+        argMax(cc_action, ts) AS last_action
+    FROM CommentsChangeHistory
+    GROUP BY comment_id
+) AS h ON c.comment_id = h.comment_id
+WHERE
+    c.comment_entity_type = '{entity_type}'
+    AND c.comment_entity_link = '{entity_link}'
+ORDER BY c.comment_id DESC;
+"""
+
+    store_comment = """
+INSERT INTO Comments VALUES
+"""
+
+    store_comment_change_history = """
+INSERT INTO CommentsChangeHistory (* EXCEPT(ts)) VALUES
+"""
+
 
 sql = SQL()
