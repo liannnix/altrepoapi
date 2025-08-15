@@ -73,6 +73,7 @@ __known_img_variants = set(lut.known_image_variants)
 __known_img_components = set(lut.known_image_components)
 __known_img_platforms = set(lut.known_image_platform)
 __known_img_types = set(lut.known_image_types)
+__comment_ref_types = set(lut.comment_ref_types)
 
 # regex patterns
 __pkg_cs_match = re.compile(r"^[a-fA-F0-9]+$")
@@ -869,3 +870,15 @@ project_name_type.__schema__ = {
     "type": "string",
     "pattern": __project_name_match.pattern,
 }
+
+
+def comment_ref_type(value: Any) -> str:
+    """Comment reference type validator"""
+
+    value = __get_string(value)
+    if value not in __comment_ref_types:
+        raise ValueError("Invalid comment reference type: {0}".format(value))
+    return value
+
+
+comment_ref_type.__schema__ = {"type": "string"}

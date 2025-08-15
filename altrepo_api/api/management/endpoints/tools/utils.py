@@ -22,6 +22,7 @@ from altrepo_api.utils import get_logger
 
 from .base import Reference
 from .constants import (
+    COMMENT_ENTITY_TYPES,
     DT_NEVER,
     CHANGE_ACTIONS,
     ERRATA_VALID_SOURCES,
@@ -82,6 +83,10 @@ def validate_branch_with_tatsks(branch: str) -> bool:
 
 def validate_branch_without_tasks(branch: str) -> bool:
     return branch in SUPPORTED_BRANCHES_WITHOUT_TASKS
+
+
+def validate_comment_entity_type(type: str) -> bool:
+    return type in COMMENT_ENTITY_TYPES
 
 
 def convert_dt_to_timezone_aware(dt: datetime) -> datetime:

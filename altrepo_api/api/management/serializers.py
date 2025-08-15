@@ -18,6 +18,8 @@ from flask_restx import fields
 
 from .namespace import get_namespace
 
+from altrepo_api.api.misc import lut
+
 ns = get_namespace()
 
 vulns_el_model = ns.model(
@@ -937,6 +939,119 @@ change_history_response_model = ns.model(
             description="list of history of transactions changes",
             as_list=True,
             required=True,
+        ),
+    },
+)
+
+comment_manage_reference_model = ns.model(
+    "CommentManageReferenceModel",
+    {
+        "type": fields.String(
+            description="Comment reference type",
+            enum=lut.comment_ref_types,
+            required=True,
+        ),
+        "link": fields.String(description="Comment reference link", required=True),
+    },
+)
+comment_list_el_model = ns.model(
+    "CommentListElementModel",
+    {
+        "id": fields.String(description="Comment`s ID", required=True),
+        "pid": fields.String(description="Comment`s parent comment ID", required=True),
+        "rid": fields.String(description="Comment`s root comment ID", required=True),
+        "text": fields.String(
+            description="Comment`s message text",
+            required=True,
+            attribute="comment_text",
+        ),
+        "references": fields.Nested(
+            comment_manage_reference_model,
+            as_list=True,
+            description="Comment`s references.",
+            required=True,
+            attribute="comment_references",
+        ),
+        "author": fields.String(
+            description="Comment author`s username",
+            required=True,
+            attribute="comment_author",
+        ),
+        "is_discarded": fields.Boolean(
+            description="Is comment discarded flag", required=True
+        ),
+        "created": fields.DateTime(
+            description="Comment`s creation date",
+            required=True,
+            attribute="comment_created",
+        ),
+    },
+)
+comment_list_model = ns.model(
+    "CommentListResponseModel",
+    {
+        "length": fields.Integer(description="A number of comments found in DB"),
+        "comments": fields.Nested(
+            comment_list_el_model,
+            description="A list of comments",
+            as_list=True,
+        ),
+    },
+)
+comment_manage_model = ns.model(
+    "CommentManageModel",
+    {
+        "user": fields.String(description="Comment`s change originator", required=True),
+        "action": fields.String(description="Comment`s manage action", required=True),
+        "reason": fields.String(description="Comment`s change reason", required=True),
+    },
+)
+comment_manage_comment_create_model = ns.model(
+    "CommentManageCommentCreateModel",
+    {
+        "pid": fields.String(description="Comment`s parent comment ID", required=False),
+        "rid": fields.String(description="Comment`s root comment ID", required=False),
+        "text": fields.String(description="Comment`s text", required=True),
+        "entity_type": fields.String(
+            description="Comment`s entity text", required=True
+        ),
+        "entity_link": fields.String(
+            description="Comment`s entity link", required=True
+        ),
+        "references": fields.Nested(
+            comment_manage_reference_model,
+            description="Comment`s referenceses",
+            as_list=True,
+            required=False,
+        ),
+    },
+)
+comment_manage_create_model = ns.clone(
+    "CommentManageCreateModel",
+    comment_manage_model,
+    {
+        "comment": fields.Nested(
+            comment_manage_comment_create_model,
+            description="A comment to manage",
+            required=True,
+            as_list=False,
+        ),
+    },
+)
+comment_manage_update_model = ns.clone(
+    "CommentManageUpdateModel",
+    comment_manage_model,
+)
+comment_manage_discard_model = ns.clone(
+    "CommentManageDiscardModel",
+    comment_manage_model,
+)
+comment_manage_response_model = ns.model(
+    "CommentManageResponseModel",
+    {
+        "request_args": fields.Raw(description="Request arguments"),
+        "result": fields.String(
+            description="Result message of managing a comment.", required=True
         ),
     },
 )

@@ -507,5 +507,17 @@ class LookupTables:
     av_supported_branches = ("p10", "p11", "c9f2", "c10f1")
     av_known_scanners = ("drweb", "kesl")
 
+    comment_ref_type_task = "task"
+    comment_ref_type_web = "web"
+    comment_ref_type_errata = "errata"
+
+    comment_ref_types = (
+        errata_ref_type_bug,
+        errata_ref_type_vuln,
+        comment_ref_type_errata,
+        comment_ref_type_task,
+        comment_ref_type_web,
+    )
+
 
 lut = LookupTables()

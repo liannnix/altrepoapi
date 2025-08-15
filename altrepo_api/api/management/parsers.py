@@ -370,6 +370,20 @@ input_val_opt = parser.register_item(
     ),
     location="args",
 )
+entity_type = parser.register_item(
+    "entity_type",
+    type=str,
+    required=True,
+    help="Entity type",
+    location="args",
+)
+entity_link = parser.register_item(
+    "entity_link",
+    type=str,
+    required=True,
+    help="Entity link",
+    location="args",
+)
 
 task_list_args = parser.build_parser(
     task_input_val_opt,
@@ -436,3 +450,4 @@ change_history_args = parser.build_parser(
     limit_opt,
     sort_opt,
 )
+comments_list_args = parser.build_parser(entity_type, entity_link)
