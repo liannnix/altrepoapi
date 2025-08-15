@@ -325,3 +325,53 @@ class PncChangeRecord(NamedTuple):
         res["user"] = self.reason.user.name
         res["user_ip"] = self.reason.user.ip
         return res
+
+
+class Comment(NamedTuple):
+    comment_id: int
+    comment_pid: int
+    comment_rid: int
+    comment_entity_type: str
+    comment_entity_link: str
+    comment_author: str
+    comment_text: str
+    comment_references: list[Reference]
+    comment_created: datetime
+
+    def asdict(self) -> dict[str, str]:
+        res = self._asdict()
+        res["comment_references"] = [r.asdict() for r in self.comment_references]
+        res["comment_created"] = self.comment_created.isoformat()
+        return res
+
+
+class CommentListElement(NamedTuple):
+    comment: Comment
+    is_discarded: bool
+
+    def asdict(self) -> dict[str, str]:
+        res = self.comment._asdict()
+        res["id"] = str(self.comment.comment_id)
+        res["pid"] = str(self.comment.comment_pid)
+        res["rid"] = str(self.comment.comment_rid)
+        res["comment_references"] = [
+            Reference(r[0], r[1]).asdict() for r in self.comment.comment_references
+        ]
+        res["comment_created"] = self.comment.comment_created.isoformat()
+        res["is_discarded"] = self.is_discarded
+        return res
+
+
+class CommentChangeRecord(NamedTuple):
+    reason: ChangeReason
+    action: ChangeType
+    comment_id: int
+
+    def asdict(self) -> dict[str, Any]:
+        res = {}
+        res["cc_user"] = self.reason.user.name
+        res["cc_user_ip"] = self.reason.user.ip
+        res["cc_reason"] = self.reason.message
+        res["cc_action"] = self.action.value
+        res["comment_id"] = self.comment_id
+        return res
