@@ -416,3 +416,15 @@ def valid_task_id(task_id: int) -> bool:
     MAX_TASK_ID = 4_000_000_000
 
     return task_id >= MIN_TASK_ID and task_id <= MAX_TASK_ID
+
+
+def make_snowflake_id(timestamp: Union[int, datetime.datetime], lower_32bit) -> int:
+    """
+    Returns a 64-bit Snowflake-like ID using a custom epoch, with timestamp (int or datetime) in the upper 32 bits and lower_32bit (masked to 32 bits) in the lower bits.
+    """
+    EPOCH = 1_000_000_000
+
+    if isinstance(timestamp, datetime.datetime):
+        timestamp = int(timestamp.timestamp())
+
+    return ((timestamp - EPOCH) << 32) | (lower_32bit & 0xFFFFFFFF)
