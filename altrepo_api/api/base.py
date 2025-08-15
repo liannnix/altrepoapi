@@ -121,6 +121,11 @@ class APIWorker:
     def get(self) -> WorkerResult:
         return "OK", 200
 
+    def metadata(self) -> WorkerResult:
+        raise NotImplementedError(
+            f"metadata() method is required for the {self.__class__.__name__} subclass"
+        )
+
 
 def _abort_on_validation_error(
     worker: APIWorker, method: Callable[[], bool], args: Any
