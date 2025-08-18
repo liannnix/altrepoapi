@@ -14,10 +14,11 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from flask import g
-from flask_restx import Namespace, Resource, fields
 from dataclasses import dataclass, astuple
+from flask import g
+from flask_restx import Namespace, Model, OrderedModel, Resource, fields
 from logging import Logger
+from typing import Union
 
 from .auth.decorators import token_required
 from .base import APIWorker, run_worker, GET_RESPONSES_404
@@ -40,7 +41,7 @@ class KnownFilterBranches:
     boolean: str = "boolean"
 
 
-def _build_serializer(ns: Namespace) -> fields.Nested:
+def _build_serializer(ns: Namespace) -> Union[Model, OrderedModel]:
     """
     Constructs the serializer model for metadata responses.
     """
