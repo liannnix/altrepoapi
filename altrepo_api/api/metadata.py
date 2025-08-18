@@ -14,31 +14,52 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from dataclasses import dataclass, astuple
-from flask import g
-from flask_restx import Namespace, Model, OrderedModel, Resource, fields
+from dataclasses import asdict, dataclass, field
+from enum import Enum
 from logging import Logger
-from typing import Union
+from typing import Any, Union
 
-from .auth.decorators import token_required
-from .base import APIWorker, run_worker, GET_RESPONSES_404
+from flask import g
+from flask_restx import Model, Namespace, OrderedModel, Resource, fields
+
 from ..settings import namespace as settings
 from ..utils import url_logging
+from .auth.decorators import token_required
+from .base import GET_RESPONSES_404, APIWorker, run_worker
 
 
-@dataclass(frozen=True)
-class KnownFilterBranches:
+class KnownFilterTypes(str, Enum):
     """
-    Enum-like class representing known filter types for metadata.
+    Enum class representing known filter types for metadata.
     """
 
-    string: str = "string"
-    number: str = "number"
-    choice: str = "choice"
-    multiple_choice: str = "multiple_choice"
-    date: str = "date"
-    date_range: str = "date_range"
-    boolean: str = "boolean"
+    STRING = "string"
+    NUMBER = "number"
+    CHOICE = "choice"
+    MULTIPLE_CHOICE = "multiple_choice"
+    DATE = "date"
+    DATE_RANGE = "date_range"
+    BOOLEAN = "boolean"
+
+
+@dataclass
+class MetadataChoiceItem:
+    value: str
+    display_name: str
+
+
+@dataclass
+class MetadataItem:
+    name: str
+    label: str
+    help_text: str
+    type: KnownFilterTypes
+    choices: list[MetadataChoiceItem] = field(default_factory=list)
+
+    def asdict(self) -> dict[str, Any]:
+        self.type = self.type.value
+        res = asdict(self)
+        return res
 
 
 def _build_serializer(ns: Namespace) -> Union[Model, OrderedModel]:
@@ -72,7 +93,7 @@ def _build_serializer(ns: Namespace) -> Union[Model, OrderedModel]:
             ),
             "type": fields.String(
                 description="data type of the field (e.g., string, number, date)",
-                enum=astuple(KnownFilterBranches()),
+                enum=[tp for tp in KnownFilterTypes],
                 required=True,
             ),
             "choices": fields.List(
