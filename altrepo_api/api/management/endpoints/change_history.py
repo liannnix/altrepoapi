@@ -16,13 +16,15 @@
 
 import datetime
 import json
-from dataclasses import dataclass, asdict, field
-from typing import Optional, Any
+from dataclasses import asdict, dataclass, field
+from typing import Any, Optional
 
 from altrepo_api.api.base import APIWorker, WorkerResult
-from .tools.constants import ERRATA_PACKAGE_UPDATE_PREFIX, ERRATA_BRANCH_BULLETIN_PREFIX
+from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
 
+from ..parsers import change_history_args
 from ..sql import sql
+from .tools.constants import ERRATA_BRANCH_BULLETIN_PREFIX, ERRATA_PACKAGE_UPDATE_PREFIX
 
 
 @dataclass
@@ -172,15 +174,15 @@ class ChangeHistoryResponse:
 
 @dataclass
 class ChangeHistoryArgs:
-    module: str
-    change_type: str
-    user: Optional[str]
-    input: Optional[list[str]]
-    event_start_date: Optional[datetime.datetime]
-    event_end_date: Optional[datetime.datetime]
-    limit: Optional[int]
-    page: Optional[int]
-    sort: Optional[list[str]]
+    module: Optional[str] = None
+    change_type: Optional[str] = None
+    user: Optional[str] = None
+    input: Optional[list[str]] = None
+    event_start_date: Optional[datetime.datetime] = None
+    event_end_date: Optional[datetime.datetime] = None
+    limit: Optional[int] = None
+    page: Optional[int] = None
+    sort: Optional[list[str]] = None
 
 
 class ChangeHistory(APIWorker):
@@ -333,3 +335,40 @@ class ChangeHistory(APIWorker):
                 "X-Total-Count": total_count,
             },
         )
+
+    def metadata(self) -> WorkerResult:
+        metadata = []
+        for el in change_history_args.args:
+            is_append = False
+            meta = MetadataItem(
+                name=el.name,
+                label=el.name.replace("_", " ").capitalize(),
+                help_text=el.help,
+                type=KnownFilterTypes.STRING,
+            )
+            if el.type.__name__ == "date_string_type":
+                meta.type = KnownFilterTypes.DATE
+                is_append = True
+            if el.name in ["module", "change_type"]:
+                meta.type = KnownFilterTypes.CHOICE
+                meta.choices = [
+                    MetadataChoiceItem(value=choice, display_name=choice.capitalize())
+                    for choice in el.choices
+                    if choice != "all"
+                ]
+                is_append = True
+            if el.name == "user":
+                users = self.send_sql_request(self.sql.get_authors_change_history)
+                if users:
+                    meta.type = KnownFilterTypes.CHOICE
+                    meta.choices = [
+                        MetadataChoiceItem(value=user[0], display_name=user[0])
+                        for user in users
+                    ]
+                    is_append = True
+            if is_append:
+                metadata.append(meta)
+        return {
+            "length": len(metadata),
+            "metadata": [el.asdict() for el in metadata],
+        }, 200

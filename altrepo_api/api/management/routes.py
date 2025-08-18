@@ -26,7 +26,9 @@ from altrepo_api.api.errata.parsers import find_erratas_args
 from altrepo_api.api.errata.serializers import (
     errata_branch_update_model as _errata_branch_update_model,
 )
-from altrepo_api.api.errata.serializers import errata_branches_model
+from altrepo_api.api.errata.serializers import (
+    errata_branches_model,
+)
 from altrepo_api.api.errata.serializers import (
     errata_branches_updates_model as _errata_branches_updates_model,
 )
@@ -44,7 +46,9 @@ from altrepo_api.api.errata.serializers import (
     errata_packages_updates_model as _errata_packages_updates_model,
 )
 from altrepo_api.api.errata.serializers import errata_vuln_model as _errata_vuln_model
-from altrepo_api.api.errata.serializers import erratas_ids_json_list_model
+from altrepo_api.api.errata.serializers import (
+    erratas_ids_json_list_model,
+)
 from altrepo_api.api.errata.serializers import pkgs_el_model as _pkgs_el_model
 from altrepo_api.api.errata.serializers import vulns_el_model as _vulns_el_model
 from altrepo_api.api.task_progress.endpoints.packageset import AllTasksBraches
@@ -83,10 +87,10 @@ from altrepo_api.api.vulnerabilities.serializers import (
 from altrepo_api.settings import namespace as settings
 from altrepo_api.utils import get_logger, url_logging
 
-from .endpoints.change_history import ErrataChangeHistory
+from ..metadata import with_metadata
+from .endpoints.change_history import ChangeHistory, ErrataChangeHistory
 from .endpoints.cpe import CPECandidates, CPEList, ManageCpe
 from .endpoints.errata import ManageErrata
-from .endpoints.change_history import ChangeHistory
 from .endpoints.packages_open_vulns import (
     PackagesMaintainerList,
     PackagesOpenVulns,
@@ -101,6 +105,7 @@ from .endpoints.vuln_list import VulnList
 from .endpoints.vulns_info import VulnsInfo
 from .namespace import get_namespace
 from .parsers import (
+    change_history_args,
     cpe_candidates_args,
     cpe_list_args,
     cpe_manage_args,
@@ -117,9 +122,9 @@ from .parsers import (
     sa_manage_args,
     task_list_args,
     vuln_list_args,
-    change_history_args,
 )
 from .serializers import (
+    change_history_response_model,
     cpe_candidates_response_model,
     cpe_manage_get_response_model,
     cpe_manage_model,
@@ -146,7 +151,6 @@ from .serializers import (
     vuln_ids_json_list_model,
     vuln_ids_json_post_list_model,
     vuln_list_model,
-    change_history_response_model,
 )
 
 ns = get_namespace()
@@ -958,6 +962,7 @@ class routeSaList(Resource):
         )
 
 
+@with_metadata(ChangeHistory, ns, logger, require_auth=True)
 @ns.route("/change_history")
 class routeChangeHistory(Resource):
     @ns.doc(

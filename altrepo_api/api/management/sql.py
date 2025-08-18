@@ -1300,5 +1300,13 @@ FROM base_data
 {limit} {page}
 """
 
+    get_authors_change_history = """
+SELECT * FROM (
+    SELECT ec_user AS author FROM ErrataChangeHistory GROUP BY author
+    UNION DISTINCT
+    SELECT pncc_user AS author FROM PncChangeHistory GROUP BY author
+) ORDER BY lower(author)
+"""
+
 
 sql = SQL()
