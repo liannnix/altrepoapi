@@ -1,0 +1,174 @@
+# ALTRepo API
+# Copyright (C) 2021-2025  BaseALT Ltd
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from flask import g
+from flask_restx import Namespace, Resource, fields
+from dataclasses import dataclass, astuple
+from logging import Logger
+
+from .auth.decorators import token_required
+from .base import APIWorker, run_worker, GET_RESPONSES_404
+from ..settings import namespace as settings
+from ..utils import url_logging
+
+
+@dataclass(frozen=True)
+class KnownFilterBranches:
+    """
+    Enum-like class representing known filter types for metadata.
+    """
+
+    string: str = "string"
+    number: str = "number"
+    choice: str = "choice"
+    multiple_choice: str = "multiple_choice"
+    date: str = "date"
+    date_range: str = "date_range"
+    boolean: str = "boolean"
+
+
+def _build_serializer(ns: Namespace) -> fields.Nested:
+    """
+    Constructs the serializer model for metadata responses.
+    """
+    metadata_choice_model = ns.model(
+        "MetadataChoiceModel",
+        {
+            "value": fields.String(
+                description="the actual value of the choice", required=True
+            ),
+            "display_name": fields.String(
+                description="the human-readable display name for the choice",
+                required=True,
+            ),
+        },
+    )
+    metadata_item_model = ns.model(
+        "MetadataItemModel",
+        {
+            "name": fields.String(
+                description="the technical name/identifier of the field", required=True
+            ),
+            "label": fields.String(
+                description="the user-friendly label for the field", required=True
+            ),
+            "help_text": fields.String(
+                description="help text or description explaining the field",
+                required=True,
+            ),
+            "type": fields.String(
+                description="data type of the field (e.g., string, number, date)",
+                enum=astuple(KnownFilterBranches()),
+                required=True,
+            ),
+            "choices": fields.List(
+                fields.Nested(
+                    metadata_choice_model,
+                    description=(
+                        "list of available options for fields with predefined choices"
+                    ),
+                    as_list=True,
+                    required=True,
+                ),
+            ),
+        },
+    )
+    metadata_response_model = ns.model(
+        "metadataResponseModel",
+        {
+            "length": fields.Integer(
+                description="total number of metadata items in the response",
+                required=True,
+            ),
+            "metadata": fields.Nested(
+                metadata_item_model,
+                description="array of metadata field definitions",
+                as_list=True,
+                required=True,
+            ),
+        },
+    )
+    return metadata_response_model
+
+
+def with_metadata(
+    worker: type[APIWorker],
+    ns: Namespace,
+    logger: Logger,
+    *,
+    require_auth: bool = False,
+):
+    """
+    Decorator factory that adds a metadata endpoint to a resource.
+
+    The decorated resource will gain a new endpoint at `/metadata` that returns
+    information about available filters and their properties.
+    """
+    metadata_model = _build_serializer(ns)
+
+    class MetadataResource(Resource):
+        """
+        Resource for serving metadata with authentication requirement.
+        """
+
+        @ns.doc(
+            description="Retrieve metadata describing all available filters",
+            responses=GET_RESPONSES_404,
+            security="Bearer",
+        )
+        @ns.marshal_with(metadata_model)
+        @token_required(ldap_groups=[settings.AG.API_USER, settings.AG.CVE_USER])
+        def get(self):
+            url_logging(logger, f"{g.url}/metadata")
+            w = worker(g.connection)  # pyright: ignore[reportCallIssue]
+            return run_worker(worker=w, run_method=w.metadata, args=None)
+
+    class MetadataResourceNoAuth(Resource):
+        """
+        Resource for serving metadata without authentication.
+        """
+
+        @ns.doc(
+            description="Retrieve metadata describing all available filters",
+            responses=GET_RESPONSES_404,
+        )
+        @ns.marshal_with(metadata_model)
+        def get(self):
+            url_logging(logger, f"{g.url}/metadata")
+            w = worker(g.connection)  # pyright: ignore[reportCallIssue]
+            return run_worker(worker=w, run_method=w.metadata, args=None)
+
+    def decorator(cls: Resource) -> Resource:
+        """
+        Attaches the metadata endpoint to the target resource class.
+        """
+
+        # only proceed if the class has a GET method
+        get_method = getattr(cls, "get", None)
+        if not get_method:
+            return cls
+
+        # find the original route and add metadata endpoint
+        for resource in ns.resources:
+            if resource.resource == cls:
+                original_route = resource.urls[0]
+                meta_cls = MetadataResource if require_auth else MetadataResourceNoAuth
+                ns.route(f"{original_route}/metadata")(meta_cls)
+                break
+
+        return cls
+
+    return decorator
