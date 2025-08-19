@@ -40,10 +40,6 @@ from altrepo_api.api.errata.serializers import (
     pkgs_el_model as _pkgs_el_model,
     vulns_el_model as _vulns_el_model,
 )
-from altrepo_api.api.errata.serializers import errata_vuln_model as _errata_vuln_model
-from altrepo_api.api.errata.serializers import erratas_ids_json_list_model
-from altrepo_api.api.errata.serializers import pkgs_el_model as _pkgs_el_model
-from altrepo_api.api.errata.serializers import vulns_el_model as _vulns_el_model
 from altrepo_api.api.management.endpoints.comment_list import CommentsList
 from altrepo_api.api.task_progress.endpoints.packageset import AllTasksBraches
 from altrepo_api.api.task_progress.serializers import all_tasks_branches_model
@@ -86,6 +82,7 @@ from .endpoints.comments import Comments
 from .namespace import get_namespace
 from .parsers import (
     change_history_args,
+    comments_list_args,
     cpe_candidates_args,
     cpe_list_args,
     cpe_manage_args,
@@ -102,11 +99,14 @@ from .parsers import (
     sa_manage_args,
     task_list_args,
     vuln_list_args,
-    change_history_args,
-    comments_list_args,
 )
 from .serializers import (
     change_history_response_model,
+    comment_manage_create_model,
+    comment_list_model,
+    comment_manage_response_model,
+    comment_manage_discard_model,
+    comment_manage_update_model,
     cpe_candidates_response_model,
     cpe_manage_get_response_model,
     cpe_manage_model,
@@ -133,12 +133,6 @@ from .serializers import (
     vuln_ids_json_list_model,
     vuln_ids_json_post_list_model,
     vuln_list_model,
-    change_history_response_model,
-    comment_manage_create_model,
-    comment_list_model,
-    comment_manage_response_model,
-    comment_manage_discard_model,
-    comment_manage_update_model,
 )
 
 ns = get_namespace()
