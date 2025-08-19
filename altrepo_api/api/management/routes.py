@@ -17,40 +17,29 @@
 from flask import g
 from flask_restx import Resource
 
+from altrepo_api.settings import namespace as settings
+from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.auth.decorators import token_required
 from altrepo_api.api.base import GET_RESPONSES_400_404, GET_RESPONSES_404, run_worker
+from altrepo_api.api.metadata import with_metadata
 from altrepo_api.api.errata.endpoints.branch import BranchesUpdates, ErrataBranches
 from altrepo_api.api.errata.endpoints.package import PackagesUpdates
 from altrepo_api.api.errata.endpoints.search import FindErratas
 from altrepo_api.api.errata.parsers import find_erratas_args
 from altrepo_api.api.errata.serializers import (
     errata_branch_update_model as _errata_branch_update_model,
-)
-from altrepo_api.api.errata.serializers import (
     errata_branches_model,
-)
-from altrepo_api.api.errata.serializers import (
     errata_branches_updates_model as _errata_branches_updates_model,
-)
-from altrepo_api.api.errata.serializers import errata_bug_model as _errata_bug_model
-from altrepo_api.api.errata.serializers import (
+    errata_bug_model as _errata_bug_model,
     errata_last_changed_el_model as _errata_last_changed_el_model,
-)
-from altrepo_api.api.errata.serializers import (
     errata_last_changed_model as _errata_last_changed_model,
-)
-from altrepo_api.api.errata.serializers import (
     errata_package_update_model as _errata_package_update_model,
-)
-from altrepo_api.api.errata.serializers import (
     errata_packages_updates_model as _errata_packages_updates_model,
-)
-from altrepo_api.api.errata.serializers import errata_vuln_model as _errata_vuln_model
-from altrepo_api.api.errata.serializers import (
+    errata_vuln_model as _errata_vuln_model,
     erratas_ids_json_list_model,
+    pkgs_el_model as _pkgs_el_model,
+    vulns_el_model as _vulns_el_model,
 )
-from altrepo_api.api.errata.serializers import pkgs_el_model as _pkgs_el_model
-from altrepo_api.api.errata.serializers import vulns_el_model as _vulns_el_model
 from altrepo_api.api.task_progress.endpoints.packageset import AllTasksBraches
 from altrepo_api.api.task_progress.serializers import all_tasks_branches_model
 from altrepo_api.api.vulnerabilities.endpoints.excluded import VulnExcluded
@@ -65,29 +54,14 @@ from altrepo_api.api.vulnerabilities.parsers import (
 )
 from altrepo_api.api.vulnerabilities.serializers import (
     vuln_fixes_el_model as _vuln_fixes_el_model,
-)
-from altrepo_api.api.vulnerabilities.serializers import (
     vuln_fixes_model as _vuln_fixes_model,
-)
-from altrepo_api.api.vulnerabilities.serializers import (
     vuln_open_el_model as _vuln_open_el_model,
-)
-from altrepo_api.api.vulnerabilities.serializers import (
     vuln_open_model as _vuln_open_model,
-)
-from altrepo_api.api.vulnerabilities.serializers import (
     vuln_pkg_last_version_model as _vuln_pkg_last_version_model,
-)
-from altrepo_api.api.vulnerabilities.serializers import (
     vulnerability_info_model as _vulnerability_info_model,
-)
-from altrepo_api.api.vulnerabilities.serializers import (
     vulnerability_model as _vulnerability_model,
 )
-from altrepo_api.settings import namespace as settings
-from altrepo_api.utils import get_logger, url_logging
 
-from ..metadata import with_metadata
 from .endpoints.change_history import ChangeHistory, ErrataChangeHistory
 from .endpoints.cpe import CPECandidates, CPEList, ManageCpe
 from .endpoints.errata import ManageErrata
