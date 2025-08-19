@@ -22,10 +22,13 @@ from typing import Any, Union
 from flask import g
 from flask_restx import Model, Namespace, OrderedModel, Resource, fields
 
-from ..settings import namespace as settings
-from ..utils import url_logging
 from .auth.decorators import token_required
 from .base import GET_RESPONSES_404, APIWorker, run_worker
+from ..settings import namespace as settings
+from ..utils import url_logging
+
+
+METADATA_AUTH_LDAP_GROUPS = [settings.AG.API_USER, settings.AG.CVE_USER]
 
 
 class KnownFilterTypes(str, Enum):
@@ -57,8 +60,8 @@ class MetadataItem:
     choices: list[MetadataChoiceItem] = field(default_factory=list)
 
     def asdict(self) -> dict[str, Any]:
-        self.type = self.type.value
         res = asdict(self)
+        res["type"] = self.type.value
         return res
 
 
@@ -152,7 +155,7 @@ def with_metadata(
             security="Bearer",
         )
         @ns.marshal_with(metadata_model)
-        @token_required(ldap_groups=[settings.AG.API_USER, settings.AG.CVE_USER])
+        @token_required(ldap_groups=METADATA_AUTH_LDAP_GROUPS)
         def get(self):
             url_logging(logger, f"{g.url}/metadata")
             w = worker(g.connection)  # pyright: ignore[reportCallIssue]
@@ -179,8 +182,7 @@ def with_metadata(
         """
 
         # only proceed if the class has a GET method
-        get_method = getattr(cls, "get", None)
-        if not get_method:
+        if not hasattr(cls, "get"):
             return cls
 
         # find the original route and add metadata endpoint
