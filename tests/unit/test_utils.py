@@ -124,3 +124,29 @@ def test_dp_flags_decode(test_input, expected):
 )
 def test_full_file_permissions(test_input, expected):
     assert utils.full_file_permissions(*test_input) == expected
+
+
+@pytest.mark.parametrize(
+    "timestamp, lower_32bit, expected",
+    [
+        (1_000_000_000 + 100, 0x12345678, (100 << 32) | 0x12345678),
+        (1_000_000_000, 0xFFFFFFFF, 0 | 0xFFFFFFFF),
+        (
+            1_000_000_000 + 0xFFFFFFFF,
+            0x0,
+            (0xFFFFFFFF << 32) | 0x0,
+        ),
+        (
+            datetime.datetime.fromtimestamp(1_000_000_000 + 500),
+            0xABCD,
+            (500 << 32) | 0xABCD,
+        ),
+        (
+            1_000_000_000 + 10,
+            0x1_2345_6789,
+            (10 << 32) | 0x2345_6789,
+        ),
+    ],
+)
+def test_make_snowflake_id(timestamp, lower_32bit, expected):
+    assert utils.make_snowflake_id(timestamp, lower_32bit) == expected

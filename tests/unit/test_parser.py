@@ -560,3 +560,23 @@ def test_acl_group_type(test_input, expected_exception, expected):
         assert parser.acl_group_type(test_input) == expected
     else:
         pytest.raises(expected_exception, parser.acl_group_type, test_input)
+
+
+@pytest.mark.parametrize(
+    "test_input, expected_exception, expected",
+    [
+        ("task", None, "task"),
+        ("web", None, "web"),
+        ("errata", None, "errata"),
+        ("abc", ValueError, None),
+        ("", ValueError, None),
+        (None, ValueError, None),
+        (123, ValueError, None),
+    ],
+)
+def test_comment_ref_type(test_input, expected_exception, expected):
+    if expected_exception is None:
+        assert parser.comment_ref_type(test_input) == expected
+    else:
+        with pytest.raises(expected_exception):
+            parser.comment_ref_type(test_input)

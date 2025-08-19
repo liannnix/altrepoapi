@@ -1066,3 +1066,44 @@ def test_change_history(client, kwargs, mocked_check_access_token):
                 assert params["event_start_date"] <= el["event_date"]
             if params.get("event_end_date", ""):
                 assert params["event_end_date"] >= el["event_date"]
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "entity_link": VULN_IN_DB,
+            "entity_type": "vuln",
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+            "status_code": 200,
+        },
+        {
+            "entity_link": VULN_NOT_IN_DB,
+            "entity_type": "vuln",
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+            "status_code": 404,
+        },
+        {
+            "entity_link": VULN_IN_DB,
+            "entity_type": "qwe",
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+            "status_code": 400,
+        },
+        {
+            "entity_link": VULN_IN_DB,
+            "entity_type": "vuln",
+            "headers": {"Authorization": INVALID_ACCESS_TOKEN},
+            "status_code": 401,
+        },
+    ],
+)
+def test_comments_list(client, kwargs, mocked_check_access_token):
+    params = {k: v for k, v in kwargs.items() if k not in ("status_code", "headers")}
+    url = url_for("manage.manage_route_list_comments")
+    mocked_check_access_token.headers = kwargs.get("headers", {})
+    mocked_check_access_token.status_code = kwargs["status_code"]
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
