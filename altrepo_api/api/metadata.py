@@ -99,15 +99,13 @@ def _build_serializer(ns: Namespace) -> Union[Model, OrderedModel]:
                 enum=[tp for tp in KnownFilterTypes],
                 required=True,
             ),
-            "choices": fields.List(
-                fields.Nested(
-                    metadata_choice_model,
-                    description=(
-                        "list of available options for fields with predefined choices"
-                    ),
-                    as_list=True,
-                    required=True,
+            "choices": fields.Nested(
+                metadata_choice_model,
+                description=(
+                    "list of available options for fields with predefined choices"
                 ),
+                as_list=True,
+                required=True,
             ),
         },
     )
