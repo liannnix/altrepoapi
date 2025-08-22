@@ -1314,22 +1314,6 @@ FROM Comments
 WHERE comment_id = '{id}'
 """
 
-    check_root_comment_exists = """
-SELECT count(comment_id)
-FROM Comments
-WHERE
-    comment_entity_type = '{entity_type}'
-    AND
-    comment_entity_link = '{entity_link}'
-"""
-
-    check_comment_has_child = """
-SELECT count(comment_id)
-FROM Comments
-WHERE comment_pid = {pid}
-AND comment_pid != comment_id
-"""
-
     get_comment_by_id = """
 SELECT * FROM Comments
 WHERE comment_id = {id}

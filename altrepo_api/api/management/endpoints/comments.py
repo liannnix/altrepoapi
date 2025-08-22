@@ -20,9 +20,9 @@ from typing import Any, Optional
 from altrepo_api.api.base import APIWorker
 from altrepo_api.utils import get_logger, get_real_ip, make_snowflake_id, mmhash
 
-from .tools.base import UserInfo
+from .tools.base import CommentListElement, UserInfo
 from .tools.base import ChangeReason, Comment, Reference
-from .tools.constants import CHANGE_ACTION_CREATE
+from .tools.constants import CHANGE_ACTION_CREATE, CHANGE_ACTION_DISCARD
 from .tools.helpers.comments import store_comment, store_comment_change_record
 from .tools.comments_transaction import Transaction
 from .tools.utils import validate_action, validate_comment_entity_type
@@ -49,19 +49,6 @@ class Comments(APIWorker):
         self.reason: ChangeReason
         self.comment: Comment
         super().__init__()
-
-    def _check_root_existance(self, type, link):
-        """
-        Check if the root comment exists in the DB.
-        """
-        response = self.send_sql_request(
-            self.sql.check_root_comment_exists.format(
-                entity_type=type, entity_link=link
-            )
-        )
-        if not self.sql_status:
-            return False
-        return response[0][0] != 0
 
     def _check_comment_id(self, id):
         """
@@ -146,15 +133,8 @@ class Comments(APIWorker):
             self.validation_results.append("Entity link should be specified.")
             return
 
-        # Cases when user eager to add a comment to existing comments tree
-        # (pid or rid specified)
-        if not pid and rid:
-            self.validation_results.append("Comment`s parent ID should be specified")
-            return
-        elif pid and not rid:
-            self.validation_results.append("Comment`s root ID should be specified")
-            return
-        elif pid and rid:
+        # Case with creating a reply to existing comment (both pid and rid provided)
+        if pid and rid:
             if not self._check_comment_id(pid):
                 self.validation_results.append(
                     "Parent comment`s ID does not exist in DB."
@@ -165,28 +145,12 @@ class Comments(APIWorker):
                     "Root comment`s ID does not exist in DB."
                 )
                 return
-            # Check if user want to create a comment
-            # with a parent that has a child already
-            response = self.send_sql_request(
-                self.sql.check_comment_has_child.format(pid=pid)
-            )
-
-            if not self.sql_status or not response[0]:
-                self.validation_results.append("DB connection error")
-                return
-            elif response[0][0] != 0:
-                self.validation_results.append(
-                    "Comment`s parent ID is not the last comment ID."
-                )
-                return
-
-        # Case when user want to add a first comment to entity
-        # (both pid and rid are not specified)
-        elif self._check_root_existance(entity_type, entity_link):
+        # Invalid combination (only one of pid/rid provided)
+        if (not rid and pid) or (rid and not pid):
             self.validation_results.append(
-                "A root comment for these entity type and link already exists in DB"
+                "Both parent ID and root ID must be provided for replies, "
+                "or neither for root comments"
             )
-            self.validation_results.append("Specify parent and root ID`s")
             return
 
     def _validate_payload(self):
@@ -300,4 +264,11 @@ class Comments(APIWorker):
 
         self.logger.info("All changes comitted to DB.")
 
-        return {"request_args": self.args, "result": "OK"}, 200
+        return {
+            "request_args": self.args,
+            "result": "OK",
+            "comment": CommentListElement(
+                self.trx.comment_updated.comment,
+                self.payload.get("action") == CHANGE_ACTION_DISCARD,
+            ).asdict(),
+        }, 200

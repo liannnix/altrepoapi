@@ -1053,5 +1053,10 @@ comment_manage_response_model = ns.model(
         "result": fields.String(
             description="Result message of managing a comment.", required=True
         ),
+        "comment": fields.Nested(
+            comment_list_el_model,
+            description="Created or Updated comment.",
+            required=True,
+        ),
     },
 )
