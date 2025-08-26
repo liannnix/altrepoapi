@@ -28,7 +28,13 @@ from ..settings import namespace as settings
 from ..utils import url_logging
 
 
-METADATA_AUTH_LDAP_GROUPS = [settings.AG.API_USER, settings.AG.CVE_USER]
+# allow access to metadata for all registered users
+METADATA_AUTH_LDAP_GROUPS = [
+    settings.AG.API_ADMIN,
+    settings.AG.API_USER,
+    settings.AG.CVE_ADMIN,
+    settings.AG.CVE_USER,
+]
 
 
 class KnownFilterTypes(str, Enum):
