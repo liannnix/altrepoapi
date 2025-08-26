@@ -1,7 +1,7 @@
 from pathlib import Path
 import datetime
 
-from typing import Iterator, Any, Union
+from typing import Any, Iterator, TypeVar, Union
 from uuid import UUID
 
 from .base import ConnectionProtocol
@@ -53,3 +53,25 @@ def dumpt_table_to_file(conn: ConnectionProtocol, table_name: str, **query_kwarg
         for line in dump_table_to_csv(conn, table_name, **query_kwargs):
             f.write(line + "\n")
         f.write("\n")
+
+
+T = TypeVar("T")
+
+
+def get_nested_value(
+    data: dict[str, Any], key_path: str, default: T = None
+) -> Union[Any, T]:
+    """Traverses a nested dictionary and returns the value at the given key path."""
+
+    if not data or not key_path:
+        return default
+
+    keys = key_path.split(".")
+    current = data
+
+    for key in keys:
+        if not isinstance(current, dict) or key not in current:
+            return default
+        current = current[key]
+
+    return current
