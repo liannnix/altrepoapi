@@ -16,10 +16,8 @@
 
 from altrepo_api.api.base import APIWorker
 
-# from altrepo_api.api.misc import lut
-
 from ..sql import sql
-from .common import VulnerabilityInfo
+from .common import VulnerabilityInfo, parse_bdu_info, parse_cve_info, parse_ghsa_info
 
 
 class VulnInfo(APIWorker):
@@ -62,7 +60,18 @@ class VulnInfo(APIWorker):
         if response:
             vuln.refs_link = [ref[0] for ref in response] + vuln.refs_link
 
+        if vuln.id.startswith("CVE-"):
+            refs, cvss = parse_cve_info(vuln.json)
+        elif vuln.id.startswith("BDU:"):
+            refs, cvss = parse_bdu_info(vuln.json)
+        elif vuln.id.startswith("GHSA-"):
+            refs, cvss = parse_ghsa_info(vuln.json, vuln.score)
+        else:
+            refs, cvss = [], []
+
         return {
             "request_args": self.args,
             "vuln_info": vuln.asdict(),
+            "vuln_references": [r._asdict() for r in refs],
+            "vuln_cvss_vectors": [c._asdict() for c in cvss],
         }, 200

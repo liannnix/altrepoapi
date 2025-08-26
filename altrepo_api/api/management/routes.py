@@ -60,6 +60,8 @@ from altrepo_api.api.vulnerabilities.serializers import (
     vuln_open_model as _vuln_open_model,
     vuln_pkg_last_version_model as _vuln_pkg_last_version_model,
     vulnerability_info_model as _vulnerability_info_model,
+    vuln_cvss_vector_model as _vuln_cvss_vector_model,
+    vuln_reference_model as _vuln_reference_model,
     vulnerability_model as _vulnerability_model,
 )
 
@@ -176,6 +178,10 @@ vuln_pkg_last_version_model = ns.clone(
     "VulnPackageLastVersionModel", _vuln_pkg_last_version_model
 )
 vulnerability_info_model = ns.clone("VulnerabilityInfoModel", _vulnerability_info_model)
+vuln_cvss_vector_model = ns.clone(
+    "VulnerabilityCVSSVectorModel", _vuln_cvss_vector_model
+)
+vuln_reference_model = ns.clone("VulnerabilityReferenceModel", _vuln_reference_model)
 vulnerability_model = ns.clone("VulnerabilityModel", _vulnerability_model)
 
 

@@ -34,12 +34,38 @@ vulnerability_model = ns.model(
         "json": fields.Raw(description="vulnerability original JSON"),
     },
 )
+vuln_reference_model = ns.model(
+    "VulnerabilityReferenceModel",
+    {
+        "name": fields.String(description="refernce name"),
+        "url": fields.String(description="refernce link"),
+        "tags": fields.List(fields.String, description="reference tags"),
+    }
+)
+vuln_cvss_vector_model = ns.model(
+    "VulnerabilityCVSSVectorModel",
+    {
+        "version": fields.String(description="CVSS vector version"),
+        "score": fields.Float(description="CVSS base score"),
+        "vector": fields.String(description="CVSS vector"),
+    }
+)
 vulnerability_info_model = ns.model(
     "VulnerabilityInfoModel",
     {
         "request_args": fields.Raw(description="request arguments"),
         "vuln_info": fields.Nested(
             vulnerability_model, description="vulnerabilty information"
+        ),
+        "vuln_references": fields.Nested(
+            vuln_reference_model,
+            description="Parsed vulnerability references",
+            as_list=True,
+        ),
+        "vuln_cvss_vectors": fields.Nested(
+            vuln_cvss_vector_model,
+            description="Parsed vulnerability CVSS vectors",
+            as_list=True,
         ),
     },
 )
