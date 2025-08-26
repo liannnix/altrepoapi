@@ -39,12 +39,12 @@ def test_acl_groups(client, kwargs):
     [
         {
             "branch": "sisyphus",
-            "packages_names": ["awesome"],
+            "packages_names": ["curl"],
             "result": [
                 {
-                    "name": "awesome",
-                    "updated": "2023-03-08T19:55:53",
-                    "members": ["lakostis", "@everybody"],
+                    "name": "curl",
+                    "updated": "2021-09-14T12:19:00",
+                    "members": ["rider", "ldv", "glebfm"],
                 },
             ],
             "status_code": 200,
