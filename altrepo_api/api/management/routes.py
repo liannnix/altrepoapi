@@ -59,10 +59,12 @@ from altrepo_api.api.vulnerabilities.serializers import (
     vuln_open_el_model as _vuln_open_el_model,
     vuln_open_model as _vuln_open_model,
     vuln_pkg_last_version_model as _vuln_pkg_last_version_model,
-    vulnerability_info_model as _vulnerability_info_model,
-    vuln_cvss_vector_model as _vuln_cvss_vector_model,
-    vuln_reference_model as _vuln_reference_model,
     vulnerability_model as _vulnerability_model,
+    vuln_cvss_vector_element_model as _vuln_cvss_vector_element_model,
+    vuln_configuration_element_model as _vuln_configuration_element_model,
+    vuln_reference_element_model as _vuln_reference_element_model,
+    vuln_parsed_model as _vuln_parsed_model,
+    vulnerability_info_model as _vulnerability_info_model,
 )
 
 from .endpoints.change_history import ChangeHistory, ErrataChangeHistory
@@ -177,12 +179,20 @@ vuln_fixes_el_model = ns.clone("VulnFixesPackagesElementModel", _vuln_fixes_el_m
 vuln_pkg_last_version_model = ns.clone(
     "VulnPackageLastVersionModel", _vuln_pkg_last_version_model
 )
-vulnerability_info_model = ns.clone("VulnerabilityInfoModel", _vulnerability_info_model)
-vuln_cvss_vector_model = ns.clone(
-    "VulnerabilityCVSSVectorModel", _vuln_cvss_vector_model
-)
-vuln_reference_model = ns.clone("VulnerabilityReferenceModel", _vuln_reference_model)
 vulnerability_model = ns.clone("VulnerabilityModel", _vulnerability_model)
+vuln_cvss_vector_element_model = ns.clone(
+    "VulnerabilityCVSSVectorElelementModel", _vuln_cvss_vector_element_model
+)
+vuln_reference_element_model = ns.clone(
+    "VulnerabilityReferenceElementModel", _vuln_reference_element_model
+)
+vuln_configuration_element_model = ns.clone(
+    "VulnerabilityConfigurationElementModel", _vuln_configuration_element_model
+)
+vulnerability_parsed_model = ns.clone(
+    "VulnerabilityParsedDetailsModel", _vuln_parsed_model
+)
+vulnerability_info_model = ns.clone("VulnerabilityInfoModel", _vulnerability_info_model)
 
 
 @ns.route(
