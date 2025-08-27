@@ -24,6 +24,11 @@ from io import BytesIO
 from typing import Any, Iterable, Literal, NamedTuple, Union
 
 from altrepo_api.api.misc import lut
+from altrepo_api.api.vulnerabilities.endpoints.common import (
+    VulnerabilityInfo as VulnInfo,
+    parse_cve_info,
+    parse_bdu_info,
+)
 from altrepo_api.libs.oval.altlinux_errata import (
     ALTLinuxAdvisory,
     Bugzilla,
@@ -354,44 +359,43 @@ def _build_vuln_from_cve(vuln: VulnerabilityInfo) -> Vulnerability:
     cwe = ""
     cvss = ""
     cvss3 = ""
-    public = None
     href = vuln.url
     impact = num_to_severity_enum(
         SEVERITY_TO_NUM.get(vuln.severity.upper(), SEVERITY_TO_NUM["LOW"])
     )
 
-    # parse CVE contents
-    _json: dict[str, Any] = {}
+    # parse CVE contents using implementation from `api.vulnerabilities.common`
+    vuln_json: dict[str, Any] = {}
     try:
-        _json = json.loads(vuln.json)
+        vuln_json = json.loads(vuln.json)
     except Exception:
         logger.debug(f"Failed to parse vulnerability JSON for {vuln.id}")
-        pass
     else:
-        # get CWE
-        try:
-            cwe = _json["cve"]["problemtype"]["problemtype_data"][0]["description"][0][
-                "value"
-            ]
-        except (IndexError, KeyError, TypeError):
-            pass
-        # get CVSS
-        try:
-            cvss = _json["impact"]["baseMetricV2"]["cvssV2"]["vectorString"]
-        except (IndexError, KeyError, TypeError):
-            pass
-        # get CVSS3
-        try:
-            cvss3 = _json["impact"]["baseMetricV3"]["cvssV3"]["vectorString"]
-        except (IndexError, KeyError, TypeError):
-            pass
-        # get published date
-        try:
-            public = datetime.fromisoformat(
-                _json["publishedDate"].replace("Z", "+00:00")
+        parsed = parse_cve_info(
+            VulnInfo(
+                id=vuln.id,
+                summary=vuln.summary,
+                score=vuln.score,
+                severity=vuln.severity,
+                url=vuln.url,
+                modified=vuln.modified,
+                published=vuln.published,
+                json=vuln_json,
+                refs_type=[],
+                refs_link=[],
             )
-        except (KeyError, ValueError, TypeError):
-            pass
+        )
+        # get CWE
+        if parsed.cwes:
+            cwe = ", ".join(parsed.cwes)
+        # get CVSS V2.0
+        for vec in parsed.cvss_vectors:
+            if vec.version == "2.0":
+                cvss = vec.vector
+        #  get CVSS V3.x
+        for vec in parsed.cvss_vectors:
+            if vec.version == "3.x":
+                cvss3 = vec.vector
 
     return Vulnerability(
         id=vuln.id,
@@ -400,7 +404,7 @@ def _build_vuln_from_cve(vuln: VulnerabilityInfo) -> Vulnerability:
         href=href,
         impact=impact,  # type: ignore
         cwe=cwe,
-        public=public,
+        public=vuln.published,
     )
 
 
@@ -408,40 +412,43 @@ def _build_vuln_from_bdu(vuln: VulnerabilityInfo) -> Vulnerability:
     cwe = ""
     cvss = ""
     cvss3 = ""
-    public = None
     href = vuln.url
     impact = num_to_severity_enum(
         SEVERITY_TO_NUM.get(vuln.severity.upper(), SEVERITY_TO_NUM["LOW"])
     )
 
-    # parse BDU contents
-    _json: dict[str, Any] = {}
+    # parse BDU contents using implementation from `api.vulnerabilities.common`
+    vuln_json: dict[str, Any] = {}
     try:
-        _json = json.loads(vuln.json)
+        vuln_json = json.loads(vuln.json)
     except Exception:
         logger.debug(f"Failed to parse vulnerability JSON for {vuln.id}")
-        pass
     else:
+        parsed = parse_bdu_info(
+            VulnInfo(
+                id=vuln.id,
+                summary=vuln.summary,
+                score=vuln.score,
+                severity=vuln.severity,
+                url=vuln.url,
+                modified=vuln.modified,
+                published=vuln.published,
+                json=vuln_json,
+                refs_type=[],
+                refs_link=[],
+            )
+        )
         # get CWE
-        try:
-            cwe = ", ".join(_json["cwe"])
-        except (IndexError, KeyError, TypeError):
-            pass
-        # get CVSS
-        try:
-            cvss = _json["cvss"]["vector"]["text"]
-        except (IndexError, KeyError, TypeError):
-            pass
-        # get CVSS3
-        try:
-            cvss3 = _json["cvss3"]["vector"]["text"]
-        except (IndexError, KeyError, TypeError):
-            pass
-        # get published date
-        try:
-            public = datetime.strptime(_json["identify_date"], "%d.%m.%Y")
-        except (KeyError, ValueError, TypeError):
-            pass
+        if parsed.cwes:
+            cwe = ", ".join(parsed.cwes)
+        # get CVSS V2.0
+        for vec in parsed.cvss_vectors:
+            if vec.version == "2.0":
+                cvss = vec.vector
+        #  get CVSS V3.x
+        for vec in parsed.cvss_vectors:
+            if vec.version == "3.x":
+                cvss3 = vec.vector
 
     return Vulnerability(
         id=vuln.id,
@@ -450,7 +457,7 @@ def _build_vuln_from_bdu(vuln: VulnerabilityInfo) -> Vulnerability:
         href=href,
         impact=impact,  # type: ignore
         cwe=cwe,
-        public=public,
+        public=vuln.published,
     )
 
 
