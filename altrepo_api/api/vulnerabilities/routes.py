@@ -27,6 +27,7 @@ from .namespace import get_namespace
 from .parsers import (
     cve_info_args,
     bdu_info_args,
+    ghsa_info_args,
     cve_vulnerable_packages_args,
     bdu_vulnerable_packages_args,
     package_vulnerabilities_args,
@@ -158,6 +159,23 @@ class routeBduInfo(Resource):
     def get(self):
         url_logging(logger, g.url)
         args = bdu_info_args.parse_args(strict=True)
+        w = VulnInfo(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/ghsa",
+    doc={
+        "description": "Get GHSA information",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeGhsaInfo(Resource):
+    @ns.expect(ghsa_info_args)
+    # @ns.marshal_with(vulnerability_info_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = ghsa_info_args.parse_args(strict=True)
         w = VulnInfo(g.connection, **args)
         return run_worker(worker=w, args=args)
 

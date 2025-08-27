@@ -37,8 +37,6 @@ from .common import (
 )
 from ..sql import sql
 
-# from .common import VulnerabilityInfo
-
 
 class VulnerablePackageByCve(APIWorker):
     """Retrieves vulnerable packages information by CVE id."""
@@ -160,7 +158,7 @@ class VulnerablePackageByCve(APIWorker):
         return {
             "request_args": self.args,
             "vuln_info": [
-                vuln.asdict()
+                vuln.asdict(exclude_json=True)
                 for vuln in sorted(self.cve_info.values(), key=lambda x: x.id)
             ],
             "packages": [
@@ -207,9 +205,12 @@ class VulnerablePackageByCve(APIWorker):
         return {
             "request_args": self.args,
             "result": self.result_message,
-            "vuln_info": [bdu.asdict() for bdu in sorted(bdus, key=lambda x: x.id)]
+            "vuln_info": [
+                bdu.asdict(exclude_json=True)
+                for bdu in sorted(bdus, key=lambda x: x.id)
+            ]
             + [
-                vuln.asdict()
+                vuln.asdict(exclude_json=True)
                 for vuln in sorted(self.cve_info.values(), key=lambda x: x.id)
             ],
             "packages": [

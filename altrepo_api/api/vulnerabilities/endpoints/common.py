@@ -22,7 +22,16 @@ from dataclasses import dataclass, asdict, field, replace
 from datetime import datetime
 
 from itertools import islice
-from typing import Any, Iterable, Literal, NamedTuple, Protocol, Union
+from typing import (
+    Any,
+    Iterable,
+    Literal,
+    NamedTuple,
+    Optional,
+    Protocol,
+    TypedDict,
+    Union,
+)
 
 from altrepo_api.api.misc import lut
 from altrepo_api.api.tools import get_nested_value
@@ -233,11 +242,14 @@ class VulnerabilityInfo:
         if parsed is not None:
             self.json = parsed
 
-    def asdict(self) -> dict[str, Any]:
+    def asdict(self, exclude_json: bool) -> dict[str, Any]:
         res = asdict(self)
 
         del res["refs_type"]
         del res["refs_link"]
+        if exclude_json:
+            res["json"] = {}
+
         res["refs"] = [r for r in self.refs_link]
 
         return res
@@ -1203,6 +1215,29 @@ class VulnerabilityReference(NamedTuple):
     tags: list[str]
 
 
+class VulnerabilityConfiguration(TypedDict):
+    cpe: str
+    versionStartExcluding: str
+    versionStartIncluding: str
+    versionEndExcluding: str
+    versionEndIncluding: str
+
+
+class VulnerabilityParsed(NamedTuple):
+    references: list[VulnerabilityReference]
+    cvss_vectors: list[CVSS]
+    cwes: list[str]
+    configurations: list[VulnerabilityConfiguration]
+
+    def asdict(self) -> dict[str, Any]:
+        return {
+            "references": [ref._asdict() for ref in self.references],
+            "cvss_vectors": [cvss._asdict() for cvss in self.cvss_vectors],
+            "cwes": self.cwes,
+            "configurations": self.configurations,
+        }
+
+
 def make_vuln_ref(ref: JSONDict) -> "VulnerabilityReference":
     return VulnerabilityReference(
         name=ref.get("name") or ref.get("text") or "",
@@ -1211,9 +1246,14 @@ def make_vuln_ref(ref: JSONDict) -> "VulnerabilityReference":
     )
 
 
-def parse_cve_info(
-    cve_json: JSONDict,
-) -> tuple[list[VulnerabilityReference], list[CVSS]]:
+def get_cve_id_from_refs(vuln: VulnerabilityInfo) -> Optional[str]:
+    for ty, link in zip(vuln.refs_type, vuln.refs_link):
+        if ty == CVE_ID_TYPE:
+            return link
+    return None
+
+
+def parse_cve_info(cve: VulnerabilityInfo) -> VulnerabilityParsed:
     def find_primary_cvss(cvss_metrics: list[JSONDict]) -> JSONDict:
         for metric in cvss_metrics:
             if metric.get("type") == "Primary":
@@ -1221,8 +1261,15 @@ def parse_cve_info(
 
         return cvss_metrics[0]
 
+    def find_primary_cwe(weaknesses: list[JSONDict]) -> JSONDict:
+        for weakness in weaknesses:
+            if weakness.get("type") == "Primary":
+                return weakness
+
+        return weaknesses[0]
+
     # parse references
-    refs = get_nested_value(cve_json, "cve.references", [])
+    refs = get_nested_value(cve.json, "cve.references", [])
     refernces = [make_vuln_ref(ref) for ref in refs]
 
     # parse CVSS
@@ -1235,7 +1282,7 @@ def parse_cve_info(
     }.items():
         metrics = []
         for key in keys:
-            if metric := get_nested_value(cve_json, f"cve.metrics.{key}", []):
+            if metric := get_nested_value(cve.json, f"cve.metrics.{key}", []):
                 metrics.extend(metric)
         if metrics:
             v = find_primary_cvss(metrics)
@@ -1247,40 +1294,73 @@ def parse_cve_info(
                 )
             )
 
-    return refernces, cvss_vectors
+    # parse CWE
+    cwes = []
+    if weaknesses := get_nested_value(cve.json, "cve.weaknesses", []):
+        for w in find_primary_cwe(weaknesses).get("description", []):
+            if (v := w.get("value")) and v.startswith("CWE-") and v not in cwes:
+                cwes.append(v)
+
+    # parse configurations
+    def parse_configuration(config: JSONDict) -> list[VulnerabilityConfiguration]:
+        configurations = []
+        if (nodes := config.get("nodes")) is None:
+            return configurations
+
+        for node in nodes:
+            for m in node.get("cpeMatch", []):
+                if (cpe := m.get("criteria")) and cpe.startswith("cpe:2.3:"):
+                    configurations.append(VulnerabilityConfiguration(cpe=cpe, **m))
+
+        return configurations
+
+    configurations = []
+    if configs := get_nested_value(cve.json, "cve.configurations", []):
+        for config in configs:
+            configurations.extend(parse_configuration(config))
+
+    return VulnerabilityParsed(refernces, cvss_vectors, cwes, configurations)
 
 
-def parse_bdu_info(
-    bdu_json: JSONDict,
-) -> tuple[list[VulnerabilityReference], list[CVSS]]:
+def parse_bdu_info(bdu: VulnerabilityInfo) -> VulnerabilityParsed:
     # parse references
-    refs = get_nested_value(bdu_json, "identifiers", [])
+    refs = get_nested_value(bdu.json, "identifiers", [])
     refernces = [make_vuln_ref(ref) for ref in refs]
+
+    # add reference to CVE from vulnerability references
+    if (cve_id := get_cve_id_from_refs(bdu)) is not None:
+        refernces.append(VulnerabilityReference(name=cve_id, url=cve_id, tags=["CVE"]))
 
     # parse CVSS
     cvss_vectors = []
-    if cvss_v3 := get_nested_value(bdu_json, "cvss3.vector"):
+    if cvss_v3 := get_nested_value(bdu.json, "cvss3.vector"):
         cvss_vectors.append(
             CVSS(
                 CVSS_VERSION_3, float(cvss_v3.get("score", 0)), cvss_v3.get("text", "")
             )
         )
-    if cvss_v2 := get_nested_value(bdu_json, "cvss.vector"):
+    if cvss_v2 := get_nested_value(bdu.json, "cvss.vector"):
         cvss_vectors.append(
             CVSS(
                 CVSS_VERSION_2, float(cvss_v2.get("score", 0)), cvss_v2.get("text", "")
             )
         )
 
-    return refernces, cvss_vectors
+    # parse CWE
+    # XXX: looks like CWE is not in BDU JSON anymore
+    cwes = bdu.json.get("cwe", [])
+
+    return VulnerabilityParsed(refernces, cvss_vectors, cwes, [])
 
 
-def parse_ghsa_info(
-    ghsa_json: JSONDict, score: float
-) -> tuple[list[VulnerabilityReference], list[CVSS]]:
+def parse_ghsa_info(ghsa: VulnerabilityInfo) -> VulnerabilityParsed:
     # parse refernces
-    refs = get_nested_value(ghsa_json, "references", [])
+    refs = get_nested_value(ghsa.json, "references", [])
     refernces = [make_vuln_ref(ref) for ref in refs]
+
+    # add reference to CVE from vulnerability references
+    if (cve_id := get_cve_id_from_refs(ghsa)) is not None:
+        refernces.append(VulnerabilityReference(name=cve_id, url=cve_id, tags=["CVE"]))
 
     # parse CVSS
     cvss_vectors = []
@@ -1289,11 +1369,17 @@ def parse_ghsa_info(
         "CVSS_V3": CVSS_VERSION_3,
         "CVSS_V4": CVSS_VERSION_4,
     }
-    if severities := get_nested_value(ghsa_json, "severity", []):
+    if severities := get_nested_value(ghsa.json, "severity", []):
         for severity in severities:
             if (ty := severity.get("type", "")) in VERSION_MAP:
                 cvss_vectors.append(
-                    CVSS(VERSION_MAP[ty], score, severity.get("score", ""))
+                    CVSS(VERSION_MAP[ty], ghsa.score, severity.get("score", ""))
                 )
 
-    return refernces, cvss_vectors
+    # TODO: parse affected ranges
+    pass
+
+    # parse CWE
+    cwes = get_nested_value(ghsa.json, "database_specific.cwe_ids", [])
+
+    return VulnerabilityParsed(refernces, cvss_vectors, cwes, [])

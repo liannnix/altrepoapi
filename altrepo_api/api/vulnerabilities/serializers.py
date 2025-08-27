@@ -34,21 +34,60 @@ vulnerability_model = ns.model(
         "json": fields.Raw(description="vulnerability original JSON"),
     },
 )
-vuln_reference_model = ns.model(
-    "VulnerabilityReferenceModel",
+vuln_reference_element_model = ns.model(
+    "VulnerabilityReferenceElementModel",
     {
         "name": fields.String(description="refernce name"),
         "url": fields.String(description="refernce link"),
         "tags": fields.List(fields.String, description="reference tags"),
-    }
+    },
 )
-vuln_cvss_vector_model = ns.model(
-    "VulnerabilityCVSSVectorModel",
+vuln_cvss_vector_element_model = ns.model(
+    "VulnerabilityCVSSVectorElelementModel",
     {
         "version": fields.String(description="CVSS vector version"),
         "score": fields.Float(description="CVSS base score"),
         "vector": fields.String(description="CVSS vector"),
-    }
+    },
+)
+vuln_configuration_element_model = ns.model(
+    "VulnerabilityConfigurationElementModel",
+    {
+        "cpe": fields.String(description="configuration CPE"),
+        "version_start_excluding": fields.String(
+            description="configuration element value", attribute="versionStartExcluding"
+        ),
+        "version_start_including": fields.String(
+            description="configuration element value", attribute="versionStartIncluding"
+        ),
+        "version_end_excluding": fields.String(
+            description="configuration element value", attribute="versionEndExcluding"
+        ),
+        "version_end_including": fields.String(
+            description="configuration element value", attribute="versionEndIncluding"
+        ),
+    },
+)
+vuln_parsed_model = ns.model(
+    "VulnerabilityParsedDetailsModel",
+    {
+        "references": fields.Nested(
+            vuln_reference_element_model,
+            description="vulnerability references",
+            as_list=True,
+        ),
+        "cvss_vectors": fields.Nested(
+            vuln_cvss_vector_element_model,
+            description="vulnerability CVSS vectors",
+            as_list=True,
+        ),
+        "configurations": fields.Nested(
+            vuln_configuration_element_model,
+            description="vulnerability configurations",
+            as_list=True,
+        ),
+        "cwes": fields.List(fields.String, description="vulnerability CWEs"),
+    },
 )
 vulnerability_info_model = ns.model(
     "VulnerabilityInfoModel",
@@ -57,15 +96,9 @@ vulnerability_info_model = ns.model(
         "vuln_info": fields.Nested(
             vulnerability_model, description="vulnerabilty information"
         ),
-        "vuln_references": fields.Nested(
-            vuln_reference_model,
-            description="Parsed vulnerability references",
-            as_list=True,
-        ),
-        "vuln_cvss_vectors": fields.Nested(
-            vuln_cvss_vector_model,
-            description="Parsed vulnerability CVSS vectors",
-            as_list=True,
+        "parsed": fields.Nested(
+            vuln_parsed_model,
+            description="Parsed vulnerability contents",
         ),
     },
 )

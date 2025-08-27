@@ -35,6 +35,7 @@ class VulnInfo(APIWorker):
 
     def get(self):
         vuln_id = self.args["vuln_id"]
+        exclude_json = self.args.get("exclude_json", False)
 
         response = self.send_sql_request(
             self.sql.get_vuln_info_by_ids.format(
@@ -60,18 +61,17 @@ class VulnInfo(APIWorker):
         if response:
             vuln.refs_link = [ref[0] for ref in response] + vuln.refs_link
 
+        parsed = None
+
         if vuln.id.startswith("CVE-"):
-            refs, cvss = parse_cve_info(vuln.json)
+            parsed = parse_cve_info(vuln)
         elif vuln.id.startswith("BDU:"):
-            refs, cvss = parse_bdu_info(vuln.json)
+            parsed = parse_bdu_info(vuln)
         elif vuln.id.startswith("GHSA-"):
-            refs, cvss = parse_ghsa_info(vuln.json, vuln.score)
-        else:
-            refs, cvss = [], []
+            parsed = parse_ghsa_info(vuln)
 
         return {
             "request_args": self.args,
-            "vuln_info": vuln.asdict(),
-            "vuln_references": [r._asdict() for r in refs],
-            "vuln_cvss_vectors": [c._asdict() for c in cvss],
+            "vuln_info": vuln.asdict(exclude_json),
+            "parsed": parsed.asdict() if parsed else {},
         }, 200

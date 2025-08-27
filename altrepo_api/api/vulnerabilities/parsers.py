@@ -14,6 +14,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from flask_restx import inputs
+
 from altrepo_api.api.parser import (
     parser,
     cve_id_type,
@@ -116,10 +118,19 @@ maintainer_nick = parser.register_item(
     help="nickname of maintainer",
     location="args",
 )
+exclude_json_opt = parser.register_item(
+    "exclude_json",
+    type=inputs.boolean,
+    default=False,
+    required=False,
+    help="exclude vulnerability raw JSON from results",
+    location="args",
+)
 
-cve_info_args = parser.build_parser(cve_id)
-bdu_info_args = parser.build_parser(bdu_id)
-ghsa_info_args = parser.build_parser(ghsa_id)
+
+cve_info_args = parser.build_parser(cve_id, exclude_json_opt)
+bdu_info_args = parser.build_parser(bdu_id, exclude_json_opt)
+ghsa_info_args = parser.build_parser(ghsa_id, exclude_json_opt)
 vuln_info_args = parser.build_parser(vuln_id)
 cve_vulnerable_packages_args = parser.build_parser(cve_id_list, branch)
 bdu_vulnerable_packages_args = parser.build_parser(bdu_id_list, branch)
