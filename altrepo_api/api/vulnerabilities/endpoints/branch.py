@@ -32,7 +32,7 @@ from .common import (
     get_packages_cpes,
     get_packages_vulnerabilities,
     get_vulnerability_fix_errata,
-    RT_VULN,
+    REFERENCE_TYPE_VULN,
 )
 from ..sql import sql
 
@@ -92,7 +92,11 @@ class BranchOpenVulnerabilities(APIWorker):
 
         cve_ids = set(self.cve_cpems.keys())
         cve_ids.update(
-            {vuln_id for errata in self.erratas for vuln_id in errata.ref_ids(RT_VULN)}  # type: ignore
+            {
+                vuln_id
+                for errata in self.erratas
+                for vuln_id in errata.ref_ids(REFERENCE_TYPE_VULN)  # type: ignore
+            }
         )
         # exclude vulnerabilities JSON field here
         get_cve_info_by_ids(self, cve_ids, True)
@@ -150,7 +154,8 @@ class BranchOpenVulnerabilities(APIWorker):
             "request_args": self.args,
             "result": self.result_message,
             "vuln_info": [
-                vuln.asdict() for vuln in sorted(vuln_info, key=lambda x: x.id)
+                vuln.asdict(exclude_json=True)
+                for vuln in sorted(vuln_info, key=lambda x: x.id)
             ],
             # "packages": [p.asdict() for p in self.packages_vulnerabilities],
             "packages": [p.asdict() for p in result.values()],

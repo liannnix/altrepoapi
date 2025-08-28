@@ -20,7 +20,7 @@ from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
 from altrepo_api.utils import valid_task_id
 
-from .common import BDU_ID_PREFIX, CVE_ID_PREFIX, RT_BUG
+from .common import BDU_ID_PREFIX, CVE_ID_PREFIX, REFERENCE_TYPE_BUG
 from ..sql import sql
 
 
@@ -104,7 +104,7 @@ class TaskVulnerabilities(APIWorker):
                     url = f"{lut.nvd_cve_base}/{v_id}"
                 elif v_id.startswith(BDU_ID_PREFIX):
                     url = f"{lut.fstec_bdu_base}/{v_id.split(':')[-1]}"
-                elif v_type == RT_BUG:
+                elif v_type == REFERENCE_TYPE_BUG:
                     url = f"{lut.bugzilla_base}/{v_id}"
                 else:
                     url = ""

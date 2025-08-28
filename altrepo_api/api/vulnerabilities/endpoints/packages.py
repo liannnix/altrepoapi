@@ -18,7 +18,6 @@ from dataclasses import dataclass, asdict
 from typing import Any, Iterable, Union
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.errata.endpoints.common import BDU_ID_PREFIX
 from altrepo_api.api.misc import lut
 from altrepo_api.utils import make_tmp_table_name
 from .fixes import PackageMeta
@@ -37,7 +36,8 @@ from .common import (
     get_packages_cpes,
     get_packages_vulnerabilities,
     get_vulnerability_fix_errata,
-    RT_VULN,
+    REFERENCE_TYPE_VULN,
+    BDU_ID_PREFIX,
 )
 from ..sql import sql
 
@@ -101,7 +101,11 @@ class PackageOpenVulnerabilities(APIWorker):
 
         cve_ids = set(self.cve_cpems.keys())
         cve_ids.update(
-            {vuln_id for errata in self.erratas for vuln_id in errata.ref_ids(RT_VULN)}  # type: ignore
+            {
+                vuln_id
+                for errata in self.erratas
+                for vuln_id in errata.ref_ids(REFERENCE_TYPE_VULN)  # type: ignore
+            }
         )
         get_cve_info_by_ids(self, cve_ids, False)
         if not self.sql_status:
@@ -143,7 +147,8 @@ class PackageOpenVulnerabilities(APIWorker):
             "request_args": self.args,
             "result": self.result_message,
             "vuln_info": [
-                vuln.asdict() for vuln in sorted(vuln_info, key=lambda x: x.id)
+                vuln.asdict(exclude_json=True)
+                for vuln in sorted(vuln_info, key=lambda x: x.id)
             ],
             "packages": [p.asdict() for p in self.packages_vulnerabilities],
         }, 200

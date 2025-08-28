@@ -54,8 +54,12 @@ BDU_ID_TYPE = "BDU"
 BDU_ID_PREFIX = f"{BDU_ID_TYPE}:"
 CVE_ID_TYPE = "CVE"
 CVE_ID_PREFIX = f"{CVE_ID_TYPE}-"
-RT_BUG = lut.errata_ref_type_bug
-RT_VULN = lut.errata_ref_type_vuln
+GHSA_ID_TYPE = "GHSA"
+GHSA_ID_PREFIX = f"{GHSA_ID_TYPE}-"
+MFSA_ID_TYPE = "MFSA"
+MFSA_ID_PREFIX = f"{MFSA_ID_TYPE}"
+REFERENCE_TYPE_BUG = lut.errata_ref_type_bug
+REFERENCE_TYPE_VULN = lut.errata_ref_type_vuln
 
 CVSS_VERSION_2 = "2.0"
 CVSS_VERSION_3 = "3.x"
@@ -1023,7 +1027,7 @@ def get_vulnerability_fix_errata(
                     errata.pkg_name,
                     errata.branch,
                 ) and pkg.vuln_id in errata.ref_ids(
-                    ref_type=RT_VULN  # type: ignore
+                    ref_type=REFERENCE_TYPE_VULN  # type: ignore
                 ):
                     # no need to check version due to branch, package name and vulnerability id is equal already
                     pkg.fixed_in.append(errata)
@@ -1074,7 +1078,7 @@ def get_vulnerability_fix_errata(
             # if (pkg.branch, pkg.name) == (errata.branch, errata.pkg_name):
             if pkg.name == errata.pkg_name:
                 # get any vuln_id if it is linked with errata
-                vuln_ids = cve_ids_set.intersection(set(errata.ref_ids(RT_VULN)))  # type: ignore
+                vuln_ids = cve_ids_set.intersection(set(errata.ref_ids(REFERENCE_TYPE_VULN)))  # type: ignore
                 if not vuln_ids:
                     continue
 
@@ -1238,7 +1242,19 @@ class VulnerabilityParsed(NamedTuple):
         }
 
 
-def make_vuln_ref(ref: JSONDict) -> "VulnerabilityReference":
+def parse_vulnerability_details(
+    vuln: VulnerabilityInfo,
+) -> Optional[VulnerabilityParsed]:
+    if vuln.id.startswith(CVE_ID_PREFIX):
+        return _parse_cve_info(vuln)
+    elif vuln.id.startswith(BDU_ID_PREFIX):
+        return _parse_bdu_info(vuln)
+    elif vuln.id.startswith(GHSA_ID_PREFIX):
+        return _parse_ghsa_info(vuln)
+    return None
+
+
+def _make_vuln_ref(ref: JSONDict) -> "VulnerabilityReference":
     return VulnerabilityReference(
         name=ref.get("name") or ref.get("text") or "",
         url=ref.get("url") or ref.get("link") or "",
@@ -1246,14 +1262,14 @@ def make_vuln_ref(ref: JSONDict) -> "VulnerabilityReference":
     )
 
 
-def get_cve_id_from_refs(vuln: VulnerabilityInfo) -> Optional[str]:
+def _get_cve_id_from_refs(vuln: VulnerabilityInfo) -> Optional[str]:
     for ty, link in zip(vuln.refs_type, vuln.refs_link):
         if ty == CVE_ID_TYPE:
             return link
     return None
 
 
-def parse_cve_info(cve: VulnerabilityInfo) -> VulnerabilityParsed:
+def _parse_cve_info(cve: VulnerabilityInfo) -> VulnerabilityParsed:
     def find_primary_cvss(cvss_metrics: list[JSONDict]) -> JSONDict:
         for metric in cvss_metrics:
             if metric.get("type") == "Primary":
@@ -1270,7 +1286,7 @@ def parse_cve_info(cve: VulnerabilityInfo) -> VulnerabilityParsed:
 
     # parse references
     refs = get_nested_value(cve.json, "cve.references", [])
-    refernces = [make_vuln_ref(ref) for ref in refs]
+    refernces = [_make_vuln_ref(ref) for ref in refs]
 
     # parse CVSS
     cvss_vectors = []
@@ -1322,13 +1338,13 @@ def parse_cve_info(cve: VulnerabilityInfo) -> VulnerabilityParsed:
     return VulnerabilityParsed(refernces, cvss_vectors, cwes, configurations)
 
 
-def parse_bdu_info(bdu: VulnerabilityInfo) -> VulnerabilityParsed:
+def _parse_bdu_info(bdu: VulnerabilityInfo) -> VulnerabilityParsed:
     # parse references
     refs = get_nested_value(bdu.json, "identifiers", [])
-    refernces = [make_vuln_ref(ref) for ref in refs]
+    refernces = [_make_vuln_ref(ref) for ref in refs]
 
     # add reference to CVE from vulnerability references
-    if (cve_id := get_cve_id_from_refs(bdu)) is not None:
+    if (cve_id := _get_cve_id_from_refs(bdu)) is not None:
         refernces.append(VulnerabilityReference(name=cve_id, url=cve_id, tags=["CVE"]))
 
     # parse CVSS
@@ -1353,13 +1369,13 @@ def parse_bdu_info(bdu: VulnerabilityInfo) -> VulnerabilityParsed:
     return VulnerabilityParsed(refernces, cvss_vectors, cwes, [])
 
 
-def parse_ghsa_info(ghsa: VulnerabilityInfo) -> VulnerabilityParsed:
+def _parse_ghsa_info(ghsa: VulnerabilityInfo) -> VulnerabilityParsed:
     # parse refernces
     refs = get_nested_value(ghsa.json, "references", [])
-    refernces = [make_vuln_ref(ref) for ref in refs]
+    refernces = [_make_vuln_ref(ref) for ref in refs]
 
     # add reference to CVE from vulnerability references
-    if (cve_id := get_cve_id_from_refs(ghsa)) is not None:
+    if (cve_id := _get_cve_id_from_refs(ghsa)) is not None:
         refernces.append(VulnerabilityReference(name=cve_id, url=cve_id, tags=["CVE"]))
 
     # parse CVSS
