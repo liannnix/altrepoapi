@@ -35,6 +35,7 @@ from .parsers import (
     oval_export_args,
     find_erratas_args,
     find_img_erratas_args,
+    packages_updates_args,
 )
 from .serializers import (
     erratas_ids_json_list_model,
@@ -113,12 +114,12 @@ class routeOvalExport(Resource):
     },
 )
 class routePackagesUpdates(Resource):
-    @ns.expect(erratas_ids_json_list_model)
+    @ns.expect(packages_updates_args, erratas_ids_json_list_model)
     @ns.marshal_with(errata_packages_updates_model)
     def post(self):
         url_logging(logger, g.url)
-        args = {}
-        w = PackagesUpdates(g.connection, json_data=ns.payload)
+        args = packages_updates_args.parse_args()
+        w = PackagesUpdates(g.connection, **args, json_data=ns.payload)
         return run_worker(worker=w, args=args, run_method=w.post, ok_code=200)
 
 
@@ -130,12 +131,12 @@ class routePackagesUpdates(Resource):
     },
 )
 class routeBranchesUpdates(Resource):
-    @ns.expect(erratas_ids_json_list_model)
+    @ns.expect(packages_updates_args, erratas_ids_json_list_model)
     @ns.marshal_with(errata_branches_updates_model)
     def post(self):
         url_logging(logger, g.url)
-        args = {}
-        w = BranchesUpdates(g.connection, json_data=ns.payload)
+        args = packages_updates_args.parse_args()
+        w = BranchesUpdates(g.connection, **args, json_data=ns.payload)
         return run_worker(worker=w, args=args, run_method=w.post, ok_code=200)
 
 

@@ -26,8 +26,7 @@ from typing import Any, Iterable, Literal, NamedTuple, Union
 from altrepo_api.api.misc import lut
 from altrepo_api.api.vulnerabilities.endpoints.common import (
     VulnerabilityInfo as VulnInfo,
-    parse_cve_info,
-    parse_bdu_info,
+    parse_vulnerability_details,
 )
 from altrepo_api.libs.oval.altlinux_errata import (
     ALTLinuxAdvisory,
@@ -371,7 +370,7 @@ def _build_vuln_from_cve(vuln: VulnerabilityInfo) -> Vulnerability:
     except Exception:
         logger.debug(f"Failed to parse vulnerability JSON for {vuln.id}")
     else:
-        parsed = parse_cve_info(
+        if parsed := parse_vulnerability_details(
             VulnInfo(
                 id=vuln.id,
                 summary=vuln.summary,
@@ -384,18 +383,18 @@ def _build_vuln_from_cve(vuln: VulnerabilityInfo) -> Vulnerability:
                 refs_type=[],
                 refs_link=[],
             )
-        )
-        # get CWE
-        if parsed.cwes:
-            cwe = ", ".join(parsed.cwes)
-        # get CVSS V2.0
-        for vec in parsed.cvss_vectors:
-            if vec.version == "2.0":
-                cvss = vec.vector
-        #  get CVSS V3.x
-        for vec in parsed.cvss_vectors:
-            if vec.version == "3.x":
-                cvss3 = vec.vector
+        ):
+            # get CWE
+            if parsed.cwes:
+                cwe = ", ".join(parsed.cwes)
+            # get CVSS V2.0
+            for vec in parsed.cvss_vectors:
+                if vec.version == "2.0":
+                    cvss = vec.vector
+            #  get CVSS V3.x
+            for vec in parsed.cvss_vectors:
+                if vec.version == "3.x":
+                    cvss3 = vec.vector
 
     return Vulnerability(
         id=vuln.id,
@@ -424,7 +423,7 @@ def _build_vuln_from_bdu(vuln: VulnerabilityInfo) -> Vulnerability:
     except Exception:
         logger.debug(f"Failed to parse vulnerability JSON for {vuln.id}")
     else:
-        parsed = parse_bdu_info(
+        if parsed := parse_vulnerability_details(
             VulnInfo(
                 id=vuln.id,
                 summary=vuln.summary,
@@ -437,18 +436,18 @@ def _build_vuln_from_bdu(vuln: VulnerabilityInfo) -> Vulnerability:
                 refs_type=[],
                 refs_link=[],
             )
-        )
-        # get CWE
-        if parsed.cwes:
-            cwe = ", ".join(parsed.cwes)
-        # get CVSS V2.0
-        for vec in parsed.cvss_vectors:
-            if vec.version == "2.0":
-                cvss = vec.vector
-        #  get CVSS V3.x
-        for vec in parsed.cvss_vectors:
-            if vec.version == "3.x":
-                cvss3 = vec.vector
+        ):
+            # get CWE
+            if parsed.cwes:
+                cwe = ", ".join(parsed.cwes)
+            # get CVSS V2.0
+            for vec in parsed.cvss_vectors:
+                if vec.version == "2.0":
+                    cvss = vec.vector
+            #  get CVSS V3.x
+            for vec in parsed.cvss_vectors:
+                if vec.version == "3.x":
+                    cvss3 = vec.vector
 
     return Vulnerability(
         id=vuln.id,

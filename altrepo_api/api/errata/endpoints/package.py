@@ -70,8 +70,13 @@ class PackagesUpdates(APIWorker):
 
     def post(self):
         packages_updates = get_packges_updates_erratas(self, self.errata_ids)
+        exclude_json = self.args.get("exclude_json", False)
 
         if not self.status or packages_updates is None:
             return self.error
 
-        return {"packages_updates": [p.asdict() for p in packages_updates]}, 200
+        return {
+            "packages_updates": [
+                p.asdict(exclude_json=exclude_json) for p in packages_updates
+            ]
+        }, 200

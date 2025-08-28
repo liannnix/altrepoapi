@@ -16,6 +16,8 @@
 
 from flask_restx import fields
 
+from altrepo_api.api.vulnerabilities.serializers import vuln_parsed_model
+
 from .namespace import get_namespace
 
 ns = get_namespace()
@@ -100,6 +102,9 @@ errata_vuln_model = ns.model(
         "published_date": fields.DateTime(description="vulnerability published date"),
         "body": fields.String(description="vulnerability body in JSON format"),
         "is_valid": fields.Boolean(description="vulnerability information is valid"),
+        "parsed": fields.Nested(
+            vuln_parsed_model, description="vulnerability parsed details"
+        ),
     },
 )
 errata_package_update_model = ns.model(

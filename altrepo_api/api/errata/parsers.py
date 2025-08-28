@@ -130,6 +130,14 @@ sort_opt = parser.register_item(
     help="sort arguments",
     location="args",
 )
+exclude_json_opt = parser.register_item(
+    "exclude_json",
+    type=inputs.boolean,
+    default=False,
+    required=False,
+    help="exclude vulnerability raw JSON from results",
+    location="args",
+)
 
 oval_export_args = parser.build_parser(package_name_opt, one_file_opt)
 errata_search_args = parser.build_parser(
@@ -154,3 +162,4 @@ find_img_erratas_args = parser.build_parser(
     is_discarded,
     sort_opt,
 )
+packages_updates_args = parser.build_parser(exclude_json_opt)

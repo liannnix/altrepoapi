@@ -72,6 +72,7 @@ class BranchesUpdates(APIWorker):
         return True
 
     def post(self):
+        exclude_json = self.args.get("exclude_json", False)
         # get branch update erratas
         bu_erratas = get_erratas_by_ids(self, self.errata_ids)
         if not self.status:
@@ -107,7 +108,11 @@ class BranchesUpdates(APIWorker):
             for errata in bu_erratas
         ]
 
-        return {"branches_updates": [bu.asdict() for bu in branches_updates]}, 200
+        return {
+            "branches_updates": [
+                bu.asdict(exclude_json=exclude_json) for bu in branches_updates
+            ]
+        }, 200
 
 
 class ErrataBranches(APIWorker):
