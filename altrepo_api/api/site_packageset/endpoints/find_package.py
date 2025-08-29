@@ -77,6 +77,7 @@ class PackagesetFindPackages(APIWorker):
         return True
 
     def get(self):
+        pkg_archs = self.args["arch"]
         pkg_names = self.args["name"]
 
         branch_clause = (
@@ -87,11 +88,11 @@ class PackagesetFindPackages(APIWorker):
 
         name_like_clause = " AND ".join([f"pkg_name ILIKE '%{n}%'" for n in pkg_names])
 
-        if self.args["arch"] == "srpm":
+        if pkg_archs == ["srpm"]:
             _sql = self.sql.get_find_packages_by_src_name.format(
                 branch=branch_clause, name_like=name_like_clause
             )
-        elif self.args["arch"] is None:
+        elif pkg_archs is None:
             _sql = self.sql.get_find_packages_by_name.format(
                 branch=branch_clause,
                 name_like=name_like_clause,
@@ -101,7 +102,7 @@ class PackagesetFindPackages(APIWorker):
             _sql = self.sql.get_find_packages_by_name_and_arch.format(
                 branch=branch_clause,
                 name_like=name_like_clause,
-                arch=f"AND pkg_arch IN {(self.args['arch'],)}",
+                arch=f"AND pkg_arch IN {(pkg_archs)}",
             )
 
         response = self.send_sql_request(_sql)

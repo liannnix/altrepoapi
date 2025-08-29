@@ -48,11 +48,12 @@ branch_opt = parser.register_item(
 arch = parser.register_item(
     "arch", type=arch_name_type, required=True, help="package arch", location="args"
 )
-arch_opt = parser.register_item(
+arch_list_opt = parser.register_item(
     "arch",
     type=arch_name_type_ext,
+    action="split",
     required=False,
-    help="binary package arch",
+    help="list of binary packages architectures",
     location="args",
 )
 package_type = parser.register_item(
@@ -120,7 +121,7 @@ package_name_list = parser.register_item(
 pkgset_packages_args = parser.build_parser(branch, package_type, group, buildtime)
 pkgset_pkghash_args = parser.build_parser(branch, name)
 pkgset_pkg_binary_hash_args = parser.build_parser(branch, name, arch)
-pkgs_by_name_args = parser.build_parser(package_name_list, branch_opt, arch_opt)
+pkgs_by_name_args = parser.build_parser(package_name_list, branch_opt, arch_list_opt)
 pkgs_search_by_name_args = parser.build_parser(package_name_list, branch_opt)
 last_pkgs_branch_args = parser.build_parser(branch, pkgs_limit, packager)
 pkgset_pkghash_by_nvr = parser.build_parser(
