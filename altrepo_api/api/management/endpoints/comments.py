@@ -164,7 +164,8 @@ class Comments(APIWorker):
             self.validation_results.append("Action should be specified")
         elif not validate_action(self.payload.get("action", "")):
             self.validation_results.append(
-                f"Comment change action '{self.payload.get("action")}' is not supported"
+                "Comment change action '%s' is not supported"
+                % self.payload.get("action")
             )
 
         if self.payload.get("action") == CHANGE_ACTION_CREATE:
