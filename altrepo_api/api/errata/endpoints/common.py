@@ -25,6 +25,7 @@ from altrepo_api.utils import make_tmp_table_name
 from altrepo_api.api.misc import lut
 from altrepo_api.api.vulnerabilities.endpoints.common import (
     VulnerabilityInfo as _VulnInfo,
+    make_empty_parsed,
     parse_vulnerability_details,
     BDU_ID_TYPE,
     BDU_ID_PREFIX,
@@ -204,6 +205,8 @@ class PackageUpdate:
 
             if parsed := parse_vulnerability_details(_convert_vuln_info(vuln)):
                 d["parsed"] = parsed.asdict()
+            else:
+                d["parsed"] = make_empty_parsed().asdict()
 
             res["vulns"].append(d)
 

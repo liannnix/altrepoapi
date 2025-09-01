@@ -1242,6 +1242,15 @@ class VulnerabilityParsed(NamedTuple):
         }
 
 
+def make_empty_parsed() -> VulnerabilityParsed:
+    return VulnerabilityParsed(
+        references=[],
+        cvss_vectors=[],
+        cwes=[],
+        configurations=[],
+    )
+
+
 def parse_vulnerability_details(
     vuln: VulnerabilityInfo,
 ) -> Optional[VulnerabilityParsed]:
