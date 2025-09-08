@@ -1056,3 +1056,67 @@ comment_manage_response_model = ns.model(
         ),
     },
 )
+
+default_reasons_payload_model = ns.model(
+    "DefaultReasonsPayloadModel",
+    {
+        "text": fields.String(description="Default reason`s text", required=True),
+        "source": fields.String(
+            description="Default reason`s source",
+            enum=lut.default_reason_source_types,
+            required=True,
+        ),
+        "is_active": fields.Boolean(
+            description="Is default reason active flag", required=True
+        ),
+    },
+)
+default_reasons_list_el_model = ns.clone(
+    "DefaultReasonsListElementModel",
+    default_reasons_payload_model,
+    {
+        "updated": fields.DateTime(
+            description="The datetime of last default reason`s change", required=True
+        )
+    },
+)
+default_reasons_list_model = ns.model(
+    "DefaultReasonsListModel",
+    {
+        "request_args": fields.Raw(description="Request arguments"),
+        "length": fields.Integer(
+            description="A number of default reasons found in DB", required=True
+        ),
+        "reasons": fields.Nested(
+            default_reasons_list_el_model,
+            description="A list of default reasons",
+            as_list=True,
+            required=True,
+        ),
+    },
+)
+default_reasons_manage_model = ns.model(
+    "DefaultReasonsManageModel",
+    {
+        "default_reason": fields.Nested(
+            default_reasons_payload_model,
+            description="Default reason data to manage.",
+            required=True,
+        ),
+        "action": fields.String(description="Default reason manage action."),
+    },
+)
+default_reason_response_model = ns.model(
+    "DefaultReasonResponseModel",
+    {
+        "request_args": fields.Raw(description="Request arguments"),
+        "result": fields.String(
+            description="Result message of managing a default reason.", required=True
+        ),
+        "default_reason": fields.Nested(
+            default_reasons_list_el_model,
+            description="Created or updated default reason.",
+            required=True,
+        ),
+    },
+)
