@@ -521,5 +521,20 @@ class LookupTables:
         comment_ref_type_package,
     )
 
+    default_reason_source_type_exclusion = "exclusion"
+    default_reason_source_type_cpe = "cpe"
+    default_reason_source_type_comment = "comment"
+    default_reason_source_type_pnc = "pnc"
+
+    default_reason_source_types = (
+        errata_ref_type_vuln,
+        comment_ref_type_errata,
+        comment_ref_type_task,
+        default_reason_source_type_pnc,
+        default_reason_source_type_cpe,
+        default_reason_source_type_exclusion,
+        default_reason_source_type_comment,
+    )
+
 
 lut = LookupTables()

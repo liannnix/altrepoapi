@@ -1362,5 +1362,24 @@ INSERT INTO Comments VALUES
 INSERT INTO CommentsChangeHistory (* EXCEPT(ts)) VALUES
 """
 
+    get_default_reasons_list = """
+SELECT
+    dr_text,
+    dr_source,
+    argMax(dr_is_active, ts) as dr_is_active,
+    max(ts) as updated,
+    (SELECT countDistinct((dr_text, dr_source)) FROM DefaultReasons) as total_count
+FROM DefaultReasons
+{where_clause}
+GROUP BY dr_text, dr_source
+{having_clause}
+{order_by}
+{limit} {offset}
+"""
+
+    store_default_reason = """
+INSERT INTO DefaultReasons (* EXCEPT(ts)) VALUES
+"""
+
 
 sql = SQL()
