@@ -36,6 +36,7 @@ from .constants import (
     MFSA_ID_TYPE,
     OVE_ID_TYPE,
     BUG_ID_TYPE,
+    DEFAULT_REASON_SOURCE_TYPES,
 )
 
 logger = get_logger(__name__)
@@ -87,6 +88,10 @@ def validate_branch_without_tasks(branch: str) -> bool:
 
 def validate_comment_entity_type(type: str) -> bool:
     return type in COMMENT_ENTITY_TYPES
+
+
+def validate_default_reason_source(source: str) -> bool:
+    return source in DEFAULT_REASON_SOURCE_TYPES
 
 
 def convert_dt_to_timezone_aware(dt: datetime) -> datetime:
