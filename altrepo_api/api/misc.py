@@ -510,6 +510,7 @@ class LookupTables:
     comment_ref_type_errata = "errata"
     comment_ref_type_task = "task"
     comment_ref_type_web = "web"
+    comment_ref_type_package = "package"
 
     comment_ref_types = (
         errata_ref_type_bug,
@@ -517,6 +518,7 @@ class LookupTables:
         comment_ref_type_errata,
         comment_ref_type_task,
         comment_ref_type_web,
+        comment_ref_type_package,
     )
 
 
