@@ -1345,6 +1345,15 @@ WHERE
 ORDER BY c.comment_id DESC;
 """
 
+    get_last_comment = """
+SELECT * from Comments
+WHERE
+    comment_entity_type = '{entity_type}'
+    AND comment_entity_link = '{entity_link}'
+ORDER BY comment_id DESC
+LIMIT 1
+"""
+
     store_comment = """
 INSERT INTO Comments VALUES
 """

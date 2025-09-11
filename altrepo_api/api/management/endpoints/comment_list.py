@@ -40,8 +40,11 @@ class CommentsList(APIWorker):
     def check_params(self) -> bool:
         if not validate_comment_entity_type(self.args.get("entity_type", "")):
             self.validation_results.append("Incorrect entity type.")
-            return False
-        return super().check_params()
+
+        if not self.args.get("entity_link", "").strip():
+            self.validation_results.append("Incorrect entity link.")
+
+        return len(self.validation_results) == 0
 
     def get(self):
         """

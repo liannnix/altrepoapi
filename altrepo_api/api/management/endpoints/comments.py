@@ -189,8 +189,9 @@ class Comments(APIWorker):
         if self.payload["action"] == CHANGE_ACTION_CREATE:
             comment = self.payload.get("comment", {})
             self.make_comment(
-                comment.get("pid"),
-                comment.get("rid"),
+                # TODO: parent and root ids are not used for a now
+                None,
+                None,
                 comment.get("entity_type"),
                 comment.get("entity_link"),
                 self.reason.user.name,
@@ -228,6 +229,21 @@ class Comments(APIWorker):
         """
         Create a comment related to vulnerability.
         """
+
+        # use parent and root IDs if possible
+        response = self.send_sql_request(
+            self.sql.get_last_comment.format(
+                entity_link=self.comment.comment_entity_link,
+                entity_type=self.comment.comment_entity_type,
+            )
+        )
+        if not self.sql_status:
+            return self.error
+
+        if response:
+            self.comment = self.comment._replace(comment_pid=int(response[0][0]))
+            self.comment = self.comment._replace(comment_rid=int(response[0][2]))
+
         self.trx.register_comment_create(self.comment)
 
         return self._commit_changes()

@@ -958,8 +958,16 @@ comment_list_el_model = ns.model(
     "CommentListElementModel",
     {
         "id": fields.String(description="Comment`s ID", required=True),
-        "pid": fields.String(description="Comment`s parent comment ID", required=True),
-        "rid": fields.String(description="Comment`s root comment ID", required=True),
+        "author": fields.String(
+            description="Comment author`s username",
+            required=True,
+            attribute="comment_author",
+        ),
+        "created": fields.DateTime(
+            description="Comment`s creation date",
+            required=True,
+            attribute="comment_created",
+        ),
         "text": fields.String(
             description="Comment`s message text",
             required=True,
@@ -972,18 +980,8 @@ comment_list_el_model = ns.model(
             required=True,
             attribute="comment_references",
         ),
-        "author": fields.String(
-            description="Comment author`s username",
-            required=True,
-            attribute="comment_author",
-        ),
         "is_discarded": fields.Boolean(
             description="Is comment discarded flag", required=True
-        ),
-        "created": fields.DateTime(
-            description="Comment`s creation date",
-            required=True,
-            attribute="comment_created",
         ),
     },
 )
@@ -1009,8 +1007,6 @@ comment_manage_model = ns.model(
 comment_manage_comment_create_model = ns.model(
     "CommentManageCommentCreateModel",
     {
-        "pid": fields.String(description="Comment`s parent comment ID", required=False),
-        "rid": fields.String(description="Comment`s root comment ID", required=False),
         "text": fields.String(description="Comment`s text", required=True),
         "entity_type": fields.String(
             description="Comment`s entity text", required=True
