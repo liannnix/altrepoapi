@@ -1342,7 +1342,7 @@ LEFT JOIN (
 WHERE
     c.comment_entity_type = '{entity_type}'
     AND c.comment_entity_link = '{entity_link}'
-ORDER BY c.comment_id DESC;
+ORDER BY c.comment_id ASC;
 """
 
     get_last_comment = """
