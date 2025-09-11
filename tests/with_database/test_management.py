@@ -65,6 +65,11 @@ PROJECT_NAME_NOT_IN_DB = "test_project_name"
 IMG_IN_DB = "alt-kworkstation-10.2.1-install-x86_64.iso"
 IMG_NOT_IN_DB = "test_image"
 
+DEFAULT_REASON_IN_DB = (
+    "Incorrect CPE mapping; this CVE was assigned too broadly and does not apply here."
+)
+DEFAULT_REASON_NOT_IN_DB = "test_default_reasons"
+
 
 @pytest.mark.parametrize(
     "kwargs",
@@ -1107,3 +1112,68 @@ def test_comments_list(client, kwargs, mocked_check_access_token):
     assert response.status_code == kwargs["status_code"]
     if response.status_code == 200:
         assert data != {}
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "text": DEFAULT_REASON_IN_DB,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+            "status_code": 200,
+        },
+        {
+            "text": DEFAULT_REASON_NOT_IN_DB,
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+            "status_code": 404,
+        },
+        {
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+            "status_code": 200,
+        },
+        {
+            "source": "qwe",
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+            "status_code": 400,
+        },
+        {
+            "text": DEFAULT_REASON_IN_DB,
+            "source": "exclusion",
+            "is_active": "true",
+            "headers": {"Authorization": VALID_ACCESS_TOKEN},
+            "status_code": 200,
+        },
+        {
+            "text": DEFAULT_REASON_IN_DB,
+            "headers": {"Authorization": INVALID_ACCESS_TOKEN},
+            "status_code": 401,
+        },
+        {
+            "text": DEFAULT_REASON_IN_DB,
+            "headers": {},
+            "status_code": 401,
+        },
+    ],
+)
+def test_default_reasons_list(client, kwargs, mocked_check_access_token):
+    """Test default reasons list endpoint with various parameters."""
+
+    mocked_check_access_token.headers = kwargs.get("headers", {})
+    mocked_check_access_token.status_code = kwargs["status_code"]
+
+    params = {k: v for k, v in kwargs.items() if k not in ("status_code", "headers")}
+
+    url = url_for("manage.manage_route_list_default_reasons")
+
+    response = client.get(url, query_string=params, headers=kwargs.get("headers", {}))
+
+    assert response.status_code == kwargs["status_code"]
+
+    if response.status_code == 200:
+        data = response.json
+        assert "reasons" in data
+        assert "length" in data
+        assert "request_args" in data
+        assert isinstance(data["reasons"], list)
+        assert isinstance(data["length"], int)
+        assert isinstance(data["request_args"], dict)
