@@ -36,6 +36,8 @@ from altrepo_api.api.parser import (
 
 from .endpoints.tools.constants import DRY_RUN_KEY
 
+from ..misc import lut
+
 task_input_val_opt = parser.register_item(
     "input",
     type=task_search_type,
@@ -384,6 +386,23 @@ entity_link = parser.register_item(
     help="Entity link",
     location="args",
 )
+default_reason_text_opt = parser.register_item(
+    "text",
+    type=str,
+    required=False,
+    help="Search among default reasons` text.",
+    location="args",
+)
+default_reason_source_opt = parser.register_item(
+    "source",
+    type=str,
+    choices=lut.default_reason_source_types,
+    help="For what source is default reason",
+    location="args",
+)
+default_reason_is_active_opt = parser.register_item(
+    "is_active", type=inputs.boolean, help="Is default reason active", location="args"
+)
 
 task_list_args = parser.build_parser(
     task_input_val_opt,
@@ -451,3 +470,11 @@ change_history_args = parser.build_parser(
     sort_opt,
 )
 comments_list_args = parser.build_parser(entity_type, entity_link)
+default_reasons_list_args = parser.build_parser(
+    default_reason_text_opt,
+    default_reason_source_opt,
+    default_reason_is_active_opt,
+    page_opt,
+    limit_opt,
+    sort_opt,
+)
