@@ -14,7 +14,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Any, NamedTuple, Union
+from dataclasses import asdict, dataclass
+from typing import Any, Optional
 
 from altrepodb_libs import (
     PackageCVEMatcher,
@@ -24,11 +25,12 @@ from altrepodb_libs import (
     convert_log_level,
 )
 
+from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
 from altrepo_api.libs.pagination import Paginator
 from altrepo_api.libs.sorting import rich_sort
 from altrepo_api.settings import namespace as settings
 
-from altrepo_api.api.base import APIWorker
+from altrepo_api.api.base import APIWorker, WorkerResult
 from altrepo_api.api.misc import lut
 from altrepo_api.utils import make_tmp_table_name, get_real_ip
 
@@ -65,6 +67,7 @@ from .tools.helpers.package import (
     store_pnc_change_records,
 )
 from .tools.utils import validate_action, validate_branch_with_tasks
+from ..parsers import cpe_list_args
 from ..sql import sql
 
 MATCHER_LOG_LEVEL = convert_log_level(settings.LOG_LEVEL)
@@ -172,8 +175,8 @@ class ManageCpe(APIWorker):
         self.sql = sql
         self.trx = Transaction(source=ChangeSource.MANUAL)
         # private fields
-        self._branch: Union[str, None] = None
-        self._package_name: Union[str, None] = None
+        self._branch: Optional[str] = None
+        self._package_name: Optional[str] = None
         self._related_packages: list[str] = []
         self._related_cve_ids: list[str] = []
         self._packages_cve_matches: list[dict[str, Any]] = []
@@ -818,7 +821,7 @@ class ManageCpe(APIWorker):
                 db_cpes.setdefault(p.pkg_name, []).append(p)
 
         pncr = cpe_record2pnc_record(self.cpe)
-        db_cpe: Union[CpeRecord, None] = None
+        db_cpe: Optional[CpeRecord] = None
 
         # check if any records are doesn't exists in DB
         if not db_cpes:
@@ -938,12 +941,13 @@ class ManageCpe(APIWorker):
         return self._commit_or_rollback()
 
 
-class CPEListArgs(NamedTuple):
-    input: Union[str, None]
-    is_discarded: bool
-    limit: Union[int, None]
-    page: Union[int, None]
-    sort: Union[list[str], None]
+@dataclass
+class CPEListArgs:
+    is_discarded: Optional[bool] = None
+    input: Optional[str] = None
+    limit: Optional[int] = None
+    page: Optional[int] = None
+    sort: Optional[list[str]] = None
 
 
 class CPEList(APIWorker):
@@ -972,6 +976,30 @@ class CPEList(APIWorker):
             f"OR repology_name ILIKE '%{self.args.input}%' "
             f"OR cpe ILIKE '%{self.args.input}%'"
         )
+
+    def metadata(self) -> WorkerResult:
+        metadata = []
+        for el in cpe_list_args.args:
+            is_append = False
+            meta = MetadataItem(
+                name=el.name,
+                label=el.name.replace("_", " ").capitalize(),
+                help_text=el.help,
+                type=KnownFilterTypes.STRING,
+            )
+            if el.type.__name__ == "boolean":
+                meta.type = KnownFilterTypes.CHOICE
+                meta.choices = [
+                    MetadataChoiceItem(value="true", display_name="True"),
+                    MetadataChoiceItem(value="false", display_name="False"),
+                ]
+                is_append = True
+            if is_append:
+                metadata.append(meta)
+        return {
+            "length": len(metadata),
+            "metadata": [el.asdict() for el in metadata],
+        }, 200
 
     def get(self):
         cpes: dict[tuple[str, str], Any] = {}
@@ -1027,7 +1055,7 @@ class CPEList(APIWorker):
         page_obj = paginator.get_page(self.args.page)
 
         res: dict[str, Any] = {
-            "request_args": self.args._asdict(),
+            "request_args": asdict(self.args),
             "length": len(page_obj),
             "cpes": page_obj,
         }
