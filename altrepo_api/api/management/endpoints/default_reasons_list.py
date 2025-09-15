@@ -17,7 +17,8 @@
 
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
+
 from altrepo_api.api.base import APIWorker, WorkerResult
 from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
 from altrepo_api.utils import get_logger
@@ -167,12 +168,6 @@ class DefaultReasonsList(APIWorker):
 
         total_count = response[0][-1]
 
-        if not self.sql_status:
-            return {
-                "message": "Failed to get comments",
-                "details": "Database error occurred",
-            }, 500
-
         reasons = [
             DefaultReasonResponse(
                 text=el[0], source=el[1], is_active=bool(el[2]), updated=el[3]
@@ -180,14 +175,12 @@ class DefaultReasonsList(APIWorker):
             for el in response
         ]
 
-        res: dict[str, Any] = {
-            "request_args": asdict(self.args),
-            "length": len(reasons),
-            "reasons": [asdict(el) for el in reasons],
-        }
-
         return (
-            res,
+            {
+                "request_args": asdict(self.args),
+                "length": len(reasons),
+                "reasons": [asdict(el) for el in reasons],
+            },
             200,
             {
                 "Access-Control-Expose-Headers": "X-Total-Count",
