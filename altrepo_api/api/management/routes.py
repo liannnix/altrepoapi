@@ -1080,84 +1080,86 @@ class routeUpdateAndDiscardComments(Resource):
             worker=w, run_method=w.put, check_method=w.check_payload, ok_code=200
         )
 
-    @with_metadata(DefaultReasonsList, ns, logger, require_auth=True)
-    @ns.route(
-        "/default_reasons/list",
-        doc={"responses": RESPONSES_400_404, "security": "Bearer"},
+
+@with_metadata(DefaultReasonsList, ns, logger, require_auth=True)
+@ns.route(
+    "/default_reasons/list",
+    doc={"responses": RESPONSES_400_404, "security": "Bearer"},
+)
+class routeListDefaultReasons(Resource):
+    @ns.doc(
+        description="Get default reasons list.",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
     )
-    class routeListDefaultReasons(Resource):
-        @ns.doc(
-            description="Get default reasons list.",
-            responses=GET_RESPONSES_400_404,
-            security="Bearer",
-        )
-        @ns.expect(default_reasons_list_args)
-        @ns.marshal_with(default_reasons_list_model)
-        @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
-        def get(self):
-            url_logging(logger, g.url)
-            args = default_reasons_list_args.parse_args(strict=True)
-            w = DefaultReasonsList(g.connection, **args)
-            return run_worker(worker=w, args=args)
+    @ns.expect(default_reasons_list_args)
+    @ns.marshal_with(default_reasons_list_model)
+    @token_required(ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN])
+    def get(self):
+        url_logging(logger, g.url)
+        args = default_reasons_list_args.parse_args(strict=True)
+        w = DefaultReasonsList(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
-    @ns.route(
-        "/default_reasons",
-        doc={
-            "responses": GET_RESPONSES_400_404,
-            "security": "Bearer",
-        },
+
+@ns.route(
+    "/default_reasons",
+    doc={
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routeManageDefaultReasons(Resource):
+    @ns.doc(
+        description="Create a new default reason.",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
     )
-    class routeManageDefaultReasons(Resource):
-        @ns.doc(
-            description="Create a new default reason.",
-            responses=GET_RESPONSES_400_404,
-            security="Bearer",
+    @ns.expect(default_reasons_manage_model)
+    @ns.marshal_with(default_reason_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    def post(self):
+        url_logging(logger, g.url)
+        w = DefaultReasons(g.connection, payload=ns.payload)
+        return run_worker(
+            worker=w,
+            run_method=w.post,
+            check_method=w.check_payload_post,
+            ok_code=200,
         )
-        @ns.expect(default_reasons_manage_model)
-        @ns.marshal_with(default_reason_response_model)
-        @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
-        def post(self):
-            url_logging(logger, g.url)
-            w = DefaultReasons(g.connection, payload=ns.payload)
-            return run_worker(
-                worker=w,
-                run_method=w.post,
-                check_method=w.check_payload_post,
-                ok_code=200,
-            )
 
-        @ns.doc(
-            description="Enable disabled default reason.",
-            responses=GET_RESPONSES_400_404,
-            security="Bearer",
+    @ns.doc(
+        description="Enable disabled default reason.",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(default_reasons_manage_model)
+    @ns.marshal_with(default_reason_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    def put(self):
+        url_logging(logger, g.url)
+        w = DefaultReasons(g.connection, payload=ns.payload)
+        return run_worker(
+            worker=w,
+            run_method=w.put,
+            check_method=w.check_payload_put,
+            ok_code=200,
         )
-        @ns.expect(default_reasons_manage_model)
-        @ns.marshal_with(default_reason_response_model)
-        @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
-        def put(self):
-            url_logging(logger, g.url)
-            w = DefaultReasons(g.connection, payload=ns.payload)
-            return run_worker(
-                worker=w,
-                run_method=w.put,
-                check_method=w.check_payload_put,
-                ok_code=200,
-            )
 
-        @ns.doc(
-            description="Disable enabled default reason.",
-            responses=GET_RESPONSES_400_404,
-            security="Bearer",
+    @ns.doc(
+        description="Disable enabled default reason.",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(default_reasons_manage_model)
+    @ns.marshal_with(default_reason_response_model)
+    @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
+    def delete(self):
+        url_logging(logger, g.url)
+        w = DefaultReasons(g.connection, payload=ns.payload)
+        return run_worker(
+            worker=w,
+            run_method=w.delete,
+            check_method=w.check_payload_delete,
+            ok_code=200,
         )
-        @ns.expect(default_reasons_manage_model)
-        @ns.marshal_with(default_reason_response_model)
-        @token_required(ldap_groups=[settings.AG.CVE_ADMIN])
-        def delete(self):
-            url_logging(logger, g.url)
-            w = DefaultReasons(g.connection, payload=ns.payload)
-            return run_worker(
-                worker=w,
-                run_method=w.delete,
-                check_method=w.check_payload_delete,
-                ok_code=200,
-            )
