@@ -16,9 +16,9 @@
 
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
-from altrepo_api.api.base import APIWorker
+from typing import Any, Optional
 
+from altrepo_api.api.base import APIWorker
 from altrepo_api.utils import get_logger
 
 from .tools.constants import (
@@ -26,12 +26,10 @@ from .tools.constants import (
     CHANGE_ACTION_DISCARD,
     CHANGE_ACTION_UPDATE,
 )
-
 from .tools.utils import (
     validate_action,
     validate_default_reason_source,
 )
-
 from ..sql import sql
 
 logger = get_logger(__name__)
@@ -44,7 +42,7 @@ class DefaultReasonReasonPayload:
     is_active: bool
     updated: datetime = datetime.now()
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         validation_errors = []
         if not self.text:
             validation_errors.append("'text' field should be specified")
@@ -70,7 +68,7 @@ class DefaultReasonPayload:
     default_reason: DefaultReasonReasonPayload
     action: str
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         validation_errors = []
 
         if not validate_action(self.action):
@@ -84,7 +82,7 @@ class DefaultReasonPayload:
 
     def validate_with_match(
         self, match: Optional[DefaultReasonReasonPayload]
-    ) -> List[str]:
+    ) -> list[str]:
         validations = []
 
         if self.action == CHANGE_ACTION_CREATE and match is not None:
@@ -106,7 +104,7 @@ class DefaultReasons(APIWorker):
     Post, disable or enable a default reason.
     """
 
-    def __init__(self, connection, payload: Dict[str, Any], **kwargs):
+    def __init__(self, connection, payload: dict[str, Any], **kwargs):
         self.conn = connection
         self.args = kwargs
         self.sql = sql
