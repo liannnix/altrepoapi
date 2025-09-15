@@ -60,7 +60,7 @@ from .tools.helpers.branch import (
     find_closest_branch_state,
 )
 from .tools.helpers.vuln import collect_errata_vulnerabilities_info
-from .tools.utils import validate_action, validate_branch, validate_branch_with_tatsks
+from .tools.utils import validate_action, validate_branch, validate_branch_with_tasks
 from .tools.errata_transaction import Transaction, parse_uuid
 from ..sql import sql
 
@@ -299,7 +299,7 @@ class ManageErrata(APIWorker):
             return self.error
 
         if bulletin is None:
-            if not validate_branch_with_tatsks(self.errata.pkgset_name):
+            if not validate_branch_with_tasks(self.errata.pkgset_name):
                 # XXX: shouldn't ever happen
                 return self.store_error(
                     {
@@ -391,7 +391,7 @@ class ManageErrata(APIWorker):
                 },
                 http_code=400,
             )
-        if not validate_branch_with_tatsks(self.errata.pkgset_name):
+        if not validate_branch_with_tasks(self.errata.pkgset_name):
             return self.store_error(
                 {
                     "message": f"Errata branch '{self.errata.pkgset_name}' not supported",
@@ -582,7 +582,7 @@ class ManageErrata(APIWorker):
             return self.error
 
         if bulletin is None:
-            if not validate_branch_with_tatsks(self.errata.pkgset_name):
+            if not validate_branch_with_tasks(self.errata.pkgset_name):
                 # XXX: shouldn't ever happen
                 return self.store_error(
                     {

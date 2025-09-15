@@ -78,7 +78,7 @@ def validate_branch(branch: str) -> bool:
     return branch in SUPPORTED_BRANCHES
 
 
-def validate_branch_with_tatsks(branch: str) -> bool:
+def validate_branch_with_tasks(branch: str) -> bool:
     return branch in SUPPORTED_BRANCHES_WITH_TASKS
 
 

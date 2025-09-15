@@ -64,7 +64,7 @@ from .tools.helpers.package import (
     store_pnc_records,
     store_pnc_change_records,
 )
-from .tools.utils import validate_action, validate_branch_with_tatsks
+from .tools.utils import validate_action, validate_branch_with_tasks
 from ..sql import sql
 
 MATCHER_LOG_LEVEL = convert_log_level(settings.LOG_LEVEL)
@@ -393,7 +393,7 @@ class ManageCpe(APIWorker):
         self.logger.debug(f"args : {self.args}")
         # parse package name and branch form request args if exists
         branch = self.args.get("branch", None)
-        if branch is not None and not validate_branch_with_tatsks(branch):
+        if branch is not None and not validate_branch_with_tasks(branch):
             self.validation_results.append(f"Invalid branch: {self.args['branch']}")
             return False
 
