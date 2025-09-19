@@ -1366,12 +1366,13 @@ INSERT INTO CommentsChangeHistory (* EXCEPT(ts)) VALUES
 SELECT
     dr_text,
     dr_source,
+    dr_action,
     argMax(dr_is_active, ts) as dr_is_active,
     max(ts) as updated,
-    (SELECT countDistinct((dr_text, dr_source)) FROM DefaultReasons) as total_count
+    count(*) OVER() as total_count
 FROM DefaultReasons
 {where_clause}
-GROUP BY dr_text, dr_source
+GROUP BY dr_text, dr_source, dr_action
 {having_clause}
 {order_by}
 {limit} {offset}

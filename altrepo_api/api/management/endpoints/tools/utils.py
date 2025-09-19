@@ -37,6 +37,7 @@ from .constants import (
     OVE_ID_TYPE,
     BUG_ID_TYPE,
     DEFAULT_REASON_SOURCE_TYPES,
+    DEFAULT_REASON_ACTION_TYPES,
 )
 
 logger = get_logger(__name__)
@@ -92,6 +93,10 @@ def validate_comment_entity_type(type: str) -> bool:
 
 def validate_default_reason_source(source: str) -> bool:
     return source in DEFAULT_REASON_SOURCE_TYPES
+
+
+def validate_default_reason_action(action: str) -> bool:
+    return action in DEFAULT_REASON_ACTION_TYPES
 
 
 def convert_dt_to_timezone_aware(dt: datetime) -> datetime:
