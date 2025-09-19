@@ -53,25 +53,24 @@ def _is_enum_type(obj: Type) -> bool:
 
 
 def _is_namedtuple_type(obj_type: Type) -> bool:
-    """Check if a class is a NamedTuple"""
+    """Check if a class is a NamedTuple with type annotations"""
     return (
         inspect.isclass(obj_type)
         and issubclass(obj_type, tuple)
         and hasattr(obj_type, "_fields")
-        and (
-            hasattr(obj_type, "_field_types")  # Python 3.5-3.6
-            or hasattr(obj_type, "__annotations__")  # Python 3.7+
-        )
+        and hasattr(obj_type, "_asdict")
+        and hasattr(obj_type, "__annotations__")
     )
 
 
 def _is_namedtuple_instance(obj) -> bool:
-    """Check if an object is a NamedTuple instance"""
+    """Check if an object is a NamedTuple instance  with type annotations"""
     if not isinstance(obj, tuple):
         return False
     return (
         hasattr(obj.__class__, "_fields")
         and hasattr(obj.__class__, "_asdict")
+        and hasattr(obj.__class__, "__annotations__")
         and isinstance(obj.__class__.__annotations__, dict)
     )
 
@@ -195,13 +194,13 @@ def serialize(cls: NamedTuple, skip_nones: bool = False) -> JSONObject:
 
     for key, value in cls._asdict().items():  # type: ignore
         if isinstance(value, list):
-            # handle list ov serializable values
+            # handle list of serializable values
             serialized_list = []
             for item in value:
                 serialized_list.append(serialize(item))
             v = serialized_list
         elif _is_namedtuple_instance(value):
-            # handle handle nested objects recursively
+            # handle nested objects serialization recursively
             v = serialize(value, skip_nones)
         elif hasattr(value, "serialize"):
             # handle objects that has specific serialization method
