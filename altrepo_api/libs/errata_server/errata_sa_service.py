@@ -235,6 +235,10 @@ class ErrataSAService:
         self.dry_run = dry_run
         self.access_token = access_token
 
+    @property
+    def dry_run_str(self) -> str:
+        return "true" if self.dry_run else "false"
+
     def list(self) -> list[Errata]:
         return (
             into_iter(self.server.get(SA_LIST_ROUTE).unwrap())
@@ -243,14 +247,13 @@ class ErrataSAService:
         )
 
     def create(self, errata_json: ErrataJson) -> SaManageResponse:
-        dry_run_str = "true" if self.dry_run else "false"
         return (
             self.server.post(
                 SA_CREATE_ROUTE,
                 params={
                     "user": self.user,
                     "user_ip": self.user_ip,
-                    "dry_run": dry_run_str,
+                    "dry_run": self.dry_run_str,
                     "access_token": self.access_token,
                 },
                 json={"errata_json": serialize(sanitize_ej(errata_json))},
@@ -260,14 +263,13 @@ class ErrataSAService:
         )
 
     def discard(self, reason: str, errata_json: ErrataJson) -> SaManageResponse:
-        dry_run_str = "true" if self.dry_run else "false"
         return (
             self.server.post(
                 SA_DISCARD_ROUTE,
                 params={
                     "user": self.user,
                     "user_ip": self.user_ip,
-                    "dry_run": dry_run_str,
+                    "dry_run": self.dry_run_str,
                     "access_token": self.access_token,
                 },
                 json={
@@ -282,14 +284,13 @@ class ErrataSAService:
     def update(
         self, reason: str, prev_errata_json: ErrataJson, errata_json: ErrataJson
     ) -> SaManageResponse:
-        dry_run_str = "true" if self.dry_run else "false"
         return (
             self.server.post(
                 SA_UPDATE_ROUTE,
                 params={
                     "user": self.user,
                     "user_ip": self.user_ip,
-                    "dry_run": dry_run_str,
+                    "dry_run": self.dry_run_str,
                     "access_token": self.access_token,
                 },
                 json={
