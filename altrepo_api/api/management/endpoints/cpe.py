@@ -14,8 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from dataclasses import asdict, dataclass
-from typing import Any, Optional
+from typing import Any, NamedTuple, Optional
 
 from altrepodb_libs import (
     PackageCVEMatcher,
@@ -25,13 +24,12 @@ from altrepodb_libs import (
     convert_log_level,
 )
 
+from altrepo_api.api.base import APIWorker, WorkerResult
 from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
+from altrepo_api.api.misc import lut
 from altrepo_api.libs.pagination import Paginator
 from altrepo_api.libs.sorting import rich_sort
 from altrepo_api.settings import namespace as settings
-
-from altrepo_api.api.base import APIWorker, WorkerResult
-from altrepo_api.api.misc import lut
 from altrepo_api.utils import make_tmp_table_name, get_real_ip
 
 from .processing import ErrataBuilder, ErrataBuilderError
@@ -821,7 +819,7 @@ class ManageCpe(APIWorker):
                 db_cpes.setdefault(p.pkg_name, []).append(p)
 
         pncr = cpe_record2pnc_record(self.cpe)
-        db_cpe: Optional[CpeRecord] = None
+        db_cpe = None
 
         # check if any records are doesn't exists in DB
         if not db_cpes:
@@ -941,8 +939,7 @@ class ManageCpe(APIWorker):
         return self._commit_or_rollback()
 
 
-@dataclass
-class CPEListArgs:
+class CPEListArgs(NamedTuple):
     is_discarded: Optional[bool] = None
     input: Optional[str] = None
     limit: Optional[int] = None
@@ -1055,7 +1052,7 @@ class CPEList(APIWorker):
         page_obj = paginator.get_page(self.args.page)
 
         res: dict[str, Any] = {
-            "request_args": asdict(self.args),
+            "request_args": self.args._asdict(),
             "length": len(page_obj),
             "cpes": page_obj,
         }
