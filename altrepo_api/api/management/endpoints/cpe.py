@@ -985,12 +985,12 @@ class CPEList(APIWorker):
             )
         )
         if not self.sql_status:
-            return None
+            return self.error
         if not response:
             return self.store_error(
                 {
                     "message": "No data found in database for given parameters",
-                    "args": self.args,
+                    "args": self.args._asdict(),
                 }
             )
 
