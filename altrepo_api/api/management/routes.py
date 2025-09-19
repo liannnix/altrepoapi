@@ -650,6 +650,7 @@ class routeCpeCandidates(Resource):
         return run_worker(worker=w, args=args)
 
 
+@with_metadata(CPEList, ns, logger, require_auth=True)
 @ns.route(
     "/cpe/list",
     doc={
