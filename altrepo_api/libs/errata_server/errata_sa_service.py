@@ -18,9 +18,9 @@
 from enum import Enum
 from typing import Any, NamedTuple, Optional
 
-from .base import JSONValue, ErrataServer
+from .base import JSONObject, JSONValue, ErrataServer
 from .base import ErrataServerError  # noqa: F401
-from .rusty import into_iter
+from .rusty import Result, into_iter
 from .serde import serialize_enum, deserialize_enum, serialize, deserialize
 
 
@@ -240,65 +240,63 @@ class ErrataSAService:
         return "true" if self.dry_run else "false"
 
     def list(self) -> list[Errata]:
+        response: list[JSONObject] = self.server.get(SA_LIST_ROUTE).unwrap()  # type: ignore
+
         return (
-            into_iter(self.server.get(SA_LIST_ROUTE).unwrap())
-            .map(lambda el: deserialize(Errata, el).unwrap())  # type: ignore
+            into_iter(response)
+            .map(lambda el: deserialize(Errata, el).unwrap())
             .collect()
         )
 
     def create(self, errata_json: ErrataJson) -> SaManageResponse:
-        return (
-            self.server.post(
-                SA_CREATE_ROUTE,
-                params={
-                    "user": self.user,
-                    "user_ip": self.user_ip,
-                    "dry_run": self.dry_run_str,
-                    "access_token": self.access_token,
-                },
-                json={"errata_json": serialize(sanitize_ej(errata_json))},
-            )
-            .and_then(lambda r: deserialize(SaManageResponse, r))  # type: ignore
-            .unwrap()
-        )
+        response: Result[JSONObject, Exception] = self.server.post(
+            SA_CREATE_ROUTE,
+            params={
+                "user": self.user,
+                "user_ip": self.user_ip,
+                "dry_run": self.dry_run_str,
+                "access_token": self.access_token,
+            },
+            json={"errata_json": serialize(sanitize_ej(errata_json))},
+        )  # type: ignore
+
+        return response.and_then(lambda r: deserialize(SaManageResponse, r)).unwrap()
 
     def discard(self, reason: str, errata_json: ErrataJson) -> SaManageResponse:
-        return (
-            self.server.post(
-                SA_DISCARD_ROUTE,
-                params={
-                    "user": self.user,
-                    "user_ip": self.user_ip,
-                    "dry_run": self.dry_run_str,
-                    "access_token": self.access_token,
-                },
-                json={
-                    "reason": reason,
-                    "errata_json": serialize(sanitize_ej(errata_json)),
-                },
-            )
-            .and_then(lambda r: deserialize(SaManageResponse, r))  # type: ignore
-            .unwrap()
-        )
+        ej = serialize(sanitize_ej(errata_json))
+        print("DBG:", ej)
+        response: Result[JSONObject, Exception] = self.server.post(
+            SA_DISCARD_ROUTE,
+            params={
+                "user": self.user,
+                "user_ip": self.user_ip,
+                "dry_run": self.dry_run_str,
+                "access_token": self.access_token,
+            },
+            json={
+                "reason": reason,
+                "errata_json": serialize(sanitize_ej(errata_json)),
+            },
+        )  # type: ignore
+
+        return response.and_then(lambda r: deserialize(SaManageResponse, r)).unwrap()
 
     def update(
         self, reason: str, prev_errata_json: ErrataJson, errata_json: ErrataJson
     ) -> SaManageResponse:
-        return (
-            self.server.post(
-                SA_UPDATE_ROUTE,
-                params={
-                    "user": self.user,
-                    "user_ip": self.user_ip,
-                    "dry_run": self.dry_run_str,
-                    "access_token": self.access_token,
-                },
-                json={
-                    "reason": reason,
-                    "prev_errata_json": serialize(sanitize_ej(prev_errata_json)),
-                    "errata_json": serialize(sanitize_ej(errata_json)),
-                },
-            )
-            .and_then(lambda r: deserialize(SaManageResponse, r))  # type: ignore
-            .unwrap()
-        )
+        response: Result[JSONObject, Exception] = self.server.post(
+            SA_UPDATE_ROUTE,
+            params={
+                "user": self.user,
+                "user_ip": self.user_ip,
+                "dry_run": self.dry_run_str,
+                "access_token": self.access_token,
+            },
+            json={
+                "reason": reason,
+                "prev_errata_json": serialize(sanitize_ej(prev_errata_json)),
+                "errata_json": serialize(sanitize_ej(errata_json)),
+            },
+        )  # type: ignore
+
+        return response.and_then(lambda r: deserialize(SaManageResponse, r)).unwrap()

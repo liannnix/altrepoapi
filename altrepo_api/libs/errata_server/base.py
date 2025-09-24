@@ -94,7 +94,7 @@ class ErrataServer:
 
     def get(
         self, route: str, *, params: Optional[dict[str, Any]] = None
-    ) -> Result[JSONResponse, ErrataServerError]:
+    ) -> Result[JSONResponse, Exception]:
         url = self.url + route.removeprefix("/")
         status_code = 500
         try:
@@ -111,7 +111,7 @@ class ErrataServer:
         *,
         params: Optional[dict[str, Any]] = None,
         json: Optional[JSONObject] = None,
-    ) -> Result[JSONResponse, ErrataServerError]:
+    ) -> Result[JSONResponse, Exception]:
         url = self.url + route.removeprefix("/")
         status_code = 500
         try:
@@ -128,7 +128,7 @@ class ErrataServer:
         *,
         params: Optional[dict[str, Any]] = None,
         json: Optional[JSONObject] = None,
-    ) -> Result[JSONResponse, ErrataServerError]:
+    ) -> Result[JSONResponse, Exception]:
         url = self.url + route.removeprefix("/")
         status_code = 500
         try:

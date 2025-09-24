@@ -19,8 +19,9 @@ import re
 from datetime import datetime
 from typing import NamedTuple, Optional, Union
 
-from .base import ErrataServer, JSONObject
+from .base import ErrataServer, JSONObject, JSONResponse
 from .base import ErrataServerError  # noqa: F401
+from .rusty import Result
 
 
 CHECK_ROUTE = "check"
@@ -38,7 +39,7 @@ class ErrataIDServiceResult(NamedTuple):
     updated: datetime
 
 
-def _result(response: JSONObject) -> ErrataIDServiceResult:
+def _into_result(response: JSONResponse) -> ErrataIDServiceResult:
     data: JSONObject = response["errata"]  # type: ignore
     return ErrataIDServiceResult(
         id=data["id"],  # type: ignore
@@ -70,27 +71,23 @@ class ErrataIDService:
         self.server = ErrataServer(url)
 
     def check(self, id: str) -> ErrataIDServiceResult:
-        return _result(
-            self.server.get(CHECK_ROUTE, params={"name": id}).unwrap()  # type: ignore
-        )
+        return _into_result(self.server.get(CHECK_ROUTE, params={"name": id}).unwrap())
 
     def register(self, prefix: str, year: Optional[int]) -> ErrataIDServiceResult:
         prefix = _validate_prefix(prefix)
-        return _result(
+        return _into_result(
             self.server.get(
                 REGISTER_ROUTE,
                 params={"prefix": prefix, "year": _validate_year(year)},
-            ).unwrap()  # type: ignore
+            ).unwrap()
         )
 
     def update(self, id: str) -> ErrataIDServiceResult:
-        return _result(
-            self.server.post(UPDATE_ROUTE, params={"name": id}).unwrap()  # type: ignore
+        return _into_result(
+            self.server.post(UPDATE_ROUTE, params={"name": id}).unwrap()
         )
 
     def discard(self, id: str) -> ErrataIDServiceResult:
-        return _result(
-            self.server.post(
-                DISCARD_ROUTE, params={"name": id}
-            ).unwrap()  # type: ignore
+        return _into_result(
+            self.server.post(DISCARD_ROUTE, params={"name": id}).unwrap()
         )
