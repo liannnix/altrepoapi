@@ -33,6 +33,7 @@ logger = get_logger(__name__)
 class DefaultReasonResponse:
     text: str
     source: str
+    action: str
     is_active: bool
     updated: datetime
 
@@ -41,6 +42,7 @@ class DefaultReasonResponse:
 class DefaultReasonsArgs:
     text: Optional[str] = None
     source: Optional[str] = None
+    action: Optional[str] = None
     is_active: Optional[bool] = None
     limit: Optional[int] = None
     page: Optional[int] = None
@@ -122,6 +124,13 @@ class DefaultReasonsList(APIWorker):
         return ""
 
     @property
+    def _create_action_condition(self) -> str:
+        """Creates search condition for the source filter"""
+        if self.args.action:
+            return f"dr_action = '{self.args.action}'"
+        return ""
+
+    @property
     def _having_clause(self) -> str:
         """Creates search condition for the is_active filter"""
         if self.args.is_active is not None:
@@ -137,6 +146,9 @@ class DefaultReasonsList(APIWorker):
 
         if self._create_text_condition:
             conditions.append(self._create_text_condition)
+
+        if self._create_action_condition:
+            conditions.append(self._create_action_condition)
 
         if conditions:
             return "WHERE " + " AND ".join(conditions)
@@ -170,7 +182,11 @@ class DefaultReasonsList(APIWorker):
 
         reasons = [
             DefaultReasonResponse(
-                text=el[0], source=el[1], is_active=bool(el[2]), updated=el[3]
+                text=el[0],
+                source=el[1],
+                action=el[2],
+                is_active=bool(el[3]),
+                updated=el[4],
             )
             for el in response
         ]
@@ -200,7 +216,7 @@ class DefaultReasonsList(APIWorker):
             )
             if el.name == "text":
                 is_append = True
-            if el.name == "source":
+            if el.name in ["source", "action"]:
                 meta.type = KnownFilterTypes.CHOICE
                 meta.choices = [
                     MetadataChoiceItem(value=choice, display_name=choice.capitalize())

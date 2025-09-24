@@ -28,6 +28,7 @@ from .tools.constants import (
 )
 from .tools.utils import (
     validate_action,
+    validate_default_reason_action,
     validate_default_reason_source,
 )
 from ..sql import sql
@@ -39,6 +40,7 @@ logger = get_logger(__name__)
 class DefaultReasonReasonPayload:
     text: str
     source: str
+    action: str
     is_active: bool
     updated: datetime = datetime.now()
 
@@ -50,6 +52,9 @@ class DefaultReasonReasonPayload:
         if not validate_default_reason_source(self.source):
             validation_errors.append("Invalid 'source' field value")
 
+        if not validate_default_reason_action(self.action):
+            validation_errors.append("Invalid 'action' field value")
+
         if not isinstance(self.is_active, bool):
             validation_errors.append("'is_active' field should be boolean")
 
@@ -59,6 +64,7 @@ class DefaultReasonReasonPayload:
         return {
             "dr_text": self.text,
             "dr_source": self.source,
+            "dr_action": self.action,
             "dr_is_active": int(self.is_active),
         }
 
@@ -154,6 +160,7 @@ class DefaultReasons(APIWorker):
         where_clause = (
             f"WHERE dr_text = '{self.payload.default_reason.text}' "
             f"AND dr_source = '{self.payload.default_reason.source}'"
+            f"AND dr_action = '{self.payload.default_reason.action}'"
         )
 
         response = self.send_sql_request(
@@ -170,7 +177,7 @@ class DefaultReasons(APIWorker):
             return self.error
 
         existing_reason = (
-            None if len(response) != 1 else DefaultReasonReasonPayload(*response[0][:3])
+            None if len(response) != 1 else DefaultReasonReasonPayload(*response[0][:4])
         )
 
         if validation_errors := self.payload.validate_with_match(existing_reason):

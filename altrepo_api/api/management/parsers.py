@@ -34,7 +34,7 @@ from altrepo_api.api.parser import (
     date_string_type,
 )
 
-from .endpoints.tools.constants import DRY_RUN_KEY
+from .endpoints.tools.constants import DEFAULT_REASON_ACTION_TYPES, DRY_RUN_KEY
 
 from ..misc import lut
 
@@ -403,6 +403,13 @@ default_reason_source_opt = parser.register_item(
 default_reason_is_active_opt = parser.register_item(
     "is_active", type=inputs.boolean, help="Is default reason active", location="args"
 )
+default_reason_action_opt = parser.register_item(
+    "action",
+    type=str,
+    choices=DEFAULT_REASON_ACTION_TYPES,
+    help="Default reason`s action",
+    location="args",
+)
 
 task_list_args = parser.build_parser(
     task_input_val_opt,
@@ -473,6 +480,7 @@ comments_list_args = parser.build_parser(entity_type, entity_link)
 default_reasons_list_args = parser.build_parser(
     default_reason_text_opt,
     default_reason_source_opt,
+    default_reason_action_opt,
     default_reason_is_active_opt,
     page_opt,
     limit_opt,

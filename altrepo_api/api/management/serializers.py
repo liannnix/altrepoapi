@@ -16,6 +16,8 @@
 
 from flask_restx import fields
 
+from .endpoints.tools.constants import DEFAULT_REASON_ACTION_TYPES
+
 from .namespace import get_namespace
 
 from altrepo_api.api.misc import lut
@@ -1064,6 +1066,11 @@ default_reasons_payload_model = ns.model(
         "source": fields.String(
             description="Default reason`s source",
             enum=lut.default_reason_source_types,
+            required=True,
+        ),
+        "action": fields.String(
+            description="Default reason`s action",
+            enum=DEFAULT_REASON_ACTION_TYPES,
             required=True,
         ),
         "is_active": fields.Boolean(
