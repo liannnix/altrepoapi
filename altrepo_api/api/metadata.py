@@ -153,11 +153,6 @@ def with_metadata(
         Resource for serving metadata with authentication requirement.
         """
 
-        @ns.doc(
-            description="Retrieve metadata describing all available filters",
-            responses=GET_RESPONSES_404,
-            security="Bearer",
-        )
         @ns.marshal_with(metadata_model)
         @token_required(ldap_groups=METADATA_AUTH_LDAP_GROUPS)
         def get(self):
@@ -170,10 +165,6 @@ def with_metadata(
         Resource for serving metadata without authentication.
         """
 
-        @ns.doc(
-            description="Retrieve metadata describing all available filters",
-            responses=GET_RESPONSES_404,
-        )
         @ns.marshal_with(metadata_model)
         def get(self):
             url_logging(logger, f"{g.url}/metadata")
@@ -194,7 +185,21 @@ def with_metadata(
             if resource.resource == cls:
                 original_route = resource.urls[0]
                 meta_cls = MetadataResource if require_auth else MetadataResourceNoAuth
-                ns.route(f"{original_route}/metadata")(meta_cls)
+
+                operation_id = (
+                    f"get_{original_route.lstrip('/').replace('/', '_')}_metadata"
+                )
+
+                ns.doc(
+                    id=operation_id,
+                    description="Retrieve metadata describing all available filters",
+                    responses=GET_RESPONSES_404,
+                    security="Bearer" if require_auth else None,
+                )(meta_cls.get)
+
+                ns.route(
+                    f"{original_route}/metadata",
+                )(meta_cls)
                 break
 
         return cls
