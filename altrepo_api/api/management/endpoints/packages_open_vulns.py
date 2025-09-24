@@ -398,7 +398,7 @@ class PackagesSupportedBranches(APIWorker):
     def get(self):
         response = self.send_sql_request(self.sql.supported_branches.format(branch=""))
         if not self.sql_status:
-            return None
+            return self.error
         if not response:
             return self.store_error({"message": "No supported branches found"})
         res = {"branches": sort_branches([el[0] for el in response])}
