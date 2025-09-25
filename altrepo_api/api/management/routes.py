@@ -79,7 +79,7 @@ from .endpoints.packages_open_vulns import (
 )
 from .endpoints.packages_unmapped import PackagesUnmapped
 from .endpoints.pnc import ManagePnc, PncList
-from .endpoints.sa import ManageSa
+from .endpoints.sa import ListSa, ManageSa
 from .endpoints.task_info import TaskInfo
 from .endpoints.task_list import TaskList
 from .endpoints.vuln_list import VulnList
@@ -928,6 +928,7 @@ class routeManagePnc(Resource):
         )
 
 
+@with_metadata(ListSa, ns, logger, require_auth=True)
 @ns.route("/sa/manage")
 class routeSaList(Resource):
     @ns.doc(
@@ -941,7 +942,7 @@ class routeSaList(Resource):
     def get(self):
         url_logging(logger, g.url)
         args = sa_list_args.parse_args(strict=True)
-        w = ManageSa(g.connection, payload={}, **args)
+        w = ListSa(g.connection, **args)
         return run_worker(worker=w, args=args)
 
     @ns.doc(
