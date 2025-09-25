@@ -17,7 +17,7 @@
 from requests import Session
 from requests.adapters import HTTPAdapter, Retry
 from typing import Any, Optional, Union
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse, urlunparse
 
 from .rusty import Ok, Err, Result
 
@@ -48,23 +48,25 @@ class ErrataServerError(Exception):
 
 # helpers
 def _parse_url(url: str) -> Result[tuple[str, str, str], Exception]:
-    """Parse URL and return tuple of schema, base URL and path."""
+    """Parses URL string and returns tuple of schema, base URL and normalized URL."""
 
     try:
         parsed = urlparse(url)
-        schema = parsed.scheme
-        base_url = f"{schema}://{parsed.netloc}"
-        path = parsed.path.removeprefix("/")
+        return Ok(
+            (
+                parsed.scheme,
+                urlunparse((parsed.scheme, parsed.netloc, "", "", "", "")),
+                urlunparse(parsed),
+            )
+        )
     except (ValueError, TypeError):
         return Err(ErrataServerError("Failed to parse service URL: %s" % url))
-
-    return Ok((schema, base_url, path))
 
 
 # base service connection class
 class ErrataServer:
     def __init__(self, url: str) -> None:
-        schema, self._base_url, self._path = _parse_url(url).unwrap()
+        schema, base_url, self.url = _parse_url(url).unwrap()
         self.session = Session()
         # config session retries
         self.session.mount(
@@ -78,15 +80,10 @@ class ErrataServer:
                 )
             ),
         )
-        self.url = f"{self._base_url}/{self._path}/"
-        self._check_service_connection()
-
-    def _check_service_connection(self):
-        url = self._base_url + "/" + VERSION_ROUTE
+        # check service connection
         try:
-            response = self.session.get(url)
+            response = self.session.get(urljoin(base_url, VERSION_ROUTE))
             response.raise_for_status()
-            return None
         except Exception as e:
             raise ErrataServerError(
                 "Failed to connect to Errata Server service at %s" % url
@@ -95,7 +92,7 @@ class ErrataServer:
     def get(
         self, route: str, *, params: Optional[dict[str, Any]] = None
     ) -> Result[JSONResponse, Exception]:
-        url = self.url + route.removeprefix("/")
+        url = urljoin(self.url, route)
         status_code = 500
         try:
             response = self.session.get(url, params=params)
@@ -112,7 +109,7 @@ class ErrataServer:
         params: Optional[dict[str, Any]] = None,
         json: Optional[JSONObject] = None,
     ) -> Result[JSONResponse, Exception]:
-        url = self.url + route.removeprefix("/")
+        url = urljoin(self.url, route)
         status_code = 500
         try:
             response = self.session.post(url, params=params, json=json)
@@ -129,7 +126,7 @@ class ErrataServer:
         params: Optional[dict[str, Any]] = None,
         json: Optional[JSONObject] = None,
     ) -> Result[JSONResponse, Exception]:
-        url = self.url + route.removeprefix("/")
+        url = urljoin(self.url, route)
         status_code = 500
         try:
             response = self.session.put(url, params=params, json=json)

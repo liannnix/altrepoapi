@@ -260,7 +260,7 @@ def serialize(cls: NamedTuple, skip_nones: bool = False) -> JSONObject:
             # handle list of serializable values
             serialized_list = []
             for item in value:
-                serialized_list.append(serialize(item))
+                serialized_list.append(serialize(item, skip_nones))
             v = serialized_list
         elif _is_namedtuple_instance(value):
             # handle nested objects serialization recursively
