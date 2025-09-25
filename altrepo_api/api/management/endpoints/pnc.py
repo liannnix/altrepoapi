@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Any
+from typing import Any, NamedTuple, Optional
 
 from altrepodb_libs import (
     PackageCVEMatcher,
@@ -24,10 +24,9 @@ from altrepodb_libs import (
     convert_log_level,
 )
 
-from altrepo_api.api.base import APIWorker
+from altrepo_api.api.base import APIWorker, WorkerResult
+from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
 from altrepo_api.api.misc import lut
-from altrepo_api.libs.pagination import Paginator
-from altrepo_api.libs.sorting import rich_sort
 from altrepo_api.settings import namespace as settings
 from altrepo_api.utils import make_tmp_table_name, get_real_ip
 
@@ -71,6 +70,7 @@ from .tools.helpers.pnc import (
     get_pkgs_cve_matches_by_hashes,
 )
 from .tools.utils import validate_action
+from ..parsers import pnc_list_args
 from ..sql import sql
 
 MATCHER_LOG_LEVEL = convert_log_level(settings.LOG_LEVEL)
@@ -575,22 +575,76 @@ class ManagePnc(APIWorker):
         return self._commit_or_rollback()
 
 
+class PncListArgs(NamedTuple):
+    state: str
+    input: Optional[str] = None
+    branch: Optional[str] = None
+    page: Optional[int] = None
+    limit: Optional[int] = None
+
+
 class PncList(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
-        self.args = kwargs
+        self.kwargs = kwargs
+        self.args: PncListArgs
         self.sql = sql
         super().__init__()
 
     def check_params(self):
-        self.logger.debug(f"args : {self.args}")
-        branch = self.args.get("branch", None)
+        self.args = PncListArgs(**self.kwargs)
+        self.logger.debug(f"args : {self.kwargs}")
 
-        if branch is not None and branch not in lut.repology_branch_map:
-            self.validation_results.append(f"Invalid branch: {branch}")
+        if self.args.branch not in lut.repology_branch_map:
+            self.validation_results.append(f"Invalid branch: {self.args.branch}")
             return False
 
         return True
+
+    @property
+    def _input(self) -> str:
+        if self.args.input:
+            return f"arrayExists(x -> (x.1 ILIKE '%{self.args.input}%'), pkgs) OR result ILIKE '%{self.args.input}%')"
+        return ""
+
+    @property
+    def _state(self) -> str:
+        if self.args.state != "all":
+            return f"state = '{self.args.state}'"
+        return ""
+
+    @property
+    def _branches(self) -> tuple[str, ...]:
+        if self.args.branch:
+            return (lut.repology_branch_map[self.args.branch],)
+        return lut.repology_branches
+
+    @property
+    def _limit(self) -> str:
+        return f"LIMIT {self.args.limit}" if self.args.limit else ""
+
+    @property
+    def _page(self) -> str:
+        if self.args.limit and self.args.page:
+            page = self.args.page
+            per_page = self.args.limit
+            offset = (page - 1) * per_page
+            return f"OFFSET {offset}"
+        return ""
+
+    @property
+    def _where_clause(self) -> str:
+        conditions = []
+
+        if self._input:
+            conditions.append(self._input)
+
+        if self._state:
+            conditions.append(self._state)
+
+        if conditions:
+            return "WHERE " + " AND ".join(conditions)
+        return ""
 
     def _get_cpes(self, pncs: list[dict[str, Any]]):
         self.status = False
@@ -628,47 +682,22 @@ class PncList(APIWorker):
         return list(projects.values())
 
     def get(self):
-        input_val = self.args.get("input")
-        limit = self.args.get("limit")
-        page = self.args.get("page")
-        sort = self.args.get("sort")
-
-        branch = self.args.get("branch")
-        if branch:
-            branch = (lut.repology_branch_map[branch],)
-        else:
-            branch = lut.repology_branches
-
-        state = self.args.get("state")
-        if state == "all":
-            state = None
-
-        # build where clause for PNC records gathering request
-        where_conditions = ["WHERE 1"]
-
-        if input_val:
-            where_conditions.append(
-                f"(arrayExists(x -> (x.1 ILIKE '%{input_val}%'), pkgs) OR result ILIKE '%{input_val}%')"
-            )
-        if state:
-            where_conditions.append(f"state = '{state}'")
-
-        where_clause = " AND ".join(where_conditions)
-
         # get PNC records from DB
         response = self.send_sql_request(
             self.sql.get_pnc_list.format(
-                where_clause=where_clause,
-                branch=branch,
+                where_clause=self._where_clause,
+                branch=self._branches,
                 pnc_branches=tuple(lut.repology_branches),
+                limit=self._limit,
+                page=self._page,
             )
         )
         if not self.sql_status:
             return self.error
 
         pnc_records = [
-            PncListElement(el[0], el[1], [PncPackage(*pkg) for pkg in el[-1]]).asdict()
-            for el in response
+            PncListElement(state, result, [PncPackage(*pkg) for pkg in pkgs]).asdict()
+            for state, result, pkgs, _ in response
         ]
 
         if not pnc_records:
@@ -676,23 +705,57 @@ class PncList(APIWorker):
                 {"message": f"No data found in DB for {self.args}"}, http_code=404
             )
 
-        if sort:
-            pnc_records = rich_sort(pnc_records, sort)
-
-        paginator = Paginator(pnc_records, limit)
-        page_obj = paginator.get_page(page)
-
-        page_obj = self._get_cpes(page_obj)
+        pnc_records = self._get_cpes(pnc_records)
         if not self.status:
             return self.error
 
-        res = {"request_args": self.args, "pncs": page_obj}
-
         return (
-            res,
+            {"request_args": self.args._asdict(), "pncs": pnc_records},
             200,
             {
                 "Access-Control-Expose-Headers": "X-Total-Count",
-                "X-Total-Count": int(paginator.count),
+                "X-Total-Count": int(response[0][-1]),
             },
         )
+
+    def metadata(self) -> WorkerResult:
+        metadata = []
+        for args in pnc_list_args.args:
+            item_info = {
+                "name": args.name,
+                "label": args.name.replace("_", " ").capitalize(),
+                "help_text": args.help,
+            }
+            if args.name == "state":
+                metadata.append(
+                    MetadataItem(
+                        **item_info,
+                        type=KnownFilterTypes.CHOICE,
+                        choices=[
+                            MetadataChoiceItem(
+                                value=choice, display_name=choice.capitalize()
+                            )
+                            for choice in args.choices
+                            if choice != "all"
+                        ],
+                    )
+                )
+
+            if args.name == "branch":
+                metadata.append(
+                    MetadataItem(
+                        **item_info,
+                        type=KnownFilterTypes.CHOICE,
+                        choices=[
+                            MetadataChoiceItem(
+                                value=choice, display_name=choice.capitalize()
+                            )
+                            for choice in lut.repology_branch_map
+                        ],
+                    )
+                )
+
+        return {
+            "length": len(metadata),
+            "metadata": [el.asdict() for el in metadata],
+        }, 200

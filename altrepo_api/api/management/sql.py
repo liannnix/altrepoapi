@@ -1127,7 +1127,8 @@ ORDER BY name, type, result
 """
 
     get_pnc_list = """
-SELECT * FROM (
+SELECT *, count() OVER() as total_count
+FROM (
     SELECT
         state,
         result,
@@ -1151,6 +1152,7 @@ SELECT * FROM (
 GROUP BY result, state
 ) {where_clause}
 ORDER BY result, state
+{limit} {page}
 """
 
     get_unmapped_packages = """

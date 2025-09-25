@@ -817,6 +817,7 @@ class routePackagesUnmapped(Resource):
         return run_worker(worker=w, args=args)
 
 
+@with_metadata(PncList, ns, logger, require_auth=True)
 @ns.route("/pnc/list")
 class routePncList(Resource):
     @ns.doc(

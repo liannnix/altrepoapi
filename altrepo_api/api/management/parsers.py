@@ -447,7 +447,7 @@ pnc_manage_get_args = parser.build_parser(
     package_name_opt, project_name_opt, pnc_state_opt
 )
 pnc_list_args = parser.build_parser(
-    pnc_input_opt, pnc_state_opt, branch_name_opt, page_opt, limit_opt, sort_opt
+    pnc_input_opt, pnc_state_opt, branch_name_opt, page_opt, limit_opt
 )
 vuln_list_args = parser.build_parser(
     vuln_input_val,
