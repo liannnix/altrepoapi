@@ -17,27 +17,27 @@
 from datetime import datetime
 from typing import Any, NamedTuple, Optional
 
-from altrepo_api.api.base import APIWorker
-from altrepo_api.libs.pagination import Paginator
-from altrepo_api.libs.sorting import rich_sort
+from altrepo_api.api.base import APIWorker, WorkerResult
+from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
 from altrepo_api.utils import make_tmp_table_name
 
 from .tools.constants import BDU_ID_PREFIX, CVE_ID_PREFIX, DT_NEVER, GHSA_ID_PREFIX
+from ..parsers import vuln_list_args
 from ..sql import sql
 
 
 class VulnListArgs(NamedTuple):
-    input: Optional[str]
-    severity: Optional[str]
     is_errata: bool
-    our: Optional[bool]
-    limit: Optional[int]
-    page: Optional[int]
-    sort: Optional[list[str]]
-    modified_start_date: Optional[datetime]
-    modified_end_date: Optional[datetime]
-    published_start_date: Optional[datetime]
-    published_end_date: Optional[datetime]
+    input: Optional[str] = None
+    severity: Optional[str] = None
+    our: Optional[bool] = None
+    limit: Optional[int] = None
+    page: Optional[int] = None
+    sort: Optional[list[str]] = None
+    modified_start_date: Optional[datetime] = None
+    modified_end_date: Optional[datetime] = None
+    published_start_date: Optional[datetime] = None
+    published_end_date: Optional[datetime] = None
 
 
 class ErrataInfo(NamedTuple):
@@ -83,11 +83,48 @@ class VulnList(APIWorker):
 
     def __init__(self, connection, **kwargs):
         self.conn = connection
-        self.args: VulnListArgs = VulnListArgs(**kwargs)
+        self.kwargs = kwargs
+        self.args: VulnListArgs
         self.status: bool = False
         self.vulns: dict[str, VulnInfo] = {}
+        self.total_count: int
         self.sql = sql
         super().__init__()
+
+    def check_params(self) -> bool:
+        self.args = VulnListArgs(**self.kwargs)
+        self.logger.debug(f"args: {self.kwargs}")
+        return True
+
+    @property
+    def _limit(self) -> str:
+        return f"LIMIT {self.args.limit}" if self.args.limit else ""
+
+    @property
+    def _page(self) -> str:
+        if self.args.limit and self.args.page:
+            page = self.args.page
+            per_page = self.args.limit
+            offset = (page - 1) * per_page
+            return f"OFFSET {offset}"
+        return ""
+
+    @property
+    def _order_by(self) -> str:
+        order_fields = self.args.sort or ["modified"]
+        order_clauses = []
+
+        for sort_field in order_fields:
+            direction = "ASC"
+            field_name = sort_field
+
+            if sort_field.startswith("-"):
+                direction = "DESC"
+                field_name = sort_field.removeprefix("-")
+            if field_name in VulnInfo._fields:
+                order_clauses.append(f"{field_name} {direction}")
+
+        return "ORDER BY " + ", ".join(order_clauses)
 
     @property
     def _where_vuln(self) -> str:
@@ -194,7 +231,11 @@ class VulnList(APIWorker):
         )
         response = self.send_sql_request(
             self.sql.get_vuln_list.format(
-                where_clause=self._where_vuln, where_clause2=where_clause
+                where_clause=self._where_vuln,
+                where_clause2=where_clause,
+                order_by=self._order_by,
+                limit=self._limit,
+                page=self._page,
             ),
             external_tables=[
                 {
@@ -217,18 +258,22 @@ class VulnList(APIWorker):
         if not self.sql_status:
             return None
 
+        self.total_count = response[0][-1]
         if self.vulns:
             self.vulns = {
-                el[0]: VulnInfo(
-                    *el,
-                    erratas=self.vulns[el[0]].erratas,
-                    cpes=self.vulns[el[0]].cpes,
-                    our=self.vulns[el[0]].our,
+                vuln_id: VulnInfo(
+                    vuln_id,
+                    *body,
+                    erratas=self.vulns[vuln_id].erratas,
+                    cpes=self.vulns[vuln_id].cpes,
+                    our=self.vulns[vuln_id].our,
                 )
-                for el in response
+                for vuln_id, *body, _ in response
             }
         else:
-            self.vulns = {el[0]: VulnInfo(*el) for el in response}
+            self.vulns = {
+                vuln_id: VulnInfo(vuln_id, *body) for vuln_id, *body, _ in response
+            }
         self.status = True
 
     def _get_erratas_and_cpes(self, first: bool = False):
@@ -310,23 +355,57 @@ class VulnList(APIWorker):
 
         vulns = [el.asdict() for el in self.vulns.values()]
 
-        if self.args.sort:
-            vulns = rich_sort(vulns, self.args.sort)
-
-        paginator = Paginator(vulns, self.args.limit)
-        page_obj = paginator.get_page(self.args.page)
-
-        res: dict[str, Any] = {
-            "request_args": self.args._asdict(),
-            "length": len(page_obj),
-            "vulns": page_obj,
-        }
-
         return (
-            res,
+            {
+                "request_args": self.args._asdict(),
+                "length": self.args.limit,
+                "vulns": vulns,
+            },
             200,
             {
                 "Access-Control-Expose-Headers": "X-Total-Count",
-                "X-Total-Count": int(paginator.count),
+                "X-Total-Count": self.total_count,
             },
         )
+
+    def metadata(self) -> WorkerResult:
+        metadata = []
+        for arg in vuln_list_args.args:
+            item_info = {
+                "name": arg.name,
+                "label": arg.name.replace("_", " ").capitalize(),
+                "help_text": arg.help,
+            }
+            if arg.type.__name__ == "date_string_type":
+                metadata.append(MetadataItem(**item_info, type=KnownFilterTypes.DATE))
+
+            if arg.type.__name__ == "boolean":
+                metadata.append(
+                    MetadataItem(
+                        **item_info,
+                        type=KnownFilterTypes.CHOICE,
+                        choices=[
+                            MetadataChoiceItem(value="true", display_name="True"),
+                            MetadataChoiceItem(value="false", display_name="False"),
+                        ],
+                    )
+                )
+
+            if arg.name == "severity":
+                metadata.append(
+                    MetadataItem(
+                        **item_info,
+                        type=KnownFilterTypes.CHOICE,
+                        choices=[
+                            MetadataChoiceItem(
+                                value=choice, display_name=choice.capitalize()
+                            )
+                            for choice in arg.choices
+                        ],
+                    )
+                )
+
+        return {
+            "length": len(metadata),
+            "metadata": [el.asdict() for el in metadata],
+        }, 200

@@ -1177,7 +1177,7 @@ ORDER BY pkg_name
 """
 
     get_vuln_list = """
-SELECT VULNS.*
+SELECT VULNS.*, count() OVER() AS total_count
 FROM (
     SELECT vuln_id,
            argMax(vuln_severity, ts) AS severity,
@@ -1189,7 +1189,8 @@ FROM (
 ) AS VULNS
 {where_clause} {where_clause2}
 GROUP BY vuln_id, severity, summary, modified, published
-ORDER BY  modified DESC
+{order_by}
+{limit} {page}
 """
 
     get_erratas_vuln = """

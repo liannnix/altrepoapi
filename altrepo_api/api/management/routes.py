@@ -262,6 +262,7 @@ class routeAllTasksBranches(Resource):
         return run_worker(worker=w, args=args)
 
 
+@with_metadata(VulnList, ns, logger, require_auth=True)
 @ns.route(
     "/vuln/list",
     doc={
