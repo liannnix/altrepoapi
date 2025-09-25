@@ -15,22 +15,21 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Optional
+from typing import NamedTuple, Optional
 
 from altrepo_api.api.base import APIWorker, WorkerResult
 from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
 from altrepo_api.utils import get_logger
 
+from .tools.constants import DEFAULT_REASON_ACTION_TYPES
 from ..parsers import default_reasons_list_args
 from ..sql import sql
 
 logger = get_logger(__name__)
 
 
-@dataclass
-class DefaultReasonResponse:
+class DefaultReasonResponse(NamedTuple):
     text: str
     source: str
     action: str
@@ -38,11 +37,10 @@ class DefaultReasonResponse:
     updated: datetime
 
 
-@dataclass
-class DefaultReasonsArgs:
+class DefaultReasonsArgs(NamedTuple):
     text: Optional[str] = None
     source: Optional[str] = None
-    action: Optional[str] = None
+    action: Optional[list[str]] = None
     is_active: Optional[bool] = None
     limit: Optional[int] = None
     page: Optional[int] = None
@@ -59,6 +57,16 @@ class DefaultReasonsList(APIWorker):
         self.args = DefaultReasonsArgs(**kwargs)
         self.sql = sql
         super().__init__()
+
+    def check_params(self) -> bool:
+        actions = self.args.action
+        if actions is None:
+            return True
+
+        for action in actions:
+            if action not in DEFAULT_REASON_ACTION_TYPES:
+                self.validation_results.append(f"Invalid action value: {action}")
+        return not self.validation_results
 
     @property
     def _limit(self) -> str:
@@ -127,7 +135,7 @@ class DefaultReasonsList(APIWorker):
     def _create_action_condition(self) -> str:
         """Creates search condition for the source filter"""
         if self.args.action:
-            return f"dr_action = '{self.args.action}'"
+            return f"dr_action IN {self.args.action}"
         return ""
 
     @property
@@ -174,7 +182,7 @@ class DefaultReasonsList(APIWorker):
             return self.store_error(
                 {
                     "message": "No default reasons found",
-                    "args": asdict(self.args),
+                    "args": self.args._asdict(),
                 }
             )
 
@@ -193,9 +201,9 @@ class DefaultReasonsList(APIWorker):
 
         return (
             {
-                "request_args": asdict(self.args),
+                "request_args": self.args._asdict(),
                 "length": len(reasons),
-                "reasons": [asdict(el) for el in reasons],
+                "reasons": [el._asdict() for el in reasons],
             },
             200,
             {
@@ -216,11 +224,18 @@ class DefaultReasonsList(APIWorker):
             )
             if el.name == "text":
                 is_append = True
-            if el.name in ["source", "action"]:
+            if el.name == "source":
                 meta.type = KnownFilterTypes.CHOICE
                 meta.choices = [
                     MetadataChoiceItem(value=choice, display_name=choice.capitalize())
                     for choice in el.choices
+                ]
+                is_append = True
+            if el.name == "action":
+                meta.type = KnownFilterTypes.MULTIPLE_CHOICE
+                meta.choices = [
+                    MetadataChoiceItem(value=v, display_name=v.capitalize())
+                    for v in DEFAULT_REASON_ACTION_TYPES
                 ]
                 is_append = True
             if el.name == "is_active":

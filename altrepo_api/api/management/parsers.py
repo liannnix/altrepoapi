@@ -403,11 +403,12 @@ default_reason_source_opt = parser.register_item(
 default_reason_is_active_opt = parser.register_item(
     "is_active", type=inputs.boolean, help="Is default reason active", location="args"
 )
-default_reason_action_opt = parser.register_item(
+default_reason_action_list_opt = parser.register_item(
     "action",
     type=str,
-    choices=DEFAULT_REASON_ACTION_TYPES,
-    help="Default reason`s action",
+    required=False,
+    action="split",
+    help=f"Default reason`s actions list: {DEFAULT_REASON_ACTION_TYPES}",
     location="args",
 )
 
@@ -480,7 +481,7 @@ comments_list_args = parser.build_parser(entity_type, entity_link)
 default_reasons_list_args = parser.build_parser(
     default_reason_text_opt,
     default_reason_source_opt,
-    default_reason_action_opt,
+    default_reason_action_list_opt,
     default_reason_is_active_opt,
     page_opt,
     limit_opt,
