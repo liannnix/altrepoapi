@@ -201,6 +201,7 @@ vulnerability_parsed_model = ns.clone(
 vulnerability_info_model = ns.clone("VulnerabilityInfoModel", _vulnerability_info_model)
 
 
+@with_metadata(TaskList, ns, logger, require_auth=True)
 @ns.route(
     "/task/list",
     doc={

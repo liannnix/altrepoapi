@@ -131,7 +131,8 @@ errata_tasks AS (
         SELECT errata_id FROM last_discarded_erratas
     )
 )
-SELECT * FROM (
+SELECT *, count() OVER() as total_count
+FROM (
     SELECT
         global_search.*,
         TT.errata_id as errata,
@@ -143,6 +144,7 @@ SELECT * FROM (
     ) AS TT ON TT.task_id = global_search.task_id
     {where_clause_errata}
 ) {where_clause_is_errata}
+{limit} {page}
 """
 
     # XXX: for 'EPERM' tasks use 'task_changed' from TaskStates table instead of
