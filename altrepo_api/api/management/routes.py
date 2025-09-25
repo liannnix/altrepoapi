@@ -574,6 +574,7 @@ class routeErrataBranches(Resource):
         return run_worker(worker=w, args=args)
 
 
+@with_metadata(FindErratas, ns, logger, require_auth=True)
 @ns.route(
     "/errata/find_erratas",
     doc={
