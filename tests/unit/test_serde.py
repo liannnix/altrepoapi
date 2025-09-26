@@ -3,10 +3,13 @@ from enum import Enum
 from typing import NamedTuple, Optional
 from uuid import UUID, uuid4
 
+import pytest
+
 
 from altrepo_api.libs.errata_server.base import JSONValue
 from altrepo_api.libs.errata_server.rusty import Ok
 from altrepo_api.libs.errata_server.serde import (
+    SerdeError,
     serialize,
     deserialize,
     serialize_enum,
@@ -215,3 +218,25 @@ def test_named_tuple_deserialization_nested():
             ),
         )
     )
+
+
+def test_named_tuple_deserialization_nested_optional_no_default():
+    class NM(NamedTuple):
+        i: int
+        opt: Optional[int]
+
+    json_valid = {
+        "i": 42,
+        "opt": None,
+    }
+
+    json_invalid = {
+        "i": 42,
+    }
+
+    assert NM(i=42, opt=None) == deserialize(NM, json_valid).unwrap()
+
+    with pytest.raises(SerdeError):
+        deserialize(NM, json_invalid).unwrap()
+
+    assert deserialize(NM, json_invalid).is_err()

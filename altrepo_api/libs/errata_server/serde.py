@@ -224,6 +224,10 @@ def deserialize(cls: Type[T], data: JSONObject) -> Result[T, Exception]:
                         return v
                     kwargs[field] = v.unwrap()
                     break
+                elif value is None and type(None) in field_type.__args__:
+                    # handle optional field without default value
+                    kwargs[field] = None
+                    break
         # handle enum types that implements 'deserialize' method and primitive types
         else:
             v = _try_deserialize(field_type, value)
