@@ -197,6 +197,9 @@ class ImageInfo(APIWorker):
             image_components[comp.ruuid].append(comp)
 
         def make_download_mirrors(url: str) -> list[str]:
+            # XXX: fix for imgages that uploaded with no valid download URL specified
+            if url == "None" or not url:
+                return []
             # build mirror.yandex.ru alternative download links
             res = [
                 url,
