@@ -24,10 +24,10 @@ from .rusty import Result, into_iter
 from .serde import serialize_enum, deserialize_enum, serialize, deserialize
 
 
-SA_LIST_ROUTE = "/sa"
-SA_CREATE_ROUTE = "/sa/create"
-SA_DISCARD_ROUTE = "/sa/discard"
-SA_UPDATE_ROUTE = "/sa/update"
+SA_LIST_ROUTE = "sa"
+SA_CREATE_ROUTE = "sa/create"
+SA_DISCARD_ROUTE = "sa/discard"
+SA_UPDATE_ROUTE = "sa/update"
 
 
 class SaType(Enum):
