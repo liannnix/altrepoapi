@@ -18,16 +18,16 @@
 from enum import Enum
 from typing import Any, NamedTuple, Optional
 
-from .base import JSONObject, JSONValue, ErrataServer
+from .base import JSONObject, JSONValue, ErrataServerConnection
 from .base import ErrataServerError  # noqa: F401
 from .rusty import Result, into_iter
 from .serde import serialize_enum, deserialize_enum, serialize, deserialize
 
 
-SA_LIST_ROUTE = "sa"
-SA_CREATE_ROUTE = "sa/create"
-SA_DISCARD_ROUTE = "sa/discard"
-SA_UPDATE_ROUTE = "sa/update"
+SA_LIST_ROUTE = "/sa"
+SA_CREATE_ROUTE = "/sa/create"
+SA_DISCARD_ROUTE = "/sa/discard"
+SA_UPDATE_ROUTE = "/sa/update"
 
 
 class SaType(Enum):
@@ -223,13 +223,17 @@ class SaManageResponse(NamedTuple):
     affected_pcm: list[AffectedPCM]
 
 
+def _deserialize(response: JSONObject):
+    return deserialize(SaManageResponse, response)
+
+
 class ErrataSAService:
     """Errata SA manage service interface class."""
 
     def __init__(
         self, url: str, access_token: str, user: str, ip: str, dry_run: bool
     ) -> None:
-        self.server = ErrataServer(url)
+        self.server = ErrataServerConnection(url)
         self.user = user
         self.user_ip = ip
         self.dry_run = dry_run
@@ -260,7 +264,7 @@ class ErrataSAService:
             json={"errata_json": serialize(sanitize_ej(errata_json))},
         )  # type: ignore
 
-        return response.and_then(lambda r: deserialize(SaManageResponse, r)).unwrap()
+        return response.and_then(_deserialize).unwrap()
 
     def discard(self, reason: str, errata_json: ErrataJson) -> SaManageResponse:
         ej = serialize(sanitize_ej(errata_json))
@@ -279,7 +283,7 @@ class ErrataSAService:
             },
         )  # type: ignore
 
-        return response.and_then(lambda r: deserialize(SaManageResponse, r)).unwrap()
+        return response.and_then(_deserialize).unwrap()
 
     def update(
         self, reason: str, prev_errata_json: ErrataJson, errata_json: ErrataJson
@@ -299,4 +303,4 @@ class ErrataSAService:
             },
         )  # type: ignore
 
-        return response.and_then(lambda r: deserialize(SaManageResponse, r)).unwrap()
+        return response.and_then(_deserialize).unwrap()

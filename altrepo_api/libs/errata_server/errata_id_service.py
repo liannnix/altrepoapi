@@ -19,9 +19,10 @@ import re
 from datetime import datetime
 from typing import NamedTuple, Optional, Union
 
-from .base import ErrataServer, JSONObject, JSONResponse
+from .base import ErrataServerConnection, JSONObject, JSONResponse
 from .base import ErrataServerError  # noqa: F401
-from .rusty import Result
+from .rusty import Ok, Err, Result, resultify
+from .serde import deserialize
 
 
 CHECK_ROUTE = "check"
@@ -30,7 +31,7 @@ DISCARD_ROUTE = "discard"
 REGISTER_ROUTE = "register"
 
 
-re_errata_prefix = re.compile(r"^ALT-[A-Z]{2,}$")
+RE_ERRATA_PREFIX = re.compile(r"^ALT-[A-Z]{2,}$")
 
 
 class ErrataIDServiceResult(NamedTuple):
@@ -39,55 +40,72 @@ class ErrataIDServiceResult(NamedTuple):
     updated: datetime
 
 
-def _into_result(response: JSONResponse) -> ErrataIDServiceResult:
-    data: JSONObject = response["errata"]  # type: ignore
-    return ErrataIDServiceResult(
-        id=data["id"],  # type: ignore
-        created=datetime.fromisoformat(data["created"]),  # type: ignore
-        updated=datetime.fromisoformat(data["updated"]),  # type: ignore
+def _into_result(response: JSONResponse) -> Result[ErrataIDServiceResult, Exception]:
+    def _deserialize(data: JSONObject):
+        return deserialize(ErrataIDServiceResult, data)
+
+    @resultify
+    def _extract(response) -> JSONObject:
+        return response["errata"]  # type: ignore
+
+    return (
+        _extract(response)
+        .and_then(_deserialize)
+        .map_err(
+            lambda e: ErrataServerError(
+                f"Failed to parse ErrataServer response due to: {e}"
+            )
+        )
     )
 
 
 def _validate_prefix(prefix: str):
-    if not re_errata_prefix.match(prefix):
-        raise ErrataServerError("Invalid prefix: %s" % prefix, 400)
-    return prefix
+    if not RE_ERRATA_PREFIX.match(prefix):
+        return Err(ErrataServerError(f"Invalid prefix: {prefix}"))
+    return Ok(prefix)
 
 
-def _validate_year(year: Union[int, None]) -> int:
+def _validate_year(year: Union[int, None]):
     if year is None:
-        return datetime.now().year
+        return Ok(datetime.now().year)
 
     if 2000 <= year <= 2999:
-        return year
+        return Ok(year)
 
-    raise ErrataServerError("Invalid year value: %s" % year, 400)
+    return Err(ErrataServerError(f"Invalid year value: {year}"))
 
 
 class ErrataIDService:
     """ErrataID service interface class."""
 
     def __init__(self, url: str) -> None:
-        self.server = ErrataServer(url)
+        self.service = ErrataServerConnection(url)
 
     def check(self, id: str) -> ErrataIDServiceResult:
-        return _into_result(self.server.get(CHECK_ROUTE, params={"name": id}).unwrap())
+        return (
+            self.service.get(CHECK_ROUTE, params={"name": id})
+            .and_then(_into_result)
+            .unwrap()
+        )
 
     def register(self, prefix: str, year: Optional[int]) -> ErrataIDServiceResult:
-        prefix = _validate_prefix(prefix)
-        return _into_result(
-            self.server.get(
-                REGISTER_ROUTE,
-                params={"prefix": prefix, "year": _validate_year(year)},
-            ).unwrap()
+        year = _validate_prefix(prefix).op_and(_validate_year(year)).unwrap()
+        return (
+            self.service.get(REGISTER_ROUTE, params={"prefix": prefix, "year": year})
+            .and_then(_into_result)
+            .unwrap()
         )
 
     def update(self, id: str) -> ErrataIDServiceResult:
-        return _into_result(
-            self.server.post(UPDATE_ROUTE, params={"name": id}).unwrap()
+        return (
+            self.service.post(UPDATE_ROUTE, params={"name": id})
+            .and_then(_into_result)
+            .unwrap()
         )
 
     def discard(self, id: str) -> ErrataIDServiceResult:
-        return _into_result(
-            self.server.post(DISCARD_ROUTE, params={"name": id}).unwrap()
+        return (
+            self.service.post(DISCARD_ROUTE, params={"name": id})
+            .and_then(_into_result)
+            .unwrap()
         )

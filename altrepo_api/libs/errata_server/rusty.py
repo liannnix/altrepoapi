@@ -53,7 +53,7 @@ class Ok(NamedTuple, Generic[T]):
     def op_and(self, res: "Result[U, E]") -> "Result[U, E]":
         return res
 
-    def op_or(self, res: "Result[T, F]") -> "Result[T, F]":
+    def op_or(self, _res: "Result[T, F]") -> "Result[T, F]":
         return self
 
     def ok(self) -> "Option[T]":
@@ -87,13 +87,13 @@ class Ok(NamedTuple, Generic[T]):
     def unwrap_or(self, _default: T) -> T:
         return self.value
 
-    def unwrap_or_else(self, _op: Callable[[Any], U]) -> T:
+    def unwrap_or_else(self, _op: Callable[[E], T]) -> T:
         return self.value
 
     def map(self, op: Callable[[T], U]) -> "Ok[U]":
         return Ok(op(self.value))
 
-    def map_err(self, _op: Callable[[Any], Any]) -> "Result[T, E]":
+    def map_err(self, _op: Callable[[E], F]) -> "Result[T, E]":
         return self
 
     def map_or(self, _default: U, op: Callable[[T], U]) -> U:
@@ -158,10 +158,10 @@ class Err(NamedTuple, Generic[E]):
             raise self.error
         return self.expect(f"Called unwrap() on Err: {self.error}")
 
-    def unwrap_or(self, default: U) -> U:
+    def unwrap_or(self, default: T) -> T:
         return default
 
-    def unwrap_or_else(self, op: Callable[[E], U]) -> U:
+    def unwrap_or_else(self, op: Callable[[E], T]) -> T:
         return op(self.error)
 
     def map(self, _op: Callable[[Any], Any]) -> "Result[U, E]":
