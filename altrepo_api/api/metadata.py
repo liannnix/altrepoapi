@@ -158,7 +158,9 @@ def with_metadata(
         def get(self):
             url_logging(logger, f"{g.url}/metadata")
             w = worker(g.connection)  # pyright: ignore[reportCallIssue]
-            return run_worker(worker=w, run_method=w.metadata, args=None)
+            return run_worker(
+                worker=w, run_method=w.metadata, check_method=lambda: True, args=None
+            )
 
     class MetadataResourceNoAuth(Resource):
         """
@@ -169,7 +171,9 @@ def with_metadata(
         def get(self):
             url_logging(logger, f"{g.url}/metadata")
             w = worker(g.connection)  # pyright: ignore[reportCallIssue]
-            return run_worker(worker=w, run_method=w.metadata, args=None)
+            return run_worker(
+                worker=w, run_method=w.metadata, check_method=lambda: True, args=None
+            )
 
     def decorator(cls: Resource) -> Resource:
         """
