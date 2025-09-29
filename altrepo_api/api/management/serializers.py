@@ -1580,3 +1580,63 @@ image_list_model = ns.model(
         ),
     },
 )
+
+errata_refresh_analyze_reason_model = ns.model(
+    "ErrataRefreshAnalyzeReasonModel",
+    {
+        "vuln_id": fields.String(description="vulnerability id", required=True),
+        "reason": fields.String(description="discard reason", required=True),
+    },
+)
+errata_refresh_analyze_errata_model = ns.model(
+    "ErrataRefreshAnalyzeErrataModel",
+    {
+        "id": fields.String(description="errata id", required=True),
+        "created": fields.DateTime(description="errata created date", required=True),
+        "updated": fields.DateTime(description="errata updated date", required=True),
+        "type": fields.String(description="errata type", required=True),
+        "source": fields.String(description="errata source", required=True),
+        "references": fields.Nested(
+            errata_manage_reference_el_model,
+            description="list of errata references",
+            as_list=True,
+            required=True,
+        ),
+        "pkg_hash": fields.String(description="package hash", required=True),
+        "pkg_name": fields.String(description="package name", required=True),
+        "pkg_version": fields.String(description="package version", required=True),
+        "pkg_release": fields.String(description="package release", required=True),
+        "pkgset_name": fields.String(description="packageset name", required=True),
+        "task_id": fields.Integer(description="task id", required=True),
+        "subtask_id": fields.Integer(description="subtask id", required=True),
+        "task_state": fields.String(description="task state", required=True),
+    },
+)
+errata_refresh_analyze_change_model = ns.model(
+    "ErrataRefreshAnalyzeChangeModel",
+    {
+        "errata": fields.Nested(
+            errata_refresh_analyze_errata_model,
+            description="list of erratas",
+            as_list=True,
+            required=True,
+        ),
+        "discards": fields.Nested(
+            errata_refresh_analyze_reason_model,
+            description="list of errata references discards",
+            as_list=True,
+            required=True,
+        ),
+    },
+)
+errata_refresh_analyze_model = ns.model(
+    "ErrataRefreshAnalyzeModel",
+    {
+        "changes": fields.Nested(
+            errata_refresh_analyze_change_model,
+            description="list of errata analyze changes",
+            as_list=True,
+            required=True,
+        ),
+    },
+)

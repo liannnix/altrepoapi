@@ -87,6 +87,7 @@ from .endpoints.errata_user import (
     ErrataEntitySubscriptions,
 )
 from .endpoints.errata_user_tracking import ErrataUserTracking
+from .endpoints.errata_refresh import ErrataRefreshAnalyze
 from .endpoints.packages_open_vulns import (
     PackagesImageList,
     PackagesMaintainerList,
@@ -138,6 +139,7 @@ from .parsers import (
     errata_user_tracking_args,
     errata_entity_subscriptions_args,
     image_list_args,
+    errata_refresh_analyze_args,
 )
 from .serializers import (
     change_history_response_model,
@@ -189,6 +191,7 @@ from .serializers import (
     errata_user_subscriptions_model,
     errata_user_tracking_model,
     image_list_model,
+    errata_refresh_analyze_model,
 )
 
 ns = get_namespace()
@@ -697,6 +700,25 @@ class routeBranchesUpdates(Resource):
         args = {}
         w = BranchesUpdates(g.connection, json_data=ns.payload)
         return run_worker(worker=w, args=args, run_method=w.post, ok_code=200)
+
+
+@ns.route(
+    "/errata/refresh_analyze",
+    doc={
+        "description": "Recalculate all errata and get analysis",
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routeErrataRefresh(Resource):
+    @ns.expect(errata_refresh_analyze_args)
+    @ns.marshal_with(errata_refresh_analyze_model)
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
+    def get(self):
+        url_logging(logger, g.url)
+        args = errata_refresh_analyze_args.parse_args(strict=True)
+        w = ErrataRefreshAnalyze(g.connection, **args)
+        return run_worker(worker=w, args=args)
 
 
 @ns.route(

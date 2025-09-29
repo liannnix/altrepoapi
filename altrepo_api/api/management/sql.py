@@ -1871,5 +1871,141 @@ ORDER BY img_file
 {page_clause}
 """
 
+    get_errata_history_by_transaction_id = """
+WITH related_erratas AS (
+    SELECT
+        ec_type,
+        errata_id
+    FROM ErrataChangeHistory
+    WHERE (ec_type IN ('update', 'discard'))
+        AND (ec_origin = 'parent')
+        AND (ec_source = 'auto')
+        AND (transaction_id = '{transaction_id}')
+)
+SELECT
+    ec_type,
+    errata_id,
+    (
+        arraySlice(
+            arrayFilter(
+                t -> (extractErrataIdVersion(t.1) <= extractErrataIdVersion(errata_id)),
+                erratas
+            ),
+            -2
+        ) AS hist
+    )[1] AS old_eh,
+    hist[2] AS new_eh
+FROM
+(
+    SELECT
+        errata_id_noversion,
+        arraySort(
+            t -> extractErrataIdVersion(t.1),
+            groupUniqArray(
+                (
+                    errata_id,
+                    eh_hash,
+                    eh_type,
+                    eh_source,
+                    eh_created,
+                    eh_updated,
+                    arrayZip(eh_references.type, eh_references.link),
+                    eh_json,
+                    pkg_hash,
+                    pkg_name,
+                    pkg_version,
+                    pkg_release,
+                    pkgset_name,
+                    task_id,
+                    subtask_id,
+                    task_state
+                )
+            )
+        ) AS erratas
+    FROM ErrataHistory
+    WHERE (task_state = 'DONE') AND (errata_id_noversion IN (
+        SELECT extractErrataIdNoVersion(errata_id)
+        FROM related_erratas
+    ))
+    GROUP BY errata_id_noversion
+) AS L
+INNER JOIN
+(
+    SELECT
+        ec_type,
+        errata_id,
+        extractErrataIdNoVersion(errata_id) AS errata_id_noversion
+    FROM related_erratas
+) AS R USING (errata_id_noversion)
+HAVING length(hist) > 1
+"""
+
+    get_rejected_cves_ids = """
+SELECT vuln_id
+FROM Vulnerabilities
+WHERE vuln_hash IN (
+    SELECT argMax(vuln_hash, ts)
+    FROM Vulnerabilities
+    WHERE vuln_id IN (SELECT vuln_id FROM {tmp_table_name})
+    GROUP BY vuln_id
+)
+HAVING JSON_VALUE(vuln_json, '$.cve.vulnStatus') = 'Rejected'
+"""
+
+    get_cve_cpe_history = """
+SELECT
+    vuln_id,
+    arraySort(x -> (x.1), groupUniqArray((ts, cpes)))
+FROM
+(
+    SELECT
+        vuln_id,
+        ts,
+        groupUniqArray(cpm_cpe) AS cpes
+    FROM Vulnerabilities
+    INNER JOIN
+    (
+        SELECT
+            vuln_hash,
+            cpm_cpe
+        FROM CpeMatch
+        WHERE NOT startsWith(cpm_cpe, 'cpe:2.3:h:')
+    ) AS CM USING (vuln_hash)
+    WHERE vuln_id IN (SELECT vuln_id FROM {tmp_table_name})
+    GROUP BY
+        vuln_id,
+        ts
+)
+GROUP BY vuln_id
+"""
+
+    get_cpe_triplets_packages = """
+WITH alt_to_repology_names AS (
+    SELECT DISTINCT
+        pkg_name AS alt_name,
+        pnc_result AS repology_name
+    FROM PackagesNameConversion
+    WHERE pnc_type IN {pnc_branches}
+        AND pkg_name IN (SELECT pkg_name FROM {tmp_table_name})
+    GROUP BY pkg_name, pnc_result
+    HAVING argMax(pnc_state, ts) = 'active'
+),
+repology_to_cpes_names AS (
+    SELECT
+        pkg_name AS repology_name,
+        argMax(pnc_result, ts) AS cpe
+    FROM PackagesNameConversion
+    WHERE pnc_type = 'cpe'
+    GROUP BY pkg_name, pnc_result
+    HAVING argMax(pnc_state, ts) = 'active'
+)
+SELECT DISTINCT
+    cpe,
+    groupUniqArray(alt_name)
+FROM alt_to_repology_names
+INNER JOIN repology_to_cpes_names USING repology_name
+GROUP BY cpe
+"""
+
 
 sql = SQL()
