@@ -940,7 +940,7 @@ class ManageCpe(APIWorker):
 
 
 class CPEListArgs(NamedTuple):
-    is_discarded: Optional[bool] = None
+    is_discarded: bool
     input: Optional[str] = None
     limit: Optional[int] = None
     page: Optional[int] = None
@@ -952,12 +952,14 @@ class CPEList(APIWorker):
 
     def __init__(self, connection, **kwargs):
         self.conn = connection
-        self.args = CPEListArgs(**kwargs)
+        self.kwargs = kwargs
+        self.args: CPEListArgs
         self.sql = sql
         super().__init__()
 
     def check_params(self):
-        self.logger.debug(f"args : {self.args}")
+        self.args = CPEListArgs(**self.kwargs)
+        self.logger.debug(f"args : {self.kwargs}")
         return True
 
     @property
@@ -976,23 +978,25 @@ class CPEList(APIWorker):
 
     def metadata(self) -> WorkerResult:
         metadata = []
-        for el in cpe_list_args.args:
-            is_append = False
-            meta = MetadataItem(
-                name=el.name,
-                label=el.name.replace("_", " ").capitalize(),
-                help_text=el.help,
-                type=KnownFilterTypes.STRING,
-            )
-            if el.type.__name__ == "boolean":
-                meta.type = KnownFilterTypes.CHOICE
-                meta.choices = [
-                    MetadataChoiceItem(value="true", display_name="True"),
-                    MetadataChoiceItem(value="false", display_name="False"),
-                ]
-                is_append = True
-            if is_append:
-                metadata.append(meta)
+        for arg in cpe_list_args.args:
+            item_info = {
+                "name": arg.name,
+                "label": arg.name.replace("_", " ").capitalize(),
+                "help_text": arg.help,
+            }
+
+            if arg.type.__name__ == "boolean":
+                metadata.append(
+                    MetadataItem(
+                        **item_info,
+                        type=KnownFilterTypes.CHOICE,
+                        choices=[
+                            MetadataChoiceItem(value="true", display_name="True"),
+                            MetadataChoiceItem(value="false", display_name="False"),
+                        ],
+                    )
+                )
+
         return {
             "length": len(metadata),
             "metadata": [el.asdict() for el in metadata],
@@ -1051,14 +1055,12 @@ class CPEList(APIWorker):
         paginator = Paginator(result, self.args.limit)
         page_obj = paginator.get_page(self.args.page)
 
-        res: dict[str, Any] = {
-            "request_args": self.args._asdict(),
-            "length": len(page_obj),
-            "cpes": page_obj,
-        }
-
         return (
-            res,
+            {
+                "request_args": self.args._asdict(),
+                "length": len(page_obj),
+                "cpes": page_obj,
+            },
             200,
             {
                 "Access-Control-Expose-Headers": "X-Total-Count",
