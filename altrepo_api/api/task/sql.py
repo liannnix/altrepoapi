@@ -827,7 +827,8 @@ SELECT DISTINCT
     pkg_version,
     pkg_release,
     pkg_name AS binpkg_name,
-    pkg_arch AS binpkg_arch
+    pkg_arch AS binpkg_arch,
+    pkg_hash
 FROM all_packages_with_source
 INNER JOIN all_sources AS S
     ON pkg_srcrpm_hash = S.srcpkg_hash
@@ -850,7 +851,8 @@ WITH task_plan_hashes AS
 SELECT
     pkg_name,
     pkg_version,
-    pkg_release
+    pkg_release,
+    pkg_hash
 FROM Packages
 WHERE pkg_hash IN (task_plan_hashes)
 """
