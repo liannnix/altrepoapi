@@ -358,7 +358,7 @@ class VulnList(APIWorker):
         return (
             {
                 "request_args": self.args._asdict(),
-                "length": self.args.limit,
+                "length": len(vulns),
                 "vulns": vulns,
             },
             200,
