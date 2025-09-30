@@ -66,12 +66,13 @@ class TaskListArgs(NamedTuple):
     limit: Optional[int] = None
 
 
-class ParsedInputValue(NamedTuple):
-    vulns: list[str] = []
-    bugs: list[str] = []
-    tasks: list[str] = []
-    erratas: list[str] = []
-    owners: list[str] = []
+@dataclass
+class ParsedInput:
+    vulns: list[str] = field(default_factory=list)
+    bugs: list[str] = field(default_factory=list)
+    tasks: list[str] = field(default_factory=list)
+    erratas: list[str] = field(default_factory=list)
+    owners: list[str] = field(default_factory=list)
 
 
 class TaskList(APIWorker):
@@ -84,35 +85,39 @@ class TaskList(APIWorker):
         self.conn = connection
         self.kwargs = kwargs
         self.args: TaskListArgs
-        self.input_values: ParsedInputValue
+        self.input_values: ParsedInput
         self.sql = sql
         super().__init__()
 
     def check_params(self) -> bool:
         self.args = TaskListArgs(**self.kwargs)
-        self.input_values = self.parse_input(self.args.input or [])
+        self.input = self._parse_input(self.args.input or [])
         self.logger.debug(f"args : {self.kwargs}")
         return True
 
-    def parse_input(self, input_values: list[str]) -> ParsedInputValue:
-        parsed = ParsedInputValue()
-        for v in input_values:
-            v = v.strip()
-            v_up = v.upper()
+    def _parse_input(self, input_values: list[str]) -> ParsedInput:
+        BUG_PREFIX = "BUG:"
+        TASK_PREFIX = "#"
+        OWNER_PREFIX = "@"
+
+        parsed = ParsedInput()
+        for value in input_values:
+            v = value.strip().upper()
+
             if (
-                v_up.startswith(CVE_ID_PREFIX)
-                or v_up.startswith(BDU_ID_PREFIX)
-                or v_up.startswith(GHSA_ID_PREFIX)
+                v.startswith(CVE_ID_PREFIX)
+                or v.startswith(BDU_ID_PREFIX)
+                or v.startswith(GHSA_ID_PREFIX)
             ):
                 parsed.vulns.append(v)
-            elif v.startswith("bug:"):
-                parsed.bugs.append(v.lstrip("bug:"))
-            elif v.startswith("#"):
-                parsed.tasks.append(v.lstrip("#"))
-            elif v_up.startswith(ERRATA_PACKAGE_UPDATE_PREFIX):
+            elif v.startswith(BUG_PREFIX):
+                parsed.bugs.append(v.removeprefix(BUG_PREFIX))
+            elif v.startswith(TASK_PREFIX):
+                parsed.tasks.append(v.removeprefix(TASK_PREFIX))
+            elif v.startswith(ERRATA_PACKAGE_UPDATE_PREFIX):
                 parsed.erratas.append(v)
-            elif v_up.startswith("@"):
-                parsed.owners.append(v.lstrip("@"))
+            elif v.startswith(OWNER_PREFIX):
+                parsed.owners.append(v.removeprefix(OWNER_PREFIX))
 
         return parsed
 
@@ -132,21 +137,17 @@ class TaskList(APIWorker):
     @property
     def _where_clause_errata(self) -> str:
         errata_conditions = []
-        bug_conditions = []
 
-        for v in self.input_values.erratas:
+        for v in self.input.erratas:
             errata_conditions.append(f"(errata_id LIKE '{v}%')")
-        for v in self.input_values.vulns:
+        for v in self.input.vulns:
             errata_conditions.append(f"arrayExists(x -> x LIKE '{v}%', refs_links)")
-        for v in self.input_values.bugs:
-            bug_conditions.append(f"arrayExists(x -> x LIKE " f"'{v}%', refs_links)")
+        for v in self.input.bugs:
+            errata_conditions.append(f"arrayExists(x -> x LIKE '{v}%', refs_links)")
 
         condition = ""
         if errata_conditions:
-            condition = "WHERE " + " AND ".join(errata_conditions)
-            condition += " OR ".join(bug_conditions)
-        elif bug_conditions:
-            condition = "WHERE " + " OR ".join(bug_conditions)
+            condition = "WHERE (" + " AND ".join(errata_conditions) + ")"
 
         where_clause_errata = (
             f"WHERE task_id IN (SELECT task_id FROM errata_tasks {condition})"
@@ -154,9 +155,9 @@ class TaskList(APIWorker):
             else ""
         )
 
-        if bug_conditions or errata_conditions:
+        if errata_conditions:
             where_clause_errata += (
-                "AND errata_id != ''"
+                " AND errata_id != ''"
                 if where_clause_errata
                 else "WHERE errata_id != ''"
             )
@@ -166,9 +167,11 @@ class TaskList(APIWorker):
     @property
     def _where_clause_tasks2(self) -> str:
         where_clause_tasks2 = ""
-        if self.input_values.tasks:
-            where_clause_tasks2 = " AND " + " OR ".join(
-                f"search ILIKE '%{v}%'" for v in self.input_values.tasks
+        if self.input.tasks:
+            where_clause_tasks2 = (
+                " AND ("
+                + " OR ".join(f"search ILIKE '%{v}%'" for v in self.input.tasks)
+                + ")"
             )
         return where_clause_tasks2
 
@@ -207,9 +210,13 @@ class TaskList(APIWorker):
     @property
     def _owner_clause(self) -> str:
         owner_clause = ""
-        if self.input_values.owners:
-            owner_clause = " AND " + " OR ".join(
-                f"search_string ILIKE '%|{v}|%' " for v in self.input_values.owners
+        if self.input.owners:
+            owner_clause = (
+                " AND ("
+                + " OR ".join(
+                    f"search_string ILIKE '%|{v}|%' " for v in self.input.owners
+                )
+                + ")"
             )
         return owner_clause
 
@@ -268,6 +275,8 @@ class TaskList(APIWorker):
         if not response:
             return self.store_error({"message": "No data not found in database"})
 
+        total_count = response[0][-1]
+
         tasks = self._process_data_to_result(response).values()
 
         # get subtasks info by task_id
@@ -306,13 +315,13 @@ class TaskList(APIWorker):
         return (
             {
                 "request_args": self.args._asdict(),
-                "length": self.args.limit,
+                "length": len(tasks),
                 "tasks": [asdict(el) for el in tasks],
             },
             200,
             {
                 "Access-Control-Expose-Headers": "X-Total-Count",
-                "X-Total-Count": response[0][-1],
+                "X-Total-Count": total_count,
             },
         )
 
