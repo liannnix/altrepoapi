@@ -17,15 +17,17 @@
 import re
 
 from dataclasses import dataclass, field
-from typing import NamedTuple, Any, Union
+from typing import NamedTuple, Any, Optional, Union
 
-from altrepo_api.api.base import APIWorker
+from altrepo_api.api.base import APIWorker, WorkerResult
+from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
 from altrepo_api.api.misc import lut
 from altrepo_api.libs.pagination import Paginator
 from altrepo_api.libs.sorting import rich_sort
-from altrepo_api.utils import make_tmp_table_name
+from altrepo_api.utils import make_tmp_table_name, sort_branches
 
 from .common import ErrataID, get_erratas_by_search_conditions
+from ..parsers import find_erratas_args
 from ..sql import sql
 
 _vuln_id_match = re.compile(r"(^CVE-\d{4}-\d{4,}$)|(^BDU:\d{4}-\d{5}$)|(^\d{4,}$)")
@@ -204,6 +206,15 @@ class ErrataIds(APIWorker):
         return {"errata_ids": errata_ids}, 200
 
 
+class FindErratasArgs(NamedTuple):
+    branch: Optional[str] = None
+    type: Optional[str] = None
+    input: Optional[list[str]] = None
+    page: Optional[int] = None
+    limit: Optional[int] = None
+    state: Optional[str] = None
+
+
 class FindErratas(APIWorker):
     """
     Erratas search lookup by id, vulnerability id or package name.
@@ -211,41 +222,35 @@ class FindErratas(APIWorker):
 
     def __init__(self, connection, **kwargs):
         self.conn = connection
-        self.args = kwargs
+        self.args = FindErratasArgs(**kwargs)
         self.sql = sql
         super().__init__()
 
-    def check_params(self) -> bool:
-        if self.args["input"] and len(self.args["input"]) > 3:
-            self.validation_results.append(
-                "input values list should contain no more than 3 elements"
-            )
+    @property
+    def _branch_clause(self) -> str:
+        return f"AND pkgset_name = '{self.args.branch}'" if self.args.branch else ""
 
-        if self.validation_results != []:
-            return False
-        return True
-
-    def get(self):
-        input_val: list[str] = self.args["input"] if self.args["input"] else []
-        branch = self.args["branch"]
-        tp = self.args["type"]
+    @property
+    def _type_clauses(self) -> list[str]:
+        conditions = []
+        tp = self.args.type or ""
         eh_type = lut.known_errata_type.get(tp, "")
-        limit = self.args["limit"]
-        page = self.args["page"]
-        state = None
 
-        if self.args["state"] == "discarded":
-            state = True
-        if self.args["state"] == "active":
-            state = False
-
-        branch_clause = f"AND pkgset_name = '{branch}'" if branch else ""
-        where_conditions = [f"type IN {eh_type}"] if eh_type else []
+        conditions = [f"type IN {eh_type}"] if eh_type else []
         if tp in (lut.errata_ref_type_bug, lut.errata_ref_type_vuln):
-            where_conditions.append(f"arrayExists(x -> x = '{tp}', refs_types)")
-        if state is not None:
-            where_conditions.append(f"discard = {state}")
+            conditions.append(f"arrayExists(x -> x = '{tp}', refs_types)")
 
+        return conditions
+
+    @property
+    def _state_clause(self) -> str:
+        if self.args.state:
+            return "discard = {}".format(self.args.state == "discarded")
+        return ""
+
+    @property
+    def _input_clause(self) -> str:
+        input_val: list[str] = self.args.input or []
         conditions = [
             " OR ".join(
                 (
@@ -256,17 +261,42 @@ class FindErratas(APIWorker):
             )
             for v in input_val
         ]
+        if conditions:
+            return "(" + " OR ".join(conditions) + ")"
+        return ""
+
+    @property
+    def _where_conditions(self) -> str:
+        conditions = []
+        if self._type_clauses:
+            conditions.extend(self._type_clauses)
+
+        if self._state_clause:
+            conditions.append(self._state_clause)
+
+        if self._input_clause:
+            conditions.append(self._input_clause)
 
         if conditions:
-            where_conditions.append(f"({' OR '.join(conditions)})")
+            return f"WHERE {' AND '.join(conditions)}"
+        return ""
 
-        where_clause = (
-            f"WHERE {' AND '.join(where_conditions)}" if where_conditions else ""
-        )
+    def check_params(self) -> bool:
+        if self.args.input and len(self.args.input) > 3:
+            self.validation_results.append(
+                "input values list should contain no more than 3 elements"
+            )
+
+        return self.validation_results == []
+
+    def get(self):
+
+        limit = self.args.limit
+        page = self.args.page
 
         response = self.send_sql_request(
             self.sql.find_erratas.format(
-                branch=branch_clause, where_clause=where_clause
+                branch=self._branch_clause, where_clause=self._where_conditions
             )
         )
         if not self.sql_status:
@@ -283,7 +313,7 @@ class FindErratas(APIWorker):
                 Vulns(v_id, v_type)._asdict()
                 for v_id, v_type in zip(errata_info.vuln_ids, errata_info.vuln_types)
             ]
-            pkgs = [PackageInfo(*el)._asdict() for el in errata_info.pkgs]
+            pkgs = [PackageInfo(*info)._asdict() for info in errata_info.pkgs]
 
             erratas.append(
                 errata_info._replace(vulnerabilities=vulns, packages=pkgs)._asdict()
@@ -292,20 +322,62 @@ class FindErratas(APIWorker):
         paginator = Paginator(erratas, limit)
         page_obj = paginator.get_page(page)
 
-        res: dict[str, Any] = {
-            "request_args": self.args,
-            "erratas": page_obj,
-            "length": len(page_obj),
-        }
-
         return (
-            res,
+            {
+                "request_args": self.args,
+                "erratas": page_obj,
+                "length": len(page_obj),
+            },
             200,
             {
                 "Access-Control-Expose-Headers": "X-Total-Count",
                 "X-Total-Count": int(paginator.count),
             },
         )
+
+    def metadata(self) -> WorkerResult:
+        metadata = []
+        for arg in find_erratas_args.args:
+            item_info = {
+                "name": arg.name,
+                "label": arg.name.replace("_", " ").capitalize(),
+                "help_text": arg.help,
+            }
+
+            if arg.name in ["type", "state"]:
+                metadata.append(
+                    MetadataItem(
+                        **item_info,
+                        type=KnownFilterTypes.CHOICE,
+                        choices=[
+                            MetadataChoiceItem(
+                                value=choice, display_name=choice.capitalize()
+                            )
+                            for choice in arg.choices
+                            if choice != "all"
+                        ],
+                    )
+                )
+
+            if arg.name == "branch":
+                branches = self.send_sql_request(self.sql.get_errata_branches)
+                if branches:
+                    metadata.append(
+                        MetadataItem(
+                            **item_info,
+                            type=KnownFilterTypes.CHOICE,
+                            choices=[
+                                MetadataChoiceItem(value=branch, display_name=branch)
+                                for branch in sort_branches(
+                                    branch for branch, in branches
+                                )
+                            ],
+                        )
+                    )
+        return {
+            "length": len(metadata),
+            "metadata": [el.asdict() for el in metadata],
+        }, 200
 
 
 class FindImageErratas(APIWorker):
