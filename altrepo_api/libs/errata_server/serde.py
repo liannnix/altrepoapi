@@ -24,7 +24,7 @@ from uuid import UUID
 from .base import JSONValue, JSONObject
 from .rusty import Result, Ok, Err
 
-SKIP_SERILIZING_IF_NONE = "SKIP_SERILIZING_IF_NONE"
+SKIP_SERIALIZING_IF_NONE = "SKIP_SERIALIZING_IF_NONE"
 
 ENUM = TypeVar("ENUM", bound=Enum)
 
@@ -256,8 +256,8 @@ def serialize(cls: NamedTuple, skip_nones: bool = False) -> JSONObject:
     json: dict[str, JSONValue] = {}
 
     # use class var if not forced to skip None value fields from serialization
-    if not skip_nones and hasattr(cls, SKIP_SERILIZING_IF_NONE):
-        skip_nones = cls.SKIP_SERILIZING_IF_NONE  # type: ignore
+    if not skip_nones and hasattr(cls, SKIP_SERIALIZING_IF_NONE):
+        skip_nones = cls.SKIP_SERIALIZING_IF_NONE  # type: ignore
 
     for key, value in cls._asdict().items():  # type: ignore
         if isinstance(value, list):

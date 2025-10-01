@@ -80,7 +80,7 @@ def test_named_tuple_simple_serialization():
 
 def test_named_tuple_serialization_skip_nones():
     nm = NM()
-    NM.SKIP_SERILIZING_IF_NONE = True  # type: ignore
+    NM.SKIP_SERIALIZING_IF_NONE = True  # type: ignore
 
     assert serialize(nm) == {
         "i": 42,
@@ -95,7 +95,7 @@ def test_named_tuple_serialization_skip_nones():
 
 def test_named_tuple_serialization_enums():
     nm = NM(e=E.C)
-    NM.SKIP_SERILIZING_IF_NONE = True  # type: ignore
+    NM.SKIP_SERIALIZING_IF_NONE = True  # type: ignore
     assert serialize(nm)["e"] == "c"
 
 
@@ -104,14 +104,14 @@ def test_named_tuple_serialization_optional():
     assert serialize(nm)["opt"] == UUID_S
 
     nm = NM(opt=None)
-    NM.SKIP_SERILIZING_IF_NONE = False  # type: ignore
+    NM.SKIP_SERIALIZING_IF_NONE = False  # type: ignore
     assert serialize(nm)["opt"] == None
 
 
 def test_named_tuple_serialization_nested():
     nested = NM(e=E.B)
     nm = NM(nested=nested)
-    NM.SKIP_SERILIZING_IF_NONE = True  # type: ignore
+    NM.SKIP_SERIALIZING_IF_NONE = True  # type: ignore
 
     assert serialize(nm).get("opt", "NA") == "NA"
     assert serialize(nm)["nested"].get("opt", "NA") == "NA"  # type: ignore

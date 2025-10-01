@@ -166,7 +166,7 @@ class ErrataJson(NamedTuple):
         )
 
 
-ErrataJson.SKIP_SERILIZING_IF_NONE = True  # type: ignore
+ErrataJson.SKIP_SERIALIZING_IF_NONE = True  # type: ignore
 
 
 def sanitize_ej(e: ErrataJson) -> ErrataJson:
