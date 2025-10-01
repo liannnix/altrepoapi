@@ -24,6 +24,11 @@ BDU_IN_DB = "BDU:2019-01845"
 LIST_BDU_IN_DB = ["BDU:2023-01241", "BDU:2023-01242", "BDU:2023-01243"]
 BDU_NOT_IN_DB = "BDU:2000-00001"
 
+
+BAD_GHSA_ID = "GHSA-1234-123"
+GHSA_IN_DB = "GHSA-wg47-6jq2-q2hh"
+GHSA_NOT_IN_DB = "GHSA-cccc-cccc-cccc"
+
 PAKCAGE_IN_DB = "python3"
 PAKCAGE_NOT_IN_DB = "fakepackage"
 BAD_PACKAGE_NAME = "xxx*yyy"
@@ -323,6 +328,30 @@ def test_vuln_cve_fixes(client, kwargs):
 )
 def test_vuln_bdu_fixes(client, kwargs):
     url = url_for("api.vuln_route_vulnerable_bdu_fixes")
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("status_code",):
+            continue
+        if v is not None:
+            params[k] = v
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["packages"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"vuln_id": GHSA_IN_DB, "status_code": 200},
+        {"vuln_id": GHSA_NOT_IN_DB, "status_code": 404},
+        {"vuln_id": BAD_GHSA_ID, "status_code": 400},
+    ],
+)
+def test_vuln_ghsa_fixes(client, kwargs):
+    url = url_for("api.vuln_route_vulnerable_ghsa_fixes")
     params = {}
     for k, v in kwargs.items():
         if k in ("status_code",):
