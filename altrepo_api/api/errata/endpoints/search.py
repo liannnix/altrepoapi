@@ -324,7 +324,7 @@ class FindErratas(APIWorker):
 
         return (
             {
-                "request_args": self.args,
+                "request_args": self.args._asdict(),
                 "erratas": page_obj,
                 "length": len(page_obj),
             },
