@@ -181,6 +181,26 @@ class routeGhsaInfo(Resource):
 
 
 @ns.route(
+    "/ghsa/fixes",
+    doc={
+        "description": (
+            "Get a list of packages in which "
+            "the specified GHSA vulnerability is closed."
+        ),
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeVulnerableGhsaFixes(Resource):
+    @ns.expect(ghsa_info_args)
+    @ns.marshal_with(vuln_fixes_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = ghsa_info_args.parse_args(strict=True)
+        w = VulnFixes(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
     "/package",
     doc=False,  # XXX: hide from Swagger UI
     # doc={
