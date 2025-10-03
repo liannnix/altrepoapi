@@ -54,11 +54,14 @@ class DefaultReasonsList(APIWorker):
 
     def __init__(self, connection, **kwargs):
         self.conn = connection
-        self.args = DefaultReasonsArgs(**kwargs)
+        self.kwargs = kwargs
+        self.args: DefaultReasonsArgs
         self.sql = sql
         super().__init__()
 
     def check_params(self) -> bool:
+        self.args = DefaultReasonsArgs(**self.kwargs)
+        self.logger.debug(f"args : {self.kwargs}")
         actions = self.args.action
         if actions is None:
             return True
@@ -70,9 +73,6 @@ class DefaultReasonsList(APIWorker):
 
     @property
     def _limit(self) -> str:
-        """
-        Generate the LIMIT clause for SQL query if limit is specified.
-        """
         return f"LIMIT {self.args.limit}" if self.args.limit else ""
 
     @property
@@ -89,58 +89,41 @@ class DefaultReasonsList(APIWorker):
 
     @property
     def _order_by(self) -> str:
-        """
-        Generate the ORDER BY clause based on requested sort fields.
-        """
-        allowed_fields = DefaultReasonResponse.__annotations__.keys()
-        default_sorting = "ORDER BY updated DESC"
-        if not self.args.sort:
-            return default_sorting
-
+        order_fields = self.args.sort or ["updated"]
         order_clauses = []
 
-        for sort_field in self.args.sort:
+        for sort_field in order_fields:
             direction = "ASC"
             field_name = sort_field
 
             if sort_field.startswith("-"):
                 direction = "DESC"
-                field_name = sort_field[1:]
-            if field_name in allowed_fields:
-                escaped_field = (
-                    f"{field_name}" if not field_name.islower() else field_name
-                )
-                order_clauses.append(f"{escaped_field} {direction}")
+                field_name = sort_field.removeprefix("-")
+            if field_name in DefaultReasonResponse._fields:
+                order_clauses.append(f"{field_name} {direction}")
 
-        if not order_clauses:
-            return default_sorting
-
-        return f"ORDER BY {', '.join(order_clauses)}"
+        return "ORDER BY " + ", ".join(order_clauses)
 
     @property
     def _create_text_condition(self) -> str:
-        """Creates search condition for the text filter."""
         if self.args.text:
             return f"dr_text ILIKE '%{self.args.text}%'"
         return ""
 
     @property
     def _create_source_condition(self) -> str:
-        """Creates search condition for the source filter."""
         if self.args.source:
             return f"dr_source = '{self.args.source}'"
         return ""
 
     @property
     def _create_action_condition(self) -> str:
-        """Creates search condition for the source filter"""
         if self.args.action:
             return f"dr_action IN {self.args.action}"
         return ""
 
     @property
     def _having_clause(self) -> str:
-        """Creates search condition for the is_active filter"""
         if self.args.is_active is not None:
             return f"HAVING dr_is_active = {int(self.args.is_active)}"
         return ""
@@ -190,13 +173,13 @@ class DefaultReasonsList(APIWorker):
 
         reasons = [
             DefaultReasonResponse(
-                text=el[0],
-                source=el[1],
-                action=el[2],
-                is_active=bool(el[3]),
-                updated=el[4],
+                text=text,
+                source=source,
+                action=action,
+                is_active=bool(is_active),
+                updated=updated,
             )
-            for el in response
+            for text, source, action, is_active, updated, _ in response
         ]
 
         return (
@@ -214,39 +197,54 @@ class DefaultReasonsList(APIWorker):
 
     def metadata(self) -> WorkerResult:
         metadata = []
-        for el in default_reasons_list_args.args:
-            is_append = False
-            meta = MetadataItem(
-                name=el.name,
-                label=el.name.replace("_", " ").capitalize(),
-                help_text=el.help,
-                type=KnownFilterTypes.STRING,
-            )
-            if el.name == "text":
-                is_append = True
-            if el.name == "source":
-                meta.type = KnownFilterTypes.CHOICE
-                meta.choices = [
-                    MetadataChoiceItem(value=choice, display_name=choice.capitalize())
-                    for choice in el.choices
-                ]
-                is_append = True
-            if el.name == "action":
-                meta.type = KnownFilterTypes.MULTIPLE_CHOICE
-                meta.choices = [
-                    MetadataChoiceItem(value=v, display_name=v.capitalize())
-                    for v in DEFAULT_REASON_ACTION_TYPES
-                ]
-                is_append = True
-            if el.name == "is_active":
-                meta.type = KnownFilterTypes.CHOICE
-                meta.choices = [
-                    MetadataChoiceItem(value="true", display_name="True"),
-                    MetadataChoiceItem(value="false", display_name="False"),
-                ]
-                is_append = True
-            if is_append:
-                metadata.append(meta)
+        for arg in default_reasons_list_args.args:
+            item_info = {
+                "name": arg.name,
+                "label": arg.name.replace("_", " ").capitalize(),
+                "help_text": arg.help,
+            }
+
+            if arg.name == "text":
+                metadata.append(MetadataItem(**item_info, type=KnownFilterTypes.STRING))
+
+            if arg.name == "source":
+                metadata.append(
+                    MetadataItem(
+                        **item_info,
+                        type=KnownFilterTypes.CHOICE,
+                        choices=[
+                            MetadataChoiceItem(
+                                value=choice, display_name=choice.capitalize()
+                            )
+                            for choice in arg.choices
+                        ],
+                    )
+                )
+
+            if arg.name == "action":
+                metadata.append(
+                    MetadataItem(
+                        **item_info,
+                        type=KnownFilterTypes.MULTIPLE_CHOICE,
+                        choices=[
+                            MetadataChoiceItem(value=v, display_name=v.capitalize())
+                            for v in DEFAULT_REASON_ACTION_TYPES
+                        ],
+                    )
+                )
+
+            if arg.name == "is_active":
+                metadata.append(
+                    MetadataItem(
+                        **item_info,
+                        type=KnownFilterTypes.CHOICE,
+                        choices=[
+                            MetadataChoiceItem(value="true", display_name="True"),
+                            MetadataChoiceItem(value="false", display_name="False"),
+                        ],
+                    )
+                )
+
         return {
             "length": len(metadata),
             "metadata": [el.asdict() for el in metadata],
