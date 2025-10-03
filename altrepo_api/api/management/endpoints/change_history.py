@@ -17,7 +17,7 @@
 import datetime
 import json
 from dataclasses import asdict, dataclass, field
-from typing import Any, Optional
+from typing import Any, NamedTuple, Optional
 
 from altrepo_api.api.base import APIWorker, WorkerResult
 from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
@@ -163,8 +163,7 @@ class ChangeItem:
             setattr(self, key, val)
 
 
-@dataclass
-class ChangeHistoryResponse:
+class ChangeHistoryResponse(NamedTuple):
     event_date: datetime.datetime
     author: str
     modules: list[str]
@@ -172,10 +171,9 @@ class ChangeHistoryResponse:
     transaction_id: str
 
 
-@dataclass
-class ChangeHistoryArgs:
-    module: Optional[str] = None
-    change_type: Optional[str] = None
+class ChangeHistoryArgs(NamedTuple):
+    module: str
+    change_type: str
     user: Optional[str] = None
     input: Optional[list[str]] = None
     event_start_date: Optional[datetime.datetime] = None
@@ -189,15 +187,18 @@ class ChangeHistory(APIWorker):
 
     def __init__(self, connection, **kwargs):
         self.conn = connection
-        self.args = ChangeHistoryArgs(**kwargs)
+        self.kwargs = kwargs
+        self.args: ChangeHistoryArgs
         self.sql = sql
         super().__init__()
 
+    def check_params(self) -> bool:
+        self.logger.debug(f"args: {self.kwargs}")
+        self.args = ChangeHistoryArgs(**self.kwargs)
+        return True
+
     @property
     def _limit(self) -> str:
-        """
-        Generate the LIMIT clause for SQL query if limit is specified.
-        """
         return f"LIMIT {self.args.limit}" if self.args.limit else ""
 
     @property
@@ -214,33 +215,20 @@ class ChangeHistory(APIWorker):
 
     @property
     def _order_by(self) -> str:
-        """
-        Generate the ORDER BY clause based on requested sort fields.
-        """
-        allowed_fields = ChangeHistoryResponse.__annotations__.keys()
-        default_sorting = "ORDER BY event_date DESC"
-        if not self.args.sort:
-            return default_sorting
-
+        order_fields = self.args.sort or ["modified"]
         order_clauses = []
 
-        for sort_field in self.args.sort:
+        for sort_field in order_fields:
             direction = "ASC"
             field_name = sort_field
 
             if sort_field.startswith("-"):
                 direction = "DESC"
-                field_name = sort_field[1:]
-            if field_name in allowed_fields:
-                escaped_field = (
-                    f"{field_name}" if not field_name.islower() else field_name
-                )
-                order_clauses.append(f"{escaped_field} {direction}, transaction_id")
+                field_name = sort_field.removeprefix("-")
+            if field_name in ChangeHistoryResponse._fields:
+                order_clauses.append(f"{field_name} {direction}")
 
-        if not order_clauses:
-            return default_sorting
-
-        return f"ORDER BY {', '.join(order_clauses)}, transaction_id"
+        return "ORDER BY " + ", ".join(order_clauses)
 
     @property
     def _create_input_conditions(self) -> list[str]:
@@ -308,27 +296,27 @@ class ChangeHistory(APIWorker):
             return self.store_error(
                 {
                     "message": "No change history data found for given parameters",
-                    "args": asdict(self.args),
+                    "args": self.args._asdict(),
                 }
             )
         total_count = response[0][-1]
         changes = [
             ChangeHistoryResponse(
-                event_date=hist[0],
-                author=hist[1],
-                modules=hist[2],
-                changes=[ChangeItem(change) for change in hist[3]],
-                transaction_id=hist[4],
+                event_date=event_date,
+                author=author,
+                modules=modules,
+                changes=[ChangeItem(change) for change in changes],
+                transaction_id=transaction_id,
             )
-            for hist in response
+            for event_date, author, modules, changes, transaction_id, in response
         ]
-        res: dict[str, Any] = {
-            "request_args": asdict(self.args),
-            "length": len(changes),
-            "change_history": [asdict(el) for el in changes],
-        }
+
         return (
-            res,
+            {
+                "request_args": self.args._asdict(),
+                "length": len(changes),
+                "change_history": [el._asdict() for el in changes],
+            },
             200,
             {
                 "Access-Control-Expose-Headers": "X-Total-Count",
@@ -338,36 +326,50 @@ class ChangeHistory(APIWorker):
 
     def metadata(self) -> WorkerResult:
         metadata = []
-        for el in change_history_args.args:
-            is_append = False
-            meta = MetadataItem(
-                name=el.name,
-                label=el.name.replace("_", " ").capitalize(),
-                help_text=el.help,
-                type=KnownFilterTypes.STRING,
-            )
-            if el.type.__name__ == "date_string_type":
-                meta.type = KnownFilterTypes.DATE
-                is_append = True
-            if el.name in ["module", "change_type"]:
-                meta.type = KnownFilterTypes.CHOICE
-                meta.choices = [
-                    MetadataChoiceItem(value=choice, display_name=choice.capitalize())
-                    for choice in el.choices
-                    if choice != "all"
-                ]
-                is_append = True
-            if el.name == "user":
+        for arg in change_history_args.args:
+            item_info = {
+                "name": arg.name,
+                "label": arg.name.replace("_", " ").capitalize(),
+                "help_text": arg.help,
+            }
+
+            if arg.type.__name__ == "date_string_type":
+                metadata.append(
+                    MetadataItem(
+                        **item_info,
+                        type=KnownFilterTypes.DATE,
+                    )
+                )
+
+            if arg.name in ["module", "change_type"]:
+                metadata.append(
+                    MetadataItem(
+                        **item_info,
+                        type=KnownFilterTypes.CHOICE,
+                        choices=[
+                            MetadataChoiceItem(
+                                value=choice, display_name=choice.capitalize()
+                            )
+                            for choice in arg.choices
+                            if choice != "all"
+                        ],
+                    )
+                )
+
+            if arg.name == "user":
                 users = self.send_sql_request(self.sql.get_authors_change_history)
                 if users:
-                    meta.type = KnownFilterTypes.CHOICE
-                    meta.choices = [
-                        MetadataChoiceItem(value=user[0], display_name=user[0])
-                        for user in users
-                    ]
-                    is_append = True
-            if is_append:
-                metadata.append(meta)
+                    metadata.append(
+                        MetadataItem(
+                            **item_info,
+                            type=KnownFilterTypes.CHOICE,
+                            choices=[
+                                MetadataChoiceItem(value=user[0], display_name=user[0])
+                                for user in users
+                            ],
+                        )
+                    )
+
         return {
             "length": len(metadata),
             "metadata": [el.asdict() for el in metadata],
