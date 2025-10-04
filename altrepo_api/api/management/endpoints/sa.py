@@ -15,9 +15,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from enum import Enum
-from typing import Any
+from typing import Any, NamedTuple, Optional
 
-from altrepo_api.api.base import APIWorker
+from altrepo_api.api.base import APIWorker, WorkerResult
+from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
 from altrepo_api.settings import namespace as settings
 from altrepo_api.libs.errata_server.errata_sa_service import (
     ErrataServerError,
@@ -35,6 +36,8 @@ from altrepo_api.libs.sorting import rich_sort
 from altrepo_api.utils import get_logger, get_real_ip
 
 from .tools.constants import DRY_RUN_KEY
+
+from ..parsers import sa_list_args
 
 
 logger = get_logger(__name__)
@@ -78,20 +81,6 @@ class ManageSa(APIWorker):
         self.user: UserInfo
         super().__init__()
 
-    def check_params(self) -> bool:
-        self.logger.debug(f"args : {self.args}")
-        type = self.args.get("type", None)
-        filter = self.args.get("filter", None)
-
-        if type:
-            if ErrataJsonType[type.upper()] == ErrataJsonType.ALL and filter:
-                self.validation_results.append(
-                    "Entry value should be specified only for filter type is not 'ALL'"
-                )
-                return False
-
-        return True
-
     def check_params_post(self) -> bool:
         self.logger.debug(f"args : {self.args}")
         # use direct indeces to fail early
@@ -101,96 +90,6 @@ class ManageSa(APIWorker):
             ip=get_real_ip(),
         )
         return True
-
-    def get(self):
-        state = self.args.get("state")
-        type = self.args.get("type")
-        filter_value = self.args.get("filter")
-        limit = self.args.get("limit")
-        page = self.args.get("page")
-        sort = self.args.get("sort")
-
-        state_filter = (
-            ErrataRecordState[state.upper()] if state else ErrataRecordState.ALL
-        )
-        type_filter = ErrataJsonType[type.upper()] if type else ErrataJsonType.ALL
-
-        service = get_errata_service(dry_run=True, access_token="", user="", ip="")
-        try:
-            erratas = service.list()
-        except ErrataServerError as e:
-            return self.store_error(
-                {"message": f"Failed to get records from Errata Server: {e}"},
-                severity=self.LL.ERROR,
-                http_code=e.status_code if e.status_code else 500,
-            )
-
-        def filter(errata: Errata) -> bool:
-            # filter errata by state
-            if state_filter != ErrataRecordState.ALL and (
-                (state_filter == ErrataRecordState.ACTIVE and errata.is_discarded)
-                or (
-                    state_filter == ErrataRecordState.INACTIVE
-                    and not errata.is_discarded
-                )
-            ):
-                return False
-
-            def filter_by_type_and_value(ej: ErrataJson) -> bool:
-                if type_filter == ErrataJsonType.CVE:
-                    return ej.vuln_id != filter_value
-                elif type_filter == ErrataJsonType.CPE:
-                    return ej.vuln_cpe != filter_value
-                elif type_filter == ErrataJsonType.PACKAGE:
-                    return ej.pkg_name != filter_value
-                return True
-
-            def filter_by_type(ej: ErrataJson) -> bool:
-                sa_type_map = {
-                    ErrataJsonType.ALL: None,
-                    ErrataJsonType.CVE: SaAction.CVE,
-                    ErrataJsonType.CPE: SaAction.CPE,
-                    ErrataJsonType.PACKAGE: SaAction.PACKAGE,
-                }
-                return (
-                    ej.type == SaType.EXCLUSION
-                    and ej.action != sa_type_map[type_filter]
-                )
-
-            # filter errata by type and filter value if specified
-            if type_filter != ErrataJsonType.ALL and (
-                errata.eh.json is None
-                or (
-                    filter_by_type_and_value(errata.eh.json)
-                    if filter_value
-                    else filter_by_type(errata.eh.json)
-                )
-            ):
-                return False
-
-            return True
-
-        res = [e.asdict() for e in erratas if filter(e)]
-
-        if not res:
-            return self.store_error(
-                {"message": f"No data found in DB for {self.args}"}, http_code=404
-            )
-
-        if sort:
-            res = rich_sort(res, sort)
-
-        paginator = Paginator(res, limit)
-        res = paginator.get_page(page)
-
-        return (
-            {"request_args": self.args, "length": len(res), "errata": res},
-            200,
-            {
-                "Access-Control-Expose-Headers": "X-Total-Count",
-                "X-Total-Count": int(paginator.count),
-            },
-        )
 
     def post(self):
         d = deserialize(ErrataJson, self.payload["errata_json"])
@@ -285,3 +184,154 @@ class ManageSa(APIWorker):
             )
 
         return {"request_args": self.args, **serialize(response)}, 200  # type: ignore
+
+
+class SaListArgs(NamedTuple):
+    type: str
+    state: str
+    filter: Optional[str] = None
+    sort: Optional[list[str]] = None
+    page: Optional[int] = None
+    limit: Optional[int] = None
+
+
+class ListSa(APIWorker):
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.kwargs = kwargs
+        self.args: SaListArgs
+        self.user: UserInfo
+        super().__init__()
+
+    def check_params(self) -> bool:
+        self.args = SaListArgs(**self.kwargs)
+        self.logger.debug(f"args : {self.kwargs}")
+
+        if (
+            self.args.type
+            and self.args.filter
+            and ErrataJsonType[self.args.type.upper()] == ErrataJsonType.ALL
+        ):
+            self.validation_results.append(
+                "Entry value should be specified only "
+                "for filter type which is not 'ALL'"
+            )
+
+        return self.validation_results == []
+
+    def get(self):
+        state_filter = (
+            ErrataRecordState[self.args.state.upper()]
+            if self.args.state
+            else ErrataRecordState.ALL
+        )
+        type_filter = (
+            ErrataJsonType[self.args.type.upper()]
+            if self.args.type
+            else ErrataJsonType.ALL
+        )
+
+        service = get_errata_service(dry_run=True, access_token="", user="", ip="")
+        try:
+            erratas = service.list()
+        except ErrataServerError as e:
+            return self.store_error(
+                {"message": f"Failed to get records from Errata Server: {e}"},
+                severity=self.LL.ERROR,
+                http_code=e.status_code or 500,
+            )
+
+        def filter(errata: Errata) -> bool:
+            # filter errata by state
+            if state_filter != ErrataRecordState.ALL and (
+                (state_filter == ErrataRecordState.ACTIVE and errata.is_discarded)
+                or (
+                    state_filter == ErrataRecordState.INACTIVE
+                    and not errata.is_discarded
+                )
+            ):
+                return False
+
+            def filter_by_type_and_value(ej: ErrataJson) -> bool:
+                if type_filter == ErrataJsonType.CVE:
+                    return ej.vuln_id != self.args.filter
+                elif type_filter == ErrataJsonType.CPE:
+                    return ej.vuln_cpe != self.args.filter
+                elif type_filter == ErrataJsonType.PACKAGE:
+                    return ej.pkg_name != self.args.filter
+                return True
+
+            def filter_by_type(ej: ErrataJson) -> bool:
+                sa_type_map = {
+                    ErrataJsonType.ALL: None,
+                    ErrataJsonType.CVE: SaAction.CVE,
+                    ErrataJsonType.CPE: SaAction.CPE,
+                    ErrataJsonType.PACKAGE: SaAction.PACKAGE,
+                }
+                return (
+                    ej.type == SaType.EXCLUSION
+                    and ej.action != sa_type_map[type_filter]
+                )
+
+            # filter errata by type and filter value if specified
+            if type_filter != ErrataJsonType.ALL and (
+                errata.eh.json is None
+                or (
+                    filter_by_type_and_value(errata.eh.json)
+                    if self.args.filter
+                    else filter_by_type(errata.eh.json)
+                )
+            ):
+                return False
+
+            return True
+
+        res = [e.asdict() for e in erratas if filter(e)]
+
+        if not res:
+            return self.store_error(
+                {"message": f"No data found in DB for {self.args}"}, http_code=404
+            )
+
+        if self.args.sort:
+            res = rich_sort(res, self.args.sort)
+
+        paginator = Paginator(res, self.args.limit)
+        res = paginator.get_page(self.args.page)
+
+        return (
+            {"request_args": self.args._asdict(), "length": len(res), "errata": res},
+            200,
+            {
+                "Access-Control-Expose-Headers": "X-Total-Count",
+                "X-Total-Count": int(paginator.count),
+            },
+        )
+
+    def metadata(self) -> WorkerResult:
+        metadata = []
+        for arg in sa_list_args.args:
+            item_info = {
+                "name": arg.name,
+                "label": arg.name.replace("_", " ").capitalize(),
+                "help_text": arg.help,
+            }
+
+            if arg.name in ["state", "type"]:
+                metadata.append(
+                    MetadataItem(
+                        **item_info,
+                        type=KnownFilterTypes.CHOICE,
+                        choices=[
+                            MetadataChoiceItem(
+                                value=choice, display_name=choice.capitalize()
+                            )
+                            for choice in arg.choices
+                        ],
+                    )
+                )
+
+        return {
+            "length": len(metadata),
+            "metadata": [el.asdict() for el in metadata],
+        }, 200
