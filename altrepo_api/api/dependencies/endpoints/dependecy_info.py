@@ -16,6 +16,7 @@
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
+from altrepo_api.api.task.endpoints.task_repo import LastRepoStateFromTask
 from altrepo_api.utils import dp_flags_decode, make_tmp_table_name, sort_branches
 
 from ..sql import sql
@@ -82,6 +83,7 @@ class PackagesDependence(APIWorker):
         dp_name: str = self.args["dp_name"]
         dp_type: str = self.args["dp_type"]
         branch: str = self.args["branch"]
+        last_state: bool = self.args["last_state"]
 
         dp_type_where_clause = f"AND dp_type = '{dp_type}'" if dp_type != "all" else ""
 
@@ -91,9 +93,37 @@ class PackagesDependence(APIWorker):
             "table_name": "static_last_packages",
             "branch_where_clause": f"WHERE pkgset_name = '{branch}'",
         }
+        sql_args = {}
+
+        if last_state:
+            ls = LastRepoStateFromTask(self.conn, branch)
+            ls.build_repo_state()
+            if not ls.status:
+                return ls.error
+
+            if ls.task_repo_pkgs:
+                # if ls.task_repo_pkgs is None -> can't find last pkgset state packages
+                # in most cases it means no tasks commited after branch commit
+
+                tmp_table_name = make_tmp_table_name("tmp_pkg_hash")
+
+                sql_format_args.update(
+                    {"table_name": tmp_table_name, "branch_where_clause": ""}
+                )
+
+                sql_args["external_tables"] = (
+                    [
+                        {
+                            "name": tmp_table_name,
+                            "structure": [("pkg_hash", "UInt64")],
+                            "data": [{"pkg_hash": hash} for hash in ls.task_repo_pkgs],  # type: ignore
+                        },
+                    ],
+                )
 
         response = self.send_sql_request(
             self.sql.get_pkgs_depends.format(**sql_format_args),
+            **sql_args,
         )
         if not self.sql_status:
             return self.error
