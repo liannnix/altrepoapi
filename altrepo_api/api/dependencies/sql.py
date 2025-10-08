@@ -58,7 +58,7 @@ SELECT
     dp_flag,
     dp_type
 FROM Depends
-WHERE pkg_hash = {pkghash}
+WHERE pkg_hash = {pkg_hash}
 """
 
     make_src_depends_tmp = """
@@ -68,7 +68,7 @@ SELECT
     dp_version,
     dp_flag
 FROM Depends
-WHERE pkg_hash = {pkghash}
+WHERE pkg_hash = {pkg_hash}
     AND dp_type = 'require'
 """
 
@@ -123,20 +123,27 @@ SELECT
     pkg_release,
     pkg_buildtime
 FROM Packages
-WHERE pkg_hash = {pkghash}
+WHERE pkg_hash = {pkg_hash}
 """
 
     get_pkgs_depends = """
-SELECT toString(pkg_hash), dp_type
-FROM last_depends
+SELECT
+    pkg_hash,
+    groupUniqArray(dp_type)
+FROM Depends_buffer
 WHERE dp_name = '{dp_name}'
-    AND pkgset_name = '{branch}'
-    {dp_type}
+    {dp_type_where_clause}
+    AND pkg_hash IN (
+        SELECT pkg_hash
+        FROM {table_name}
+        {branch_where_clause}
+    )
+GROUP BY pkg_hash
 """
 
     get_repo_packages = """
 SELECT DISTINCT
-    toString(pkg_hash),
+    pkg_hash,
     pkg_name,
     pkg_version,
     pkg_release,
