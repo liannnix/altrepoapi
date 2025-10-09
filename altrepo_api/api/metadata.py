@@ -154,7 +154,10 @@ def with_metadata(
         """
 
         @ns.marshal_with(metadata_model)
-        @token_required(ldap_groups=METADATA_AUTH_LDAP_GROUPS)
+        @token_required(
+            ldap_groups=METADATA_AUTH_LDAP_GROUPS,
+            keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
+        )
         def get(self):
             url_logging(logger, f"{g.url}/metadata")
             w = worker(g.connection)  # pyright: ignore[reportCallIssue]

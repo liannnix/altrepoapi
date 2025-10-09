@@ -14,13 +14,14 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from enum import StrEnum
+from keycloak import KeycloakError, KeycloakOpenID  # noqa: F401
 
-JWT_ENCODE_ALGORITHM = "HS256"
-REFRESH_TOKEN_KEY = "refresh-token:{user}"
-BLACKLISTED_ACCESS_TOKEN_KEY = "blacklisted:access-token:{token}"
+from altrepo_api.settings import namespace
 
-
-class AuthProvider(StrEnum):
-    LDAP = "ldap"
-    KEYCLOAK = "keycloak"
+keycloak_openid = KeycloakOpenID(
+    server_url=namespace.KEYCLOAK_SERVER_URL,
+    verify=namespace.KEYCLOAK_SERVER_CHECK_SSL,
+    realm_name=namespace.KEYCLOAK_REALM,
+    client_id=namespace.KEYCLOAK_CLIENT_ID,
+    client_secret_key=namespace.KEYCLOAK_CLIENT_SECRET_KEY,
+)

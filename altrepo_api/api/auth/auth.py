@@ -15,14 +15,15 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import hashlib
+from typing import Any, NamedTuple, Optional
+
 import ldap
-
-from typing import Any, NamedTuple
-
-from .token.token import parse_basic_auth_token, InvalidTokenError
 
 from altrepo_api.settings import namespace
 from altrepo_api.utils import get_logger
+
+from .token.token import InvalidTokenError, parse_basic_auth_token
+from .keycloak import keycloak_openid, KeycloakError
 
 logger = get_logger(__name__)
 
@@ -33,17 +34,31 @@ class AuthCheckResult(NamedTuple):
     value: dict[str, Any]
 
 
-def check_auth(token: str, ldap_groups: list[str]) -> AuthCheckResult:
+def check_auth(
+    token: str,
+    ldap_groups: list[str],
+    keycloak_roles: Optional[list[str]] = None,
+) -> AuthCheckResult:
     try:
         credentials = parse_basic_auth_token(token)
     except InvalidTokenError:
         logger.error("Authorization token validation error")
-        return AuthCheckResult(False, "token validation error", {})
+        return AuthCheckResult(False, "Token validation error", {})
 
-    logger.info(f"User '{credentials.user}' attempt to authorize")
+    logger.info(f"User '{credentials.user}' attempts to authorize")
 
     if ldap_groups:
-        return check_auth_ldap(credentials.user, credentials.password, ldap_groups)
+        return check_auth_ldap(
+            credentials.user,
+            credentials.password,
+            ldap_groups,
+        )
+    elif keycloak_roles is not None:
+        return check_auth_keycloak(
+            credentials.user,
+            credentials.password,
+            keycloak_roles,
+        )
     else:
         return check_auth_basic(credentials.user, credentials.password)
 
@@ -102,3 +117,78 @@ def check_auth_ldap(
         else:
             logger.warning(f"User '{user}' LDAP authorization failed")
             return AuthCheckResult(False, "LDAP authorization failed", {})
+
+
+def check_auth_keycloak(
+    user: str,
+    password: str,
+    keycloak_roles: Optional[list[str]] = None,
+) -> AuthCheckResult:
+    try:
+        jwt = keycloak_openid.token(username=user, password=password)
+    except KeycloakError as exc:
+        logger.warning(
+            "Can't get token for user '%s' in '%s' via '%s' client: %s",
+            user,
+            namespace.KEYCLOAK_REALM,
+            namespace.KEYCLOAK_CLIENT_ID,
+            exc,
+        )
+        return AuthCheckResult(False, "Keycloak authorization failed", {})
+
+    access_token: str = jwt["access_token"]
+    refresh_token: str = jwt["refresh_token"]
+    refresh_expires_in: int = jwt["refresh_expires_in"]
+
+    try:
+        decoded_access_token = keycloak_openid.decode_token(access_token)
+    except KeycloakError as exc:
+        logger.warning(
+            "Can't decode token for user '%s' in '%s' via '%s' client: %s",
+            user,
+            namespace.KEYCLOAK_REALM,
+            namespace.KEYCLOAK_CLIENT_ID,
+            exc,
+        )
+        return AuthCheckResult(False, "Keycloak authorization failed", {})
+
+    user_roles = (
+        decoded_access_token.get("resource_access", {})
+        .get(namespace.KEYCLOAK_CLIENT_ID, {})
+        .get("roles", [])
+    )
+
+    if not user_roles:
+        logger.warning(
+            "User '%s' has no roles in '%s' via '%s' client",
+            user,
+            namespace.KEYCLOAK_REALM,
+            namespace.KEYCLOAK_CLIENT_ID,
+        )
+        return AuthCheckResult(False, "Keycloak authorization failed", {})
+
+    if keycloak_roles is not None:
+        effective_roles = list(set(user_roles).intersection(keycloak_roles))
+
+        if keycloak_roles and not effective_roles:
+            logger.warning(
+                "User '%s' has no any of '%s' roles in '%s' via '%s' client",
+                user,
+                " or ".join(f"'{role}'" for role in sorted(keycloak_roles)),
+                namespace.KEYCLOAK_REALM,
+                namespace.KEYCLOAK_CLIENT_ID,
+            )
+            return AuthCheckResult(False, "Keycloak authorization failed", {})
+
+    logger.info("User '%s' successfully authorized with Keycloak", user)
+    return AuthCheckResult(
+        True,
+        "OK",
+        {
+            "user": user,
+            "roles": user_roles,
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "refresh_expires_in": refresh_expires_in,
+        },
+    )

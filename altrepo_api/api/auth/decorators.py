@@ -16,24 +16,41 @@
 
 from functools import wraps
 from flask import request
-from typing import Any
+from typing import Any, Optional
+
+from keycloak import KeycloakError
 
 from .auth import check_auth
 from .exceptions import ApiUnauthorized, ApiForbidden
-from .token.token import AccessTokenBlacklist, InvalidTokenError, decode_jwt_token
+from .token.token import (
+    AccessTokenBlacklist,
+    ExpiredTokenError,
+    InvalidTokenError,
+    decode_jwt_token,
+)
+from .constants import AuthProvider
+from .keycloak import keycloak_openid
 
 from altrepo_api.settings import namespace, AccessGroups
 
 
 def auth_required(
-    _func=None, *, ldap_groups: list[AccessGroups] = [], admin_only=False
+    _func=None,
+    *,
+    ldap_groups: list[AccessGroups] = [],
+    keycloak_roles: Optional[list[str]] = None,
+    admin_only=False,
 ):
     def _auth_required(func):
         """Execute function if request contains valid access token."""
 
         @wraps(func)
         def decorated(*args, **kwargs):
-            _ = _check_access_auth(admin_only=admin_only, ldap_groups=ldap_groups)
+            _ = _check_access_auth(
+                admin_only=admin_only,
+                ldap_groups=ldap_groups,
+                keycloak_roles=keycloak_roles,
+            )
             return func(*args, **kwargs)
 
         return decorated
@@ -45,14 +62,20 @@ def auth_required(
 
 
 def _check_access_auth(
-    admin_only: bool = False, ldap_groups: list[AccessGroups] = []
+    admin_only: bool = False,
+    ldap_groups: list[AccessGroups] = [],
+    keycloak_roles: Optional[list[str]] = None,
 ) -> dict[str, Any]:
     token = request.headers.get("Authorization")
 
     if not token:
         raise ApiUnauthorized(description="Unauthorized", admin_only=admin_only)
 
-    result = check_auth(token, [namespace.ACCESS_GROUPS[g] for g in ldap_groups])
+    result = check_auth(
+        token,
+        ldap_groups=[namespace.ACCESS_GROUPS[g] for g in ldap_groups],
+        keycloak_roles=keycloak_roles,
+    )
 
     if not result.verified:
         raise ApiUnauthorized(
@@ -71,13 +94,16 @@ def _check_access_auth(
     return result.value
 
 
-def token_required(ldap_groups: list[AccessGroups]):
+def token_required(
+    ldap_groups: list[AccessGroups],
+    keycloak_roles: Optional[list[str]] = None,
+):
     def _token_required(func):
         """Execute function if request contains valid access token."""
 
         @wraps(func)
         def decorated(*args, **kwargs):
-            token_payload = _check_access_token(ldap_groups)
+            token_payload = _check_access_token(ldap_groups, keycloak_roles)
             for name, val in token_payload.items():
                 setattr(decorated, name, val)
             return func(*args, **kwargs)
@@ -87,25 +113,49 @@ def token_required(ldap_groups: list[AccessGroups]):
     return _token_required
 
 
-def _check_access_token(ldap_groups: list[AccessGroups]) -> dict[str, Any]:
+def _check_access_token(
+    ldap_groups: list[AccessGroups],
+    keycloak_roles: Optional[list[str]] = None,
+) -> dict[str, Any]:
     token = request.headers.get("Authorization")
     if not token:
         raise ApiUnauthorized(description="Authentication token is required")
 
     try:
-        token_payload = decode_jwt_token(token)
+        auth_provider, token_payload = decode_jwt_token(token)
     except InvalidTokenError:
-        raise ApiUnauthorized(description="Invalid token.")
+        raise ApiUnauthorized(description="Invalid token")
+    except ExpiredTokenError:
+        raise ApiUnauthorized(description="Token expired")
 
     if AccessTokenBlacklist(token, int(token_payload["exp"])).check():
         raise ApiUnauthorized(description="Token blacklisted")
 
-    # check if user groups from token is intersects with given LDAP groups
-    user_ldap_groups = set(token_payload.get("groups", []))
+    match auth_provider:
+        case AuthProvider.LDAP:
+            # check if user groups from token is intersects with given LDAP groups
+            user_ldap_groups = set(token_payload.get("groups", []))
 
-    if not user_ldap_groups or not user_ldap_groups.intersection(
-        namespace.ACCESS_GROUPS[g] for g in ldap_groups
-    ):
-        raise ApiForbidden()
+            if not user_ldap_groups or not user_ldap_groups.intersection(
+                namespace.ACCESS_GROUPS[g] for g in ldap_groups
+            ):
+                raise ApiForbidden()
 
-    return {"token": token, "exp": token_payload.get("exp")}
+            return {"token": token, "exp": token_payload.get("exp")}
+        case AuthProvider.KEYCLOAK:
+            try:
+                keycloak_openid.userinfo(token)
+            except KeycloakError as e:
+                raise ApiUnauthorized(f"Keycloak token validation error: {e}")
+
+            user_roles = set(
+                token_payload.get("resource_access", {})
+                .get(namespace.KEYCLOAK_CLIENT_ID, {})
+                .get("roles", [])
+            )
+
+            if keycloak_roles is not None:
+                if not user_roles or not user_roles.intersection(keycloak_roles):
+                    raise ApiForbidden()
+
+            return {"token": token, "exp": token_payload.get("exp")}

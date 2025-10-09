@@ -20,15 +20,17 @@ import json
 from flask import request
 
 from altrepo_api.api.base import APIWorker
-from ..constants import REFRESH_TOKEN_KEY
+
+from ..constants import REFRESH_TOKEN_KEY, AuthProvider
 from ..exceptions import ApiUnauthorized
+from ..keycloak import keycloak_openid
 from ..token import (
+    STORAGE,
     AccessTokenBlacklist,
     InvalidTokenError,
-    STORAGE,
-    update_access_token,
     check_fingerprint,
     decode_jwt_token,
+    update_access_token,
 )
 
 
@@ -42,18 +44,19 @@ class RefreshToken(APIWorker):
         self.refresh_token = request.cookies.get("refresh_token", "")
         self.access_token = self.args["access_token"]
         self.access_token_payload = {}
+        self.access_token_auth_provider: AuthProvider
         self.blacklist: AccessTokenBlacklist
         super().__init__()
 
     def check_params(self):
-        self.logger.debug(f"args : {self.args}")
-        self.logger.debug(f"Cookies: {request.cookies}")
+        self.logger.debug("args : %s", self.args)
+        self.logger.debug("cookies: %s", request.cookies)
         self.validation_results = []
 
         # check access token and decode it.
         try:
-            self.access_token_payload = decode_jwt_token(
-                self.access_token, verify_exp=False
+            self.access_token_auth_provider, self.access_token_payload = (
+                decode_jwt_token(self.access_token, verify_exp=False)
             )
         except InvalidTokenError:
             self.validation_results.append("Invalid access token")
@@ -69,40 +72,44 @@ class RefreshToken(APIWorker):
         if not self.refresh_token:
             self.validation_results.append("User is not authorized")
 
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return self.validation_results == []
 
     def post(self):
-        user_sessions = self.storage.map_getall(
-            REFRESH_TOKEN_KEY.format(user=self.access_token_payload.get("nickname", ""))
-        )
+        if self.access_token_auth_provider == AuthProvider.LDAP:
+            user = self.access_token_payload.get("nickname", "")
+        else:
+            user = self.access_token_payload.get("preferred_username", "")
+
+        user_sessions = self.storage.map_getall(REFRESH_TOKEN_KEY.format(user=user))
         active_session = user_sessions.get(self.refresh_token)
 
         if not active_session:
-            raise ApiUnauthorized(description="User not authorized.")
+            raise ApiUnauthorized(description="User not authorized")
 
         session_data_json: dict = json.loads(active_session)
 
-        if not check_fingerprint(session_data_json.get("fingerprint", "")):
-            raise ApiUnauthorized(description="User not authorized.")
+        if self.access_token_auth_provider == AuthProvider.LDAP:
+            if not check_fingerprint(session_data_json.get("fingerprint", "")):
+                raise ApiUnauthorized(description="User not authorized")
 
         if (
             session_data_json["create_at"] + session_data_json["expires"]
             <= datetime.datetime.now().timestamp()
         ):
             self.storage.map_delete(
-                REFRESH_TOKEN_KEY.format(
-                    user=self.access_token_payload.get("nickname", "")
-                ),
+                REFRESH_TOKEN_KEY.format(user=user),
                 self.refresh_token,
             )
             raise ApiUnauthorized(description="Session is expired")
 
         # add the old access token to the blacklist if it hasn't expired yet.
         self.blacklist.add()
-        new_access_token = update_access_token(self.access_token_payload)
+
+        if self.access_token_auth_provider == AuthProvider.LDAP:
+            new_access_token = update_access_token(self.access_token_payload)
+        else:
+            jwt = keycloak_openid.refresh_token(self.refresh_token)
+            new_access_token = jwt["access_token"]
 
         return {
             "access_token": new_access_token,
