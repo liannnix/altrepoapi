@@ -595,7 +595,10 @@ class PncList(APIWorker):
         self.args = PncListArgs(**self.kwargs)
         self.logger.debug(f"args : {self.kwargs}")
 
-        if self.args.branch not in lut.repology_branch_map:
+        if (
+            self.args.branch is not None
+            and self.args.branch not in lut.repology_branch_map
+        ):
             self.validation_results.append(f"Invalid branch: {self.args.branch}")
             return False
 
