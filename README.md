@@ -22,6 +22,7 @@ API documentation is available through Swagger web-interface.
 * python3-module-packaging
 * python3-module-redis-py
 * python3-module-altrepodb_libs
+* python3-module-python-keycloak
 
 # Starting application
 
