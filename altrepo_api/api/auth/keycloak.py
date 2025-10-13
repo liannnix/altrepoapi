@@ -20,7 +20,11 @@ from altrepo_api.settings import namespace
 
 keycloak_openid = KeycloakOpenID(
     server_url=namespace.KEYCLOAK_SERVER_URL,
-    verify=namespace.KEYCLOAK_SERVER_CHECK_SSL,
+    verify=(
+        False
+        if not namespace.KEYCLOAK_SERVER_CHECK_SSL
+        else namespace.KEYCLOAK_SERVER_SSL_CERTIFICATE
+    ),
     realm_name=namespace.KEYCLOAK_REALM,
     client_id=namespace.KEYCLOAK_CLIENT_ID,
     client_secret_key=namespace.KEYCLOAK_CLIENT_SECRET_KEY,
