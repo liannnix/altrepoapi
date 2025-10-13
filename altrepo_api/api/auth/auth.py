@@ -102,18 +102,20 @@ def check_auth_ldap(
         return AuthCheckResult(False, "LDAP authentication failed", {})
     else:
         # checks whether user a memberof any groups provided
-        user_groups = []
+        user_groups = set()
         for group in ldap_groups:
             try:
                 if is_member_of_ldap_group(group):
-                    user_groups.append(group)
+                    user_groups.add(group)
             except (ldap.NO_SUCH_ATTRIBUTE, ldap.NO_SUCH_OBJECT, ldap.PROTOCOL_ERROR):  # type: ignore
                 logger.info(f"No such group `{group}` found for `{user}`")
                 pass
 
         if user_groups:
             logger.info(f"User '{user}' successfully authorized with LDAP")
-            return AuthCheckResult(True, "OK", {"user": user, "groups": user_groups})
+            return AuthCheckResult(
+                True, "OK", {"user": user, "groups": list(user_groups)}
+            )
         else:
             logger.warning(f"User '{user}' LDAP authorization failed")
             return AuthCheckResult(False, "LDAP authorization failed", {})

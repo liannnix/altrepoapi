@@ -21,7 +21,7 @@ from typing import NamedTuple
 from uuid import uuid4
 
 from altrepo_api.api.base import APIWorker, WorkerResult
-from altrepo_api.settings import namespace
+from altrepo_api.settings import namespace, AccessGroups
 from altrepo_api.utils import get_logger
 
 from ..auth import check_auth_keycloak, check_auth_ldap
@@ -106,7 +106,27 @@ class AuthLogin(APIWorker):
         if auth_result.verified is False:
             return {"message": auth_result.error}, 401
 
-        user_groups = auth_result.value["groups"]
+        access_groups = auth_result.value["groups"]
+
+        def AG_REVERSED_LUT(group) -> set[AccessGroups]:
+            groups = set()
+            for k, v in namespace.ACCESS_GROUPS.items():
+                if v == group:
+                    groups.add(k)
+            return groups
+
+        # collect KeyCloak-wise groups and roles from  LDAP Access Groups mappings
+        user_groups = set()
+        user_roles = set()
+        for group in access_groups:
+            for g in AG_REVERSED_LUT(group):
+                if g in namespace.AG_GROUP_MAPPING:
+                    user_groups.update(namespace.AG_GROUP_MAPPING[g])
+                if g in namespace.AG_ROLE_MAPPING:
+                    user_roles.update(namespace.AG_ROLE_MAPPING[g])
+        user_groups = sorted(user_groups)
+        user_roles = sorted(user_roles)
+
         refresh_token = str(uuid4())
         refresh_expires_in = namespace.EXPIRES_REFRESH_TOKEN
 
@@ -134,6 +154,8 @@ class AuthLogin(APIWorker):
                 "exp": token_expires,
                 "ns": time.perf_counter_ns(),
                 "groups": user_groups,
+                "roles": user_roles,
+                "provider": self.args.auth_provider.value,
             }
         )
 

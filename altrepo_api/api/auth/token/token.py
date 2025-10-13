@@ -91,14 +91,16 @@ def parse_basic_auth_token(token: str) -> UserCredentials:
         raise InvalidTokenError("Invalid token")
 
 
-def encode_jwt_token(
-    payload: dict[str, Any], prov: AuthProvider = AuthProvider.LDAP
-) -> str:
+def encode_jwt_token(payload: dict[str, Any]) -> str:
     return jwt.encode(
         payload=payload,
         key=namespace.ADMIN_PASSWORD,
         algorithm=JWT_ENCODE_ALGORITHM,
-        headers={"typ": "JWT", "alg": JWT_ENCODE_ALGORITHM, "prov": prov.value},
+        headers={
+            "typ": "JWT",
+            "alg": JWT_ENCODE_ALGORITHM,
+            "provider": AuthProvider.LDAP.value,
+        },
     )
 
 
@@ -108,7 +110,7 @@ def decode_jwt_token(
     try:
         header = jwt.get_unverified_header(token)
 
-        if header.get("prov") == AuthProvider.LDAP:
+        if header.get("provider") == AuthProvider.LDAP:
             return AuthProvider.LDAP, jwt.decode(
                 jwt=token,
                 key=namespace.ADMIN_PASSWORD,

@@ -94,16 +94,13 @@ def _check_access_auth(
     return result.value
 
 
-def token_required(
-    ldap_groups: list[AccessGroups],
-    keycloak_roles: Optional[list[str]] = None,
-):
+def token_required(role: str, *, validate_role=True):
     def _token_required(func):
         """Execute function if request contains valid access token."""
 
         @wraps(func)
         def decorated(*args, **kwargs):
-            token_payload = _check_access_token(ldap_groups, keycloak_roles)
+            token_payload = _check_access_token(role, validate_role)
             for name, val in token_payload.items():
                 setattr(decorated, name, val)
             return func(*args, **kwargs)
@@ -113,10 +110,7 @@ def token_required(
     return _token_required
 
 
-def _check_access_token(
-    ldap_groups: list[AccessGroups],
-    keycloak_roles: Optional[list[str]] = None,
-) -> dict[str, Any]:
+def _check_access_token(role: str, validate_role: bool) -> dict[str, Any]:
     token = request.headers.get("Authorization")
     if not token:
         raise ApiUnauthorized(description="Authentication token is required")
@@ -133,12 +127,7 @@ def _check_access_token(
 
     match auth_provider:
         case AuthProvider.LDAP:
-            # check if user groups from token is intersects with given LDAP groups
-            user_ldap_groups = set(token_payload.get("groups", []))
-
-            if not user_ldap_groups or not user_ldap_groups.intersection(
-                namespace.ACCESS_GROUPS[g] for g in ldap_groups
-            ):
+            if validate_role and role not in token_payload.get("roles", []):
                 raise ApiForbidden()
 
             return {"token": token, "exp": token_payload.get("exp")}
@@ -148,14 +137,13 @@ def _check_access_token(
             except KeycloakError as e:
                 raise ApiUnauthorized(f"Keycloak token validation error: {e}")
 
-            user_roles = set(
+            user_roles = (
                 token_payload.get("resource_access", {})
                 .get(namespace.KEYCLOAK_CLIENT_ID, {})
                 .get("roles", [])
             )
 
-            if keycloak_roles is not None:
-                if not user_roles or not user_roles.intersection(keycloak_roles):
-                    raise ApiForbidden()
+            if validate_role and role not in user_roles:
+                raise ApiForbidden()
 
             return {"token": token, "exp": token_payload.get("exp")}
