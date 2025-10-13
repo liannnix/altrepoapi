@@ -81,6 +81,14 @@ class BasePathNamespace:
     # LDAP access groups
     AG = AccessGroups  # used in tests only
     ACCESS_GROUPS = {g: "" for g in AccessGroups}
+    # authentication using Keycloak server
+    KEYCLOAK_SERVER_URL = ""
+    KEYCLOAK_SERVER_CHECK_SSL = True
+    KEYCLOAK_SERVER_SSL_CERTIFICATE = "/abs/path/to/certificate/dc-ipa-basealt-ru.pem"
+    KEYCLOAK_REALM = ""
+    KEYCLOAK_CLIENT_ID = ""
+    KEYCLOAK_CLIENT_SECRET_KEY = ""
+    KEYCLOAK_COMMON_LIST_ROLE = "manage_list"
     # authentication token settings
     TOKEN_STORAGE = "file"  # {file | redis}
     EXPIRES_ACCESS_TOKEN = 60 * 5  # access token storage time in seconds

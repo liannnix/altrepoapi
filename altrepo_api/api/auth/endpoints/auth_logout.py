@@ -17,7 +17,8 @@
 from flask import request
 
 from altrepo_api.api.base import APIWorker
-from ..constants import REFRESH_TOKEN_KEY
+from ..constants import REFRESH_TOKEN_KEY, AuthProvider
+from ..keycloak import keycloak_openid
 from ..exceptions import ApiUnauthorized
 from ..token import AccessTokenBlacklist, InvalidTokenError, STORAGE, decode_jwt_token
 
@@ -40,32 +41,34 @@ class AuthLogout(APIWorker):
         super().__init__()
 
     def check_params(self):
-        self.logger.debug(f"args : {self.args}")
+        self.logger.debug("args : %s", self.args)
         self.validation_results = []
 
         if self.refresh_token is None:
             self.validation_results.append("User is not authorized")
 
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return self.validation_results == []
 
     def post(self):
         try:
             # JWT token aready validated in `@token_required` decorator
-            token_payload = decode_jwt_token(self.token)
+            auth_provider, token_payload = decode_jwt_token(self.token)
         except InvalidTokenError:
-            raise ApiUnauthorized(description="Invalid token.")
+            raise ApiUnauthorized(description="Invalid token")
 
-        refresh_token_key = REFRESH_TOKEN_KEY.format(
-            user=token_payload.get("nickname", "")
-        )
+        if auth_provider == AuthProvider.LDAP:
+            user = token_payload.get("nickname", "")
+        else:
+            user = token_payload.get("preferred_username", "")
 
-        user_sessions = self.storage.map_getall(refresh_token_key)
+        user_session_name = REFRESH_TOKEN_KEY.format(user=user)
+        user_sessions = self.storage.map_getall(user_session_name)
 
         if self.blacklist.check():
-            raise ApiUnauthorized(description="Access token is not valid.")
+            raise ApiUnauthorized(description="Access token is not valid")
+
+        if auth_provider == AuthProvider.KEYCLOAK:
+            keycloak_openid.logout(self.refresh_token)
 
         self.blacklist.add()
 
@@ -75,8 +78,8 @@ class AuthLogout(APIWorker):
         del user_sessions[self.refresh_token]
 
         if not user_sessions:
-            self.storage.delete(refresh_token_key)
+            self.storage.delete(user_session_name)
         else:
-            self.storage.map_delete(refresh_token_key, self.refresh_token)
+            self.storage.map_delete(user_session_name, self.refresh_token)
 
         return {"message": "Logged out"}, 200

@@ -60,6 +60,15 @@ PARAMS = {
         "ldap_user_search": ("LDAP_USER_SEARCH", "str"),
         "ldap_require_group": ("LDAP_REQUIRE_GROUP", "str"),
     },
+    "keycloak": {
+        "keycloak_server_url": ("KEYCLOAK_SERVER_URL", "str"),
+        "keycloak_server_check_ssl": ("KEYCLOAK_SERVER_CHECK_SSL", "bool"),
+        "keycloak_server_ssl_certificate": ("KEYCLOAK_SERVER_SSL_CERTIFICATE", "str"),
+        "keycloak_realm": ("KEYCLOAK_REALM", "str"),
+        "keycloak_client_id": ("KEYCLOAK_CLIENT_ID", "str"),
+        "keycloak_client_secret_key": ("KEYCLOAK_CLIENT_SECRET_KEY", "str"),
+        "keycloack_common_list_role": ("KEYCLOAK_COMMON_LIST_ROLE", "str"),
+    },
     "authentication": {
         "token_storage": ("TOKEN_STORAGE", "str"),
         "expires_access_token": ("EXPIRES_ACCESS_TOKEN", "int"),
@@ -168,3 +177,8 @@ if read_config(cfg_file, PARAMS, settings):
     print(f"*** Run ALTRepo API with config from {cfg_file} ***")
 else:
     raise RuntimeError("Failed to read configuration from {0}".format(cfg_file))
+
+if settings.KEYCLOAK_SERVER_CHECK_SSL is True:
+    cert_path = settings.KEYCLOAK_SERVER_SSL_CERTIFICATE
+    if not os.path.exists(cert_path):
+        raise FileNotFoundError(f"Keycloak certificate file not found: {cert_path}")

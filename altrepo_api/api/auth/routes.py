@@ -47,7 +47,12 @@ class routeAuthLogin(Resource):
         url_logging(logger, g.url)
         args = login_args.parse_args(strict=True)
         w = AuthLogin(g.connection, **args)
-        return run_worker(worker=w, args=args, run_method=w.post)
+        return run_worker(
+            worker=w,
+            args=args,
+            run_method=w.post,
+            check_method=w.check_params_post,
+        )
 
 
 @ns.route(
@@ -63,7 +68,7 @@ class routeAuthLogout(Resource):
     def post(self):
         url_logging(logger, g.url)
         args = {}
-        w = AuthLogout(g.connection, self.post.token, self.post.exp, **args)
+        w = AuthLogout(g.connection, self.post.token, self.post.exp, **args)  # type: ignore
         return run_worker(worker=w, args=args, run_method=w.post)
 
 

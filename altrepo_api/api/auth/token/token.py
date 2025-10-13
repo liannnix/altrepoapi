@@ -18,6 +18,7 @@ import base64
 import datetime
 import hashlib
 import jwt
+import jwcrypto.jwt
 import time
 
 from flask import request
@@ -27,7 +28,8 @@ from altrepo_api.settings import namespace
 from altrepo_api.utils import get_real_ip
 from .redis import RedisStorage
 from .file_storage import FileStorage
-from ..constants import BLACKLISTED_ACCESS_TOKEN_KEY, JWT_ENCODE_ALGORITHM
+from ..constants import BLACKLISTED_ACCESS_TOKEN_KEY, JWT_ENCODE_ALGORITHM, AuthProvider
+from ..keycloak import keycloak_openid
 
 # define `STORAGE` using `namespace.TOKEN_STORAGE` value
 if namespace.TOKEN_STORAGE == "file":
@@ -39,6 +41,10 @@ else:
 
 
 class InvalidTokenError(Exception):
+    pass
+
+
+class ExpiredTokenError(Exception):
     pass
 
 
@@ -85,22 +91,39 @@ def parse_basic_auth_token(token: str) -> UserCredentials:
         raise InvalidTokenError("Invalid token")
 
 
-def encode_jwt_token(payload: dict[str, Any]) -> str:
+def encode_jwt_token(
+    payload: dict[str, Any], prov: AuthProvider = AuthProvider.LDAP
+) -> str:
     return jwt.encode(
-        payload=payload, key=namespace.ADMIN_PASSWORD, algorithm=JWT_ENCODE_ALGORITHM
+        payload=payload,
+        key=namespace.ADMIN_PASSWORD,
+        algorithm=JWT_ENCODE_ALGORITHM,
+        headers={"typ": "JWT", "alg": JWT_ENCODE_ALGORITHM, "prov": prov.value},
     )
 
 
-def decode_jwt_token(token: str, verify_exp: bool = True) -> dict[str, Any]:
+def decode_jwt_token(
+    token: str, verify_exp: bool = True
+) -> tuple[AuthProvider, dict[str, Any]]:
     try:
-        return jwt.decode(
-            jwt=token,
-            key=namespace.ADMIN_PASSWORD,
-            algorithms=[JWT_ENCODE_ALGORITHM],
-            options=None if verify_exp else {"verify_exp": False},
+        header = jwt.get_unverified_header(token)
+
+        if header.get("prov") == AuthProvider.LDAP:
+            return AuthProvider.LDAP, jwt.decode(
+                jwt=token,
+                key=namespace.ADMIN_PASSWORD,
+                algorithms=[JWT_ENCODE_ALGORITHM],
+                options=None if verify_exp else {"verify_exp": False},
+            )
+
+        return AuthProvider.KEYCLOAK, keycloak_openid.decode_token(
+            token, validate=verify_exp
         )
+
     except (jwt.PyJWTError, jwt.DecodeError):
         raise InvalidTokenError("Invalid token")
+    except jwcrypto.jwt.JWTExpired:
+        raise ExpiredTokenError("Token expired")
 
 
 def user_fingerprint() -> str:
@@ -165,19 +188,11 @@ class AccessTokenBlacklist:
         if self.get():
             return True
 
-        token_payload = decode_jwt_token(self.token)
-        saved_fingerprint = token_payload.get("fingerprint", "")
+        auth_provider, token_payload = decode_jwt_token(self.token)
 
-        return not self._check_fingerprint(saved_fingerprint)
+        if auth_provider == AuthProvider.LDAP:
+            if not check_fingerprint(token_payload.get("fingerprint", "")):
+                self.add()
+                return True
 
-    def _check_fingerprint(self, fingerprint: str) -> bool:
-        """
-        Check the fingerprint of the current user and
-        the fingerprint of the access token.
-        """
-
-        if fingerprint != user_fingerprint():
-            self.add()
-            return False
-
-        return True
+        return False
