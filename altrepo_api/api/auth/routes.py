@@ -17,7 +17,6 @@
 from flask import g
 from flask_restx import Resource
 
-from altrepo_api.settings import AG_ALL
 from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.base import run_worker, POST_RESPONSES_401, POST_RESPONSES_401_403
 from .decorators import token_required
@@ -64,7 +63,7 @@ class routeAuthLogin(Resource):
 )
 class routeAuthLogout(Resource):
     @ns.doc(security="Bearer")
-    @token_required(AG_ALL)
+    @token_required("", validate_role=False)
     def post(self):
         url_logging(logger, g.url)
         args = {}

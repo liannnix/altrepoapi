@@ -48,10 +48,7 @@ logger = get_logger(__name__)
 class routeAntivirusScanList(Resource):
     @ns.expect(av_results_args)
     @ns.marshal_with(avs_list_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = av_results_args.parse_args(strict=True)
@@ -70,10 +67,7 @@ class routeAntivirusScanList(Resource):
 class routeAntivirusScanIssuesList(Resource):
     @ns.expect(av_issues_args)
     @ns.marshal_with(avs_issue_list_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = av_issues_args.parse_args(strict=True)
@@ -92,10 +86,7 @@ class routeAntivirusScanIssuesList(Resource):
 class routeAntivirusScanBranchesList(Resource):
     # @ns.expect()
     @ns.marshal_with(av_branches_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = av_issues_args.parse_args(strict=True)

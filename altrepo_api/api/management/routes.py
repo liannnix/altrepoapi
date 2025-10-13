@@ -215,10 +215,7 @@ vulnerability_info_model = ns.clone("VulnerabilityInfoModel", _vulnerability_inf
 class routeTaskList(Resource):
     @ns.expect(task_list_args)
     @ns.marshal_with(task_list_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = task_list_args.parse_args(strict=True)
@@ -239,10 +236,7 @@ class routeTaskList(Resource):
 class routeTaskInfo(Resource):
     # @ns.expect()
     @ns.marshal_with(task_info_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self, id):
         url_logging(logger, g.url)
         args = {}
@@ -261,10 +255,7 @@ class routeTaskInfo(Resource):
 class routeAllTasksBranches(Resource):
     # @ns.expect()
     @ns.marshal_with(ns.clone("AllTasksBranchesModel", all_tasks_branches_model))
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = {}
@@ -284,10 +275,7 @@ class routeAllTasksBranches(Resource):
 class routeVulnList(Resource):
     @ns.expect(vuln_list_args)
     @ns.marshal_with(vuln_list_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = vuln_list_args.parse_args(strict=True)
@@ -306,10 +294,7 @@ class routeVulnList(Resource):
 class routeVulnsInfo(Resource):
     @ns.expect(vuln_ids_json_post_list_model)
     @ns.marshal_with(vuln_ids_json_list_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def post(self):
         url_logging(logger, g.url)
         w = VulnsInfo(g.connection, json_data=ns.payload)
@@ -329,10 +314,7 @@ class routeVulnsInfo(Resource):
 class routeCveInfo(Resource):
     @ns.expect(cve_info_args)
     @ns.marshal_with(vulnerability_info_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = cve_info_args.parse_args(strict=True)
@@ -353,10 +335,7 @@ class routeCveInfo(Resource):
 class routeVulnerableCveFixes(Resource):
     @ns.expect(cve_info_args)
     @ns.marshal_with(vuln_fixes_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = cve_info_args.parse_args(strict=True)
@@ -377,10 +356,7 @@ class routeVulnerableCveFixes(Resource):
 class routeVulnerableCveExcluded(Resource):
     @ns.expect(cve_info_args)
     @ns.marshal_with(vuln_fixes_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = cve_info_args.parse_args(strict=True)
@@ -399,10 +375,7 @@ class routeVulnerableCveExcluded(Resource):
 class routeBduInfo(Resource):
     @ns.expect(bdu_info_args)
     @ns.marshal_with(vulnerability_info_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = bdu_info_args.parse_args(strict=True)
@@ -423,10 +396,7 @@ class routeBduInfo(Resource):
 class routeVulnerableBduFixes(Resource):
     @ns.expect(bdu_info_args)
     @ns.marshal_with(vuln_fixes_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = bdu_info_args.parse_args(strict=True)
@@ -445,10 +415,7 @@ class routeVulnerableBduFixes(Resource):
 class routeGHSAInfo(Resource):
     @ns.expect(ghsa_info_args)
     @ns.marshal_with(vulnerability_info_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = ghsa_info_args.parse_args(strict=True)
@@ -470,10 +437,7 @@ class routeGHSAInfo(Resource):
 class routeVulnerableGHSAFixes(Resource):
     @ns.expect(ghsa_info_args)
     @ns.marshal_with(vuln_fixes_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = ghsa_info_args.parse_args(strict=True)
@@ -494,10 +458,7 @@ class routeVulnerableGHSAFixes(Resource):
 class routePackagesByOpenVuln(Resource):
     @ns.expect(vuln_info_args)
     @ns.marshal_with(vuln_open_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = vuln_info_args.parse_args(strict=True)
@@ -538,10 +499,7 @@ class routeManageErrata(Resource):
     )
     @ns.expect(errata_manage_get_args)
     @ns.marshal_with(errata_manage_get_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = errata_manage_get_args.parse_args(strict=True)
@@ -555,10 +513,7 @@ class routeManageErrata(Resource):
     )
     @ns.expect(errata_manage_model, errata_manage_args)
     @ns.marshal_with(errata_manage_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_ADMIN],
-        keycloak_roles=["errata_manage_update"],
-    )
+    @token_required("errata_manage_update")
     def put(self):
         url_logging(logger, g.url)
         args = errata_manage_args.parse_args(strict=False)
@@ -574,10 +529,7 @@ class routeManageErrata(Resource):
     )
     @ns.expect(errata_manage_model, errata_manage_args)
     @ns.marshal_with(errata_manage_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_ADMIN],
-        keycloak_roles=["errata_manage_create"],
-    )
+    @token_required("errata_manage_create")
     def post(self):
         url_logging(logger, g.url)
         args = errata_manage_args.parse_args(strict=False)
@@ -593,10 +545,7 @@ class routeManageErrata(Resource):
     )
     @ns.expect(errata_manage_model, errata_manage_args)
     @ns.marshal_with(errata_manage_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_ADMIN],
-        keycloak_roles=["errata_manage_discard"],
-    )
+    @token_required("errata_manage_discard")
     def delete(self):
         url_logging(logger, g.url)
         args = errata_manage_args.parse_args(strict=False)
@@ -620,10 +569,7 @@ class routeManageErrata(Resource):
 class routeErrataChangeHistory(Resource):
     @ns.expect(errata_manage_get_args)
     @ns.marshal_with(errata_change_history_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = errata_manage_get_args.parse_args(strict=True)
@@ -641,10 +587,7 @@ class routeErrataChangeHistory(Resource):
 )
 class routeErrataBranches(Resource):
     @ns.marshal_with(ns.clone("ErrataBranchesModel", errata_branches_model))
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = {}
@@ -664,10 +607,7 @@ class routeErrataBranches(Resource):
 class routeFindErratas(Resource):
     @ns.expect(find_erratas_args)
     @ns.marshal_with(errata_last_changed_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = find_erratas_args.parse_args(strict=True)
@@ -686,10 +626,7 @@ class routeFindErratas(Resource):
 class routePackagesUpdates(Resource):
     @ns.expect(ns.clone("ErrataJsonPostListModel", erratas_ids_json_list_model))
     @ns.marshal_with(errata_packages_updates_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def post(self):
         url_logging(logger, g.url)
         args = {}
@@ -708,10 +645,7 @@ class routePackagesUpdates(Resource):
 class routeBranchesUpdates(Resource):
     @ns.expect(ns.clone("ErrataJsonPostListModel", erratas_ids_json_list_model))
     @ns.marshal_with(errata_branches_updates_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def post(self):
         url_logging(logger, g.url)
         args = {}
@@ -730,10 +664,7 @@ class routeBranchesUpdates(Resource):
 class routeCpeCandidates(Resource):
     @ns.expect(cpe_candidates_args)
     @ns.marshal_with(cpe_candidates_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = cpe_candidates_args.parse_args(strict=True)
@@ -753,10 +684,7 @@ class routeCpeCandidates(Resource):
 class routeCpeList(Resource):
     @ns.expect(cpe_list_args)
     @ns.marshal_with(cpe_candidates_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = cpe_list_args.parse_args(strict=True)
@@ -773,10 +701,7 @@ class routeManageCpe(Resource):
     )
     @ns.expect(cpe_manage_get_args)
     @ns.marshal_with(cpe_manage_get_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = cpe_manage_get_args.parse_args(strict=True)
@@ -790,10 +715,7 @@ class routeManageCpe(Resource):
     )
     @ns.expect(cpe_manage_model, cpe_manage_args)
     @ns.marshal_with(cpe_manage_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_ADMIN],
-        keycloak_roles=["cpe_manage_update"],
-    )
+    @token_required("cpe_manage_update")
     def put(self):
         url_logging(logger, g.url)
         args = cpe_manage_args.parse_args(strict=False)
@@ -809,10 +731,7 @@ class routeManageCpe(Resource):
     )
     @ns.expect(cpe_manage_model, cpe_manage_args)
     @ns.marshal_with(cpe_manage_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_ADMIN],
-        keycloak_roles=["cpe_manage_create"],
-    )
+    @token_required("cpe_manage_create")
     def post(self):
         url_logging(logger, g.url)
         args = cpe_manage_args.parse_args(strict=False)
@@ -828,10 +747,7 @@ class routeManageCpe(Resource):
     )
     @ns.expect(cpe_manage_model, cpe_manage_args)
     @ns.marshal_with(cpe_manage_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_ADMIN],
-        keycloak_roles=["cpe_manage_delete"],
-    )
+    @token_required("cpe_manage_delete")
     def delete(self):
         url_logging(logger, g.url)
         args = cpe_manage_args.parse_args(strict=False)
@@ -857,10 +773,7 @@ class routeManageCpe(Resource):
 class routePackagesOpenVulns(Resource):
     @ns.expect(pkgs_open_vulns_args)
     @ns.marshal_with(pkg_open_vulns)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = pkgs_open_vulns_args.parse_args(strict=True)
@@ -879,10 +792,7 @@ class routePackagesOpenVulns(Resource):
 class routePackagesSupportedBranches(Resource):
     # @ns.expect()
     @ns.marshal_with(supported_branches_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = {}
@@ -901,10 +811,7 @@ class routePackagesSupportedBranches(Resource):
 class routePackagesMaintainerList(Resource):
     @ns.expect(maintainer_list_args)
     @ns.marshal_with(maintainer_list_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = maintainer_list_args.parse_args(strict=True)
@@ -923,10 +830,7 @@ class routePackagesMaintainerList(Resource):
 class routePackagesUnmapped(Resource):
     @ns.expect(pkgs_unmapped_args)
     @ns.marshal_with(pkgs_unmapped_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = pkgs_unmapped_args.parse_args(strict=True)
@@ -944,10 +848,7 @@ class routePncList(Resource):
     )
     @ns.expect(pnc_list_args)
     @ns.marshal_with(pnc_list_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = pnc_list_args.parse_args(strict=True)
@@ -964,10 +865,7 @@ class routeManagePnc(Resource):
     )
     @ns.expect(pnc_manage_get_args)
     @ns.marshal_with(pnc_manage_get_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = pnc_manage_get_args.parse_args(strict=True)
@@ -981,10 +879,7 @@ class routeManagePnc(Resource):
     )
     @ns.expect(pnc_manage_model, pnc_manage_args)
     @ns.marshal_with(pnc_manage_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_ADMIN],
-        keycloak_roles=["pnc_manage_update"],
-    )
+    @token_required("pnc_manage_create")
     def post(self):
         url_logging(logger, g.url)
         args = pnc_manage_args.parse_args(strict=False)
@@ -1016,10 +911,7 @@ class routeManagePnc(Resource):
     )
     @ns.expect(pnc_manage_model, pnc_manage_args)
     @ns.marshal_with(pnc_manage_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_ADMIN],
-        keycloak_roles=["pnc_manage_discard"],
-    )
+    @token_required("pnc_manage_discard")
     def delete(self):
         url_logging(logger, g.url)
         args = pnc_manage_args.parse_args(strict=False)
@@ -1042,10 +934,7 @@ class routeSaList(Resource):
     )
     @ns.expect(sa_list_args)
     @ns.marshal_with(sa_manage_list_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = sa_list_args.parse_args(strict=True)
@@ -1059,10 +948,7 @@ class routeSaList(Resource):
     )
     @ns.expect(sa_manage_create_model, sa_manage_args)
     @ns.marshal_with(sa_manage_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_ADMIN],
-        keycloak_roles=["sa_manage_create"],
-    )
+    @token_required("sa_manage_create")
     def post(self):
         url_logging(logger, g.url)
         args = sa_manage_args.parse_args(strict=False)
@@ -1078,10 +964,7 @@ class routeSaList(Resource):
     )
     @ns.expect(sa_manage_update_model, sa_manage_args)
     @ns.marshal_with(sa_manage_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_ADMIN],
-        keycloak_roles=["sa_manage_update"],
-    )
+    @token_required("sa_manage_update")
     def put(self):
         url_logging(logger, g.url)
         args = sa_manage_args.parse_args(strict=False)
@@ -1097,10 +980,7 @@ class routeSaList(Resource):
     )
     @ns.expect(sa_manage_discard_model, sa_manage_args)
     @ns.marshal_with(sa_manage_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_ADMIN],
-        keycloak_roles=["sa_manage_discard"],
-    )
+    @token_required("sa_manage_discard")
     def delete(self):
         url_logging(logger, g.url)
         args = sa_manage_args.parse_args(strict=False)
@@ -1120,10 +1000,7 @@ class routeChangeHistory(Resource):
     )
     @ns.expect(change_history_args)
     @ns.marshal_with(change_history_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = change_history_args.parse_args(strict=True)
@@ -1146,10 +1023,7 @@ class routeListComments(Resource):
     )
     @ns.expect(comments_list_args)
     @ns.marshal_with(comment_list_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = comments_list_args.parse_args(strict=True)
@@ -1172,10 +1046,7 @@ class routePostComment(Resource):
     )
     @ns.expect(comment_manage_create_model)
     @ns.marshal_with(comment_manage_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=["comments_create"],
-    )
+    @token_required("comments_create")
     def post(self):
         url_logging(logger, g.url)
         args = {}
@@ -1200,10 +1071,7 @@ class routeUpdateAndDiscardComments(Resource):
     )
     @ns.expect(comment_manage_discard_model)
     @ns.marshal_with(comment_manage_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_ADMIN],
-        keycloak_roles=["comments_discard"],
-    )
+    @token_required("comments_discard")
     def delete(self, id):
         url_logging(logger, g.url)
         args = {}
@@ -1223,10 +1091,7 @@ class routeUpdateAndDiscardComments(Resource):
     )
     @ns.expect(comment_manage_update_model)
     @ns.marshal_with(comment_manage_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_ADMIN],
-        keycloak_roles=["comments_enable"],
-    )
+    @token_required("comments_enable")
     def put(self, id):
         url_logging(logger, g.url)
         args = {}
@@ -1253,10 +1118,7 @@ class routeListDefaultReasons(Resource):
     )
     @ns.expect(default_reasons_list_args)
     @ns.marshal_with(default_reasons_list_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_USER, settings.AG.CVE_ADMIN],
-        keycloak_roles=[settings.KEYCLOAK_COMMON_LIST_ROLE],
-    )
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self):
         url_logging(logger, g.url)
         args = default_reasons_list_args.parse_args(strict=True)
@@ -1279,10 +1141,7 @@ class routeManageDefaultReasons(Resource):
     )
     @ns.expect(default_reasons_manage_model)
     @ns.marshal_with(default_reason_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_ADMIN],
-        keycloak_roles=["default_reasons_create"],
-    )
+    @token_required("default_reasons_create")
     def post(self):
         url_logging(logger, g.url)
         w = DefaultReasons(g.connection, payload=ns.payload)
@@ -1300,10 +1159,7 @@ class routeManageDefaultReasons(Resource):
     )
     @ns.expect(default_reasons_manage_model)
     @ns.marshal_with(default_reason_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_ADMIN],
-        keycloak_roles=["default_reasons_enable"],
-    )
+    @token_required("default_reasons_enable")
     def put(self):
         url_logging(logger, g.url)
         w = DefaultReasons(g.connection, payload=ns.payload)
@@ -1321,10 +1177,7 @@ class routeManageDefaultReasons(Resource):
     )
     @ns.expect(default_reasons_manage_model)
     @ns.marshal_with(default_reason_response_model)
-    @token_required(
-        ldap_groups=[settings.AG.CVE_ADMIN],
-        keycloak_roles=["default_reasons_disable"],
-    )
+    @token_required("default_reasons_disable")
     def delete(self):
         url_logging(logger, g.url)
         w = DefaultReasons(g.connection, payload=ns.payload)
