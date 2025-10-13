@@ -44,6 +44,7 @@ def make_app():
         def get(self):
             args = {k: v for k, v in request.args.items()}
             w = AuthLogin(None, **args)
+            w.check_params_post()
             return w.post()
 
     @api.route(TEST_ROUTE_ADMIN_AUTH)

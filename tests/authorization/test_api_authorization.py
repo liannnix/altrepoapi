@@ -30,21 +30,25 @@ TEST_FAKE_USER_LDAP_GROUP = "UNKNOWN"
         {
             "nickname": TEST_ADMIN_NAME,
             "password": TEST_ADMIN_PASSWORD,
+            "auth_provider": "ldap",
             "status_code": 200,
         },
         {
             "nickname": TEST_USER_NAME,
             "password": TEST_USER_PASSWORD,
+            "auth_provider": "ldap",
             "status_code": 200,
         },
         {
             "nickname": TEST_USER_NAME,
             "password": TEST_ADMIN_PASSWORD,
+            "auth_provider": "ldap",
             "status_code": 401,
         },
         {
             "nickname": TEST_FAKE_USER_NAME,
             "password": TEST_FAKE_USER_PASSWORD,
+            "auth_provider": "ldap",
             "status_code": 401,
         },
     ],
