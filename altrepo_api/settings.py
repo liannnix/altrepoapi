@@ -123,8 +123,8 @@ class BasePathNamespace:
     }
     # authentication using Keycloak server
     KEYCLOAK_SERVER_URL = ""
-    KEYCLOAK_SERVER_CHECK_SSL = True
-    KEYCLOAK_SERVER_SSL_CERTIFICATE = "/abs/path/to/certificate/dc-ipa-basealt-ru.pem"
+    KEYCLOAK_SERVER_CHECK_SSL = False
+    KEYCLOAK_SERVER_SSL_CERTIFICATE = ""
     KEYCLOAK_REALM = ""
     KEYCLOAK_CLIENT_ID = ""
     KEYCLOAK_CLIENT_SECRET_KEY = ""
