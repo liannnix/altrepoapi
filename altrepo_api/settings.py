@@ -25,15 +25,8 @@ class AccessGroups(Enum):
     API_ADMIN = auto()
     API_USER = auto()
     CVE_ADMIN = auto()
+    CVE_EXPERT = auto()
     CVE_USER = auto()
-
-
-AG_ALL = [
-    AccessGroups.API_ADMIN,
-    AccessGroups.API_USER,
-    AccessGroups.CVE_ADMIN,
-    AccessGroups.CVE_USER,
-]
 
 
 @dataclass
@@ -81,6 +74,53 @@ class BasePathNamespace:
     # LDAP access groups
     AG = AccessGroups  # used in tests only
     ACCESS_GROUPS = {g: "" for g in AccessGroups}
+    # Map LDAP groups to a list of API roles and user groups as keyCloak does for token
+    # contents uniformity
+    AG_ROLE_MAPPING = {
+        AccessGroups.CVE_ADMIN: (
+            "manage_list",
+            "comments_create",
+            "comments_discard",
+            "comments_enable",
+            "cpe_manage_create",
+            "cpe_manage_delete",
+            "cpe_manage_update",
+            "default_reasons_create",
+            "default_reasons_disable",
+            "default_reasons_enable",
+            "errata_manage_create",
+            "errata_manage_discard",
+            "errata_manage_update",
+            "pnc_manage_discard",
+            "pnc_manage_create",
+            "sa_manage_create",
+            "sa_manage_discard",
+            "sa_manage_update",
+        ),
+        AccessGroups.CVE_EXPERT: (
+            "manage_list",
+            "comments_create",
+            "comments_enable",
+            "cpe_manage_create",
+            "cpe_manage_update",
+            "default_reasons_create",
+            "errata_manage_create",
+            "errata_manage_update",
+            "pnc_manage_create",
+            "sa_manage_create",
+            "sa_manage_update",
+        ),
+        AccessGroups.CVE_USER: ("manage_list",),
+        # AccessGroups.API_ADMIN: ("api_admin",),
+        # AccessGroups.API_USER: ("api_user",),
+    }
+    AG_GROUP_MAPPING = {
+        AccessGroups.CVE_ADMIN: ("api_admin",),
+        AccessGroups.CVE_EXPERT: ("api_expert",),
+        AccessGroups.CVE_USER: ("api_user",),
+        # AccessGroups.API_ADMIN: ("api_admin",),
+        # AccessGroups.API_USER: ("api_user",),
+    }
     # authentication using Keycloak server
     KEYCLOAK_SERVER_URL = ""
     KEYCLOAK_SERVER_CHECK_SSL = True
@@ -88,7 +128,7 @@ class BasePathNamespace:
     KEYCLOAK_REALM = ""
     KEYCLOAK_CLIENT_ID = ""
     KEYCLOAK_CLIENT_SECRET_KEY = ""
-    KEYCLOAK_COMMON_LIST_ROLE = "manage_list"
+    KEYCLOAK_MANAGE_LIST_ROLE = "manage_list"
     # authentication token settings
     TOKEN_STORAGE = "file"  # {file | redis}
     EXPIRES_ACCESS_TOKEN = 60 * 5  # access token storage time in seconds

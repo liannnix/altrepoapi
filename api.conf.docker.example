@@ -34,6 +34,7 @@ LDAP_REQUIRE_GROUP = cn=%%(group)s,cn=groups,cn=accounts,dc=ipa,dc=example,dc=co
 API_ADMIN =
 API_USER =
 CVE_ADMIN =
+CVE_EXPERT =
 CVE_USER =
 
 [AUTHENTICATION]
