@@ -607,7 +607,7 @@ class PncList(APIWorker):
     @property
     def _input(self) -> str:
         if self.args.input:
-            return f"arrayExists(x -> (x.1 ILIKE '%{self.args.input}%'), pkgs) OR result ILIKE '%{self.args.input}%')"
+            return f"arrayExists(x -> (x.1 ILIKE '%{self.args.input}%'), pkgs) OR result ILIKE '%{self.args.input}%'"
         return ""
 
     @property
