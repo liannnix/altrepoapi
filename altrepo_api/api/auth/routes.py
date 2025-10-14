@@ -64,8 +64,9 @@ class routeAuthLogin(Resource):
 )
 class routeAuthLogout(Resource):
     @ns.doc(security="Bearer")
-    @ns.marshal_with(auth_logout_response_model)
+    # XXX: decorators order is important here
     @token_required("", validate_role=False)
+    @ns.marshal_with(auth_logout_response_model)
     def post(self):
         url_logging(logger, g.url)
         args = {}

@@ -51,7 +51,7 @@ class AuthLogout(APIWorker):
 
     def post(self):
         try:
-            # JWT token aready validated in `@token_required` decorator
+            # JWT token already validated in `@token_required` decorator
             auth_provider, token_payload = decode_jwt_token(self.token)
         except InvalidTokenError:
             raise ApiUnauthorized(description="Invalid token")
