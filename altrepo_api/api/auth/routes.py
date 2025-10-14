@@ -26,6 +26,7 @@ from .endpoints.refresh_token import RefreshToken
 
 from .namespace import get_namespace
 from .parsers import login_args, refresh_token_args
+from .serializers import auth_response_model, auth_logout_response_model
 
 ns = get_namespace()
 
@@ -41,7 +42,7 @@ logger = get_logger(__name__)
 )
 class routeAuthLogin(Resource):
     @ns.expect(login_args)
-    # @ns.marshal_with(xxx)
+    @ns.marshal_with(auth_response_model)
     def post(self):
         url_logging(logger, g.url)
         args = login_args.parse_args(strict=True)
@@ -63,6 +64,7 @@ class routeAuthLogin(Resource):
 )
 class routeAuthLogout(Resource):
     @ns.doc(security="Bearer")
+    @ns.marshal_with(auth_logout_response_model)
     @token_required("", validate_role=False)
     def post(self):
         url_logging(logger, g.url)
@@ -80,6 +82,7 @@ class routeAuthLogout(Resource):
 )
 class routeRefreshToken(Resource):
     @ns.expect(refresh_token_args)
+    @ns.marshal_with(auth_response_model)
     def post(self):
         url_logging(logger, g.url)
         args = refresh_token_args.parse_args(strict=True)
