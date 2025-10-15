@@ -105,8 +105,16 @@ fast_lookup_deps_limit_opt = parser.register_item(
     help="number of dependencies to get",
     location="args",
 )
+last_state_opt = parser.register_item(
+    "last_state",
+    type=bool,
+    required=False,
+    default=False,
+    help="use last packages (after last branch commmit)",
+    location="args",
+)
 
-pkgs_depends_args = parser.build_parser(branch, dp_name, dp_type_opt)
+pkgs_depends_args = parser.build_parser(branch, dp_name, dp_type_opt, last_state_opt)
 src_pkg_depends_args = parser.build_parser(branch, depends_depth_opt)
 backport_helper_args = parser.build_parser(
     branch_from, branch_to, packages_list, dp_type, arches_list
