@@ -539,5 +539,9 @@ class LookupTables:
         default_reason_source_type_comment,
     )
 
+    vuln_status_statuses = ("new", "analyzing", "working", "resolved")
+    vuln_status_resolutions = ("not_for_us", "not_affected", "wont_fix", "our")
+    vuln_status_json_fields = ("note", "project_name", "cpes")
+
 
 lut = LookupTables()

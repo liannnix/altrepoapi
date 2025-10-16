@@ -96,6 +96,7 @@ class BasePathNamespace:
             "sa_manage_create",
             "sa_manage_discard",
             "sa_manage_update",
+            "vuln_status_create",
         ),
         AccessGroups.CVE_EXPERT: (
             "manage_list",
@@ -109,6 +110,7 @@ class BasePathNamespace:
             "pnc_manage_create",
             "sa_manage_create",
             "sa_manage_update",
+            "vuln_status_create",
         ),
         AccessGroups.CVE_USER: ("manage_list",),
         # AccessGroups.API_ADMIN: ("api_admin",),

@@ -411,6 +411,33 @@ default_reason_action_list_opt = parser.register_item(
     help=f"Default reason`s actions list: {DEFAULT_REASON_ACTION_TYPES}",
     location="args",
 )
+vuln_status_input_val_opt = parser.register_item(
+    "input",
+    type=cpe_search_type,
+    action="split",
+    required=False,
+    help=(
+        "Search across multiple fields. Looks for matches in: "
+        "vulnerability ID, author, status, resolution and subscribers"
+    ),
+    location="args",
+)
+vuln_status_status_opt = parser.register_item(
+    "status",
+    type=str,
+    required=False,
+    choices=lut.vuln_status_statuses,
+    help="Vulnerability status' statuses list: " + ", ".join(lut.vuln_status_statuses),
+    location="args",
+)
+vuln_status_resolution_opt = parser.register_item(
+    "resolution",
+    type=str,
+    required=False,
+    choices=lut.vuln_status_resolutions,
+    help="Vulnerability status' resolutions list: " + ", ".join(lut.vuln_status_resolutions),
+    location="args",
+)
 
 task_list_args = parser.build_parser(
     task_input_val_opt,
@@ -483,6 +510,14 @@ default_reasons_list_args = parser.build_parser(
     default_reason_source_opt,
     default_reason_action_list_opt,
     default_reason_is_active_opt,
+    page_opt,
+    limit_opt,
+    sort_opt,
+)
+vuln_status_list_args = parser.build_parser(
+    vuln_status_input_val_opt,
+    vuln_status_status_opt,
+    vuln_status_resolution_opt,
     page_opt,
     limit_opt,
     sort_opt,

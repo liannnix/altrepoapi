@@ -1387,5 +1387,47 @@ GROUP BY dr_text, dr_source, dr_action
 INSERT INTO DefaultReasons (* EXCEPT(ts)) VALUES
 """
 
+    get_count_distinct_by_vuln_id = """
+SELECT countDistinct(vuln_id) FROM Vulnerabilities WHERE vuln_id = '{vuln_id}'
+"""
+
+    get_vuln_status_by_vuln_id = """
+SELECT
+    vuln_id,
+    argMax(vs_author, ts),
+    argMax(vs_status, ts),
+    argMax(vs_reason, ts),
+    argMax(vs_resolution, ts),
+    argMax(vs_subscribers, ts),
+    argMax(vs_json, ts),
+    argMax(vs_updated, ts)
+FROM VulnerabilityStatus
+WHERE vuln_id = '{vuln_id}'
+GROUP BY vuln_id
+"""
+
+    store_vuln_status = """
+INSERT INTO VulnerabilityStatus (* EXCEPT(vs_updated)) VALUES
+"""
+
+    vuln_status_list = """
+SELECT
+    vuln_id,
+    argMax(vs_author, ts) AS author,
+    argMax(vs_status, ts) AS status,
+    argMax(vs_resolution, ts) AS resolution,
+    argMax(vs_reason, ts) AS reason,
+    argMax(vs_subscribers, ts) AS subscribers,
+    argMax(vs_json, ts) AS json,
+    argMax(vs_updated, ts) AS updated,
+    count(*) OVER() AS total_count
+FROM VulnerabilityStatus
+GROUP BY vuln_id
+{having_clause}
+{order_by_clause}
+{limit_clause}
+{page_clause}
+"""
+
 
 sql = SQL()

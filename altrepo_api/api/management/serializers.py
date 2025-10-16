@@ -1127,3 +1127,96 @@ default_reason_response_model = ns.model(
         ),
     },
 )
+
+vuln_status_response_model = ns.model(
+    "VulnStatusResponseModel",
+    {
+        "vuln_id": fields.String(
+            description="Vulnerability ID",
+            required=True,
+        ),
+        "author": fields.String(
+            description="Author of vulnerability status",
+            required=True,
+        ),
+        "status": fields.String(
+            description="Vulnerability status",
+            enum=lut.vuln_status_statuses,
+            required=True,
+        ),
+        "resolution": fields.String(
+            description="Resolution of vulnerability status",
+            enum=lut.vuln_status_resolutions,
+            required=True,
+        ),
+        "reason": fields.String(
+            description="Reason of resolution of vulnerability status",
+            required=True,
+        ),
+        "subscribers": fields.List(
+            fields.String(description="List of subscribers of vulnerability status"),
+            required=True,
+        ),
+        "json": fields.String(
+            description="JSON with extra info of vulnerability status",
+            required=True,
+        ),
+        "updated": fields.DateTime(
+            description="Last vulnerability status update",
+            required=True,
+        ),
+    },
+)
+vuln_status_manage_create_model = ns.model(
+    "VulnStatusManageCreateModel",
+    {
+        "author": fields.String(
+            description="Vulnerability status author",
+            required=True,
+        ),
+        "status": fields.String(
+            description="Vulnerability status",
+            enum=lut.vuln_status_statuses,
+            required=False,
+        ),
+        "resolution": fields.String(
+            description="Resolution of vulnerability status",
+            enum=lut.vuln_status_resolutions,
+            required=False,
+        ),
+        "reason": fields.String(
+            description="Reason of resolution of vulnerability status",
+            required=False,
+        ),
+        "subscribers": fields.List(
+            fields.String(
+                description="List of subscribers of vulnerability status",
+            ),
+            required=False,
+        ),
+        "json": fields.String(
+            description="JSON with extra info of vulnerability status",
+            default="{}",
+            required=False,
+        ),
+    },
+)
+vuln_status_list_response_model = ns.model(
+    "VulnStatusListResponseModel",
+    {
+        "request_args": fields.Raw(
+            description="Request arguments",
+            required=True,
+        ),
+        "length": fields.Integer(
+            description="Number of vulnerabilities statuses found",
+            required=True,
+        ),
+        "statuses": fields.Nested(
+            vuln_status_response_model,
+            description="List of found vulnerabilities statuses",
+            as_list=True,
+            required=True,
+        ),
+    },
+)
