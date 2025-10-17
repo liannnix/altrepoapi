@@ -17,23 +17,17 @@ def app():
 @pytest.fixture(scope="function")
 def mocked_check_access_token(monkeypatch):
 
-    def _check_access_token(ldap_groups):
+    def _check_access_token(role: str, validate_role: bool):
         VALID_TOKEN = "valid_token"
         if not fetch_result.headers:
-            raise ApiUnauthorized(
-                description="Authentication token is required"
-            )
+            raise ApiUnauthorized(description="Authentication token is required")
         token = fetch_result.headers.get("Authorization")
         if not token:
-            raise ApiUnauthorized(
-                description="Authentication token is required"
-            )
+            raise ApiUnauthorized(description="Authentication token is required")
         if token != VALID_TOKEN:
-            raise ApiUnauthorized(
-                description="Invalid token."
-            )
+            raise ApiUnauthorized(description="Invalid token.")
 
-        return {"name": "testuser", "groups": ldap_groups}
+        return {"name": "testuser", "roles": [role], "token": token}
 
     monkeypatch.setattr(decorators, "_check_access_token", _check_access_token)
 
