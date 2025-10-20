@@ -28,7 +28,7 @@ VULN_NOT_IN_DB3 = "GHSA-2222-2222-2222"
 BUG_IN_DB = "36250"
 BUG_NOT_IN_DB = "11111111"
 
-PU_ERRATA_ID_IN_DB_1 = "ALT-PU-2023-2000-1"
+PU_ERRATA_ID_IN_DB_1 = "ALT-PU-2023-2000-2"
 PU_ERRATA_ID_IN_DB_2 = "ALT-PU-2013-1000-1"
 PU_ERRATA_ID_NOT_IN_DB = "ALT-PU-2999-1000-1"
 PU_ERRATA_ID_NOT_VALID_1 = "ALT-PU-123-1000-1"
@@ -195,7 +195,8 @@ DEFAULT_REASON_NOT_IN_DB = "test_default_reasons"
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },
         {
-            "input": f"{TASK_IN_DB},@rider,p10",
+            "input": f"{TASK_IN_DB},@rider",
+            "branch": "p10",
             "status_code": 404,
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },

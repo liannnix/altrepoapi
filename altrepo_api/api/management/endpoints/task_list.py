@@ -118,6 +118,10 @@ class TaskList(APIWorker):
                 parsed.erratas.append(v)
             elif v.startswith(OWNER_PREFIX):
                 parsed.owners.append(v.removeprefix(OWNER_PREFIX))
+            else:
+                # escape '_' symbol as it matches any symbol in SQL
+                v = v.replace("_", r"\_")
+                parsed.tasks.append(v)
 
         return parsed
 
