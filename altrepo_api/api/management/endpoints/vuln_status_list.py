@@ -69,10 +69,7 @@ class VulnStatusList(APIWorker):
         if self.args.status is not None:
             conditions.append(f"status = '{self.args.status}'")
 
-        if conditions:
-            return "HAVING " + " OR ".join(conditions) + "\n"
-
-        return ""
+        return "HAVING " + " OR ".join(conditions) if conditions else ""
 
     def _order_by_clause(self) -> str:
         order_fields = self.args.sort or ["updated"]
@@ -92,10 +89,7 @@ class VulnStatusList(APIWorker):
             if sort_field in VulnerabilityStatus._fields:
                 order_clauses.append(f"{field_name} {direction}")
 
-        if order_clauses:
-            return "ORDER BY " + ", ".join(order_clauses)
-
-        return ""
+        return "ORDER BY " + ", ".join(order_clauses) if order_clauses else ""
 
     def _limit_clause(self) -> str:
         return f"LIMIT {self.args.limit}" if self.args.limit else ""

@@ -62,7 +62,7 @@ class VulnStatus(APIWorker):
         self.sql = sql
         super().__init__()
 
-    def check_vuln_id(self) -> bool:
+    def _check_vuln_id(self) -> bool:
         try:
             vuln_id_type(self.vuln_id)
         except ValueError:
@@ -70,7 +70,7 @@ class VulnStatus(APIWorker):
 
         return True
 
-    def check_vuln_exists(self) -> None:
+    def _check_vuln_exists(self) -> None:
         response = self.send_sql_request(
             sql.get_count_distinct_by_vuln_id.format(vuln_id=self.vuln_id)
         )
@@ -84,7 +84,7 @@ class VulnStatus(APIWorker):
             )
             raise RuntimeError(self.error[0])
 
-    def check_json(self) -> bool:
+    def _check_json(self) -> bool:
         try:
             vs_json = json.loads(self.payload.get("json", "{}"))
         except json.JSONDecodeError as exc:
@@ -103,7 +103,7 @@ class VulnStatus(APIWorker):
 
         return self.validation_results == []
 
-    def create_vuln_status(self) -> VulnerabilityStatus:
+    def _create_vuln_status(self) -> VulnerabilityStatus:
         return VulnerabilityStatus(
             vuln_id=self.vuln_id,
             vs_author=self.payload.get("author", ""),
@@ -115,7 +115,7 @@ class VulnStatus(APIWorker):
             vs_updated=self.payload.get("updated", datetime.now()),
         )
 
-    def get_vuln_status(self) -> Union[VulnerabilityStatus, None]:
+    def _get_vuln_status(self) -> Union[VulnerabilityStatus, None]:
         response = self.send_sql_request(
             sql.get_vuln_status_by_vuln_id.format(vuln_id=self.vuln_id)
         )
@@ -126,7 +126,7 @@ class VulnStatus(APIWorker):
 
         return VulnerabilityStatus(*response[0])
 
-    def store_vuln_status(self, vuln_status: VulnerabilityStatus) -> None:
+    def _store_vuln_status(self, vuln_status: VulnerabilityStatus) -> None:
         amount_of_inserted = self.send_sql_request(
             (sql.store_vuln_status, [vuln_status._asdict()])
         )
@@ -145,13 +145,13 @@ class VulnStatus(APIWorker):
 
     def get(self) -> WorkerResult:
         try:
-            self.check_vuln_exists()
-            old_vuln_status = self.get_vuln_status()
-            if old_vuln_status is not None:
+            self._check_vuln_exists()
+
+            if old_vuln_status := self._get_vuln_status():
                 return old_vuln_status.asdict(), 200
 
-            new_vuln_status = self.create_vuln_status()
-            self.store_vuln_status(new_vuln_status)
+            new_vuln_status = self._create_vuln_status()
+            self._store_vuln_status(new_vuln_status)
         except RuntimeError:
             return self.error
 
@@ -189,15 +189,15 @@ class VulnStatus(APIWorker):
                 except ValueError:
                     self.validation_results.append(f"Invalid nickname: {subscriber}")
 
-        self.check_json()
+        self._check_json()
 
         return self.validation_results == []
 
     def post(self) -> WorkerResult:
         try:
-            self.check_vuln_exists()
-            old_vuln_status = self.get_vuln_status()
-            new_vuln_status = self.create_vuln_status()
+            self._check_vuln_exists()
+            old_vuln_status = self._get_vuln_status()
+            new_vuln_status = self._create_vuln_status()
 
             if old_vuln_status is None:
                 if new_vuln_status.vs_status != "new":
@@ -209,13 +209,13 @@ class VulnStatus(APIWorker):
                             ]
                         )
                     )
-                self.store_vuln_status(new_vuln_status)
+                self._store_vuln_status(new_vuln_status)
                 return new_vuln_status.asdict(), 201
 
             if old_vuln_status[:-1] == new_vuln_status[:-1]:
                 self.store_error(
                     {"message": "No changes"},
-                    http_code=400,
+                    http_code=409,
                 )
                 return self.error
 
@@ -225,7 +225,7 @@ class VulnStatus(APIWorker):
             ):
                 self.store_error(
                     {"message": "Can't return status to 'new'"},
-                    http_code=400,
+                    http_code=409,
                 )
                 return self.error
 
@@ -236,7 +236,7 @@ class VulnStatus(APIWorker):
             ):
                 new_vuln_status.vs_subscribers.append(new_vuln_status.vs_author)
 
-            self.store_vuln_status(new_vuln_status)
+            self._store_vuln_status(new_vuln_status)
         except RuntimeError:
             return self.error
 

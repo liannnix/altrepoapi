@@ -1114,7 +1114,7 @@ class routeUpdateAndDiscardComments(Resource):
 @with_metadata(DefaultReasonsList, ns, logger, require_auth=True)
 @ns.route(
     "/default_reasons/list",
-    doc={"responses": RESPONSES_400_404, "security": "Bearer"},
+    doc={"responses": GET_RESPONSES_400_404, "security": "Bearer"},
 )
 class routeListDefaultReasons(Resource):
     @ns.doc(
@@ -1232,7 +1232,7 @@ class routeManageVulnStatus(Resource):
     def get(self, vuln_id: str):
         url_logging(logger, g.url)
         w = VulnStatus(g.connection, vuln_id)
-        if not w.check_vuln_id():
+        if not w._check_vuln_id():
             ns.abort(
                 400,
                 message=f"Invalid vulnerability ID: '{vuln_id}'",
@@ -1256,7 +1256,7 @@ class routeManageVulnStatus(Resource):
     def post(self, vuln_id: str):
         url_logging(logger, g.url)
         w = VulnStatus(g.connection, vuln_id, payload=ns.payload)
-        if not w.check_vuln_id():
+        if not w._check_vuln_id():
             ns.abort(
                 400,
                 message=f"Invalid vulnerability ID: '{vuln_id}'",
