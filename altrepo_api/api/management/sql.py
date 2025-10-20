@@ -1294,12 +1294,12 @@ WITH base_data AS (
         GROUP BY transaction_id
     ) {where_clause}
 ),
-total_count AS (
+(
     SELECT count() as total FROM base_data
-)
+) AS total_count
 SELECT
     *,
-    (SELECT total FROM total_count) as total_count
+    total_count
 FROM base_data
 {order_by}
 {limit} {page}

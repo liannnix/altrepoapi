@@ -228,7 +228,7 @@ class ChangeHistory(APIWorker):
             if field_name in ChangeHistoryResponse._fields:
                 order_clauses.append(f"{field_name} {direction}")
 
-        return "ORDER BY " + ", ".join(order_clauses)
+        return "ORDER BY " + ", ".join(order_clauses) if order_clauses else ""
 
     @property
     def _create_input_conditions(self) -> list[str]:
@@ -308,7 +308,7 @@ class ChangeHistory(APIWorker):
                 changes=[ChangeItem(change) for change in changes],
                 transaction_id=transaction_id,
             )
-            for event_date, author, modules, changes, transaction_id, in response
+            for event_date, author, modules, changes, transaction_id, _ in response
         ]
 
         return (
