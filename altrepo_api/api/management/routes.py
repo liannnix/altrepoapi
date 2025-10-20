@@ -85,6 +85,8 @@ from .endpoints.task_list import TaskList
 from .endpoints.vuln_list import VulnList
 from .endpoints.vulns_info import VulnsInfo
 from .endpoints.comments import Comments
+from .endpoints.vuln_status import VulnStatus
+from .endpoints.vuln_status_list import VulnStatusList
 from .namespace import get_namespace
 from .parsers import (
     change_history_args,
@@ -106,6 +108,7 @@ from .parsers import (
     task_list_args,
     vuln_list_args,
     default_reasons_list_args,
+    vuln_status_list_args,
 )
 from .serializers import (
     change_history_response_model,
@@ -143,6 +146,9 @@ from .serializers import (
     default_reasons_list_model,
     default_reasons_manage_model,
     default_reason_response_model,
+    vuln_status_manage_create_model,
+    vuln_status_list_response_model,
+    vuln_status_response_model,
 )
 
 ns = get_namespace()
@@ -1186,4 +1192,78 @@ class routeManageDefaultReasons(Resource):
             run_method=w.delete,
             check_method=w.check_payload_delete,
             ok_code=200,
+        )
+
+
+@with_metadata(VulnStatusList, ns, logger, require_auth=True)
+@ns.route(
+    "/vuln_status/list",
+    doc={
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routeManageVulnStatusList(Resource):
+    @ns.doc(
+        description="List vulnerabilities' statuses",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(vuln_status_list_args)
+    @ns.marshal_with(vuln_status_list_response_model)
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
+    def get(self):
+        url_logging(logger, g.url)
+        args = vuln_status_list_args.parse_args(strict=True)
+        w = VulnStatusList(g.connection, **args)
+        return run_worker(worker=w)
+
+
+@ns.route("/vuln_status/manage/<string:vuln_id>")
+class routeManageVulnStatus(Resource):
+    @ns.doc(
+        params={"vuln_id": "Vulnerability ID"},
+        description="Get info for vulnerability status",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.marshal_with(vuln_status_response_model)
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
+    def get(self, vuln_id: str):
+        url_logging(logger, g.url)
+        w = VulnStatus(g.connection, vuln_id)
+        if not w.check_vuln_id():
+            ns.abort(
+                400,
+                message=f"Invalid vulnerability ID: '{vuln_id}'",
+                vuln_id=vuln_id,
+            )
+        return run_worker(
+            worker=w,
+            run_method=w.get,
+            check_method=w.check_params_get,
+        )
+
+    @ns.doc(
+        params={"vuln_id": "Vulnerability ID"},
+        description="Create or update a new vulnerability status",
+        responses=RESPONSES_400_404_409 | {201: "Created"},
+        security="Bearer",
+    )
+    @ns.expect(vuln_status_manage_create_model)
+    @ns.marshal_with(vuln_status_response_model)
+    @token_required("vuln_status_create")
+    def post(self, vuln_id: str):
+        url_logging(logger, g.url)
+        w = VulnStatus(g.connection, vuln_id, payload=ns.payload)
+        if not w.check_vuln_id():
+            ns.abort(
+                400,
+                message=f"Invalid vulnerability ID: '{vuln_id}'",
+                vuln_id=vuln_id,
+            )
+        return run_worker(
+            worker=w,
+            run_method=w.post,
+            check_method=w.check_params_post,
         )
