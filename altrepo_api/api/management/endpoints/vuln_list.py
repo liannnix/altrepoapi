@@ -30,6 +30,8 @@ class VulnListArgs(NamedTuple):
     is_errata: bool
     input: Optional[str] = None
     severity: Optional[str] = None
+    status: Optional[str] = None
+    resolution: Optional[str] = None
     our: Optional[bool] = None
     limit: Optional[int] = None
     page: Optional[int] = None
@@ -48,6 +50,8 @@ class ErrataInfo(NamedTuple):
 class VulnInfo(NamedTuple):
     id: str = ""
     severity: str = ""
+    status: str = ""
+    resolution: Optional[str] = None
     summary: str = ""
     modified: datetime = DT_NEVER
     published: datetime = DT_NEVER
@@ -59,6 +63,8 @@ class VulnInfo(NamedTuple):
         return {
             "id": self.id,
             "severity": self.severity,
+            "status": self.status,
+            "resolution": self.resolution,
             "summary": self.summary,
             "modified": self.modified,
             "published": self.published,
@@ -164,6 +170,20 @@ class VulnList(APIWorker):
                 f" AND VULNS.published {date_condition}"
                 if where_clause
                 else f"WHERE VULNS.published {date_condition}"
+            )
+
+        if self.args.status:
+            where_clause += (
+                f" AND VULNS.status = '{self.args.status}'"
+                if where_clause
+                else f"WHERE VULNS.status =  '{self.args.status}'"
+            )
+
+        if self.args.resolution:
+            where_clause += (
+                f" AND VULNS.resolution = '{self.args.resolution}'"
+                if where_clause
+                else f"WHERE VULNS.resolution = '{self.args.resolution}'"
             )
 
         return where_clause
@@ -401,6 +421,39 @@ class VulnList(APIWorker):
                                 value=choice, display_name=choice.capitalize()
                             )
                             for choice in arg.choices
+                        ],
+                    )
+                )
+
+            if arg.name == "status":
+                metadata.append(
+                    MetadataItem(
+                        **item_info,
+                        type=KnownFilterTypes.CHOICE,
+                        choices=[
+                            MetadataChoiceItem(
+                                value=status, display_name=status.capitalize()
+                            )
+                            for status in arg.choices
+                        ],
+                    )
+                )
+
+            if arg.name == "resolution":
+                metadata.append(
+                    MetadataItem(
+                        **item_info,
+                        type=KnownFilterTypes.CHOICE,
+                        choices=[
+                            MetadataChoiceItem(
+                                value=resolution,
+                                display_name=(
+                                    resolution.replace("wont", "won't")
+                                    .replace("_", " ")
+                                    .capitalize()
+                                ),
+                            )
+                            for resolution in arg.choices
                         ],
                     )
                 )

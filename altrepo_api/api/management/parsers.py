@@ -435,7 +435,8 @@ vuln_status_resolution_opt = parser.register_item(
     type=str,
     required=False,
     choices=lut.vuln_status_resolutions,
-    help="Vulnerability status' resolutions list: " + ", ".join(lut.vuln_status_resolutions),
+    help="Vulnerability status' resolutions list: "
+    + ", ".join(lut.vuln_status_resolutions),
     location="args",
 )
 
@@ -479,6 +480,8 @@ pnc_list_args = parser.build_parser(
 vuln_list_args = parser.build_parser(
     vuln_input_val,
     vuln_severity_opt,
+    vuln_status_status_opt,
+    vuln_status_resolution_opt,
     is_errata_opt,
     vuln_our_opt,
     page_opt,

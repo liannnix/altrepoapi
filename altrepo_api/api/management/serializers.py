@@ -666,6 +666,16 @@ vuln_list_el_model = ns.model(
     {
         "id": fields.String(description="vulnerability id"),
         "severity": fields.String(description="vulnerability severity"),
+        "status": fields.String(
+            description="Vulnerability status",
+            enum=lut.vuln_status_statuses,
+            required=False,
+        ),
+        "resolution": fields.String(
+            description="Resolution of vulnerability status",
+            enum=lut.vuln_status_resolutions,
+            required=False,
+        ),
         "summary": fields.String(description="vulnerability summary"),
         "modified": fields.DateTime(description="vulnerability modified date"),
         "published": fields.DateTime(description="vulnerability published date"),

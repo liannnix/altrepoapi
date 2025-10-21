@@ -1183,16 +1183,20 @@ ORDER BY pkg_name
     get_vuln_list = """
 SELECT VULNS.*, count() OVER() AS total_count
 FROM (
-    SELECT vuln_id,
-           argMax(vuln_severity, ts) AS severity,
-           argMax(vuln_summary, ts) AS summary,
-           argMax(vuln_modified_date, ts) AS modified,
-           argMax(vuln_published_date, ts) AS published
-    FROM Vulnerabilities
-    GROUP BY vuln_id
+    SELECT
+        vulns.vuln_id,
+        argMax(vulns.vuln_severity, vulns.ts) AS severity,
+        argMax(vs.vs_status, vs.ts) AS status,
+        argMax(vs.vs_resolution, vs.ts) AS resolution,
+        argMax(vulns.vuln_summary, vulns.ts) AS summary,
+        argMax(vulns.vuln_modified_date, vulns.ts) AS modified,
+        argMax(vulns.vuln_published_date, vulns.ts) AS published
+    FROM Vulnerabilities AS vulns
+    LEFT JOIN VulnerabilityStatus AS vs ON vulns.vuln_id = vs.vuln_id
+    GROUP BY vulns.vuln_id
 ) AS VULNS
 {where_clause} {where_clause2}
-GROUP BY vuln_id, severity, summary, modified, published
+GROUP BY vuln_id, severity, summary, modified, published, status, resolution
 {order_by}
 {limit} {page}
 """
