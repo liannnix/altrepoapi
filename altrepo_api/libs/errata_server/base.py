@@ -14,7 +14,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from requests import Session
+import re
+
+from requests import Session, Response
 from requests.adapters import HTTPAdapter, Retry
 from typing import Any, Optional, Union
 from urllib.parse import urlparse, urlunparse
@@ -67,6 +69,37 @@ def _join_url(base_url: str, route: str) -> str:
     return f"{base_url.removesuffix('/')}/{route.removeprefix('/')}"
 
 
+def _remove_sensitive_data(msg: str) -> str:
+    """Simple helper to clean up sensitive data from error messages."""
+
+    SENSITIVE_PARAMS_MAP = {
+        "access_token": "**token**",
+        "password": "**password**",
+        "refresh_token": "**token**",
+    }
+
+    for arg, placeholder in SENSITIVE_PARAMS_MAP.items():
+        pattern = rf'{re.escape(arg)}\s*=\s*([^&\s,#]+|"[^"]*"|\'[^\']*\')'
+
+        msg = re.sub(pattern, f"{arg}={placeholder}", msg)
+
+    return msg
+
+
+def _try_extract_error_message(response: Optional[Response]) -> Optional[str]:
+    if response is not None and response.status_code in [400, 401, 404, 409, 500]:
+        try:
+            json = response.json()
+        except Exception:
+            return None
+
+        for key in ("error", "comment", "result", "message"):
+            if message := json.get(key):
+                return message
+
+    return None
+
+
 # base service connection class
 class ErrataServerConnection:
     def __init__(self, url: str) -> None:
@@ -97,6 +130,7 @@ class ErrataServerConnection:
         self, route: str, *, params: Optional[dict[str, Any]] = None
     ) -> Result[JSONResponse, Exception]:
         url = _join_url(self.url, route)
+        response = None
         status_code = 500
         try:
             response = self.session.get(url, params=params)
@@ -104,7 +138,9 @@ class ErrataServerConnection:
             response.raise_for_status()
             return Ok(response.json())
         except Exception as e:
-            return Err(ErrataServerError("Failed on %s: %s" % (url, e), status_code))
+            err = _try_extract_error_message(response)
+            msg = _remove_sensitive_data("Failed on %s: %s" % (url, err or e))
+            return Err(ErrataServerError(msg, status_code))
 
     def post(
         self,
@@ -114,6 +150,7 @@ class ErrataServerConnection:
         json: Optional[JSONObject] = None,
     ) -> Result[JSONResponse, Exception]:
         url = _join_url(self.url, route)
+        response = None
         status_code = 500
         try:
             response = self.session.post(url, params=params, json=json)
@@ -121,7 +158,9 @@ class ErrataServerConnection:
             response.raise_for_status()
             return Ok(response.json())
         except Exception as e:
-            return Err(ErrataServerError("Failed on %s: %s" % (url, e), status_code))
+            err = _try_extract_error_message(response)
+            msg = _remove_sensitive_data("Failed on %s: %s" % (url, err or e))
+            return Err(ErrataServerError(msg, status_code))
 
     def put(
         self,
@@ -131,6 +170,7 @@ class ErrataServerConnection:
         json: Optional[JSONObject] = None,
     ) -> Result[JSONResponse, Exception]:
         url = _join_url(self.url, route)
+        response = None
         status_code = 500
         try:
             response = self.session.put(url, params=params, json=json)
@@ -138,4 +178,6 @@ class ErrataServerConnection:
             response.raise_for_status()
             return Ok(response.json())
         except Exception as e:
-            return Err(ErrataServerError("Failed on %s: %s" % (url, e), status_code))
+            err = _try_extract_error_message(response)
+            msg = _remove_sensitive_data("Failed on %s: %s" % (url, err or e))
+            return Err(ErrataServerError(msg, status_code))
