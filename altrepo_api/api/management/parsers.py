@@ -266,7 +266,7 @@ errata_state_opt = parser.register_item(
 )
 sa_type_opt = parser.register_item(
     "type",
-    choices=("all", "cve", "cpe", "package"),
+    choices=("all", "cve", "cpe", "package", "advisory"),
     default="all",
     required=False,
     help="Errata SA record type",

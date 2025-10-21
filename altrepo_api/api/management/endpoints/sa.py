@@ -54,6 +54,7 @@ class ErrataJsonType(Enum):
     CVE = "cve"
     CPE = "cpe"
     PACKAGE = "package"
+    ADVISORY = "advisory"
 
 
 def get_errata_service(
@@ -262,13 +263,18 @@ class ListSa(APIWorker):
                 return True
 
             def filter_by_type(ej: ErrataJson) -> bool:
+                if type_filter == ErrataJsonType.ADVISORY:
+                    return ej.type != SaType.ADVISORY
+
                 sa_type_map = {
                     ErrataJsonType.ALL: None,
                     ErrataJsonType.CVE: SaAction.CVE,
                     ErrataJsonType.CPE: SaAction.CPE,
                     ErrataJsonType.PACKAGE: SaAction.PACKAGE,
+                    ErrataJsonType.ADVISORY: None,
                 }
-                return (
+
+                return ej.type == SaType.ADVISORY or (
                     ej.type == SaType.EXCLUSION
                     and ej.action != sa_type_map[type_filter]
                 )
