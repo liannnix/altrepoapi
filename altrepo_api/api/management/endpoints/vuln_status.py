@@ -30,8 +30,8 @@ class VulnerabilityStatus(NamedTuple):
     vuln_id: str
     vs_author: str
     vs_status: str
-    vs_resolution: str
     vs_reason: str
+    vs_resolution: str
     vs_subscribers: list[str]
     vs_json: str
     vs_updated: datetime
@@ -41,8 +41,8 @@ class VulnerabilityStatus(NamedTuple):
             "vuln_id": self.vuln_id,
             "author": self.vs_author,
             "status": self.vs_status,
-            "resolution": self.vs_resolution,
             "reason": self.vs_reason,
+            "resolution": self.vs_resolution,
             "subscribers": self.vs_subscribers,
             "json": self.vs_json,
             "updated": self.vs_updated,
