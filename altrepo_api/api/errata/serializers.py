@@ -346,8 +346,7 @@ advisory_errata_el_model = ns.model(
             description="list of references",
             as_list=True,
         ),
-        "json": fields.Raw(description="errata json"),
-        "is_discarded": fields.Boolean(description="is errata discarded"),
+        "json": fields.Nested(advisory_errata_json_model, description="errata json"),
     },
 )
 advisory_errata_model = ns.model(

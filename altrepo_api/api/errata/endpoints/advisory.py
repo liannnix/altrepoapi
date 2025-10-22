@@ -153,7 +153,11 @@ class AdvisoryErrata(APIWorker):
 
         for errata in erratas:
             if filter_fn(errata):
-                res.append(errata.asdict())
+                # replace empty nullable ErrataJson `extra` filed
+                e = errata.asdict()
+                if e.get("json", {}).get("extra") is None:
+                    e["json"]["extra"] = {}
+                res.append(e)
 
         if not res:
             return self.store_error(
