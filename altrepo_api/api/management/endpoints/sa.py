@@ -296,7 +296,7 @@ class ListSa(APIWorker):
 
         if not res:
             return self.store_error(
-                {"message": f"No data found in DB for {self.args}"}, http_code=404
+                {"message": f"No data found in DB for {self.kwargs}"}, http_code=404
             )
 
         if self.args.sort:
