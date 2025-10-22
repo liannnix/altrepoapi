@@ -29,6 +29,7 @@ from .endpoints.oval import OvalBranches, OvalExport
 from .endpoints.search import Search, ErrataIds, FindErratas, FindImageErratas
 from .endpoints.package import PackagesUpdates
 from .endpoints.branch import BranchesUpdates, ErrataBranches
+from .endpoints.advisory import AdvisoryErrata
 from .namespace import get_namespace
 from .parsers import (
     errata_search_args,
@@ -36,6 +37,7 @@ from .parsers import (
     find_erratas_args,
     find_img_erratas_args,
     packages_updates_args,
+    advisory_errata_args,
 )
 from .serializers import (
     erratas_ids_json_list_model,
@@ -47,6 +49,7 @@ from .serializers import (
     errata_last_changed_model,
     errata_branches_model,
     image_errata_model,
+    advisory_errata_model,
 )
 
 ns = get_namespace()
@@ -221,4 +224,21 @@ class routeFindImageErratas(Resource):
         url_logging(logger, g.url)
         args = find_img_erratas_args.parse_args(strict=True)
         w = FindImageErratas(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/advisory",
+    doc={
+        "description": "List of Security Advisory Errata records.",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeAdvisoryErratas(Resource):
+    @ns.expect(advisory_errata_args)
+    @ns.marshal_with(advisory_errata_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = advisory_errata_args.parse_args(strict=True)
+        w = AdvisoryErrata(g.connection, **args)
         return run_worker(worker=w, args=args)

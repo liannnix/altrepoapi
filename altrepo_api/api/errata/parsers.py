@@ -139,6 +139,10 @@ exclude_json_opt = parser.register_item(
     location="args",
 )
 
+advisory_input_opt = parser.register_item(
+    "input", type=str, required=False, help="CVE, BDU or Errata ID", location="args"
+)
+
 oval_export_args = parser.build_parser(package_name_opt, one_file_opt)
 errata_search_args = parser.build_parser(
     branch_name_opt, errata_pkg_name_opt, vuln_id_opt, errata_id_opt
@@ -163,3 +167,10 @@ find_img_erratas_args = parser.build_parser(
     sort_opt,
 )
 packages_updates_args = parser.build_parser(exclude_json_opt)
+advisory_errata_args = parser.build_parser(
+    branch_name_opt,
+    advisory_input_opt,
+    page_opt,
+    limit_opt,
+    sort_opt
+)
