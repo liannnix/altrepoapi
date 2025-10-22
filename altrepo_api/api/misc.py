@@ -484,9 +484,12 @@ class LookupTables:
     errata_branch_update_prefix = "ALT-BU"
     errata_package_update_prefix = "ALT-PU"
     errata_change_prefix = "ALT-EC"
+    errata_advisory_prefix = "ALT-SA"
 
     errata_ref_type_bug = "bug"
     errata_ref_type_vuln = "vuln"
+    errata_ref_type_branch = "branch"
+    errata_ref_type_errata = "errata"
 
     errata_manage_branches_with_tasks = (
         "c9f1",
