@@ -18,6 +18,7 @@ from enum import Enum
 from typing import Any, NamedTuple, Optional
 
 from altrepo_api.api.base import APIWorker, WorkerResult
+from altrepo_api.api.misc import lut
 from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
 from altrepo_api.settings import namespace as settings
 from altrepo_api.libs.errata_server.errata_sa_service import (
@@ -73,6 +74,80 @@ def get_errata_service(
         raise RuntimeError("error: %s" % e)
 
 
+def _check_sa_overlap(ej: ErrataJson) -> Optional[tuple[str, str]]:
+    """Checks if errata with given JSON is overlapping with existing SA errata form DB."""
+
+    def filter_by_vuln_id(errata: Errata, id: str):
+        return id in {
+            r.link for r in errata.eh.references if r.type == lut.errata_ref_type_vuln
+        }
+
+    #  build a filter for an active errata that has the same vulnerability ID
+    active_and_matches_vuln_id = lambda e: (
+        e.is_discarded == False and filter_by_vuln_id(e, ej.vuln_id)
+    )
+
+    # collect existing active SA erratas from DB using CVE ID
+    service = get_errata_service(dry_run=True, access_token="", user="", ip="")
+    try:
+        erratas = [e for e in service.list() if active_and_matches_vuln_id(e)]
+    except ErrataServerError as e:
+        raise ErrataServerError(f"Failed to get erratas from DB: {e}", e.status_code)
+
+    # check for erratas overlap
+    for errata in erratas:
+        db_ej: ErrataJson = errata.eh.json  # type: ignore
+
+        # 1. new errata has an `advisory` type
+        if ej.type == SaType.ADVISORY:
+            # DB errata has an `advisory` type too and branches list overlaps
+            if db_ej.type == SaType.ADVISORY and set(ej.branches).intersection(
+                set(db_ej.branches)
+            ):
+                return ("overlaps with existing advisory errata", errata.eh.id)
+
+            # DB errata has an `exclusion` type and action is `cve`
+            if db_ej.type == SaType.EXCLUSION and db_ej.action == SaAction.CVE:
+                return ("overlaps with existing exclusion errata", errata.eh.id)
+
+            # TODO: don't check overlap for more specific types for `advisory` type for a now
+            continue
+
+        # 2. new errata has an `exclusion` type
+        if ej.type == SaType.EXCLUSION:
+            if db_ej.type == SaType.ADVISORY:
+                # DB errata has an `advisory` type
+                return ("overlaps with existing advisory errata", errata.eh.id)
+
+            if db_ej.type == SaType.EXCLUSION:
+                # DB errata has an `exclusion` type and action is `cve`
+                if db_ej.action == SaAction.CVE:
+                    return ("overlaps with existing CVE exclusion errata", errata.eh.id)
+
+                # more specific overlap check if both erratas have the same action
+
+                # both erratas have an `exclusion` type and action is `cpe`
+                if (
+                    ej.action == SaAction.CPE
+                    and db_ej.action == SaAction.CPE
+                    and ej.vuln_cpe == db_ej.vuln_cpe
+                ):
+                    return ("overlaps with existing CPE exclusion errata", errata.eh.id)
+
+                # both erratas have an `exclusion` type and action is `package`
+                if (
+                    ej.action == SaAction.PACKAGE
+                    and db_ej.action == SaAction.PACKAGE
+                    and ej.pkg_name == db_ej.pkg_name
+                ):
+                    return (
+                        "overlaps with existing package exclusion errata",
+                        errata.eh.id,
+                    )
+
+    return None
+
+
 class ManageSa(APIWorker):
     def __init__(self, connection, payload, **kwargs):
         self.payload: dict[str, Any] = payload
@@ -99,6 +174,24 @@ class ManageSa(APIWorker):
                 {"message": "Failed to decode request payload"},
                 severity=self.LL.ERROR,
                 http_code=400,
+            )
+
+        try:
+            res = _check_sa_overlap(d.unwrap())
+        except ErrataServerError as e:
+            return self.store_error(
+                {"message": f"Error: {e}"},
+                severity=self.LL.ERROR,
+                http_code=e.status_code if e.status_code else 500,
+            )
+        if res:
+            return self.store_error(
+                {
+                    "message": f"Failed to create record in Errata Server: {res[0]} '{res[1]}'",
+                    "reason": res[0],
+                    "errata_id": res[1],
+                },
+                http_code=409,
             )
 
         service = get_errata_service(
