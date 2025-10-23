@@ -139,11 +139,11 @@ def response_error_parser(response: Any) -> dict[str, Any]:
         msg = response.get("message")
         if not msg:
             msg = response.get("error") or response.get("Error")
-        details = [
-            {k: v}
+        details = {
+            k: v
             for k, v in response.items()
             if k not in ("message", "error", "Error")
-        ]
+        }
         return {"message": msg, "details": details}
     except AttributeError:
         return {"message": response}
