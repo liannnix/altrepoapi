@@ -19,14 +19,36 @@ from typing import Any
 
 from altrepo_api.api.base import APIWorker, WorkerResult
 from altrepo_api.api.misc import lut
-from altrepo_api.api.management.endpoints.sa import get_errata_service
 from altrepo_api.libs.errata_server import ErrataServerError
-from altrepo_api.libs.errata_server.errata_sa_service import Errata as SaErrata
-from altrepo_api.libs.errata_server.errata_sa_service import SaAction
-from altrepo_api.utils import make_tmp_table_name, sort_branches
+from altrepo_api.libs.errata_server.errata_sa_service import (
+    ErrataSAService,
+    Errata as SaErrata,
+    SaAction,
+)
+from altrepo_api.settings import namespace as settings
+from altrepo_api.utils import get_logger, make_tmp_table_name, sort_branches
 
 from ..dataclasses import ExcludedPackagesSchema, PackageScheme
 from ..sql import sql
+
+
+logger = get_logger(__name__)
+
+
+def get_errata_service(
+    *, dry_run: bool, access_token: str, user: str, ip: str
+) -> ErrataSAService:
+    try:
+        return ErrataSAService(
+            url=settings.ERRATA_MANAGE_URL,
+            access_token=access_token,
+            user=user,
+            ip=ip,
+            dry_run=dry_run,
+        )
+    except ErrataServerError as e:
+        logger.error(f"Failed to connect to ErrataSA service: {e}")
+        raise RuntimeError("error: %s" % e)
 
 
 class VulnExcluded(APIWorker):
