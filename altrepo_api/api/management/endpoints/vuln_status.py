@@ -173,14 +173,8 @@ class VulnStatus(APIWorker):
                 "Resolution is allowed when status is 'resolved'"
             )
 
-        if (resolution is not None) or (reason is not None):
-            if resolution is None or reason is None or reason == "":
-                self.validation_results.append(
-                    "Resolution and reason must be provided in pair"
-                )
-
-            if reason is not None and reason == "":
-                self.validation_results.append("No reason")
+        if resolution is not None and (reason is None or reason == ""):
+            self.validation_results.append("No reason for resolution")
 
         if subscribers is not None:
             for subscriber in subscribers:
@@ -194,6 +188,10 @@ class VulnStatus(APIWorker):
         return self.validation_results == []
 
     def post(self) -> WorkerResult:
+        status_order = {
+            status: order for order, status in enumerate(lut.vuln_status_statuses)
+        }
+
         try:
             self._check_vuln_exists()
             old_vuln_status = self._get_vuln_status()
@@ -213,28 +211,38 @@ class VulnStatus(APIWorker):
                 return new_vuln_status.asdict(), 201
 
             if old_vuln_status[:-1] == new_vuln_status[:-1]:
-                self.store_error(
+                return self.store_error(
                     {"message": "No changes"},
                     http_code=409,
                 )
-                return self.error
 
             if (
                 old_vuln_status.vs_status != "new"
                 and new_vuln_status.vs_status == "new"
             ):
-                self.store_error(
+                return self.store_error(
                     {"message": "Can't return status to 'new'"},
                     http_code=409,
                 )
-                return self.error
 
             if (
-                (old_vuln_status.vs_status != new_vuln_status.vs_status)
-                and (old_vuln_status.vs_subscribers == new_vuln_status.vs_subscribers)
-                and new_vuln_status.vs_author not in new_vuln_status.vs_subscribers
+                status_order[old_vuln_status.vs_status]
+                < status_order[new_vuln_status.vs_status]
             ):
-                new_vuln_status.vs_subscribers.append(new_vuln_status.vs_author)
+                if (
+                    old_vuln_status.vs_subscribers == new_vuln_status.vs_subscribers
+                ) and new_vuln_status.vs_author not in new_vuln_status.vs_subscribers:
+                    new_vuln_status.vs_subscribers.append(new_vuln_status.vs_author)
+
+            elif (
+                status_order[old_vuln_status.vs_status]
+                > status_order[new_vuln_status.vs_status]
+            ):
+                if new_vuln_status.vs_reason is None or new_vuln_status.vs_status == "":
+                    return self.store_error(
+                        {"message": "No reason for status returning back"},
+                        http_code=409,
+                    )
 
             self._store_vuln_status(new_vuln_status)
         except RuntimeError:
