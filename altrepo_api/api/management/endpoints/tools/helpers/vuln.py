@@ -30,6 +30,8 @@ from ..constants import (
     BUG_ID_TYPE,
     CVE_ID_PREFIX,
     CVE_ID_TYPE,
+    GHSA_ID_PREFIX,
+    GHSA_ID_TYPE,
     MFSA_ID_PREFIX,
     MFSA_ID_TYPE,
 )
@@ -60,7 +62,7 @@ def bug2vuln(bug: Bug) -> Vulnerability:
         id=str(bug.id),
         type=BUG_ID_TYPE,
         summary=bug.summary,
-        url=f"#{bug.id}",
+        url=f"{lut.bugzilla_base}/{bug.id}",
         modified_date=bug.last_changed,
         published_date=bug.last_changed,
         is_valid=bug.is_valid,
@@ -77,6 +79,9 @@ def empty_vuln(vuln_id: str) -> Vulnerability:
         vuln_type = BDU_ID_TYPE
         normalized_id = vuln_id.removeprefix(BDU_ID_PREFIX)
         vuln_url = f"{lut.fstec_bdu_base}/{normalized_id}"
+    elif vuln_id.startswith(GHSA_ID_PREFIX):
+        vuln_type = GHSA_ID_TYPE
+        vuln_url = f"{lut.ghsa_base}/{vuln_id}"
     elif vuln_id.startswith(MFSA_ID_PREFIX):
         vuln_type = MFSA_ID_TYPE
         normalized_id = vuln_id.replace("MFSA ", "mfsa").replace("MFSA-", "mfsa")

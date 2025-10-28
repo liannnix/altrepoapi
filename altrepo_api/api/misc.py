@@ -383,6 +383,7 @@ class LookupTables:
     errata_base = "https://errata.altlinux.org"
     nvd_cve_base = "https://nvd.nist.gov/vuln/detail"
     fstec_bdu_base = "https://bdu.fstec.ru/vul"
+    ghsa_base = "https://github.com/advisories"
     mfsa_base = "https://www.mozilla.org/en-US/security/advisories"
 
     rpmsense_flags = [
