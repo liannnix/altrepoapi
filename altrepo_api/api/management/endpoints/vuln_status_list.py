@@ -124,7 +124,7 @@ class VulnStatusList(APIWorker):
             {
                 "request_args": self.args._asdict(),
                 "length": len(response),
-                "statuses": [vs._asdict() for vs in vulns_statuses],
+                "statuses": [vs.asdict() for vs in vulns_statuses],
             },
             200,
             {
