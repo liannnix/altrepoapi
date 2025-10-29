@@ -31,6 +31,7 @@ from ..token import (
     check_fingerprint,
     decode_jwt_token,
     update_access_token,
+    token_user,
 )
 
 
@@ -75,12 +76,8 @@ class RefreshToken(APIWorker):
         return self.validation_results == []
 
     def post(self):
-        if self.access_token_auth_provider == AuthProvider.LDAP:
-            user = self.access_token_payload.get("nickname", "")
-        else:
-            user = self.access_token_payload.get("preferred_username", "")
-
-        user_sessions = self.storage.map_getall(REFRESH_TOKEN_KEY.format(user=user))
+        user_name = token_user(self.access_token_auth_provider, self.access_token_payload)
+        user_sessions = self.storage.map_getall(REFRESH_TOKEN_KEY.format(user=user_name))
         active_session = user_sessions.get(self.refresh_token)
 
         if not active_session:
@@ -97,7 +94,7 @@ class RefreshToken(APIWorker):
             <= datetime.datetime.now().timestamp()
         ):
             self.storage.map_delete(
-                REFRESH_TOKEN_KEY.format(user=user),
+                REFRESH_TOKEN_KEY.format(user=user_name),
                 self.refresh_token,
             )
             raise ApiUnauthorized(description="Session is expired")

@@ -128,6 +128,14 @@ def decode_jwt_token(
         raise ExpiredTokenError("Token expired")
 
 
+def token_user(auth_provider: AuthProvider, token_payload: dict[str, Any]) -> str:
+    match auth_provider:
+        case AuthProvider.LDAP:
+            return token_payload.get("nickname", "")
+        case AuthProvider.KEYCLOAK:
+            return token_payload.get("preferred_username", "")
+
+
 def user_fingerprint() -> str:
     """
     Get user fingerprint MD5 hash based on ip, user-agent and accept-language.

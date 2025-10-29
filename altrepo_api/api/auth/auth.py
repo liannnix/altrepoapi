@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import hashlib
-from typing import Any, NamedTuple, Optional
+from typing import Any, Iterable, NamedTuple, Optional, Union
 
 import ldap
 
@@ -32,6 +32,31 @@ class AuthCheckResult(NamedTuple):
     verified: bool
     error: str
     value: dict[str, Any]
+
+
+def find_max_ranked_group(groups: Iterable[str]) -> Union[str, None]:
+    ranked_groups = sorted(
+        namespace.AG_ROLE_MAPPING.items(),
+        key=lambda item: len(item[1]),
+        reverse=True,
+    )
+
+    for ranked_group, _ in ranked_groups:
+        group = namespace.AG_GROUP_MAPPING[ranked_group][0]
+        if group in groups:
+            return group
+
+
+def find_max_ranked_group_by_roles(roles: Iterable[str]) -> Union[str, None]:
+    ranked_groups = sorted(
+        namespace.AG_ROLE_MAPPING.items(),
+        key=lambda item: len(item[1]),
+        reverse=True,
+    )
+
+    for ranked_group, ranked_group_roles in ranked_groups:
+        if set(ranked_group_roles).issubset(roles):
+            return namespace.AG_GROUP_MAPPING[ranked_group][0]
 
 
 def check_auth(

@@ -20,7 +20,13 @@ from altrepo_api.api.base import APIWorker
 from ..constants import REFRESH_TOKEN_KEY, AuthProvider
 from ..keycloak import keycloak_openid
 from ..exceptions import ApiUnauthorized
-from ..token import AccessTokenBlacklist, InvalidTokenError, STORAGE, decode_jwt_token
+from ..token import (
+    AccessTokenBlacklist,
+    InvalidTokenError,
+    STORAGE,
+    decode_jwt_token,
+    token_user,
+)
 
 
 class AuthLogout(APIWorker):
@@ -56,12 +62,8 @@ class AuthLogout(APIWorker):
         except InvalidTokenError:
             raise ApiUnauthorized(description="Invalid token")
 
-        if auth_provider == AuthProvider.LDAP:
-            user = token_payload.get("nickname", "")
-        else:
-            user = token_payload.get("preferred_username", "")
-
-        user_session_name = REFRESH_TOKEN_KEY.format(user=user)
+        user_name = token_user(auth_provider, token_payload)
+        user_session_name = REFRESH_TOKEN_KEY.format(user=user_name)
         user_sessions = self.storage.map_getall(user_session_name)
 
         if self.blacklist.check():

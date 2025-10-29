@@ -24,7 +24,7 @@ from altrepo_api.api.base import APIWorker, WorkerResult
 from altrepo_api.settings import namespace, AccessGroups
 from altrepo_api.utils import get_logger
 
-from ..auth import check_auth_keycloak, check_auth_ldap
+from ..auth import check_auth_keycloak, check_auth_ldap, find_max_ranked_group
 from ..constants import REFRESH_TOKEN_KEY, AuthProvider
 from ..token import STORAGE, encode_jwt_token, user_fingerprint
 
@@ -153,7 +153,7 @@ class AuthLogin(APIWorker):
                 "fingerprint": fingerprint,
                 "exp": token_expires,
                 "ns": time.perf_counter_ns(),
-                "groups": user_groups,
+                "group": find_max_ranked_group(user_groups),
                 "roles": user_roles,
                 "provider": self.args.auth_provider.value,
             }
