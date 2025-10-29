@@ -173,7 +173,7 @@ class VulnStatus(APIWorker):
                 "Resolution is allowed when status is 'resolved'"
             )
 
-        if resolution is not None and (reason is None or reason == ""):
+        if resolution and not reason:
             self.validation_results.append("No reason for resolution")
 
         if subscribers is not None:
