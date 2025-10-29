@@ -19,6 +19,7 @@ from enum import StrEnum
 JWT_ENCODE_ALGORITHM = "HS256"
 REFRESH_TOKEN_KEY = "refresh-token:{user}"
 BLACKLISTED_ACCESS_TOKEN_KEY = "blacklisted:access-token:{token}"
+USER_ROLES_KEY = "user:{user}"
 
 
 class AuthProvider(StrEnum):

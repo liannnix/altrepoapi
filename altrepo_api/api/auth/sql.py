@@ -14,18 +14,14 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from .token import (
-    AccessTokenBlacklist,
-    InvalidTokenError,
-    ExpiredTokenError,
-    STORAGE,
-    encode_jwt_token,
-    decode_jwt_token,
-    user_fingerprint,
-    check_fingerprint,
-    update_access_token,
-    parse_basic_auth_token,
-    token_user,
-)
+from dataclasses import dataclass
 
-from .user_roles import UserRolesCache
+
+@dataclass(frozen=True)
+class SQL:
+    store_errata_user = """
+    INSERT INTO ErrataUsers (*) VALUES ('{user}', '{group}', {roles})
+"""
+
+
+sql = SQL()

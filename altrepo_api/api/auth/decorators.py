@@ -14,24 +14,28 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from datetime import datetime, timezone
 from functools import wraps
-from flask import request
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
+from flask import g, request
 from keycloak import KeycloakError
 
-from .auth import check_auth
-from .exceptions import ApiUnauthorized, ApiForbidden
-from .token.token import (
+from altrepo_api.settings import AccessGroups, namespace
+from altrepo_api.utils import get_logger
+
+from .auth import check_auth, find_max_ranked_group_by_roles
+from .constants import AuthProvider
+from .exceptions import ApiForbidden, ApiUnauthorized
+from .keycloak import keycloak_openid
+from .token import (
     AccessTokenBlacklist,
     ExpiredTokenError,
     InvalidTokenError,
+    UserRolesCache,
     decode_jwt_token,
+    token_user,
 )
-from .constants import AuthProvider
-from .keycloak import keycloak_openid
-
-from altrepo_api.settings import namespace, AccessGroups
 
 
 def auth_required(
@@ -73,7 +77,7 @@ def _check_access_auth(
 
     result = check_auth(
         token,
-        ldap_groups=[namespace.ACCESS_GROUPS[g] for g in ldap_groups],
+        ldap_groups=[namespace.ACCESS_GROUPS[group] for group in ldap_groups],
         keycloak_roles=keycloak_roles,
     )
 
@@ -122,28 +126,51 @@ def _check_access_token(role: str, validate_role: bool) -> dict[str, Any]:
     except ExpiredTokenError:
         raise ApiUnauthorized(description="Token expired")
 
-    if AccessTokenBlacklist(token, int(token_payload["exp"])).check():
+    expires_at: int = token_payload["exp"]
+    expires_in: int = (
+        datetime.fromtimestamp(expires_at, tz=timezone.utc)
+        - datetime.now(tz=timezone.utc)
+    ).seconds
+
+    if AccessTokenBlacklist(token, expires_at).check():
         raise ApiUnauthorized(description="Token blacklisted")
 
-    match auth_provider:
-        case AuthProvider.LDAP:
-            if validate_role and role not in token_payload.get("roles", []):
-                raise ApiForbidden()
+    user_name: str = token_user(auth_provider, token_payload)
+    user_group: Union[str, None] = None
+    user_roles: list[str] = []
 
-            return {"token": token, "exp": token_payload.get("exp")}
-        case AuthProvider.KEYCLOAK:
-            try:
-                keycloak_openid.userinfo(token)
-            except KeycloakError as e:
-                raise ApiUnauthorized(f"Keycloak token validation error: {e}")
+    users_cache = UserRolesCache(conn=g.connection, logger=get_logger(__name__))
+    cached_user = users_cache.get(user_name)
 
-            user_roles = (
-                token_payload.get("resource_access", {})
-                .get(namespace.KEYCLOAK_CLIENT_ID, {})
-                .get("roles", [])
-            )
+    if not cached_user:
+        match auth_provider:
+            case AuthProvider.LDAP:
+                user_roles = token_payload.get("roles", [])
 
-            if validate_role and role not in user_roles:
-                raise ApiForbidden()
+            case AuthProvider.KEYCLOAK:
+                try:
+                    keycloak_openid.userinfo(token)
+                except KeycloakError as e:
+                    raise ApiUnauthorized(f"Keycloak token validation error: {e}")
 
-            return {"token": token, "exp": token_payload.get("exp")}
+                user_roles = (
+                    token_payload.get("resource_access", {})
+                    .get(namespace.KEYCLOAK_CLIENT_ID, {})
+                    .get("roles", [])
+                )
+
+        if validate_role and role not in user_roles:
+            raise ApiForbidden()
+
+        user_group = find_max_ranked_group_by_roles(user_roles)
+        if user_group is None:
+            raise ApiForbidden()
+
+        users_cache.add(
+            user=user_name,
+            group=user_group,
+            roles=user_roles,
+            expires_in=expires_in,
+        )
+
+    return {"token": token, "exp": token_payload.get("exp")}
