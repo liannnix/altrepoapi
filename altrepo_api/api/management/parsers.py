@@ -439,6 +439,13 @@ vuln_status_resolution_opt = parser.register_item(
     + ", ".join(lut.vuln_status_resolutions),
     location="args",
 )
+user_name_input = parser.register_item(
+    "input",
+    type=packager_nick_type,
+    required=True,
+    help="User name input",
+    location="args",
+)
 
 task_list_args = parser.build_parser(
     task_input_val_opt,
@@ -525,3 +532,4 @@ vuln_status_list_args = parser.build_parser(
     limit_opt,
     sort_opt,
 )
+errata_user_tag_args = parser.build_parser(user_name_input, limit_opt)

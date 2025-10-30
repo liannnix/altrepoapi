@@ -87,6 +87,7 @@ from .endpoints.vulns_info import VulnsInfo
 from .endpoints.comments import Comments
 from .endpoints.vuln_status import VulnStatus
 from .endpoints.vuln_status_list import VulnStatusList
+from .endpoints.errata_user import ErrataUserInfo, ErrataUserTag
 from .namespace import get_namespace
 from .parsers import (
     change_history_args,
@@ -109,6 +110,7 @@ from .parsers import (
     vuln_list_args,
     default_reasons_list_args,
     vuln_status_list_args,
+    errata_user_tag_args,
 )
 from .serializers import (
     change_history_response_model,
@@ -149,6 +151,8 @@ from .serializers import (
     vuln_status_manage_create_model,
     vuln_status_list_response_model,
     vuln_status_response_model,
+    errata_user_info_model,
+    errata_user_tag_model,
 )
 
 ns = get_namespace()
@@ -1267,3 +1271,42 @@ class routeManageVulnStatus(Resource):
             run_method=w.post,
             check_method=w.check_params_post,
         )
+
+
+@ns.route("/user/<string:user>")
+class routeManageErrataUser(Resource):
+    @ns.doc(
+        params={"user": "User name"},
+        description="Get errata user info",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.marshal_with(errata_user_info_model)
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
+    def get(self, user: str):
+        url_logging(logger, g.url)
+        w = ErrataUserInfo(g.connection, user)
+        return run_worker(worker=w)
+
+
+@ns.route(
+    "/user/tag",
+    doc={
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routeManageErrataUserTag(Resource):
+    @ns.doc(
+        description="Lightweight search errata user by nickname for tagging",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(errata_user_tag_args)
+    @ns.marshal_with(errata_user_tag_model)
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
+    def get(self):
+        url_logging(logger, g.url)
+        args = errata_user_tag_args.parse_args(strict=True)
+        w = ErrataUserTag(g.connection, **args)
+        return run_worker(worker=w)

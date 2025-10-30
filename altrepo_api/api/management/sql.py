@@ -1433,5 +1433,31 @@ GROUP BY vuln_id
 {page_clause}
 """
 
+    get_errata_user = """
+    SELECT
+        user,
+        argMax(group, ts) AS last_group,
+        argMax(roles, ts) AS last_roles
+    FROM ErrataUsers
+    WHERE user = '{user}'
+    GROUP BY user
+"""
+
+    get_most_relevant_users = """
+WITH '{input}' AS query
+SELECT
+    user,
+    argMax(group, ts) AS g
+FROM ErrataUsers
+WHERE (positionCaseInsensitiveUTF8(user, query) AS pos) != 0
+GROUP BY user
+ORDER BY
+    if((eq = 0) AND (st = 0), pos, 0) ASC,
+    toUInt8(lower(user) = query) AS eq DESC,
+    startsWithUTF8(lower(user), query) AS st DESC,
+    length(user) ASC
+LIMIT {limit}
+"""
+
 
 sql = SQL()

@@ -1230,3 +1230,54 @@ vuln_status_list_response_model = ns.model(
         ),
     },
 )
+
+errata_user_info_model = ns.model(
+    "ErrataUserInfoModel",
+    {
+        "user": fields.String(
+            description="Errata user name",
+            required=True,
+        ),
+        "group": fields.String(
+            description="Max ranked group of user",
+            required=True,
+        ),
+        "roles": fields.List(
+            fields.String(description="List of user roles"),
+            required=True,
+        ),
+    },
+)
+
+errata_user_tag_element_model = ns.model(
+    "ErrataUserTagElementModel",
+    {
+        "user": fields.String(
+            description="Errata user name",
+            required=True,
+        ),
+        "group": fields.String(
+            description="Max ranked group of user",
+            required=True,
+        ),
+    },
+)
+errata_user_tag_model = ns.model(
+    "ErrataUserTagModel",
+    {
+        "request_args": fields.Raw(
+            description="Request arguments",
+            required=True,
+        ),
+        "length": fields.Integer(
+            description="Number of users found",
+            required=True,
+        ),
+        "users": fields.Nested(
+            errata_user_tag_element_model,
+            description="List of most relevant users in descending order",
+            as_list=True,
+            required=True,
+        ),
+    },
+)
