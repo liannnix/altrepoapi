@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from functools import wraps
 from typing import Any, Optional, Union
 
@@ -127,10 +127,6 @@ def _check_access_token(role: str, validate_role: bool) -> dict[str, Any]:
         raise ApiUnauthorized(description="Token expired")
 
     expires_at: int = token_payload["exp"]
-    expires_in: int = (
-        datetime.fromtimestamp(expires_at, tz=timezone.utc)
-        - datetime.now(tz=timezone.utc)
-    ).seconds
 
     if AccessTokenBlacklist(token, expires_at).check():
         raise ApiUnauthorized(description="Token blacklisted")
@@ -166,11 +162,17 @@ def _check_access_token(role: str, validate_role: bool) -> dict[str, Any]:
         if user_group is None:
             raise ApiForbidden()
 
+        delta = int(
+            (
+                datetime.fromtimestamp(expires_at, tz=UTC) - datetime.now(tz=UTC)
+            ).total_seconds()
+        )
+
         users_cache.add(
             user=user_name,
             group=user_group,
             roles=user_roles,
-            expires_in=expires_in,
+            expires_in=(delta if delta > 0 else 1),
         )
 
     return {"token": token, "exp": token_payload.get("exp")}
