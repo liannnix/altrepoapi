@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from typing import Optional
+
 from altrepo_api.api.base import APIWorker, ConnectionProtocol, WorkerResult
 
 from ..sql import sql
@@ -60,7 +61,7 @@ class ErrataUserTag(APIWorker):
         input: str = self.kwargs["input"]
         limit: Optional[int] = self.kwargs["limit"]
 
-        if limit is None:
+        if not limit:
             limit = 5
 
         response = self.send_sql_request(
