@@ -353,7 +353,9 @@ class ManagePnc(APIWorker):
 
         # get PNC records from DB
         response = self.send_sql_request(
-            self.sql.get_pnc_records.format(where_clause=where_clause)
+            self.sql.get_pnc_records.format(
+                where_clause=where_clause, pnc_branches=tuple(lut.repology_branches)
+            )
         )
         if not self.sql_status:
             return self.error
