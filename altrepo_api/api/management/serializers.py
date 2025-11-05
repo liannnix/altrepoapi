@@ -1281,3 +1281,55 @@ errata_user_tag_model = ns.model(
         ),
     },
 )
+
+errata_user_activity_model = ns.model(
+    "ErrataUserActivityModel",
+    {
+        "type": fields.String(
+            description="Type of activity of errata user",
+            enum=lut.errata_user_last_activities_types,
+            required=True,
+        ),
+        "id": fields.String(
+            description="Entity ID of activity of errata user",
+            required=True,
+        ),
+        "action": fields.String(
+            description="Action of activity of errata user",
+            enum=("create", "update", "discard"),
+            required=True,
+        ),
+        "attr_type": fields.String(
+            description="Attribute type of activity of errata user",
+            required=True,
+        ),
+        "attr_link": fields.String(
+            description="Attribute link of activity of errata user",
+            required=True,
+        ),
+        "text": fields.String(
+            description="Text for activity of errata user",
+            required=True,
+        ),
+        "date": fields.DateTime(
+            description="Date of activity of errata user",
+            required=True,
+        ),
+    },
+)
+errata_user_last_activities_model = ns.model(
+    "ErrataUserLastActivitiesModel",
+    {
+        "user": fields.Nested(
+            errata_user_info_model,
+            description="Errata user who made last activities",
+            required=True,
+        ),
+        "activities": fields.Nested(
+            errata_user_activity_model,
+            description="List of last activities of errata user",
+            as_list=True,
+            required=True,
+        ),
+    },
+)

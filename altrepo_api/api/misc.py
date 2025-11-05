@@ -547,5 +547,14 @@ class LookupTables:
     vuln_status_resolutions = ("not_for_us", "not_affected", "wont_fix", "our")
     vuln_status_json_fields = ("note", "project_name", "cpes")
 
+    errata_user_last_activities_types = (
+        "vuln_status",
+        "comment",
+        "errata",
+        "exclusion",
+        "cpe",
+        "pnc",
+    )
+
 
 lut = LookupTables()
