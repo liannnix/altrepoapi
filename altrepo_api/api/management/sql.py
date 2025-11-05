@@ -1459,5 +1459,139 @@ ORDER BY
 LIMIT {limit}
 """
 
+    get_user_last_activities = """
+WITH
+'{user}' AS target_user,
+{limit} AS target_limit,
+last_vuln_statuses AS (
+    SELECT
+        'vuln_status' AS type,
+        vuln_id AS id,
+        'update' AS action,
+        '' AS attr_type,
+        '' AS attr_link,
+        vs_reason AS text,
+        vs_updated AS date
+    FROM VulnerabilityStatus
+    WHERE vs_author = target_user
+    ORDER BY date DESC
+    LIMIT target_limit
+),
+last_comments AS (
+    SELECT
+        'comment' AS type,
+        CAST(comment_id, 'String') AS id,
+        CAST(cc_action, 'String') AS action,
+        comment_entity_type AS attr_type,
+        comment_entity_link AS attr_link,
+        comment_text AS text,
+        comment_created AS date
+    FROM Comments
+    RIGHT JOIN
+    (
+        SELECT
+            comment_id,
+            cc_action
+        FROM CommentsChangeHistory
+        WHERE cc_user = target_user
+        ORDER BY ts DESC
+        LIMIT target_limit
+    ) AS R USING (comment_id)
+    ORDER BY date DESC
+),
+last_errata AS (
+    SELECT
+        'errata' AS type,
+        errata_id AS id,
+        CAST(ec_type, 'String') AS action,
+        'package' AS attr_type,
+        ec_id AS attr_link,
+        JSONExtractString(ec_reason, 'message') AS text,
+        ec_updated AS date
+    FROM ErrataChangeHistory
+    WHERE startsWith(errata_id, 'ALT-PU')
+        AND (ec_source = 'manual')
+        AND (ec_origin = 'parent')
+        AND (ec_user = target_user)
+    ORDER BY date DESC
+    LIMIT target_limit
+),
+last_exclusions AS (
+    SELECT
+        'exclusion' AS type,
+        errata_id AS id,
+        CAST(ec_type, 'String') AS action,
+        JSONExtractString(eh_json, 'type') AS attr_type,
+        ec_id AS attr_link,
+        JSONExtractString(eh_json, 'reason') AS text,
+        ec_updated AS date
+    FROM ErrataHistory
+    RIGHT JOIN (
+        SELECT
+            ec_id,
+            ec_type,
+            errata_id,
+            ec_updated
+        FROM ErrataChangeHistory
+        WHERE startsWith(errata_id, 'ALT-SA')
+            AND (ec_source = 'manual')
+            AND (ec_origin = 'parent')
+            AND (ec_user = target_user)
+        ORDER BY ec_updated DESC
+        LIMIT target_limit
+    ) AS R USING (errata_id)
+    ORDER BY date DESC
+),
+last_cpes AS (
+    SELECT
+        'cpe' AS type,
+        pkg_name AS id,
+        CAST(pncc_type, 'String') AS action,
+        pnc_type AS attr_type,
+        pnc_result AS attr_link,
+        JSONExtractString(pncc_reason, 'message') AS text,
+        ts AS date
+    FROM PncChangeHistory
+    WHERE (pnc_type = 'cpe')
+        AND (pncc_source = 'manual')
+        AND (pncc_origin = 'parent')
+        AND (pncc_user = target_user)
+    ORDER BY date DESC
+    LIMIT target_limit
+),
+last_pncs AS (
+    SELECT
+        'pnc' AS type,
+        pnc_result AS id,
+        CAST(pncc_type, 'String') AS action,
+        'pnc' AS attr_type,
+        pkg_name AS attr_link,
+        JSONExtractString(pncc_reason, 'message') AS text,
+        ts AS date
+    FROM PncChangeHistory
+    WHERE (pnc_type != 'cpe')
+        AND (pncc_source = 'manual')
+        AND (pncc_origin = 'parent')
+        AND (pncc_user = target_user)
+    ORDER BY date DESC
+    LIMIT target_limit
+)
+SELECT * FROM (
+    SELECT * FROM last_vuln_statuses
+    UNION ALL
+    SELECT * FROM last_comments
+    UNION ALL
+    SELECT * FROM last_errata
+    UNION ALL
+    SELECT * FROM last_exclusions
+    UNION ALL
+    SELECT * FROM last_cpes
+    UNION ALL
+    SELECT * FROM last_pncs
+)
+ORDER BY date DESC
+LIMIT target_limit
+"""
+
 
 sql = SQL()

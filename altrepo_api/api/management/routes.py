@@ -87,7 +87,11 @@ from .endpoints.vulns_info import VulnsInfo
 from .endpoints.comments import Comments
 from .endpoints.vuln_status import VulnStatus
 from .endpoints.vuln_status_list import VulnStatusList
-from .endpoints.errata_user import ErrataUserInfo, ErrataUserTag
+from .endpoints.errata_user import (
+    ErrataUserInfo,
+    ErrataUserTag,
+    ErrataUserLastActivities,
+)
 from .namespace import get_namespace
 from .parsers import (
     change_history_args,
@@ -111,6 +115,7 @@ from .parsers import (
     default_reasons_list_args,
     vuln_status_list_args,
     errata_user_tag_args,
+    errata_user_last_activities_args,
 )
 from .serializers import (
     change_history_response_model,
@@ -153,6 +158,7 @@ from .serializers import (
     vuln_status_response_model,
     errata_user_info_model,
     errata_user_tag_model,
+    errata_user_last_activities_model,
 )
 
 ns = get_namespace()
@@ -1286,6 +1292,24 @@ class routeManageErrataUser(Resource):
     def get(self, user: str):
         url_logging(logger, g.url)
         w = ErrataUserInfo(g.connection, user)
+        return run_worker(worker=w)
+
+
+@ns.route("/user/<string:user>/last_activities")
+class routeManageErrataUserLastActivities(Resource):
+    @ns.doc(
+        params={"user": "User name"},
+        description="Get errata user last activities",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(errata_user_last_activities_args)
+    # @ns.marshal_with(errata_user_last_activities_model)
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
+    def get(self, user: str):
+        url_logging(logger, g.url)
+        args = errata_user_last_activities_args.parse_args(strict=True)
+        w = ErrataUserLastActivities(g.connection, user=user, limit=args["limit"])
         return run_worker(worker=w)
 
 

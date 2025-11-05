@@ -20,6 +20,8 @@ from altrepo_api.api.base import APIWorker, ConnectionProtocol, WorkerResult
 
 from ..sql import sql
 
+DEFAULT_LAST_ACTIVITIES_LIMIT = 10
+
 
 class ErrataUserInfo(APIWorker):
     def __init__(
@@ -80,4 +82,57 @@ class ErrataUserTag(APIWorker):
             "request_args": self.kwargs,
             "length": len(users),
             "users": users,
+        }, 200
+
+
+class ErrataUserLastActivities(APIWorker):
+    def __init__(
+        self,
+        conn: ConnectionProtocol,
+        user: str,
+        limit: Optional[int] = None,
+    ) -> None:
+        self.conn = conn
+        self.user = user
+        self.limit = limit or DEFAULT_LAST_ACTIVITIES_LIMIT
+        self.sql = sql
+        super().__init__()
+
+    def get(self) -> WorkerResult:
+        response = self.send_sql_request(
+            self.sql.get_errata_user.format(user=self.user)
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error({"message": "No errata user found in database"})
+
+        user = {
+            "user": response[0][0],
+            "group": response[0][1],
+            "roles": response[0][2],
+        }
+
+        response = self.send_sql_request(
+            self.sql.get_user_last_activities.format(user=self.user, limit=self.limit)
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error({"message": "No data found in database"})
+
+        return {
+            "user": user,
+            "activities": [
+                {
+                    "type": type,
+                    "id": id,
+                    "action": action,
+                    "attr_type": attr_type,
+                    "attr_link": attr_link,
+                    "text": text,
+                    "date": date,
+                }
+                for type, id, action, attr_type, attr_link, text, date in response
+            ],
         }, 200
