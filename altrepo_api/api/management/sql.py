@@ -1184,7 +1184,7 @@ ORDER BY pkg_name
 SELECT VULNS.*, count() OVER() AS total_count
 FROM (
     SELECT
-        vulns.vuln_id,
+        vulns.vuln_id as vuln_id,
         argMax(vulns.vuln_severity, vulns.ts) AS severity,
         argMax(vs.vs_status, vs.ts) AS status,
         argMax(vs.vs_resolution, vs.ts) AS resolution,

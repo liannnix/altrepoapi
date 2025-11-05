@@ -40,6 +40,7 @@ class VulnListArgs(NamedTuple):
     modified_end_date: Optional[datetime] = None
     published_start_date: Optional[datetime] = None
     published_end_date: Optional[datetime] = None
+    type: Optional[str] = None
 
 
 class ErrataInfo(NamedTuple):
@@ -184,6 +185,13 @@ class VulnList(APIWorker):
                 f" AND VULNS.resolution = '{self.args.resolution}'"
                 if where_clause
                 else f"WHERE VULNS.resolution = '{self.args.resolution}'"
+            )
+
+        if self.args.type and self.args.type != "all":
+            where_clause += (
+                f"AND VULNS.vuln_id ILIKE '{self.args.type}%'"
+                if where_clause
+                else f"WHERE VULNS.vuln_id ILIKE '{self.args.type}%'"
             )
 
         return where_clause
@@ -411,7 +419,7 @@ class VulnList(APIWorker):
                     )
                 )
 
-            if arg.name == "severity":
+            if arg.name in ("severity", "status", "type"):
                 metadata.append(
                     MetadataItem(
                         **item_info,
@@ -421,20 +429,6 @@ class VulnList(APIWorker):
                                 value=choice, display_name=choice.capitalize()
                             )
                             for choice in arg.choices
-                        ],
-                    )
-                )
-
-            if arg.name == "status":
-                metadata.append(
-                    MetadataItem(
-                        **item_info,
-                        type=KnownFilterTypes.CHOICE,
-                        choices=[
-                            MetadataChoiceItem(
-                                value=status, display_name=status.capitalize()
-                            )
-                            for status in arg.choices
                         ],
                     )
                 )
