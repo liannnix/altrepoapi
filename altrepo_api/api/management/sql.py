@@ -1434,13 +1434,14 @@ GROUP BY vuln_id
 """
 
     get_errata_user = """
-    SELECT
-        user,
-        argMax(group, ts) AS last_group,
-        argMax(roles, ts) AS last_roles
-    FROM ErrataUsers
-    WHERE user = '{user}'
-    GROUP BY user
+SELECT
+    user,
+    argMax(group, ts) AS last_group,
+    argMax(roles, ts) AS last_roles,
+    get_errata_user_aliases('{user}') AS aliases
+FROM ErrataUsers
+WHERE user = get_errata_user_original_name('{user}')
+GROUP BY user
 """
 
     get_most_relevant_users = """
@@ -1461,7 +1462,7 @@ LIMIT {limit}
 
     get_user_last_activities = """
 WITH
-'{user}' AS target_user,
+get_errata_user_aliases('{user}') AS target_user,
 {limit} AS target_limit,
 last_vuln_statuses AS (
     SELECT
@@ -1473,7 +1474,7 @@ last_vuln_statuses AS (
         vs_reason AS text,
         vs_updated AS date
     FROM VulnerabilityStatus
-    WHERE vs_author = target_user
+    WHERE has(target_user, vs_author)
     ORDER BY date DESC
     LIMIT target_limit
 ),
@@ -1493,7 +1494,7 @@ last_comments AS (
             comment_id,
             cc_action
         FROM CommentsChangeHistory
-        WHERE cc_user = target_user
+        WHERE has(target_user, cc_user)
         ORDER BY ts DESC
         LIMIT target_limit
     ) AS R USING (comment_id)
@@ -1512,7 +1513,7 @@ last_errata AS (
     WHERE startsWith(errata_id, 'ALT-PU')
         AND (ec_source = 'manual')
         AND (ec_origin = 'parent')
-        AND (ec_user = target_user)
+        AND (has(target_user, ec_user))
     ORDER BY date DESC
     LIMIT target_limit
 ),
@@ -1536,7 +1537,7 @@ last_exclusions AS (
         WHERE startsWith(errata_id, 'ALT-SA')
             AND (ec_source = 'manual')
             AND (ec_origin = 'parent')
-            AND (ec_user = target_user)
+            AND (has(target_user, ec_user))
         ORDER BY ec_updated DESC
         LIMIT target_limit
     ) AS R USING (errata_id)
@@ -1555,7 +1556,7 @@ last_cpes AS (
     WHERE (pnc_type = 'cpe')
         AND (pncc_source = 'manual')
         AND (pncc_origin = 'parent')
-        AND (pncc_user = target_user)
+        AND (has(target_user, pncc_user))
     ORDER BY date DESC
     LIMIT target_limit
 ),
@@ -1572,7 +1573,7 @@ last_pncs AS (
     WHERE (pnc_type != 'cpe')
         AND (pncc_source = 'manual')
         AND (pncc_origin = 'parent')
-        AND (pncc_user = target_user)
+        AND (has(target_user, pncc_user))
     ORDER BY date DESC
     LIMIT target_limit
 )

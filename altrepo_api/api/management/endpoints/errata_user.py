@@ -49,6 +49,7 @@ class ErrataUserInfo(APIWorker):
             "user": response[0][0],
             "group": response[0][1],
             "roles": response[0][2],
+            "aliases": response[0][3],
         }, 200
 
 
@@ -111,6 +112,7 @@ class ErrataUserLastActivities(APIWorker):
             "user": response[0][0],
             "group": response[0][1],
             "roles": response[0][2],
+            "aliases": response[0][3],
         }
 
         response = self.send_sql_request(

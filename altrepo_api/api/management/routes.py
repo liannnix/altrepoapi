@@ -1304,7 +1304,7 @@ class routeManageErrataUserLastActivities(Resource):
         security="Bearer",
     )
     @ns.expect(errata_user_last_activities_args)
-    # @ns.marshal_with(errata_user_last_activities_model)
+    @ns.marshal_with(errata_user_last_activities_model)
     @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
     def get(self, user: str):
         url_logging(logger, g.url)
