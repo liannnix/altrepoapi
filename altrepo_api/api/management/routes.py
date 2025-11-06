@@ -444,7 +444,7 @@ class routeGHSAInfo(Resource):
 
 
 @ns.route(
-    "vuln/ghsa/fixes",
+    "/vuln/ghsa/fixes",
     doc={
         "description": (
             "Get a list of packages in which "
