@@ -19,6 +19,10 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class SQL:
+    get_original_user_name = """
+    SELECT get_errata_user_original_name('{user}')
+"""
+
     store_errata_user = """
     INSERT INTO ErrataUsers (*) VALUES ('{user}', '{group}', {roles})
 """
