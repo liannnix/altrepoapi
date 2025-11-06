@@ -76,8 +76,12 @@ class RefreshToken(APIWorker):
         return self.validation_results == []
 
     def post(self):
-        user_name = token_user(self.access_token_auth_provider, self.access_token_payload)
-        user_sessions = self.storage.map_getall(REFRESH_TOKEN_KEY.format(user=user_name))
+        user_name = token_user(
+            self.access_token_auth_provider, self.access_token_payload
+        )
+        user_sessions = self.storage.map_getall(
+            REFRESH_TOKEN_KEY.format(user=user_name)
+        )
         active_session = user_sessions.get(self.refresh_token)
 
         if not active_session:

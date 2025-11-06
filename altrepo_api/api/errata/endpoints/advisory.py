@@ -99,10 +99,10 @@ class AdvisoryErrata(APIWorker):
 
     def _build_filter(self):
         def filter_by_state(errata: Errata):
-            return errata.is_discarded == False
+            return errata.is_discarded is False
 
         def filter_by_publicity(errata: Errata):
-            return errata.eh.json.is_public == True  # type: ignore
+            return errata.eh.json.is_public is True  # type: ignore
 
         def filter_by_errata_id(errata: Errata, id: str):
             return errata.eh.id == id

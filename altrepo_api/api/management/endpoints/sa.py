@@ -83,9 +83,8 @@ def _check_sa_overlap(ej: ErrataJson) -> Optional[tuple[str, str]]:
         }
 
     #  build a filter for an active errata that has the same vulnerability ID
-    active_and_matches_vuln_id = lambda e: (
-        e.is_discarded == False and filter_by_vuln_id(e, ej.vuln_id)
-    )
+    def active_and_matches_vuln_id(errata: Errata):
+        return not errata.is_discarded and filter_by_vuln_id(errata, ej.vuln_id)
 
     # collect existing active SA erratas from DB using CVE ID
     service = get_errata_service(dry_run=True, access_token="", user="", ip="")

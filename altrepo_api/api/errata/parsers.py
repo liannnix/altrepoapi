@@ -168,9 +168,5 @@ find_img_erratas_args = parser.build_parser(
 )
 packages_updates_args = parser.build_parser(exclude_json_opt)
 advisory_errata_args = parser.build_parser(
-    branch_name_opt,
-    advisory_input_opt,
-    page_opt,
-    limit_opt,
-    sort_opt
+    branch_name_opt, advisory_input_opt, page_opt, limit_opt, sort_opt
 )
