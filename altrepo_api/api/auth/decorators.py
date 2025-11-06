@@ -138,41 +138,49 @@ def _check_access_token(role: str, validate_role: bool) -> dict[str, Any]:
     users_cache = UserRolesCache(conn=g.connection, logger=get_logger(__name__))
     cached_user = users_cache.get(user_name)
 
-    if not cached_user:
-        match auth_provider:
-            case AuthProvider.LDAP:
-                user_roles = token_payload.get("roles", [])
-
-            case AuthProvider.KEYCLOAK:
-                try:
-                    keycloak_openid.userinfo(token)
-                except KeycloakError as e:
-                    raise ApiUnauthorized(f"Keycloak token validation error: {e}")
-
-                user_roles = (
-                    token_payload.get("resource_access", {})
-                    .get(namespace.KEYCLOAK_CLIENT_ID, {})
-                    .get("roles", [])
-                )
+    if cached_user:
+        user_roles = cached_user.get("roles", [])
 
         if validate_role and role not in user_roles:
             raise ApiForbidden()
 
-        user_group = find_max_ranked_group_by_roles(user_roles)
-        if user_group is None:
-            raise ApiForbidden()
+        return {"token": token, "exp": expires_at}
 
-        delta = int(
-            (
-                datetime.fromtimestamp(expires_at, tz=UTC) - datetime.now(tz=UTC)
-            ).total_seconds()
+    if auth_provider == AuthProvider.LDAP:
+        user_roles = token_payload.get("roles", [])
+
+    elif auth_provider == AuthProvider.KEYCLOAK:
+        try:
+            keycloak_openid.userinfo(token)
+        except KeycloakError as e:
+            raise ApiUnauthorized(f"Keycloak token validation error: {e}")
+
+        user_roles = (
+            token_payload.get("resource_access", {})
+            .get(namespace.KEYCLOAK_CLIENT_ID, {})
+            .get("roles", [])
         )
+    else:
+        raise ApiUnauthorized(description="Authentication provider is unknown")
 
-        users_cache.add(
-            user=user_name,
-            group=user_group,
-            roles=user_roles,
-            expires_in=(delta if delta > 0 else 1),
-        )
+    if validate_role and role not in user_roles:
+        raise ApiForbidden()
 
-    return {"token": token, "exp": token_payload.get("exp")}
+    user_group = find_max_ranked_group_by_roles(user_roles)
+    if user_group is None:
+        raise ApiForbidden()
+
+    delta = int(
+        (
+            datetime.fromtimestamp(expires_at, tz=UTC) - datetime.now(tz=UTC)
+        ).total_seconds()
+    )
+
+    users_cache.add(
+        user=user_name,
+        group=user_group,
+        roles=user_roles,
+        expires_in=(delta if delta > 0 else 1),
+    )
+
+    return {"token": token, "exp": expires_at}
