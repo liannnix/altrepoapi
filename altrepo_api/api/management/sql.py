@@ -1594,5 +1594,20 @@ ORDER BY date DESC
 LIMIT target_limit
 """
 
+    get_user_aliases = """
+SELECT
+    user,
+    argMax(aliases, ts) AS aka
+FROM ErrataUsersAliases
+{where_clause}
+GROUP BY user
+{having_clause}
+ORDER BY user
+"""
+
+    store_user_aliases = """
+INSERT INTO ErrataUsersAliases (user, aliases) VALUES
+"""
+
 
 sql = SQL()

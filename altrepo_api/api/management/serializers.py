@@ -1337,3 +1337,36 @@ errata_user_last_activities_model = ns.model(
         ),
     },
 )
+
+errata_user_aliases_element_model = ns.model(
+    "ErrataUserAliasesElementModel",
+    {
+        "name": fields.String(
+            description="Original name of errata user",
+            required=True,
+        ),
+        "aliases": fields.List(
+            fields.String(description="List of errata user aliases"),
+            required=True,
+        ),
+    },
+)
+errata_user_aliases_model = ns.model(
+    "ErrataUserAliasesModel",
+    {
+        "request_args": fields.Raw(
+            description="Request arguments",
+            required=True,
+        ),
+        "length": fields.Integer(
+            description="Number of users found",
+            required=True,
+        ),
+        "users": fields.Nested(
+            errata_user_aliases_element_model,
+            description="List of most relevant users in descending order",
+            as_list=True,
+            required=True,
+        ),
+    },
+)

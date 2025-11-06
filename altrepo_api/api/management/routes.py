@@ -91,6 +91,7 @@ from .endpoints.errata_user import (
     ErrataUserInfo,
     ErrataUserTag,
     ErrataUserLastActivities,
+    ErrataUserAliases,
 )
 from .namespace import get_namespace
 from .parsers import (
@@ -116,6 +117,8 @@ from .parsers import (
     vuln_status_list_args,
     errata_user_tag_args,
     errata_user_last_activities_args,
+    errata_user_aliases_get_args,
+    errata_user_aliases_post_args,
 )
 from .serializers import (
     change_history_response_model,
@@ -159,6 +162,7 @@ from .serializers import (
     errata_user_info_model,
     errata_user_tag_model,
     errata_user_last_activities_model,
+    errata_user_aliases_model,
 )
 
 ns = get_namespace()
@@ -1334,3 +1338,33 @@ class routeManageErrataUserTag(Resource):
         args = errata_user_tag_args.parse_args(strict=True)
         w = ErrataUserTag(g.connection, **args)
         return run_worker(worker=w)
+
+
+@ns.route("/user/aliases")
+class routeManageErrataUserAliases(Resource):
+    @ns.doc(
+        description="Get errata users aliases",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(errata_user_aliases_get_args)
+    @ns.marshal_with(errata_user_aliases_model)
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
+    def get(self):
+        url_logging(logger, g.url)
+        args = errata_user_aliases_get_args.parse_args(strict=True)
+        w = ErrataUserAliases(g.connection, **args)
+        return run_worker(worker=w)
+
+    @ns.doc(
+        description="Set errata users aliases",
+        responses=RESPONSES_400_409,
+        security="Bearer",
+    )
+    @ns.expect(errata_user_aliases_post_args)
+    @token_required("user_aliases_create")
+    def post(self):
+        url_logging(logger, g.url)
+        args = errata_user_aliases_post_args.parse_args(strict=True)
+        w = ErrataUserAliases(g.connection, **args)
+        return run_worker(worker=w, run_method=w.post, check_method=w.check_params_post)

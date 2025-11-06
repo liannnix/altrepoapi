@@ -97,6 +97,7 @@ class BasePathNamespace:
             "sa_manage_discard",
             "sa_manage_update",
             "vuln_status_create",
+            "user_aliases_create",
         ),
         AccessGroups.CVE_EXPERT: (
             "manage_list",

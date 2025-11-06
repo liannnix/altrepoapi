@@ -447,6 +447,30 @@ user_name_input = parser.register_item(
     location="args",
 )
 
+user_name = parser.register_item(
+    "name",
+    type=packager_nick_type,
+    required=True,
+    help="User name",
+    location="args",
+)
+user_name_opt = parser.register_item(
+    "name",
+    type=packager_nick_type,
+    required=False,
+    help="User name",
+    location="args",
+)
+user_aliases_opt = parser.register_item(
+    "aliases",
+    type=str,
+    required=False,
+    action="split",
+    help="User aliases",
+    location="args",
+    default=[],
+)
+
 task_list_args = parser.build_parser(
     task_input_val_opt,
     branch_name_opt,
@@ -534,3 +558,5 @@ vuln_status_list_args = parser.build_parser(
 )
 errata_user_tag_args = parser.build_parser(user_name_input, limit_opt)
 errata_user_last_activities_args = parser.build_parser(limit_opt)
+errata_user_aliases_get_args = parser.build_parser(user_name_opt)
+errata_user_aliases_post_args = parser.build_parser(user_name, user_aliases_opt)
