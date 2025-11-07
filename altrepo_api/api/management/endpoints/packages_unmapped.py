@@ -16,6 +16,7 @@
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
+from altrepo_api.settings import namespace as settings
 
 from ..sql import sql
 
@@ -35,11 +36,21 @@ class PackagesUnmapped(APIWorker):
         pkg_names = self.args["name"]
         name_like_clause = " AND ".join([f"pkg_name ILIKE '%{n}%'" for n in pkg_names])
 
-        response = self.send_sql_request(
-            self.sql.get_unmapped_packages.format(
-                name_like=name_like_clause, pnc_branches=lut.repology_branches
+        if settings.FEATURE_FLAGS.get(lut.feature_pnc_multi_mapping, False):
+            response = self.send_sql_request(
+                self.sql.get_all_packages.format(
+                    name_like=name_like_clause,
+                    branches=list(lut.branch_inheritance.keys()),
+                )
             )
-        )
+        else:
+            response = self.send_sql_request(
+                self.sql.get_unmapped_packages.format(
+                    name_like=name_like_clause,
+                    branches=list(lut.branch_inheritance.keys()),
+                    pnc_branches=lut.repology_branches,
+                )
+            )
         if not self.sql_status:
             return self.error
         if not response:

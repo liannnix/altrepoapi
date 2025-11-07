@@ -400,19 +400,20 @@ class ManagePnc(APIWorker):
                         http_code=409,
                     )
                 # 2. check if package already mapped to another project
-                if (pnc.pkg_name, pnc.pnc_type) == (
-                    pnc_db.pkg_name,
-                    pnc_db.pnc_type,
-                ) and pnc.pnc_result != pnc_db.pnc_result:
-                    return self.store_error(
-                        {
-                            "message": (
-                                f"Package '{pnc.pkg_name}' is already mapped "
-                                f"to another project: '{pnc_db.pnc_result}'"
-                            ),
-                        },
-                        http_code=409,
-                    )
+                if not settings.FEATURE_FLAGS.get(lut.feature_pnc_multi_mapping, False):
+                    if (pnc.pkg_name, pnc.pnc_type) == (
+                        pnc_db.pkg_name,
+                        pnc_db.pnc_type,
+                    ) and pnc.pnc_result != pnc_db.pnc_result:
+                        return self.store_error(
+                            {
+                                "message": (
+                                    f"Package '{pnc.pkg_name}' is already mapped "
+                                    f"to another project: '{pnc_db.pnc_result}'"
+                                ),
+                            },
+                            http_code=409,
+                        )
             # add new PNC records to transaction
             self.trx.register_pnc_create(pnc=pnc, pnc_type=PncType.NAME)
 

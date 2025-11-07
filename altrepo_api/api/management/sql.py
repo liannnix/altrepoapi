@@ -1163,6 +1163,7 @@ SELECT DISTINCT
 FROM static_last_packages
 WHERE {name_like}
     AND pkg_sourcepackage = 1
+    AND pkgset_name IN {branches}
     AND pkg_name not in (
         SELECT pkg_name FROM (
             SELECT
@@ -1177,6 +1178,16 @@ WHERE {name_like}
             ORDER BY pkg_name
         ) WHERE state != 'inactive' AND {name_like}
     )
+ORDER BY pkg_name
+"""
+
+    get_all_packages = """
+SELECT DISTINCT
+    pkg_name
+FROM static_last_packages
+WHERE {name_like}
+    AND pkg_sourcepackage = 1
+    AND pkgset_name IN {branches}
 ORDER BY pkg_name
 """
 
