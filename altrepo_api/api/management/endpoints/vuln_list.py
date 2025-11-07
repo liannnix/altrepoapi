@@ -21,7 +21,13 @@ from altrepo_api.api.base import APIWorker, WorkerResult
 from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
 from altrepo_api.utils import make_tmp_table_name
 
-from .tools.constants import BDU_ID_PREFIX, CVE_ID_PREFIX, DT_NEVER, GHSA_ID_PREFIX
+from .tools.constants import (
+    BDU_ID_PREFIX,
+    CVE_ID_PREFIX,
+    DT_NEVER,
+    GHSA_ID_PREFIX,
+    VULN_ID_TYPE2PREFIX,
+)
 from ..parsers import vuln_list_args
 from ..sql import sql
 
@@ -188,11 +194,12 @@ class VulnList(APIWorker):
             )
 
         if self.args.type and self.args.type != "all":
-            where_clause += (
-                f"AND VULNS.vuln_id ILIKE '{self.args.type}%'"
-                if where_clause
-                else f"WHERE VULNS.vuln_id ILIKE '{self.args.type}%'"
-            )
+            if vuln_prefix := VULN_ID_TYPE2PREFIX.get(self.args.type):
+                where_clause += (
+                    f"AND VULNS.vuln_id ILIKE '{vuln_prefix}%'"
+                    if where_clause
+                    else f"WHERE VULNS.vuln_id ILIKE '{vuln_prefix}%'"
+                )
 
         return where_clause
 
