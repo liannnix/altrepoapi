@@ -556,5 +556,7 @@ class LookupTables:
         "pnc",
     )
 
+    vuln_types = ("CVE", "GHSA", "BDU")
+
 
 lut = LookupTables()

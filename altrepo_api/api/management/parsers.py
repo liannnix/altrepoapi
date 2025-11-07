@@ -446,6 +446,14 @@ user_name_input = parser.register_item(
     help="User name input",
     location="args",
 )
+vuln_type_opt = parser.register_item(
+    "type",
+    type=str,
+    required=False,
+    choices=("all", *lut.vuln_types),
+    help="Vulnerability type: " + ", ".join(lut.vuln_types),
+    location="args",
+)
 
 user_name = parser.register_item(
     "name",
@@ -522,6 +530,7 @@ vuln_list_args = parser.build_parser(
     vuln_modified_end_date_opt,
     vuln_published_start_date_opt,
     vuln_published_end_date_opt,
+    vuln_type_opt,
 )
 sa_list_args = parser.build_parser(
     errata_state_opt, sa_type_opt, sa_filter_entry_opt, page_opt, limit_opt, sort_opt
