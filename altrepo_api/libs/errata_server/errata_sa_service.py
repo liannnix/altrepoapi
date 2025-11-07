@@ -267,8 +267,6 @@ class ErrataSAService:
         return response.and_then(_deserialize).unwrap()
 
     def discard(self, reason: str, errata_json: ErrataJson) -> SaManageResponse:
-        ej = serialize(sanitize_ej(errata_json))
-        print("DBG:", ej)
         response: Result[JSONObject, Exception] = self.server.post(
             SA_DISCARD_ROUTE,
             params={
