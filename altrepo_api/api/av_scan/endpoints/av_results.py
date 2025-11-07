@@ -15,24 +15,25 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from datetime import datetime
-from typing import Any, NamedTuple, Union
+from typing import Any, NamedTuple, Optional
 
-from altrepo_api.api.base import APIWorker
-from altrepo_api.libs.pagination import Paginator
-from altrepo_api.libs.sorting import rich_sort
+from altrepo_api.api.misc import lut
+from altrepo_api.api.base import APIWorker, WorkerResult
+from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
 
 from ..sql import sql
+from ..parsers import av_results_args
 
 
 class AVScanArgs(NamedTuple):
-    input: Union[str, None]
-    limit: Union[int, None]
-    page: Union[int, None]
-    sort: Union[list[str], None]
-    branch: Union[str, None]
-    scanner: Union[str, None]
-    issue: Union[str, None]
-    target: Union[str, None]
+    input: Optional[str]
+    limit: Optional[int]
+    page: Optional[int]
+    sort: Optional[list[str]]
+    branch: Optional[str]
+    scanner: Optional[str]
+    issue: Optional[str]
+    target: Optional[str]
 
 
 class DetectInfo(NamedTuple):
@@ -72,13 +73,46 @@ class AntivirusScanResults(APIWorker):
 
     def __init__(self, connection, **kwargs):
         self.conn = connection
-        self.args: AVScanArgs = AVScanArgs(**kwargs)
+        self.kwargs = kwargs
+        self.args: AVScanArgs
         self.sql = sql
         super().__init__()
 
     def check_params(self):
-        self.logger.debug(f"args : {self.args}")
+        self.logger.debug(f"args : {self.kwargs}")
+        self.args = AVScanArgs(**self.kwargs)
         return True
+
+    @property
+    def _limit_clause(self) -> str:
+        if self.args.limit:
+            return f"LIMIT {self.args.limit}"
+        return ""
+
+    @property
+    def _page_clause(self) -> str:
+        if self.args.page:
+            return f"OFFSET {self.args.page}"
+        return ""
+
+    @property
+    def _order_by_clause(self) -> str:
+        order_fields = self.args.sort or []
+        order_clauses = []
+
+        for sort_field in order_fields:
+            direction = "ASC"
+            field_name = sort_field
+
+            if sort_field.startswith("-"):
+                direction = "DESC"
+                field_name = sort_field.removeprefix("-")
+            if field_name in AVScanArgs._fields:
+                order_clauses.append(f"{field_name} {direction}")
+
+        if order_clauses:
+            return "ORDER BY " + ", ".join(order_clauses)
+        return ""
 
     @property
     def _where_clause(self) -> str:
@@ -103,9 +137,13 @@ class AntivirusScanResults(APIWorker):
         return "AND av_target in ('images', 'branch')"
 
     def get(self):
-        limit = self.args.limit
         response = self.send_sql_request(
-            self.sql.src_av_detections.format(where_clause=self._where_clause)
+            self.sql.src_av_detections.format(
+                where_clause=self._where_clause,
+                order_by_clause=self._order_by_clause,
+                limit_clause=self._limit_clause,
+                page_clause=self._page_clause,
+            )
         )
         if not self.sql_status:
             return self.error
@@ -124,25 +162,64 @@ class AntivirusScanResults(APIWorker):
                 file_name=file_name,
                 detect_info=[DetectInfo(*r) for r in reports],
             ).asdict()
-            for pkgset_name, pkg_hash, pkg_name, pkg_version, pkg_release, file_name, reports in response
+            for pkgset_name, pkg_hash, pkg_name, pkg_version, pkg_release, file_name, reports, _ in response
         ]
 
-        if self.args.sort:
-            res = rich_sort(res, self.args.sort)
-
-        paginator = Paginator(list(res), limit)
-        page_obj = paginator.get_page(self.args.page)
-
-        res = {
-            "length": len(page_obj),
-            "detections": page_obj,
-        }
-
         return (
-            res,
+            {
+                "length": len(res),
+                "detections": res,
+            },
             200,
             {
                 "Access-Control-Expose-Headers": "X-Total-Count",
-                "X-Total-Count": int(paginator.count),
+                "X-Total-Count": int(response[0][-1]),
             },
         )
+
+    def metadata(self) -> WorkerResult:
+        metadata = []
+        for arg in av_results_args.args:
+            item_info = {
+                "name": arg.name,
+                "label": arg.name.replace("_", " ").capitalize(),
+                "help_text": arg.help,
+            }
+
+            if arg.name in ("branch", "scanner", "target"):
+                metadata.append(
+                    MetadataItem(
+                        **item_info,
+                        type=KnownFilterTypes.CHOICE,
+                        choices=[
+                            MetadataChoiceItem(
+                                value=choice, display_name=choice.capitalize()
+                            )
+                            for choice in arg.choices
+                        ],
+                    )
+                )
+
+            if arg.name == "issue":
+                response = self.send_sql_request(
+                    self.sql.get_all_av_issues.format(where_clause="")
+                )
+                if response:
+                    metadata.append(
+                        MetadataItem(
+                            **item_info,
+                            type=KnownFilterTypes.CHOICE,
+                            choices=[
+                                MetadataChoiceItem(
+                                    value=av_issue,
+                                    display_name=av_issue,
+                                )
+                                for av_scanner, av_issue, _ in response
+                            ],
+                        )
+                    )
+
+        return {
+            "length": len(metadata),
+            "metadata": [el.asdict() for el in metadata],
+        }, 200

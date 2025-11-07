@@ -130,13 +130,17 @@ SELECT
             av_target,
             av_date
         )
-    )
+    ),
+    count(*) OVER() AS total_count
 FROM (
     SELECT * FROM src_packages_issues
     UNION ALL
     SELECT * FROM src_by_bins_issues
 )
 GROUP BY pkgset_name, pkg_hash, pkg_name, pkg_version, pkg_release, file_name
+{order_by_clause}
+{limit_clause}
+{page_clause}
 """
 
     get_all_av_issues = """

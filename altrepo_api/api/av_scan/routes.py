@@ -18,6 +18,7 @@ from flask import g
 from flask_restx import Resource
 
 from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404, GET_RESPONSES_404
+from altrepo_api.api.metadata import with_metadata
 from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.settings import namespace as settings
 from altrepo_api.api.auth.decorators import token_required
@@ -37,6 +38,7 @@ ns = get_namespace()
 logger = get_logger(__name__)
 
 
+@with_metadata(AntivirusScanResults, ns, logger, require_auth=True)
 @ns.route(
     "/detections",
     doc={
