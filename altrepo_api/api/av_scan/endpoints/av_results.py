@@ -17,7 +17,6 @@
 from datetime import datetime
 from typing import Any, NamedTuple, Optional
 
-from altrepo_api.api.misc import lut
 from altrepo_api.api.base import APIWorker, WorkerResult
 from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
 
