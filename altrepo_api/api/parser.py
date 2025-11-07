@@ -125,7 +125,7 @@ __password_match = re.compile(r"^([\w|\W]+)$")
 __cpe_search_match = re.compile(r"^([\w\.\+\-\_:*]{2,},?)+$")
 # input
 __positive_integer = re.compile(r"^(?<![-.])\b[0-9]+\b(?!\.[0-9])$")
-__sort_match = re.compile(r"^-?([a-z\_]{2,},?)+$")
+__sort_match = re.compile(r"^(-?[a-z\_]{2,},?)+$")
 # package name conversion
 __project_name_match = re.compile(r"^[\w\.\+\-\:]{2,}$")
 
