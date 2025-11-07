@@ -107,7 +107,7 @@ class AntivirusScanResults(APIWorker):
             if sort_field.startswith("-"):
                 direction = "DESC"
                 field_name = sort_field.removeprefix("-")
-            if field_name in AVScanArgs._fields:
+            if field_name in AVScanListResponse._fields:
                 order_clauses.append(f"{field_name} {direction}")
 
         if order_clauses:
