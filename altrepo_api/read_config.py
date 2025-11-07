@@ -25,6 +25,7 @@ from .settings import namespace as settings
 
 
 ACCESS_GROUPS_SECTION = "GROUPS"
+FEATURE_FLAGS_SECTION = "FEATURES"
 # dictionary of config arguments
 PARAMS = {
     "database": {
@@ -140,6 +141,16 @@ def read_config(
                 val = config.get(section, option)
                 if key is not None and val:
                     namespace.ACCESS_GROUPS[key] = val  # type: ignore
+            continue
+        # handle feature flags section
+        if section.upper() == FEATURE_FLAGS_SECTION:
+            for option in config.options(section):
+                # extract boolean value if it is valid
+                try:
+                    val = config.getboolean(section, option)
+                except ValueError:
+                    continue
+                namespace.FEATURE_FLAGS[option.upper()] = val  # type: ignore
             continue
         # handle other configuration sections
         for option in config.options(section):

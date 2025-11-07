@@ -17,7 +17,7 @@
 import logging
 import os
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 
 
@@ -146,6 +146,8 @@ class BasePathNamespace:
     # Flask CORS origins
     CORS_ORIGINS = "*"
     AUTH_COOKIES_OPTIONS = "HttpOnly;"
+    # Feature flags mapping
+    FEATURE_FLAGS: dict[str, bool] = field(default_factory=dict)
 
 
 namespace = BasePathNamespace()
