@@ -1441,3 +1441,62 @@ errata_user_subscriptions_model = ns.model(
     },
 )
 
+errata_user_tracking_element_model = ns.model(
+    "ErrataUserTrackingElementModel",
+    {
+        "type": fields.String(
+            description="Type of tracked entity",
+            enum=lut.errata_user_last_activities_types,
+            required=True,
+        ),
+        "id": fields.String(
+            description="ID of tracked entity",
+            required=True,
+        ),
+        "action": fields.String(
+            description="Activity of tracked entity",
+            enum=("create", "update", "discard"),
+            required=True,
+        ),
+        "attr_type": fields.String(
+            description="Link type of tracked entity",
+            required=True,
+        ),
+        "attr_link": fields.String(
+            description="Link of tracked entity",
+            required=True,
+        ),
+        "text": fields.String(
+            description="Description of tracked entity",
+            required=True,
+        ),
+        "date": fields.DateTime(
+            description="Date of activity of tracked entity",
+            required=True,
+        ),
+    },
+)
+errata_user_tracking_model = ns.model(
+    "ErrataUserTrackingModel",
+    {
+        "request_args": fields.Raw(
+            description="Request arguments",
+            required=True,
+        ),
+        "length": fields.Integer(
+            description="Number of users found",
+            required=True,
+        ),
+        "user": fields.Nested(
+            errata_user_info_model,
+            description="Errata user who made last activities",
+            required=True,
+        ),
+        "tracks": fields.Nested(
+            errata_user_activity_model,
+            description="List of last activities of errata user",
+            as_list=True,
+            required=True,
+        ),
+    },
+)

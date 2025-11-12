@@ -99,6 +99,7 @@ from .endpoints.errata_user import (
     ErrataUserAliases,
     ErrataUserSubscriptions,
 )
+from .endpoints.errata_user_tracking import ErrataUserTracking
 from .namespace import get_namespace
 from .parsers import (
     change_history_args,
@@ -127,6 +128,7 @@ from .parsers import (
     errata_user_aliases_get_args,
     errata_user_aliases_post_args,
     errata_user_subscriptions_args,
+    errata_user_tracking_args,
 )
 from .serializers import (
     change_history_response_model,
@@ -174,6 +176,7 @@ from .serializers import (
     errata_user_subscriptions_request_model,
     errata_user_subscription_model,
     errata_user_subscriptions_model,
+    errata_user_tracking_model,
 )
 
 ns = get_namespace()
@@ -1356,6 +1359,24 @@ class routeManageErrataUserSubscriptions(Resource):
         url_logging(logger, g.url)
         w = ErrataUserSubscriptions(g.connection, payload=ns.payload)
         return run_worker(worker=w, run_method=w.post, check_method=w.check_params_post)
+
+
+@with_metadata(ErrataUserTracking, ns, logger, require_auth=True)
+@ns.route("/user/tracking")
+class routeManageErrataUserTrackingList(Resource):
+    @ns.doc(
+        description="List changes in entities tracked by errata user",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(errata_user_tracking_args)
+    @ns.marshal_with(errata_user_tracking_model)
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
+    def get(self):
+        url_logging(logger, g.url)
+        args = errata_user_tracking_args.parse_args(strict=True)
+        w = ErrataUserTracking(g.connection, **args)
+        return run_worker(worker=w)
 
 
 @ns.route(

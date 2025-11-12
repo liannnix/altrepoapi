@@ -479,6 +479,57 @@ user_aliases_opt = parser.register_item(
     location="args",
     default=[],
 )
+manual_errata_changes_opt = parser.register_item(
+    "manual_errata_changes",
+    type=inputs.boolean,
+    required=False,
+    default=True,
+    help="Filter errata changes for manual only",
+    location="args",
+)
+tracking_input_opt = parser.register_item(
+    "input",
+    type=cpe_search_type,
+    action="split",
+    required=False,
+    help=(
+        "Search across multiple fields. Looks for matches in: "
+        "vulnerability ID, errata ID and package name"
+    ),
+    location="args",
+)
+tracking_type_opt = parser.register_item(
+    "type",
+    type=str,
+    required=False,
+    choices=lut.errata_user_subscription_types,
+    help="Tracking entity type (one of: {types})".format(
+        types=", ".join(lut.errata_user_subscription_types)
+    ),
+    location="args",
+)
+tracking_action_opt = parser.register_item(
+    "action",
+    type=str,
+    required=False,
+    choices=("create", "update", "discard"),
+    help="Tracking entity action (one of: create, update, discard)",
+    location="args",
+)
+datetime_since_opt = parser.register_item(
+    "since",
+    type=datetime_string_type,
+    required=False,
+    help="Filter since this datetime",
+    location="args",
+)
+datetime_before_opt = parser.register_item(
+    "before",
+    type=datetime_string_type,
+    required=False,
+    help="Filter before this datetime",
+    location="args",
+)
 
 task_list_args = parser.build_parser(
     task_input_val_opt,
@@ -572,3 +623,15 @@ errata_user_last_activities_args = parser.build_parser(user_name, limit_opt)
 errata_user_aliases_get_args = parser.build_parser(user_name_opt)
 errata_user_aliases_post_args = parser.build_parser(user_name, user_aliases_opt)
 errata_user_subscriptions_args = parser.build_parser(user_name)
+errata_user_tracking_args = parser.build_parser(
+    user_name,
+    manual_errata_changes_opt,
+    tracking_input_opt,
+    tracking_type_opt,
+    tracking_action_opt,
+    datetime_since_opt,
+    datetime_before_opt,
+    page_opt,
+    limit_opt,
+    sort_opt,
+)

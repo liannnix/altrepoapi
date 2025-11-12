@@ -1659,7 +1659,330 @@ HAVING entity_type_ = '{entity_type}'
 """
 
     store_errata_user_subscription = """
-INSERT INTO ErrataUsersSubscriptions (*) VALUES
+    INSERT INTO ErrataUsersSubscriptions (*) VALUES
+"""
+
+    get_errata_user_tracked_entities = """
+WITH '{user}' AS target_user,
+subscriptions AS (
+    SELECT
+        user,
+        entity_type,
+        entity_link,
+        argMax(state, date) AS last_state,
+        argMax(assigner, date) AS last_assigner,
+        max(date) AS last_date
+    FROM ErrataUsersSubscriptions
+    WHERE user = target_user
+    GROUP BY
+        user,
+        entity_type,
+        entity_link
+    HAVING last_state = 'active'
+),
+last_vuln_statuses AS (
+    SELECT
+        'vuln_status' AS type,
+        vuln_id AS id,
+        'update' AS action,
+        '' AS attr_type,
+        '' AS attr_link,
+        vs_reason AS text,
+        vs_updated AS date
+    FROM VulnerabilityStatus
+    INNER JOIN
+    (
+        SELECT DISTINCT
+            entity_link AS id,
+            last_date AS sub_date
+        FROM subscriptions
+    ) AS S ON vuln_id = S.id
+    HAVING date >= sub_date
+),
+last_vulnerabilities AS (
+    SELECT
+        'vuln' AS type,
+        vuln_id AS id,
+        'update' AS action,
+        '' AS attr_type,
+        '' AS attr_link,
+        vuln_summary AS text,
+        ts AS date
+    FROM Vulnerabilities
+    INNER JOIN
+    (
+        SELECT DISTINCT
+            entity_link AS id,
+            last_date AS sub_date
+        FROM subscriptions
+        WHERE entity_type = 'vuln'
+    ) AS S ON vuln_id = S.id
+    HAVING date >= sub_date
+),
+last_errata AS (
+    -- by vuln subscription
+    SELECT
+        'errata' AS type,
+        errata_id AS id,
+        CAST(ec_type, 'String') AS action,
+        'package' AS attr_type,
+        ec_id AS attr_link,
+        JSONExtractString(ec_reason, 'message') AS text,
+        ec_updated AS date
+    FROM ErrataHistory
+    RIGHT JOIN (
+        SELECT
+            ec_id,
+            ec_type,
+            errata_id,
+            ec_reason,
+            ec_updated
+        FROM ErrataChangeHistory
+        WHERE startsWith(errata_id, 'ALT-PU')
+            {only_manual_ec_clause}
+    ) AS R USING (errata_id)
+    INNER JOIN (
+        SELECT DISTINCT
+            entity_link AS id,
+            last_date AS sub_date
+        FROM subscriptions
+        WHERE entity_type = 'vuln'
+    ) AS S ON has(
+        arrayMap(
+            p -> (p.2),
+            arrayFilter(
+                p -> ((p.1) = 'vuln'),
+                arrayZip(eh_references.type, eh_references.link)
+            )
+        ),
+        S.id
+    )
+    HAVING date >= sub_date
+
+    UNION ALL
+
+    -- by package subscription
+    SELECT
+        'errata' AS type,
+        errata_id AS id,
+        CAST(ec_type, 'String') AS action,
+        'package' AS attr_type,
+        ec_id AS attr_link,
+        JSONExtractString(ec_reason, 'message') AS text,
+        ec_updated AS date
+    FROM ErrataHistory
+    RIGHT JOIN (
+        SELECT
+            ec_id,
+            ec_type,
+            errata_id,
+            ec_reason,
+            ec_updated
+        FROM ErrataChangeHistory
+        WHERE startsWith(errata_id, 'ALT-PU')
+            {only_manual_ec_clause}
+    ) AS R USING (errata_id)
+    INNER JOIN (
+        SELECT DISTINCT
+            entity_link AS id,
+            last_date AS sub_date
+        FROM subscriptions
+        WHERE entity_type = 'package'
+    ) AS S ON pkg_name = S.id
+    HAVING date >= sub_date
+
+    UNION ALL
+
+    -- by errata subscription
+    SELECT
+        'errata' AS type,
+        errata_id AS id,
+        CAST(ec_type, 'String') AS action,
+        'package' AS attr_type,
+        ec_id AS attr_link,
+        JSONExtractString(ec_reason, 'message') AS text,
+        ec_updated AS date
+    FROM ErrataHistory
+    RIGHT JOIN (
+        SELECT
+            ec_id,
+            ec_type,
+            errata_id,
+            ec_reason,
+            ec_updated
+        FROM ErrataChangeHistory
+        WHERE startsWith(errata_id, 'ALT-PU')
+            {only_manual_ec_clause}
+    ) AS R USING (errata_id)
+    INNER JOIN (
+        SELECT DISTINCT
+            entity_link AS id,
+            last_date AS sub_date
+        FROM subscriptions
+        WHERE entity_type = 'errata'
+    ) AS S ON id = S.id
+    HAVING date >= sub_date
+),
+last_exclusions AS (
+    -- by vuln type
+    SELECT
+        'exclusion' AS type,
+        errata_id AS id,
+        CAST(ec_type, 'String') AS action,
+        JSONExtractString(eh_json, 'type') AS attr_type,
+        ec_id AS attr_link,
+        JSONExtractString(eh_json, 'reason') AS text,
+        ec_updated AS date
+    FROM ErrataHistory
+    RIGHT JOIN (
+        SELECT
+            ec_id,
+            ec_type,
+            errata_id,
+            ec_updated
+        FROM ErrataChangeHistory
+        WHERE startsWith(errata_id, 'ALT-SA')
+            {only_manual_ec_clause}
+    ) AS R USING (errata_id)
+    INNER JOIN (
+        SELECT DISTINCT
+            entity_link AS id,
+            last_date AS sub_date
+        FROM subscriptions
+        WHERE entity_type = 'vuln'
+    ) AS S ON has(
+        arrayMap(
+            p -> (p.2),
+            arrayFilter(
+                p -> ((p.1) = 'vuln'),
+                arrayZip(eh_references.type, eh_references.link)
+            )
+        ),
+        S.id
+    )
+    HAVING date >= sub_date
+
+    UNION ALL
+
+    -- by package subscription
+    SELECT
+        'exclusion' AS type,
+        errata_id AS id,
+        CAST(ec_type, 'String') AS action,
+        JSONExtractString(eh_json, 'type') AS attr_type,
+        ec_id AS attr_link,
+        JSONExtractString(eh_json, 'reason') AS text,
+        ec_updated AS date
+    FROM ErrataHistory
+    RIGHT JOIN (
+        SELECT
+            ec_id,
+            ec_type,
+            errata_id,
+            ec_updated
+        FROM ErrataChangeHistory
+        WHERE startsWith(errata_id, 'ALT-SA')
+            {only_manual_ec_clause}
+    ) AS R USING (errata_id)
+    INNER JOIN (
+        SELECT DISTINCT
+            entity_link AS id,
+            last_date AS sub_date
+        FROM subscriptions
+        WHERE entity_type = 'package'
+    ) AS S ON has(
+        arrayMap(
+            p -> (p.2),
+            arrayFilter(
+                p -> ((p.1) = 'package'),
+                arrayZip(eh_references.type, eh_references.link)
+            )
+        ),
+        S.id
+    )
+    HAVING date >= sub_date
+
+    UNION ALL
+
+    -- by errata subscription
+    SELECT
+        'exclusion' AS type,
+        errata_id AS id,
+        CAST(ec_type, 'String') AS action,
+        JSONExtractString(eh_json, 'type') AS attr_type,
+        ec_id AS attr_link,
+        JSONExtractString(eh_json, 'reason') AS text,
+        ec_updated AS date
+    FROM ErrataHistory
+    RIGHT JOIN (
+        SELECT
+            ec_id,
+            ec_type,
+            errata_id,
+            ec_updated
+        FROM ErrataChangeHistory
+        WHERE startsWith(errata_id, 'ALT-SA')
+            {only_manual_ec_clause}
+    ) AS R USING (errata_id)
+    INNER JOIN (
+        SELECT DISTINCT
+            entity_link AS id,
+            last_date AS sub_date
+        FROM subscriptions
+        WHERE entity_type = 'errata'
+    ) AS S ON id = S.id
+    HAVING date >= sub_date
+),
+last_comments AS (
+    SELECT
+        'comment' AS type,
+        CAST(comment_id, 'String') AS id,
+        CAST(cc_action, 'String') AS action,
+        comment_entity_type AS attr_type,
+        comment_entity_link AS attr_link,
+        comment_text AS text,
+        comment_created AS date
+    FROM Comments
+    RIGHT JOIN (
+        SELECT
+            comment_id,
+            cc_action
+        FROM CommentsChangeHistory
+        WHERE has(get_errata_user_aliases(target_user), cc_user)
+    ) AS R USING (comment_id)
+    INNER JOIN (
+        SELECT DISTINCT
+            entity_type,
+            entity_link,
+            last_date AS sub_date
+        FROM subscriptions
+    ) AS S ON (comment_entity_type, comment_entity_link) = (entity_type, entity_link)
+    HAVING date >= sub_date
+)
+SELECT DISTINCT
+    type,
+    id,
+    action,
+    attr_type,
+    attr_link,
+    text,
+    date,
+    count(1) OVER() AS total_count
+FROM (
+    SELECT * FROM last_vuln_statuses
+    UNION ALL
+    SELECT * FROM last_vulnerabilities
+    UNION ALL
+    SELECT * FROM last_errata
+    UNION ALL
+    SELECT * FROM last_exclusions
+    UNION ALL
+    SELECT * FROM last_comments
+)
+{having_clause}
+{order_by_clause}
+{limit_clause}
+{page_clause}
 """
 
 
