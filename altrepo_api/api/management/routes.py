@@ -116,6 +116,7 @@ from .parsers import (
     default_reasons_list_args,
     vuln_status_list_args,
     errata_user_tag_args,
+    errata_user_info_args,
     errata_user_last_activities_args,
     errata_user_aliases_get_args,
     errata_user_aliases_post_args,
@@ -1283,26 +1284,26 @@ class routeManageVulnStatus(Resource):
         )
 
 
-@ns.route("/user/<string:user>")
+@ns.route("/user/info")
 class routeManageErrataUser(Resource):
     @ns.doc(
-        params={"user": "User name"},
         description="Get errata user info",
         responses=GET_RESPONSES_400_404,
         security="Bearer",
     )
+    @ns.expect(errata_user_info_args)
     @ns.marshal_with(errata_user_info_model)
     @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
-    def get(self, user: str):
+    def get(self):
         url_logging(logger, g.url)
-        w = ErrataUserInfo(g.connection, user)
+        args = errata_user_info_args.parse_args(strict=True)
+        w = ErrataUserInfo(g.connection, **args)
         return run_worker(worker=w)
 
 
-@ns.route("/user/<string:user>/last_activities")
+@ns.route("/user/last_activities")
 class routeManageErrataUserLastActivities(Resource):
     @ns.doc(
-        params={"user": "User name"},
         description="Get errata user last activities",
         responses=GET_RESPONSES_400_404,
         security="Bearer",
@@ -1310,10 +1311,10 @@ class routeManageErrataUserLastActivities(Resource):
     @ns.expect(errata_user_last_activities_args)
     @ns.marshal_with(errata_user_last_activities_model)
     @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
-    def get(self, user: str):
+    def get(self):
         url_logging(logger, g.url)
         args = errata_user_last_activities_args.parse_args(strict=True)
-        w = ErrataUserLastActivities(g.connection, user=user, limit=args["limit"])
+        w = ErrataUserLastActivities(g.connection, **args)
         return run_worker(worker=w)
 
 

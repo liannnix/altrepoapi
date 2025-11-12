@@ -143,19 +143,27 @@ class ErrataUserAliases(APIWorker):
 
 
 class ErrataUserInfo(APIWorker):
-    def __init__(
-        self,
-        conn: ConnectionProtocol,
-        user: str,
-    ) -> None:
+    def __init__(self, conn: ConnectionProtocol, **kwargs) -> None:
         self.conn = conn
-        self.user = user
+        self.kwargs = kwargs
         self.sql = sql
         super().__init__()
 
+    def check_params(self) -> bool:
+        self.logger.debug("args: %s", self.kwargs)
+
+        user_name = self.kwargs["name"]
+
+        try:
+            packager_nick_type(user_name)
+        except ValueError:
+            self.validation_results.append(f"Invalid nickname: {user_name}")
+
+        return self.validation_results == []
+
     def get(self) -> WorkerResult:
         response = self.send_sql_request(
-            self.sql.get_errata_user.format(user=self.user)
+            self.sql.get_errata_user.format(user=self.kwargs["name"])
         )
         if not self.sql_status:
             return self.error
@@ -206,21 +214,27 @@ class ErrataUserTag(APIWorker):
 
 
 class ErrataUserLastActivities(APIWorker):
-    def __init__(
-        self,
-        conn: ConnectionProtocol,
-        user: str,
-        limit: Optional[int] = None,
-    ) -> None:
+    def __init__(self, conn: ConnectionProtocol, **kwargs) -> None:
         self.conn = conn
-        self.user = user
-        self.limit = limit or DEFAULT_LAST_ACTIVITIES_LIMIT
+        self.kwargs = kwargs
         self.sql = sql
         super().__init__()
 
+    def check_params(self) -> bool:
+        self.logger.debug("args: %s", self.kwargs)
+
+        user_name = self.kwargs["name"]
+
+        try:
+            packager_nick_type(user_name)
+        except ValueError:
+            self.validation_results.append(f"Invalid nickname: {user_name}")
+
+        return self.validation_results == []
+
     def get(self) -> WorkerResult:
         response = self.send_sql_request(
-            self.sql.get_errata_user.format(user=self.user)
+            self.sql.get_errata_user.format(user=self.kwargs["name"])
         )
         if not self.sql_status:
             return self.error
@@ -235,7 +249,10 @@ class ErrataUserLastActivities(APIWorker):
         }
 
         response = self.send_sql_request(
-            self.sql.get_user_last_activities.format(user=self.user, limit=self.limit)
+            self.sql.get_user_last_activities.format(
+                user=user["user"],
+                limit=self.kwargs["limit"] or DEFAULT_LAST_ACTIVITIES_LIMIT,
+            )
         )
         if not self.sql_status:
             return self.error

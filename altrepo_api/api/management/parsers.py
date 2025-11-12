@@ -566,6 +566,7 @@ vuln_status_list_args = parser.build_parser(
     sort_opt,
 )
 errata_user_tag_args = parser.build_parser(user_name_input, limit_opt)
-errata_user_last_activities_args = parser.build_parser(limit_opt)
+errata_user_info_args = parser.build_parser(user_name)
+errata_user_last_activities_args = parser.build_parser(user_name, limit_opt)
 errata_user_aliases_get_args = parser.build_parser(user_name_opt)
 errata_user_aliases_post_args = parser.build_parser(user_name, user_aliases_opt)
