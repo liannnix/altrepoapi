@@ -31,7 +31,7 @@ from ..token import (
     check_fingerprint,
     decode_jwt_token,
     update_access_token,
-    token_user,
+    token_user_name,
 )
 
 
@@ -76,8 +76,8 @@ class RefreshToken(APIWorker):
         return self.validation_results == []
 
     def post(self):
-        user_name = token_user(
-            self.access_token_auth_provider, self.access_token_payload
+        user_name = token_user_name(
+            self.access_token_auth_provider, self.access_token_payload,
         )
         user_sessions = self.storage.map_getall(
             REFRESH_TOKEN_KEY.format(user=user_name)

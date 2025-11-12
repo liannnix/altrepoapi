@@ -50,8 +50,20 @@ class UserRolesCache:
         self.conn = conn
         self.logger = logger
 
-    def add(self, user: str, group: str, roles: list[str], expires_in: int):
-        user_data = {"user": user, "group": group, "roles": roles}
+    def add(
+        self,
+        user: str,
+        display_name: str,
+        group: str,
+        roles: list[str],
+        expires_in: int,
+    ):
+        user_data = {
+            "user": user,
+            "display_name": display_name,
+            "group": group,
+            "roles": roles,
+        }
 
         # save to cache
         self.storage.map_set(

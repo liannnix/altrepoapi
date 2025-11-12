@@ -25,7 +25,7 @@ from ..token import (
     InvalidTokenError,
     STORAGE,
     decode_jwt_token,
-    token_user,
+    token_user_name,
 )
 
 
@@ -62,7 +62,7 @@ class AuthLogout(APIWorker):
         except InvalidTokenError:
             raise ApiUnauthorized(description="Invalid token")
 
-        user_name = token_user(auth_provider, token_payload)
+        user_name = token_user_name(auth_provider, token_payload)
         user_session_name = REFRESH_TOKEN_KEY.format(user=user_name)
         user_sessions = self.storage.map_getall(user_session_name)
 

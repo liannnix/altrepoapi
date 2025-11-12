@@ -34,7 +34,8 @@ from .token import (
     InvalidTokenError,
     UserRolesCache,
     decode_jwt_token,
-    token_user,
+    token_user_name,
+    token_user_display_name
 )
 
 
@@ -131,7 +132,8 @@ def _check_access_token(role: str, validate_role: bool) -> dict[str, Any]:
     if AccessTokenBlacklist(token, expires_at).check():
         raise ApiUnauthorized(description="Token blacklisted")
 
-    user_name: str = token_user(auth_provider, token_payload)
+    user_name: str = token_user_name(auth_provider, token_payload)
+    user_display_name: str = token_user_display_name(auth_provider, token_payload)
     user_group: Union[str, None] = None
     user_roles: list[str] = []
 
@@ -178,6 +180,7 @@ def _check_access_token(role: str, validate_role: bool) -> dict[str, Any]:
 
     users_cache.add(
         user=user_name,
+        display_name=user_display_name,
         group=user_group,
         roles=user_roles,
         expires_in=(delta if delta > 0 else 1),

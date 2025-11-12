@@ -24,7 +24,7 @@ class SQL:
 """
 
     store_errata_user = """
-    INSERT INTO ErrataUsers (*) VALUES ('{user}', '{group}', {roles})
+    INSERT INTO ErrataUsers (*) VALUES ('{user}', '{display_name}', '{group}', {roles})
 """
 
 

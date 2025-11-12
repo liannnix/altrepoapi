@@ -150,6 +150,7 @@ class AuthLogin(APIWorker):
         access_token = encode_jwt_token(
             {
                 "nickname": self.args.nickname,
+                "display_name": auth_result.value.get("display_name", ""),
                 "fingerprint": fingerprint,
                 "exp": token_expires,
                 "ns": time.perf_counter_ns(),

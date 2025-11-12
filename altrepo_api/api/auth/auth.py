@@ -108,6 +108,18 @@ def check_auth_ldap(
     except ldap.SERVER_DOWN:  # type: ignore
         return AuthCheckResult(False, "LDAP server connection failed", {})
 
+    def extract_display_name() -> Union[str, None]:
+        user_dn = namespace.LDAP_USER_SEARCH % {"user": user}
+        entries = ldap_client.search_ext_s(user_dn, ldap.SCOPE_SUBTREE) or []  # type: ignore
+        for uid, props in entries:  # type: ignore
+            if f"uid={user_dn}" == uid:
+                if names := props["displayName"]:
+                    try:
+                        return names[0].decode()
+                    except UnicodeDecodeError:
+                        # do not fail if we can't determine user display name
+                        pass
+
     def is_member_of_ldap_group(group: str) -> bool:
         user_dn = namespace.LDAP_USER_SEARCH % {"user": user}
         group_dn = namespace.LDAP_REQUIRE_GROUP % {"group": group}
@@ -138,9 +150,12 @@ def check_auth_ldap(
 
         if user_groups:
             logger.info(f"User '{user}' successfully authorized with LDAP")
-            return AuthCheckResult(
-                True, "OK", {"user": user, "groups": list(user_groups)}
-            )
+
+            user_data = {"user": user, "groups": list(user_groups)}
+            if display_name := extract_display_name():
+                user_data.update({"display_name": display_name})
+
+            return AuthCheckResult(True, "OK", user_data)
         else:
             logger.warning(f"User '{user}' LDAP authorization failed")
             return AuthCheckResult(False, "LDAP authorization failed", {})
@@ -179,6 +194,7 @@ def check_auth_keycloak(
         )
         return AuthCheckResult(False, "Keycloak authorization failed", {})
 
+    display_name: str = decoded_access_token.get("name", "")
     user_roles = (
         decoded_access_token.get("resource_access", {})
         .get(namespace.KEYCLOAK_CLIENT_ID, {})
@@ -213,6 +229,7 @@ def check_auth_keycloak(
         "OK",
         {
             "user": user,
+            "display_name": display_name,
             "roles": user_roles,
             "access_token": access_token,
             "refresh_token": refresh_token,

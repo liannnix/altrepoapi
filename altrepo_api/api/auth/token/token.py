@@ -128,12 +128,22 @@ def decode_jwt_token(
         raise ExpiredTokenError("Token expired")
 
 
-def token_user(auth_provider: AuthProvider, token_payload: dict[str, Any]) -> str:
+def token_user_name(auth_provider: AuthProvider, token_payload: dict[str, Any]) -> str:
     match auth_provider:
         case AuthProvider.LDAP:
             return token_payload.get("nickname", "")
         case AuthProvider.KEYCLOAK:
             return token_payload.get("preferred_username", "")
+
+
+def token_user_display_name(
+    auth_provider: AuthProvider, token_payload: dict[str, Any]
+) -> str:
+    match auth_provider:
+        case AuthProvider.LDAP:
+            return token_payload.get("display_name", "")
+        case AuthProvider.KEYCLOAK:
+            return token_payload.get("name", "")
 
 
 def user_fingerprint() -> str:

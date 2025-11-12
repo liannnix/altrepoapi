@@ -25,7 +25,8 @@ from .token import (
     check_fingerprint,
     update_access_token,
     parse_basic_auth_token,
-    token_user,
+    token_user_name,
+    token_user_display_name,
 )
 
 from .user_roles import UserRolesCache
