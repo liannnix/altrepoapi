@@ -14,9 +14,16 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import NamedTuple, Optional
+from datetime import datetime
+from typing import Any, NamedTuple, Optional
 
 from altrepo_api.api.base import APIWorker, ConnectionProtocol, WorkerResult
+from altrepo_api.api.parser import (
+    errata_id_type,
+    pkg_name_type,
+    vuln_id_type,
+    packager_nick_type,
+)
 
 from ..sql import sql
 
@@ -274,3 +281,174 @@ class ErrataUserLastActivities(APIWorker):
                 for type, id, action, attr_type, attr_link, text, date in response
             ],
         }, 200
+
+
+class ErrataUserSubscriptions(APIWorker):
+    def __init__(self, conn: ConnectionProtocol, payload: dict[str, Any]) -> None:
+        self.conn = conn
+        self.payload = payload
+        self.sql = sql
+        super().__init__()
+
+    def check_params(self) -> bool:
+        self.logger.debug("payload: %s", self.payload)
+
+        user_name = self.payload["name"]
+
+        try:
+            packager_nick_type(user_name)
+        except ValueError:
+            self.validation_results.append(f"Invalid nickname: {user_name}")
+
+        return self.validation_results == []
+
+    def get(self) -> WorkerResult:
+        response = self.send_sql_request(
+            self.sql.get_original_user_name.format(user=self.payload["name"])
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error({"message": "No errata user found in database"})
+
+        response = self.send_sql_request(
+            self.sql.get_errata_user_active_subscriptions.format(user=response[0][0])
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error({"message": "No data found in database"})
+
+        return {
+            "subscriptions": [
+                {
+                    "user": user,
+                    "entity_type": entity_type,
+                    "entity_link": entity_link,
+                    "state": state,
+                    "assigner": assigner,
+                    "date": date,
+                }
+                for user, entity_type, entity_link, state, assigner, date in response
+            ]
+        }, 200
+
+    def check_params_post(self) -> bool:
+        self.logger.debug("payload: %s", self.payload)
+
+        user_name = self.payload["name"]
+
+        try:
+            packager_nick_type(user_name)
+        except ValueError:
+            self.validation_results.append(f"Invalid nickname: {user_name}")
+
+        assigner = self.payload["assigner"]
+        entity_type = self.payload["entity_type"]
+        entity_link = self.payload["entity_link"]
+
+        try:
+            packager_nick_type(assigner)
+        except ValueError:
+            self.validation_results.append(f"Invalid nickname: {assigner}")
+
+        for type, predicate, err_template in [
+            ("vuln", vuln_id_type, "Invalid vulnerability ID: {}"),
+            ("package", pkg_name_type, "Invalid package name: {}"),
+            ("errata", errata_id_type, "Invalid errata ID: {}"),
+        ]:
+            if entity_type == type:
+                try:
+                    predicate(entity_link)
+                except ValueError:
+                    self.validation_results.append(err_template.format(entity_link))
+
+        return self.validation_results == []
+
+    def post(self) -> WorkerResult:
+        response = self.send_sql_request(
+            self.sql.get_original_user_name.format(user=self.payload["name"])
+        )
+        if not self.sql_status:
+            return self.error
+
+        original_user = response[0][0]
+
+        response = self.send_sql_request(
+            self.sql.get_original_user_name.format(user=self.payload["assigner"])
+        )
+        if not self.sql_status:
+            return self.error
+
+        original_assigner = response[0][0]
+
+        new_subscription = {
+            "user": original_user,
+            "entity_type": self.payload["entity_type"],
+            "entity_link": self.payload["entity_link"],
+            "state": self.payload["state"],
+            "assigner": original_assigner,
+            "date": datetime.now(),
+        }
+
+        response = self.send_sql_request(
+            self.sql.get_errata_user_active_subscription.format(
+                user=original_user,
+                entity_type=self.payload["entity_type"],
+                entity_link=self.payload["entity_link"],
+            )
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            # if no previous subscription on the entity
+            if self.payload["state"] == "inactive":
+                return self.store_error(
+                    {"message": "Can't unsubscribe from non existing entity"}
+                )
+
+            amount_of_inserted = self.send_sql_request(
+                (
+                    self.sql.store_errata_user_subscription,
+                    [new_subscription],
+                )
+            )
+            if amount_of_inserted != 1:
+                self.store_error({"message": "Failed to subscribe user"})
+
+            return new_subscription, 201
+
+        old_subscription = {
+            "user": response[0][0],
+            "entity_type": response[0][1],
+            "entity_link": response[0][2],
+            "state": response[0][3],
+            "assigner": response[0][4],
+            "date": response[0][5],
+        }
+
+        if (
+            (old_subscription["user"] == old_subscription["assigner"])
+            and (old_subscription["assigner"] != new_subscription["assigner"])
+            and (old_subscription["state"] != new_subscription["state"])
+        ):
+            return self.store_error(
+                {"message": "Can't change self-subscription"},
+                http_code=409,
+            )
+
+        subscriptions = [new_subscription]
+
+        if (new_subscription["user"] == new_subscription["assigner"]) and (
+            old_subscription["assigner"] != new_subscription["assigner"]
+        ):
+            old_subscription["state"] = "inactive"
+            subscriptions.append(old_subscription)
+
+        amount_of_inserted = self.send_sql_request(
+            (self.sql.store_errata_user_subscription, subscriptions)
+        )
+        if amount_of_inserted != 1:
+            self.store_error({"message": "Failed to subscribe user"})
+
+        return new_subscription, 201

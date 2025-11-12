@@ -1370,3 +1370,74 @@ errata_user_aliases_model = ns.model(
         ),
     },
 )
+
+errata_user_subscriptions_request_model = ns.model(
+    "ErrataUserSubscriptionsRequestModel",
+    {
+        "user": fields.String(
+            description="Errata user who tracks some entities changes",
+            required=True,
+        ),
+        "entity_type": fields.String(
+            description="Type of tracked entity",
+            enum=lut.errata_user_subscription_types,
+            required=True,
+        ),
+        "entity_link": fields.String(
+            description="Link of tracked entity",
+            required=True,
+        ),
+        "state": fields.String(
+            description="State of tracked entity",
+            enum=("active", "inactive"),
+            required=True,
+        ),
+        "assigner": fields.String(
+            description="Errata user who subscribed errata user who tracks",
+            required=True,
+        ),
+    },
+)
+errata_user_subscription_model = ns.model(
+    "ErrataUserSubscriptionModel",
+    {
+        "user": fields.String(
+            description="Errata user who tracks some entities changes",
+            required=True,
+        ),
+        "entity_type": fields.String(
+            description="Type of tracked entity",
+            enum=lut.errata_user_subscription_types,
+            required=True,
+        ),
+        "entity_link": fields.String(
+            description="Link of tracked entity",
+            required=True,
+        ),
+        "state": fields.String(
+            description="State of tracked entity",
+            enum=["active", "inactive"],
+            required=True,
+        ),
+        "assigner": fields.String(
+            description="Errata user who subscribed errata user who tracks",
+            required=True,
+        ),
+        "date": fields.DateTime(
+            description="Errata user subscription date",
+            required=True,
+        ),
+    },
+)
+errata_user_subscriptions_model = ns.model(
+    "ErrataUserSubscriptionsModel",
+    {
+        "subscriptions": fields.Nested(
+            errata_user_subscription_model,
+            description="List of all use subscriptions",
+            as_list=True,
+            required=True,
+        ),
+    },
+)
+

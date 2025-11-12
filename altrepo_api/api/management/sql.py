@@ -1620,5 +1620,47 @@ ORDER BY user
 INSERT INTO ErrataUsersAliases (user, aliases) VALUES
 """
 
+    get_original_user_name = """
+SELECT get_errata_user_original_name('{user}')
+"""
+
+    get_errata_user_active_subscriptions = """
+SELECT
+    user,
+    entity_type,
+    entity_link,
+    argMax(state, date) AS last_state,
+    argMax(assigner, date),
+    max(date) AS last_date
+FROM ErrataUsersSubscriptions
+WHERE user = '{user}'
+GROUP BY
+    user,
+    entity_type,
+    entity_link
+HAVING last_state = 'active'
+ORDER BY last_date DESC
+"""
+
+    get_errata_user_active_subscription = """
+SELECT
+    user,
+    argMax(entity_type, date) AS entity_type_,
+    argMax(entity_link, date) AS entity_link_,
+    argMax(state, date) AS state_,
+    argMax(assigner, date) AS assigner_,
+    max(date) AS date_
+FROM ErrataUsersSubscriptions
+WHERE user = '{user}'
+GROUP BY user
+HAVING entity_type_ = '{entity_type}'
+    AND entity_link_ = '{entity_link}'
+    AND state_ = 'active'
+"""
+
+    store_errata_user_subscription = """
+INSERT INTO ErrataUsersSubscriptions (*) VALUES
+"""
+
 
 sql = SQL()

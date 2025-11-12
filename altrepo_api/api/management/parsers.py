@@ -32,6 +32,7 @@ from altrepo_api.api.parser import (
     pkg_name_list_type,
     image_file_type,
     date_string_type,
+    datetime_string_type,
 )
 
 from .endpoints.tools.constants import DEFAULT_REASON_ACTION_TYPES, DRY_RUN_KEY
@@ -570,3 +571,4 @@ errata_user_info_args = parser.build_parser(user_name)
 errata_user_last_activities_args = parser.build_parser(user_name, limit_opt)
 errata_user_aliases_get_args = parser.build_parser(user_name_opt)
 errata_user_aliases_post_args = parser.build_parser(user_name, user_aliases_opt)
+errata_user_subscriptions_args = parser.build_parser(user_name)

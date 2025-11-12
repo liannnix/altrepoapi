@@ -560,5 +560,6 @@ class LookupTables:
 
     feature_pnc_multi_mapping = "PNC_MULTI_MAPPING"
 
+    errata_user_subscription_types = ("vuln", "package", "errata")
 
 lut = LookupTables()

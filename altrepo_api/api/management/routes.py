@@ -22,7 +22,12 @@ from altrepo_api.api.management.endpoints.default_reasons_list import DefaultRea
 from altrepo_api.settings import namespace as settings
 from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.auth.decorators import token_required
-from altrepo_api.api.base import GET_RESPONSES_400_404, GET_RESPONSES_404, run_worker
+from altrepo_api.api.base import (
+    GET_RESPONSES_400_404,
+    GET_RESPONSES_404,
+    POST_RESPONSES_400_404,
+    run_worker,
+)
 from altrepo_api.api.metadata import with_metadata
 from altrepo_api.api.errata.endpoints.branch import BranchesUpdates, ErrataBranches
 from altrepo_api.api.errata.endpoints.package import PackagesUpdates
@@ -92,6 +97,7 @@ from .endpoints.errata_user import (
     ErrataUserTag,
     ErrataUserLastActivities,
     ErrataUserAliases,
+    ErrataUserSubscriptions,
 )
 from .namespace import get_namespace
 from .parsers import (
@@ -120,6 +126,7 @@ from .parsers import (
     errata_user_last_activities_args,
     errata_user_aliases_get_args,
     errata_user_aliases_post_args,
+    errata_user_subscriptions_args,
 )
 from .serializers import (
     change_history_response_model,
@@ -164,6 +171,9 @@ from .serializers import (
     errata_user_tag_model,
     errata_user_last_activities_model,
     errata_user_aliases_model,
+    errata_user_subscriptions_request_model,
+    errata_user_subscription_model,
+    errata_user_subscriptions_model,
 )
 
 ns = get_namespace()
@@ -1316,6 +1326,36 @@ class routeManageErrataUserLastActivities(Resource):
         args = errata_user_last_activities_args.parse_args(strict=True)
         w = ErrataUserLastActivities(g.connection, **args)
         return run_worker(worker=w)
+
+
+@ns.route("/user/subscriptions")
+class routeManageErrataUserSubscriptions(Resource):
+    @ns.doc(
+        description="Get errata user subscriptions",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(errata_user_subscriptions_args)
+    @ns.marshal_with(errata_user_subscriptions_model)
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
+    def get(self):
+        url_logging(logger, g.url)
+        args = errata_user_subscriptions_args.parse_args(strict=True)
+        w = ErrataUserSubscriptions(g.connection, **args)
+        return run_worker(worker=w)
+
+    @ns.doc(
+        description="Create/update errata user subscription",
+        responses=POST_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(errata_user_subscriptions_request_model)
+    @ns.marshal_with(errata_user_subscription_model)
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
+    def post(self):
+        url_logging(logger, g.url)
+        w = ErrataUserSubscriptions(g.connection, payload=ns.payload)
+        return run_worker(worker=w, run_method=w.post, check_method=w.check_params_post)
 
 
 @ns.route(
