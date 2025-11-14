@@ -50,7 +50,7 @@ task_list_el_model = ns.model(
         "task_id": fields.Integer(description="task id"),
         "branch": fields.String(description="repository name"),
         "owner": fields.String(description="task owner"),
-        "state": fields.String(description="task state"),
+        "state": fields.String(description="task state", enum=lut.known_states),
         "changed": fields.DateTime(description="task changed"),
         "erratas": fields.List(fields.String, description="errata ID list"),
         "vulnerabilities": fields.Nested(
@@ -111,7 +111,7 @@ task_info_model = ns.model(
     {
         "task_id": fields.Integer(description="task id"),
         "task_repo": fields.String(description="repository where the task was built"),
-        "task_state": fields.String(description="task state"),
+        "task_state": fields.String(description="task state", enum=lut.known_states),
         "task_changed": fields.DateTime(
             description="date and time the task was last changed"
         ),
@@ -196,7 +196,9 @@ errata_manage_errata_model = ns.model(
         "pkgset_name": fields.String(description="packageset name", required=True),
         "task_id": fields.Integer(description="task id", required=True),
         "subtask_id": fields.Integer(description="subtask id", required=True),
-        "task_state": fields.String(description="task state", required=True),
+        "task_state": fields.String(
+            description="task state", enum=lut.known_states, required=True
+        ),
     },
 )
 errata_manage_errata_change_model = ns.model(
@@ -273,7 +275,7 @@ errata_change_history_el_model = ns.model(
         "type": fields.String(description="errata change type"),
         "source": fields.String(description="errata change source"),
         "task_id": fields.Integer(description="task id"),
-        "task_state": fields.String(description="task state"),
+        "task_state": fields.String(description="task state", enum=lut.known_states),
         "vulns": fields.List(fields.String, description="errata vulnerabilities"),
         "deleted_vulns": fields.List(
             fields.String, description="deleted vulnerabilities"
@@ -658,7 +660,7 @@ vuln_errata_el_model = ns.model(
     "VulnerabilityErrataElementModel",
     {
         "id": fields.String(description="errata id"),
-        "task_state": fields.String(description="task state"),
+        "task_state": fields.String(description="task state", enum=lut.known_states),
     },
 )
 vuln_list_el_model = ns.model(
@@ -894,7 +896,9 @@ change_history_detail_model = ns.model(
         "branch": fields.String(description="package set name"),
         "subtask_id": fields.String(description="subtask number"),
         "release": fields.String(description="package release"),
-        "task_state": fields.String(description="current task state"),
+        "task_state": fields.String(
+            description="current task state", enum=lut.known_states
+        ),
     },
 )
 change_history_el_model = ns.model(
