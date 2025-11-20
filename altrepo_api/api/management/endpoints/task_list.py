@@ -20,7 +20,7 @@ from typing import NamedTuple, Optional
 
 from altrepo_api.api.base import APIWorker, WorkerResult
 from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
-from altrepo_api.utils import make_tmp_table_name
+from altrepo_api.utils import make_tmp_table_name, sort_branches
 from altrepo_api.api.misc import lut
 
 from .tools.constants import (
@@ -344,7 +344,9 @@ class TaskList(APIWorker):
                         type=KnownFilterTypes.CHOICE,
                         choices=[
                             MetadataChoiceItem(value=branch, display_name=branch)
-                            for branch in lut.errata_manage_branches_with_tasks
+                            for branch in sort_branches(
+                                lut.errata_manage_branches_with_tasks
+                            )
                         ],
                     )
                 )
