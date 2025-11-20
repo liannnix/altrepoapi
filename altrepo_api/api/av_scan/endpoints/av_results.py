@@ -19,6 +19,7 @@ from typing import Any, NamedTuple, Optional
 
 from altrepo_api.api.base import APIWorker, WorkerResult
 from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
+from altrepo_api.utils import sort_branches
 
 from ..sql import sql
 from ..parsers import av_results_args
@@ -185,7 +186,22 @@ class AntivirusScanResults(APIWorker):
                 "help_text": arg.help,
             }
 
-            if arg.name in ("branch", "scanner", "target"):
+            if arg.name == "branch":
+                metadata.append(
+                    MetadataItem(
+                        **item_info,
+                        type=KnownFilterTypes.CHOICE,
+                        choices=[MetadataChoiceItem(value="all", display_name="all")]
+                        + [
+                            MetadataChoiceItem(value=choice, display_name=choice)
+                            for choice in sort_branches(
+                                list(filter(lambda b: b != "all", arg.choices))
+                            )
+                        ],
+                    )
+                )
+
+            if arg.name in ("scanner", "target"):
                 metadata.append(
                     MetadataItem(
                         **item_info,
