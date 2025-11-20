@@ -28,7 +28,7 @@ from altrepo_api.api.base import APIWorker, WorkerResult
 from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
 from altrepo_api.api.misc import lut
 from altrepo_api.settings import namespace as settings
-from altrepo_api.utils import make_tmp_table_name, get_real_ip
+from altrepo_api.utils import make_tmp_table_name, get_real_ip, sort_branches
 
 from .processing import ErrataBuilder, ErrataBuilderError
 from .processing.base import compare_pnc_records, uniq_pcm_records
@@ -753,10 +753,8 @@ class PncList(APIWorker):
                         **item_info,
                         type=KnownFilterTypes.CHOICE,
                         choices=[
-                            MetadataChoiceItem(
-                                value=choice, display_name=choice.capitalize()
-                            )
-                            for choice in lut.repology_branch_map
+                            MetadataChoiceItem(value=choice, display_name=choice)
+                            for choice in sort_branches(lut.repology_branch_map)
                         ],
                     )
                 )
