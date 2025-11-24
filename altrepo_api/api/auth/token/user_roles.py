@@ -25,18 +25,16 @@ from .token import STORAGE
 
 
 def store_errata_user(
-    conn: ConnectionProtocol, user: str, group: str, roles: list[str]
+    conn: ConnectionProtocol, user_data: dict[str, Any]
 ) -> tuple[bool, str]:
     # get original user name from DB using aliases table
-    conn.request_line = sql.get_original_user_name.format(user=user)
+    conn.request_line = sql.get_original_user_name.format(user=user_data["user"])
     sql_status, response = conn.send_request()
     if not sql_status or not response:
         return False, f"Database error info: {response}"
     user = response[0][0]
     # store user data
-    conn.request_line = sql.store_errata_user.format(
-        user=user, group=group, roles=roles
-    )
+    conn.request_line = sql.store_errata_user.format(**user_data)
     sql_status, response = conn.send_request()
     if not sql_status:
         return False, f"Database error info: {response}"
@@ -73,7 +71,7 @@ class UserRolesCache:
         )
 
         # store user data to the database
-        status, message = store_errata_user(self.conn, user, group, roles)
+        status, message = store_errata_user(self.conn, user_data)
         if not status:
             self.logger.error("Failed to store user data: %s", message)
 

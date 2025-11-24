@@ -113,12 +113,12 @@ def check_auth_ldap(
         entries = ldap_client.search_ext_s(user_dn, ldap.SCOPE_SUBTREE) or []  # type: ignore
         for uid, props in entries:  # type: ignore
             if f"uid={user_dn}" == uid:
-                if names := props["displayName"]:
-                    try:
+                try:
+                    if names := props["displayName"]:
                         return names[0].decode()
-                    except UnicodeDecodeError:
-                        # do not fail if we can't determine user display name
-                        pass
+                except (KeyError, TypeError, UnicodeDecodeError):
+                    # do not fail if we can't determine user display name
+                    pass
 
     def is_member_of_ldap_group(group: str) -> bool:
         user_dn = namespace.LDAP_USER_SEARCH % {"user": user}
