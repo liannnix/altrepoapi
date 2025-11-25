@@ -15,7 +15,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from datetime import datetime
-from typing import Any, NamedTuple, Optional
+from dataclasses import dataclass, asdict
+from typing import Any, Literal, NamedTuple, Optional
 
 from altrepo_api.api.base import APIWorker, ConnectionProtocol, WorkerResult
 from altrepo_api.api.parser import (
@@ -283,6 +284,22 @@ class ErrataUserLastActivities(APIWorker):
         }, 200
 
 
+@dataclass
+class UserSubscription:
+    user: str
+    entity_type: str
+    entity_link: str
+    state: Literal["active", "inactive"]
+    assigner: str
+    date: datetime
+
+    def asdict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    def is_self_subscription(self) -> bool:
+        return self.user == self.assigner
+
+
 class ErrataUserSubscriptions(APIWorker):
     def __init__(self, conn: ConnectionProtocol, payload: dict[str, Any]) -> None:
         self.conn = conn
@@ -319,24 +336,12 @@ class ErrataUserSubscriptions(APIWorker):
         if not response:
             return self.store_error({"message": "No data found in database"})
 
-        return {
-            "subscriptions": [
-                {
-                    "user": user,
-                    "entity_type": entity_type,
-                    "entity_link": entity_link,
-                    "state": state,
-                    "assigner": assigner,
-                    "date": date,
-                }
-                for user, entity_type, entity_link, state, assigner, date in response
-            ]
-        }, 200
+        return {"subscriptions": [UserSubscription(*el) for el in response]}, 200
 
     def check_params_post(self) -> bool:
         self.logger.debug("payload: %s", self.payload)
 
-        user_name = self.payload["name"]
+        user_name = self.payload["user"]
 
         try:
             packager_nick_type(user_name)
@@ -367,7 +372,7 @@ class ErrataUserSubscriptions(APIWorker):
 
     def post(self) -> WorkerResult:
         response = self.send_sql_request(
-            self.sql.get_original_user_name.format(user=self.payload["name"])
+            self.sql.get_original_user_name.format(user=self.payload["user"])
         )
         if not self.sql_status:
             return self.error
@@ -382,73 +387,64 @@ class ErrataUserSubscriptions(APIWorker):
 
         original_assigner = response[0][0]
 
-        new_subscription = {
-            "user": original_user,
-            "entity_type": self.payload["entity_type"],
-            "entity_link": self.payload["entity_link"],
-            "state": self.payload["state"],
-            "assigner": original_assigner,
-            "date": datetime.now(),
-        }
+        new_subscription = UserSubscription(
+            user=original_user,
+            entity_type=self.payload["entity_type"],
+            entity_link=self.payload["entity_link"],
+            state=self.payload["state"],
+            assigner=original_assigner,
+            date=datetime.now(),
+        )
 
         response = self.send_sql_request(
             self.sql.get_errata_user_active_subscription.format(
                 user=original_user,
-                entity_type=self.payload["entity_type"],
-                entity_link=self.payload["entity_link"],
+                entity_type=new_subscription.entity_type,
+                entity_link=new_subscription.entity_link,
             )
         )
         if not self.sql_status:
             return self.error
         if not response:
-            # if no previous subscription on the entity
-            if self.payload["state"] == "inactive":
+            # if no previous active subscription on the entity exists
+            if new_subscription.state == "inactive":
                 return self.store_error(
-                    {"message": "Can't unsubscribe from non existing entity"}
+                    {"message": "Can't unsubscribe from a non existing entity"},
+                    http_code=409,
                 )
 
-            amount_of_inserted = self.send_sql_request(
-                (
-                    self.sql.store_errata_user_subscription,
-                    [new_subscription],
-                )
+            self.send_sql_request(
+                (self.sql.store_errata_user_subscription, [new_subscription.asdict()])
             )
-            if amount_of_inserted != 1:
-                self.store_error({"message": "Failed to subscribe user"})
+            if not self.sql_status:
+                return self.error
 
             return new_subscription, 201
 
-        old_subscription = {
-            "user": response[0][0],
-            "entity_type": response[0][1],
-            "entity_link": response[0][2],
-            "state": response[0][3],
-            "assigner": response[0][4],
-            "date": response[0][5],
-        }
+        old_subscription = UserSubscription(*response[0])
 
+        # no changes found with DB record
+        # XXX: user, entity_type and entity_link fields are equal already
+        if (old_subscription.assigner, old_subscription.state) == (
+            new_subscription.assigner,
+            new_subscription.state,
+        ):
+            return old_subscription, 201
+
+        # do not allow change of self-subscription state form another user
         if (
-            (old_subscription["user"] == old_subscription["assigner"])
-            and (old_subscription["assigner"] != new_subscription["assigner"])
-            and (old_subscription["state"] != new_subscription["state"])
+            old_subscription.is_self_subscription()
+            and old_subscription.assigner != new_subscription.assigner
         ):
             return self.store_error(
-                {"message": "Can't change self-subscription"},
+                {"message": "Can't change user' self-subscription"},
                 http_code=409,
             )
 
-        subscriptions = [new_subscription]
-
-        if (new_subscription["user"] == new_subscription["assigner"]) and (
-            old_subscription["assigner"] != new_subscription["assigner"]
-        ):
-            old_subscription["state"] = "inactive"
-            subscriptions.append(old_subscription)
-
-        amount_of_inserted = self.send_sql_request(
-            (self.sql.store_errata_user_subscription, subscriptions)
+        self.send_sql_request(
+            (self.sql.store_errata_user_subscription, [new_subscription.asdict()])
         )
-        if amount_of_inserted != 1:
-            self.store_error({"message": "Failed to subscribe user"})
+        if not self.sql_status:
+            return self.error
 
         return new_subscription, 201

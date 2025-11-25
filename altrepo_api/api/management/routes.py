@@ -25,7 +25,7 @@ from altrepo_api.api.auth.decorators import token_required
 from altrepo_api.api.base import (
     GET_RESPONSES_400_404,
     GET_RESPONSES_404,
-    POST_RESPONSES_400_404,
+    POST_RESPONSES_400_404_409,
     run_worker,
 )
 from altrepo_api.api.metadata import with_metadata
@@ -1344,12 +1344,12 @@ class routeManageErrataUserSubscriptions(Resource):
     def get(self):
         url_logging(logger, g.url)
         args = errata_user_subscriptions_args.parse_args(strict=True)
-        w = ErrataUserSubscriptions(g.connection, **args)
+        w = ErrataUserSubscriptions(g.connection, payload=args)
         return run_worker(worker=w)
 
     @ns.doc(
         description="Create/update errata user subscription",
-        responses=POST_RESPONSES_400_404,
+        responses=POST_RESPONSES_400_404_409,
         security="Bearer",
     )
     @ns.expect(errata_user_subscriptions_request_model)

@@ -208,6 +208,13 @@ POST_RESPONSES_400_404 = {
     404: "Requested data not found in database",
 }
 
+POST_RESPONSES_400_404_409 = {
+    201: "Data loaded",
+    400: "Request parameters validation error",
+    404: "Requested data not found in database",
+    409: "Data is inconsistent with DB",
+}
+
 POST_RESPONSES_401 = {
     200: "Success",
     401: "Unauthorized",
