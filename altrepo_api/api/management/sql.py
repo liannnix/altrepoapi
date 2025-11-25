@@ -1707,7 +1707,7 @@ last_vulnerabilities AS (
         '' AS attr_type,
         '' AS attr_link,
         vuln_summary AS text,
-        ts AS date
+        vuln_modified_date AS date
     FROM Vulnerabilities
     INNER JOIN
     (
