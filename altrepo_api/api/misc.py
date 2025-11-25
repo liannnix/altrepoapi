@@ -562,4 +562,7 @@ class LookupTables:
 
     errata_user_subscription_types = ("vuln", "package", "errata")
 
+    errata_user_tracking_types = (*errata_user_last_activities_types, "vuln")
+
+
 lut = LookupTables()
