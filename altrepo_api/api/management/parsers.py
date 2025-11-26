@@ -501,9 +501,9 @@ tracking_type_opt = parser.register_item(
     "type",
     type=str,
     required=False,
-    choices=lut.errata_user_subscription_types,
+    choices=lut.errata_user_tracking_types,
     help="Tracking entity type (one of: {types})".format(
-        types=", ".join(lut.errata_user_subscription_types)
+        types=", ".join(lut.errata_user_tracking_types)
     ),
     location="args",
 )

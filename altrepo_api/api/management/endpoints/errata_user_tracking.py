@@ -208,9 +208,9 @@ class ErrataUserTracking(APIWorker):
                         choices=[
                             MetadataChoiceItem(
                                 value=status,
-                                display_name=status.replace(
-                                    "vuln", "vulnerability"
-                                ).capitalize(),
+                                display_name=status.replace("vuln", "vulnerability")
+                                .replace("_", " ")
+                                .capitalize(),
                             )
                             for status in arg.choices
                         ],
