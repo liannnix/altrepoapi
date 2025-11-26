@@ -140,3 +140,15 @@ def parse_vuln_id(vuln_id: str) -> Optional[Reference]:
         return None
 
     return ref
+
+def make_date_condition(
+    start: Optional[datetime], end: Optional[datetime]
+) -> str:
+    """Make date range SQL condition for a given start and end dates."""
+    if start and end:
+        return f" BETWEEN '{start}' AND '{end}' "
+    elif start:
+        return f" >= '{start}' "
+    elif end:
+        return f" <= '{end}' "
+    return ""

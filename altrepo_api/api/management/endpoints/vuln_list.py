@@ -19,7 +19,7 @@ from typing import Any, NamedTuple, Optional
 
 from altrepo_api.api.base import APIWorker, WorkerResult
 from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
-from altrepo_api.utils import make_date_condition, make_tmp_table_name
+from altrepo_api.utils import make_tmp_table_name
 
 from .tools.constants import (
     BDU_ID_PREFIX,
@@ -28,6 +28,7 @@ from .tools.constants import (
     GHSA_ID_PREFIX,
     VULN_ID_TYPE2PREFIX,
 )
+from .tools.utils import make_date_condition
 from ..parsers import vuln_list_args
 from ..sql import sql
 
