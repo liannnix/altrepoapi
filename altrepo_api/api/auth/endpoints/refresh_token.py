@@ -77,7 +77,8 @@ class RefreshToken(APIWorker):
 
     def post(self):
         user_name = token_user_name(
-            self.access_token_auth_provider, self.access_token_payload,
+            self.access_token_auth_provider,
+            self.access_token_payload,
         )
         user_sessions = self.storage.map_getall(
             REFRESH_TOKEN_KEY.format(user=user_name)

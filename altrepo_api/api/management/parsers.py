@@ -32,7 +32,6 @@ from altrepo_api.api.parser import (
     pkg_name_list_type,
     image_file_type,
     date_string_type,
-    datetime_string_type,
 )
 
 from .endpoints.tools.constants import DEFAULT_REASON_ACTION_TYPES, DRY_RUN_KEY

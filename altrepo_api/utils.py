@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from flask import Response, request, send_file, __version__ as FLASK_VERSION
 from logging import handlers
 from packaging import version
-from typing import Any, Iterable, Optional, Union
+from typing import Any, Iterable, Union
 from urllib.parse import unquote
 from uuid import UUID, uuid4
 

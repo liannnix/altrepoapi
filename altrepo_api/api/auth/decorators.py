@@ -35,7 +35,7 @@ from .token import (
     UserRolesCache,
     decode_jwt_token,
     token_user_name,
-    token_user_display_name
+    token_user_display_name,
 )
 
 
