@@ -34,7 +34,7 @@ from .tools.constants import (
     DT_NEVER,
 )
 from .tools.helpers.vuln import Bug
-from .tools.utils import parse_vuln_id_list
+from .tools.utils import VULN_ID_REGEXS
 from ..sql import sql
 
 
@@ -86,19 +86,45 @@ class VulnsInfo(APIWorker):
         self.conn = connection
         self.args = kwargs
         self.sql = sql
-        self.vulns: set[Reference] = set()
+        self.vulns: list[Reference] = []
+        self.not_found: list[str] = []
         super().__init__()
 
+    def _validate_vuln_id(self, vuln_id: str) -> bool:
+        """Process single vulnerability ID, return True if valid"""
+        for type_, regex in VULN_ID_REGEXS:
+            if regex.fullmatch(vuln_id) is not None:
+                if type_ == BUG_ID_TYPE:
+                    try:
+                        bug_id_type(vuln_id)
+                        self.vulns.append(Reference(type=type_, link=vuln_id))
+                        return True
+                    except ValueError:
+                        return False
+                else:
+                    self.vulns.append(Reference(type=type_, link=vuln_id))
+                    return True
+        return False
+
     def check_params_post(self):
-        try:
-            self.vulns = set(parse_vuln_id_list(self.args["json_data"]["vuln_ids"]))
-            # validate Bug ID is within safe range of DB representation
-            _ = [
-                bug_id_type(b)
-                for b in (int(v.link) for v in self.vulns if v.type == BUG_ID_TYPE)
-            ]
-        except (AttributeError, KeyError, TypeError, ValueError) as e:
-            self.validation_results.append(f"Payload data parsing error: {e}")
+        vuln_ids = set(self.args["json_data"]["vuln_ids"] or [])
+        if not vuln_ids:
+            self.validation_results.append(
+                "Vulnerabilities identifiers should be specified."
+            )
+            return False
+
+        valid_vulns_count = 0
+        for vuln_id in vuln_ids:
+            if not self._validate_vuln_id(vuln_id):
+                self.not_found.append(vuln_id)
+            else:
+                valid_vulns_count += 1
+
+        if valid_vulns_count == 0:
+            self.validation_results.append(
+                f"Invalid vulnerability identifiers: {vuln_ids}"
+            )
             return False
 
         return True
@@ -162,10 +188,10 @@ class VulnsInfo(APIWorker):
                 return self.error
             bugs = {row[0]: Bug(*row, is_valid=True) for row in response}
 
-        def process_vulns(vuiln_ids: list[str]) -> dict[str, VulnerabilityInfo]:
+        def process_vulns(vuln_ids: list[str]) -> dict[str, VulnerabilityInfo]:
             vulns_found: dict[str, VulnerabilityInfo] = dict()
 
-            response = self._collect_vuln_by_ids(vuiln_ids)
+            response = self._collect_vuln_by_ids(vuln_ids)
 
             if response:
                 cve_ids = list()
@@ -219,11 +245,10 @@ class VulnsInfo(APIWorker):
 
         vulns = list(vulns_found.values())
 
-        # add not found CVEs to the resulting list of vulnerabilities
-        # FIXME: maybe put it into `not_found` IDs list?
+        # add not found CVEs to list of not found vulnerabilities
         for cve in cve_ids:
             if cve not in vulns_found:
-                vulns.insert(0, VulnerabilityInfo(id=cve, type=CVE_ID_TYPE))
+                self.not_found.append(cve)
 
         # convert found bugs info to vulnerability objects
         vulns.extend([bug2vulninfo(bug) for bug in bugs.values()])
@@ -243,13 +268,14 @@ class VulnsInfo(APIWorker):
             )
 
         # BDU, GHSA and Bugzilla vulnerabilities not found in the DB
-        not_found_vulns = [
-            v_id for v_id in bdu_ids + ghsa_ids if v_id not in vulns_found.keys()
-        ] + [str(bug) for bug in bug_ids if bug not in bugs.keys()]
+        self.not_found.extend(
+            [v_id for v_id in bdu_ids + ghsa_ids if v_id not in vulns_found.keys()]
+            + [str(bug) for bug in bug_ids if bug not in bugs.keys()]
+        )
 
         res = {
             "vulns": [v.asdict() for v in vulns],
-            "not_found": not_found_vulns,
+            "not_found": self.not_found,
         }
 
         return res, 200

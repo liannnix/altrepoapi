@@ -118,21 +118,3 @@ def dt_from_iso(value: str) -> datetime:
     except (TypeError, ValueError):
         logger.warning(f"Failed to parse datetime: {value}")
         return DT_NEVER
-
-
-def parse_vuln_id_list(vulns: list[str]) -> list[Reference]:
-    """Processes list of vulnerabilities IDs, validates it and returns as list of
-    Reference objects. Raises ValueError if found unknown or invalid ID."""
-
-    res = []
-
-    def vulnid2reftype(id: str) -> Reference:
-        for type_, regex in VULN_ID_REGEXS:
-            if regex.fullmatch(id) is not None:
-                return Reference(type=type_, link=id)
-        raise ValueError(f"Invalid vulnerability identifier: {id}")
-
-    for vuln in vulns:
-        res.append(vulnid2reftype(vuln))
-
-    return res
