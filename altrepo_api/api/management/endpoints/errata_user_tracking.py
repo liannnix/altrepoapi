@@ -14,11 +14,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from datetime import datetime
 from typing import NamedTuple, Optional
 
 from altrepo_api.api.base import APIWorker, ConnectionProtocol, WorkerResult
 from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
 from altrepo_api.api.parser import packager_nick_type
+from altrepo_api.utils import make_date_condition
 
 from ..parsers import errata_user_tracking_args
 from ..sql import sql
@@ -33,12 +35,11 @@ class ErrataUserTrackingArgs(NamedTuple):
     input: Optional[list[str]]
     type: Optional[str]
     action: Optional[str]
-    since: Optional[str]
-    before: Optional[str]
+    subscribed_start_date: Optional[datetime]
+    subscribed_end_date: Optional[datetime]
     page: Optional[int]
     limit: Optional[int]
     sort: Optional[list[str]]
-    
 
 
 class ErrataUserTracking(APIWorker):
@@ -83,11 +84,10 @@ class ErrataUserTracking(APIWorker):
         if self.args.action is not None:
             conditions.append(f"action = '{self.args.action}'")
 
-        if self.args.since is not None:
-            conditions.append(f"since <= '{self.args.since}'")
-
-        if self.args.before is not None:
-            conditions.append(f"before >= '{self.args.since}'")
+        if self.args.subscribed_start_date or self.args.subscribed_end_date:
+            conditions.append(
+                f"date {make_date_condition(self.args.subscribed_start_date, self.args.subscribed_end_date)}"
+            )
 
         return "HAVING " + " OR ".join(conditions) if conditions else ""
 
@@ -232,20 +232,8 @@ class ErrataUserTracking(APIWorker):
                     )
                 )
 
-            if arg.name == "sort":
-                metadata.append(
-                    MetadataItem(
-                        **item_info,
-                        type=KnownFilterTypes.CHOICE,
-                        choices=[
-                            MetadataChoiceItem(
-                                value=field,
-                                display_name=(field.replace("id", "ID").capitalize()),
-                            )
-                            for field in TRACKING_ORDERING_KEYS
-                        ],
-                    )
-                )
+            if arg.type.__name__ == "date_string_type":
+                metadata.append(MetadataItem(**item_info, type=KnownFilterTypes.DATE))
 
         return {
             "length": len(metadata),

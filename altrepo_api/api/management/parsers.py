@@ -516,18 +516,18 @@ tracking_action_opt = parser.register_item(
     help="Tracking entity action (one of: create, update, discard)",
     location="args",
 )
-datetime_since_opt = parser.register_item(
-    "since",
-    type=datetime_string_type,
+subscribed_start_date = parser.register_item(
+    "subscribed_start_date",
+    type=date_string_type,
     required=False,
-    help="Filter since this datetime",
+    help="Start date of subscription",
     location="args",
 )
-datetime_before_opt = parser.register_item(
-    "before",
-    type=datetime_string_type,
+subscribed_end_date = parser.register_item(
+    "subscribed_end_date",
+    type=date_string_type,
     required=False,
-    help="Filter before this datetime",
+    help="End date of subscription.",
     location="args",
 )
 
@@ -629,8 +629,8 @@ errata_user_tracking_args = parser.build_parser(
     tracking_input_opt,
     tracking_type_opt,
     tracking_action_opt,
-    datetime_since_opt,
-    datetime_before_opt,
+    subscribed_start_date,
+    subscribed_end_date,
     page_opt,
     limit_opt,
     sort_opt,
