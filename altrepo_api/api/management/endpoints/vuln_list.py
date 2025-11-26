@@ -19,7 +19,7 @@ from typing import Any, NamedTuple, Optional
 
 from altrepo_api.api.base import APIWorker, WorkerResult
 from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
-from altrepo_api.utils import make_tmp_table_name
+from altrepo_api.utils import make_date_condition, make_tmp_table_name
 
 from .tools.constants import (
     BDU_ID_PREFIX,
@@ -158,7 +158,7 @@ class VulnList(APIWorker):
         )
 
         if self.args.modified_start_date or self.args.modified_end_date:
-            date_condition = self._make_date_condition(
+            date_condition = make_date_condition(
                 self.args.modified_start_date, self.args.modified_end_date
             )
 
@@ -169,7 +169,7 @@ class VulnList(APIWorker):
             )
 
         if self.args.published_start_date or self.args.published_end_date:
-            date_condition = self._make_date_condition(
+            date_condition = make_date_condition(
                 self.args.published_start_date, self.args.published_end_date
             )
 
@@ -233,20 +233,6 @@ class VulnList(APIWorker):
                 else f"{operator} our = 0 AND errata_ids = []"
             )
         return where_clause
-
-    def _make_date_condition(
-        self, start: Optional[datetime], end: Optional[datetime]
-    ) -> str:
-        """
-        Make date range condition for a field.
-        """
-        if start and end:
-            return f" BETWEEN '{start}' AND '{end}' "
-        elif start:
-            return f" >= '{start}' "
-        elif end:
-            return f" <= '{end}' "
-        return ""
 
     def _get_vulnerability_list(self):
         """

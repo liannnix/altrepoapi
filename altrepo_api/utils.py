@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from flask import Response, request, send_file, __version__ as FLASK_VERSION
 from logging import handlers
 from packaging import version
-from typing import Any, Iterable, Union
+from typing import Any, Iterable, Optional, Union
 from urllib.parse import unquote
 from uuid import UUID, uuid4
 
@@ -428,3 +428,18 @@ def make_snowflake_id(timestamp: Union[int, datetime.datetime], lower_32bit) -> 
         timestamp = int(timestamp.timestamp())
 
     return ((timestamp - EPOCH) << 32) | (lower_32bit & 0xFFFFFFFF)
+
+
+def make_date_condition(
+    start: Optional[datetime.datetime], end: Optional[datetime.datetime]
+) -> str:
+    """
+    Make date range condition for a field.
+    """
+    if start and end:
+        return f" BETWEEN '{start}' AND '{end}' "
+    elif start:
+        return f" >= '{start}' "
+    elif end:
+        return f" <= '{end}' "
+    return ""
