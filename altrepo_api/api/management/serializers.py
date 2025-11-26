@@ -1450,7 +1450,7 @@ errata_user_tracking_element_model = ns.model(
     {
         "type": fields.String(
             description="Type of tracked entity",
-            enum=lut.errata_user_last_activities_types,
+            enum=lut.errata_user_tracking_types,
             required=True,
         ),
         "id": fields.String(
@@ -1497,7 +1497,7 @@ errata_user_tracking_model = ns.model(
             required=True,
         ),
         "tracks": fields.Nested(
-            errata_user_activity_model,
+            errata_user_tracking_element_model,
             description="List of last activities of errata user",
             as_list=True,
             required=True,
