@@ -32,7 +32,7 @@ def store_errata_user(
     sql_status, response = conn.send_request()
     if not sql_status or not response:
         return False, f"Database error info: {response}"
-    user = response[0][0]
+    user_data["user"] = response[0][0]
     # store user data
     conn.request_line = sql.store_errata_user.format(**user_data)
     sql_status, response = conn.send_request()
