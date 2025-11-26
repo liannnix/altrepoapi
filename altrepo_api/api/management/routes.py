@@ -17,8 +17,6 @@
 from flask import g
 from flask_restx import Resource
 
-from altrepo_api.api.management.endpoints.default_reasons import DefaultReasons
-from altrepo_api.api.management.endpoints.default_reasons_list import DefaultReasonsList
 from altrepo_api.settings import namespace as settings
 from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.auth.decorators import token_required
@@ -47,7 +45,6 @@ from altrepo_api.api.errata.serializers import (
     pkgs_el_model as _pkgs_el_model,
     vulns_el_model as _vulns_el_model,
 )
-from altrepo_api.api.management.endpoints.comment_list import CommentsList
 from altrepo_api.api.task_progress.endpoints.packageset import AllTasksBraches
 from altrepo_api.api.task_progress.serializers import all_tasks_branches_model
 from altrepo_api.api.vulnerabilities.endpoints.excluded import VulnExcluded
@@ -76,7 +73,20 @@ from altrepo_api.api.vulnerabilities.serializers import (
 
 from .endpoints.change_history import ChangeHistory, ErrataChangeHistory
 from .endpoints.cpe import CPECandidates, CPEList, ManageCpe
+from .endpoints.comment_list import CommentsList
+from .endpoints.comments import Comments
+from .endpoints.default_reasons import DefaultReasons
+from .endpoints.default_reasons_list import DefaultReasonsList
 from .endpoints.errata import ManageErrata
+from .endpoints.errata_user import (
+    ErrataUserInfo,
+    ErrataUserTag,
+    ErrataUserLastActivities,
+    ErrataUserAliases,
+    ErrataUserSubscriptions,
+    ErrataEntitySubscriptions,
+)
+from .endpoints.errata_user_tracking import ErrataUserTracking
 from .endpoints.packages_open_vulns import (
     PackagesMaintainerList,
     PackagesOpenVulns,
@@ -89,17 +99,8 @@ from .endpoints.task_info import TaskInfo
 from .endpoints.task_list import TaskList
 from .endpoints.vuln_list import VulnList
 from .endpoints.vulns_info import VulnsInfo
-from .endpoints.comments import Comments
 from .endpoints.vuln_status import VulnStatus
 from .endpoints.vuln_status_list import VulnStatusList
-from .endpoints.errata_user import (
-    ErrataUserInfo,
-    ErrataUserTag,
-    ErrataUserLastActivities,
-    ErrataUserAliases,
-    ErrataUserSubscriptions,
-)
-from .endpoints.errata_user_tracking import ErrataUserTracking
 from .namespace import get_namespace
 from .parsers import (
     change_history_args,
@@ -129,6 +130,7 @@ from .parsers import (
     errata_user_aliases_post_args,
     errata_user_subscriptions_args,
     errata_user_tracking_args,
+    errata_entity_subscriptions_args,
 )
 from .serializers import (
     change_history_response_model,
@@ -1359,6 +1361,23 @@ class routeManageErrataUserSubscriptions(Resource):
         url_logging(logger, g.url)
         w = ErrataUserSubscriptions(g.connection, payload=ns.payload)
         return run_worker(worker=w, run_method=w.post, check_method=w.check_params_post)
+
+
+@ns.route("/user/subscriptions/by_entity")
+class routeManageErrataEntitySubscriptions(Resource):
+    @ns.doc(
+        description="Get errata user subscriptions by entity name",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(errata_entity_subscriptions_args)
+    @ns.marshal_with(errata_user_subscriptions_model)
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
+    def get(self):
+        url_logging(logger, g.url)
+        args = errata_entity_subscriptions_args.parse_args(strict=True)
+        w = ErrataEntitySubscriptions(g.connection, **args)
+        return run_worker(worker=w)
 
 
 @with_metadata(ErrataUserTracking, ns, logger, require_auth=True)

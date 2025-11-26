@@ -1658,6 +1658,22 @@ HAVING entity_type_ = '{entity_type}'
     AND state_ = 'active'
 """
 
+    get_entity_subscribed_users = """
+SELECT
+    user,
+    argMax(entity_type, date) AS entity_type_,
+    entity_link,
+    argMax(state, date) AS state_,
+    argMax(assigner, date) AS assigner_,
+    max(date) AS date_
+FROM ErrataUsersSubscriptions
+WHERE entity_link = '{entity_link}'
+GROUP BY
+    user,
+    entity_link
+HAVING state_ = 'active'
+"""
+
     store_errata_user_subscription = """
     INSERT INTO ErrataUsersSubscriptions (*) VALUES
 """

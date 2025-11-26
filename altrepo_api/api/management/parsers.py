@@ -21,6 +21,7 @@ from altrepo_api.api.parser import (
     branch_name_type,
     cpe_search_type,
     errata_id_type,
+    errata_search_type,
     open_vulns_search_type,
     pkg_name_type,
     packager_nick_type,
@@ -529,6 +530,9 @@ subscribed_end_date = parser.register_item(
     help="End date of subscription.",
     location="args",
 )
+entity_name = parser.register_item(
+    "input", type=errata_search_type, required=True, help="Entity name", location="args"
+)
 
 task_list_args = parser.build_parser(
     task_input_val_opt,
@@ -634,3 +638,4 @@ errata_user_tracking_args = parser.build_parser(
     limit_opt,
     sort_opt,
 )
+errata_entity_subscriptions_args = parser.build_parser(entity_name)

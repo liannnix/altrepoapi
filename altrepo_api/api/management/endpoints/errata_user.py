@@ -448,3 +448,24 @@ class ErrataUserSubscriptions(APIWorker):
             return self.error
 
         return new_subscription, 201
+
+
+class ErrataEntitySubscriptions(APIWorker):
+    def __init__(self, conn: ConnectionProtocol, **kwargs) -> None:
+        self.conn = conn
+        self.kwargs = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def get(self) -> WorkerResult:
+        response = self.send_sql_request(
+            self.sql.get_entity_subscribed_users.format(
+                entity_link=self.kwargs["input"]
+            )
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error({"message": "No errata user found in database"})
+
+        return {"subscriptions": [UserSubscription(*el) for el in response]}, 200
