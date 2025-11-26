@@ -17,8 +17,10 @@
 import re
 
 from datetime import datetime, timezone
+from typing import Optional
 
 from altrepo_api.utils import get_logger
+from altrepo_api.api.parser import bug_id_type
 
 from .base import Reference
 from .constants import (
@@ -118,3 +120,23 @@ def dt_from_iso(value: str) -> datetime:
     except (TypeError, ValueError):
         logger.warning(f"Failed to parse datetime: {value}")
         return DT_NEVER
+
+
+def parse_vuln_id(vuln_id: str) -> Optional[Reference]:
+    """Validates a vulnerability ID against known types and returns a Reference object
+    if valid, otherwise returns None."""
+
+    def vulnid2reftype(id: str) -> Reference:
+        for type_, regex in VULN_ID_REGEXS:
+            if regex.fullmatch(id) is not None:
+                return Reference(type=type_, link=id)
+        raise ValueError(f"Invalid vulnerability identifier: {id}")
+
+    try:
+        ref = vulnid2reftype(vuln_id)
+        if ref.type == BUG_ID_TYPE:
+            _ = bug_id_type(ref.link)
+    except ValueError:
+        return None
+
+    return ref

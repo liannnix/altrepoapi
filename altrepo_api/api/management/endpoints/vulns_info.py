@@ -20,7 +20,6 @@ from typing import Any
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
-from altrepo_api.api.parser import bug_id_type
 from altrepo_api.utils import make_tmp_table_name
 
 from .tools.base import Reference
@@ -34,7 +33,7 @@ from .tools.constants import (
     DT_NEVER,
 )
 from .tools.helpers.vuln import Bug
-from .tools.utils import VULN_ID_REGEXS
+from .tools.utils import parse_vuln_id
 from ..sql import sql
 
 
@@ -90,22 +89,6 @@ class VulnsInfo(APIWorker):
         self.not_found: list[str] = []
         super().__init__()
 
-    def _validate_vuln_id(self, vuln_id: str) -> bool:
-        """Process single vulnerability ID, return True if valid"""
-        for type_, regex in VULN_ID_REGEXS:
-            if regex.fullmatch(vuln_id) is not None:
-                if type_ == BUG_ID_TYPE:
-                    try:
-                        bug_id_type(vuln_id)
-                        self.vulns.append(Reference(type=type_, link=vuln_id))
-                        return True
-                    except ValueError:
-                        return False
-                else:
-                    self.vulns.append(Reference(type=type_, link=vuln_id))
-                    return True
-        return False
-
     def check_params_post(self):
         vuln_ids = set(self.args["json_data"]["vuln_ids"] or [])
         if not vuln_ids:
@@ -114,20 +97,15 @@ class VulnsInfo(APIWorker):
             )
             return False
 
-        valid_vulns_count = 0
         for vuln_id in vuln_ids:
-            if not self._validate_vuln_id(vuln_id):
-                self.not_found.append(vuln_id)
+            if ref := parse_vuln_id(vuln_id):
+                self.vulns.append(ref)
             else:
-                valid_vulns_count += 1
+                self.validation_results.append(
+                    f"Invalid vulnerability identifier: {vuln_id}"
+                )
 
-        if valid_vulns_count == 0:
-            self.validation_results.append(
-                f"Invalid vulnerability identifiers: {vuln_ids}"
-            )
-            return False
-
-        return True
+        return self.validation_results == []
 
     def __get_vuln_ino_by_ids(
         self, vuln_ids: list[str], sql: str
@@ -157,7 +135,7 @@ class VulnsInfo(APIWorker):
     def _collect_vuln_by_ids(self, vuln_ids: list[str]) -> dict[str, VulnerabilityInfo]:
         return self.__get_vuln_ino_by_ids(vuln_ids, self.sql.get_vuln_info_by_ids)
 
-    def _collect_related_cve_by_ids(
+    def _collect_related_vuln_by_ids(
         self, cve_ids: list[str]
     ) -> dict[str, VulnerabilityInfo]:
         return self.__get_vuln_ino_by_ids(cve_ids, self.sql.get_related_vulns_by_cves)
@@ -218,7 +196,7 @@ class VulnsInfo(APIWorker):
                     vulns_found = response
 
                     # get related vulnerability id's from CVE
-                    response = self._collect_related_cve_by_ids(
+                    response = self._collect_related_vuln_by_ids(
                         list(vulns_found.keys())
                     )
 
