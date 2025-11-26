@@ -1449,7 +1449,8 @@ SELECT
     user,
     argMax(group, ts) AS last_group,
     argMax(roles, ts) AS last_roles,
-    get_errata_user_aliases('{user}') AS aliases
+    get_errata_user_aliases('{user}') AS aliases,
+    argMax(display_name, ts) AS name
 FROM ErrataUsers
 WHERE user = get_errata_user_original_name('{user}')
 GROUP BY user

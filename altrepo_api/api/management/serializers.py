@@ -1254,6 +1254,10 @@ errata_user_info_model = ns.model(
             fields.String(description="List of user aliases"),
             required=True,
         ),
+        "display_name": fields.String(
+            description="Errata user display name",
+            required=True,
+        ),
     },
 )
 
