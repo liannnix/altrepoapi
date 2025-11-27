@@ -1646,33 +1646,37 @@ ORDER BY last_date DESC
     get_errata_user_active_subscription = """
 SELECT
     user,
-    argMax(entity_type, date) AS entity_type_,
-    argMax(entity_link, date) AS entity_link_,
-    argMax(state, date) AS state_,
-    argMax(assigner, date) AS assigner_,
-    max(date) AS date_
+    entity_type,
+    entity_link,
+    argMax(state, date) AS last_state,
+    argMax(assigner, date),
+    max(date) AS last_date
 FROM ErrataUsersSubscriptions
 WHERE user = '{user}'
-GROUP BY user
-HAVING entity_type_ = '{entity_type}'
-    AND entity_link_ = '{entity_link}'
-    AND state_ = 'active'
+    AND entity_type = '{entity_type}'
+    AND entity_link = '{entity_link}'
+GROUP BY
+    user,
+    entity_type,
+    entity_link
+HAVING last_state = 'active'
 """
 
     get_entity_subscribed_users = """
 SELECT
     user,
-    argMax(entity_type, date) AS entity_type_,
+    entity_type,
     entity_link,
-    argMax(state, date) AS state_,
-    argMax(assigner, date) AS assigner_,
-    max(date) AS date_
+    argMax(state, date) AS last_state,
+    argMax(assigner, date),
+    max(date) AS last_date
 FROM ErrataUsersSubscriptions
 WHERE entity_link = '{entity_link}'
 GROUP BY
     user,
+    entity_type,
     entity_link
-HAVING state_ = 'active'
+HAVING last_state = 'active'
 """
 
     store_errata_user_subscription = """
