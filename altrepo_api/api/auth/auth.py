@@ -112,7 +112,7 @@ def check_auth_ldap(
         user_dn = namespace.LDAP_USER_SEARCH % {"user": user}
         entries = ldap_client.search_ext_s(user_dn, ldap.SCOPE_SUBTREE) or []  # type: ignore
         for uid, props in entries:  # type: ignore
-            if f"uid={user_dn}" == uid:
+            if user_dn == uid:
                 try:
                     if names := props["displayName"]:
                         return names[0].decode()
