@@ -1456,6 +1456,15 @@ WHERE user = get_errata_user_original_name('{user}')
 GROUP BY user
 """
 
+    get_users_display_names = """
+SELECT
+    user,
+    argMax(display_name, ts) AS name
+FROM ErrataUsers
+WHERE user IN {tmp_table}
+GROUP BY user
+"""
+
     get_most_relevant_users = """
 WITH '{input}' AS query
 SELECT

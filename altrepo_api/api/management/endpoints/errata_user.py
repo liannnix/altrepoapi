@@ -16,7 +16,7 @@
 
 from datetime import datetime
 from dataclasses import dataclass, asdict
-from typing import Any, Literal, NamedTuple, Optional
+from typing import Any, Literal, NamedTuple, Optional, Protocol
 
 from altrepo_api.api.base import APIWorker, ConnectionProtocol, WorkerResult
 from altrepo_api.api.parser import (
@@ -25,8 +25,9 @@ from altrepo_api.api.parser import (
     vuln_id_type,
     packager_nick_type,
 )
+from altrepo_api.utils import make_tmp_table_name
 
-from ..sql import sql
+from ..sql import SQL, sql
 
 DEFAULT_LAST_ACTIVITIES_LIMIT = 10
 
@@ -294,12 +295,53 @@ class UserSubscription:
     state: Literal["active", "inactive"]
     assigner: str
     date: datetime
+    display_name: str
 
     def asdict(self) -> dict[str, Any]:
         return asdict(self)
 
     def is_self_subscription(self) -> bool:
         return self.user == self.assigner
+
+
+class _pAPIWorker(Protocol):
+    sql: SQL
+    status: bool
+    sql_status: bool
+
+    def send_sql_request(
+        self, request_line: Any, http_code: int = ..., **kwargs
+    ) -> Any: ...
+
+
+def get_users_display_name(cls: _pAPIWorker, users: list[str]) -> dict[str, str]:
+    res = {}
+    cls.status = False
+
+    tmp_table = make_tmp_table_name("user_names")
+
+    response = cls.send_sql_request(
+        cls.sql.get_users_display_names.format(tmp_table=tmp_table),
+        external_tables=[
+            {
+                "name": tmp_table,
+                "structure": [("user", "String")],
+                "data": [{"user": u} for u in users],
+            },
+        ],
+    )
+    if not cls.sql_status:
+        return res
+
+    for user, display_name in response:
+        res[user] = display_name
+
+    for user in users:
+        if user not in res:
+            res[user] = user
+
+    cls.status = True
+    return res
 
 
 class ErrataUserSubscriptions(APIWorker):
@@ -330,15 +372,24 @@ class ErrataUserSubscriptions(APIWorker):
         if not response:
             return self.store_error({"message": "No errata user found in database"})
 
+        user = response[0][0]
+        display_name = get_users_display_name(self, [user])[user]
+        if not self.status:
+            return self.error
+
         response = self.send_sql_request(
-            self.sql.get_errata_user_active_subscriptions.format(user=response[0][0])
+            self.sql.get_errata_user_active_subscriptions.format(user=user)
         )
         if not self.sql_status:
             return self.error
         if not response:
             return self.store_error({"message": "No data found in database"})
 
-        return {"subscriptions": [UserSubscription(*el) for el in response]}, 200
+        subsciptions = [
+            UserSubscription(*el, display_name=display_name) for el in response
+        ]
+
+        return {"subscriptions": subsciptions}, 200
 
     def check_params_post(self) -> bool:
         self.logger.debug("payload: %s", self.payload)
@@ -396,6 +447,7 @@ class ErrataUserSubscriptions(APIWorker):
             state=self.payload["state"],
             assigner=original_assigner,
             date=datetime.now(),
+            display_name="",
         )
 
         response = self.send_sql_request(
@@ -423,7 +475,7 @@ class ErrataUserSubscriptions(APIWorker):
 
             return new_subscription, 201
 
-        old_subscription = UserSubscription(*response[0])
+        old_subscription = UserSubscription(*response[0], display_name="")
 
         # no changes found with DB record
         # XXX: user, entity_type and entity_link fields are equal already
@@ -470,4 +522,13 @@ class ErrataEntitySubscriptions(APIWorker):
         if not response:
             return self.store_error({"message": "No errata user found in database"})
 
-        return {"subscriptions": [UserSubscription(*el) for el in response]}, 200
+        subscriptions = [UserSubscription(*el, display_name="") for el in response]
+
+        display_name_map = get_users_display_name(self, [s.user for s in subscriptions])
+        if not self.status:
+            return self.error
+
+        for subscription in subscriptions[:]:
+            subscription.display_name = display_name_map[subscription.user]
+
+        return {"subscriptions": subscriptions}, 200

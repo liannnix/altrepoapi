@@ -1435,6 +1435,10 @@ errata_user_subscription_model = ns.model(
             description="Errata user subscription date",
             required=True,
         ),
+        "display_name": fields.String(
+            description="Errata user display name",
+            required=True,
+        ),
     },
 )
 errata_user_subscriptions_model = ns.model(
