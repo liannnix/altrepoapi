@@ -794,7 +794,7 @@ INSERT INTO PncChangeHistory (* EXCEPT ts) VALUES
 SELECT DISTINCT pkg_hash
 FROM static_last_packages
 WHERE pkg_sourcepackage = 1
-    AND pkgset_name IN ({branches})
+    AND pkgset_name IN {branches}
     AND pkg_name IN (
         SELECT acl_for
         FROM last_acl_stage1
@@ -807,7 +807,7 @@ WHERE pkg_sourcepackage = 1
 SELECT DISTINCT pkg_hash
 FROM static_last_packages
 WHERE pkg_sourcepackage = 1
-    AND pkgset_name IN ({branches})
+    AND pkgset_name IN {branches}
     AND pkg_name IN (
         SELECT pkgname
         FROM last_acl_with_groups
@@ -829,7 +829,7 @@ WITH (
 SELECT DISTINCT pkg_hash
 FROM static_last_packages
 WHERE pkg_sourcepackage = 1
-    AND pkgset_name IN ({branches})
+    AND pkgset_name IN {branches}
     AND pkg_name IN (
         SELECT acl_for
         FROM last_acl_stage1
@@ -842,7 +842,7 @@ WHERE pkg_sourcepackage = 1
 SELECT DISTINCT pkg_hash
 FROM static_last_packages
 WHERE pkg_sourcepackage = 1
-    AND pkgset_name IN ({branches})
+    AND pkgset_name IN {branches}
     AND pkg_name IN (
         SELECT pkgname
         FROM last_acl_with_groups
@@ -856,7 +856,7 @@ WHERE pkg_sourcepackage = 1
 SELECT DISTINCT pkg_hash
 FROM last_packages
 WHERE pkg_sourcepackage = 1
-    AND pkgset_name IN ({branches})
+    AND pkgset_name IN {branches}
     AND pkg_packager_email LIKE '{maintainer_nickname}@%'
 """
 

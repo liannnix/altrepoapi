@@ -162,7 +162,7 @@ class PackagesOpenVulns(APIWorker):
                 f"WHERE arrayExists(v -> v.1 = '{self.args.input}', vulns)"
             )
 
-        order_by_clause = ", ".join(
+        order_by_clause = "ORDER BY " + ", ".join(
             "{field} {direction}".format(
                 field=field_name,
                 direction="DESC" if sort_field.startswith("-") else "ASC",
