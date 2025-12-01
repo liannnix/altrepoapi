@@ -14,21 +14,17 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import datetime
-
-from typing import Union, Any, NamedTuple
+from datetime import datetime
+from typing import Any, Iterable, NamedTuple, Union
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.libs.oval.altlinux_errata import (
-    CVE_ID_TYPE,
-    CVE_ID_PREFIX,
-    BDU_ID_PREFIX,
-)
+from altrepo_api.libs.errata_server import rusty as rs
 from altrepo_api.libs.pagination import Paginator
-from altrepo_api.libs.sorting import rich_sort
-from altrepo_api.utils import make_tmp_table_name, sort_branches
+from altrepo_api.utils import sort_branches
 
 from ..sql import sql
+from .tools.constants import BDU_ID_TYPE, GHSA_ID_TYPE
+from .vuln_list import is_any_vuln_id
 
 
 class PackagesOpenVulnsArgs(NamedTuple):
@@ -46,10 +42,8 @@ class PackagesOpenVulnsArgs(NamedTuple):
 
 class VulnInfoMeta(NamedTuple):
     id: str
-    type: str = ""
-    severity: str = ""
-    refs_link: list[str] = []
-    refs_type: list[str] = []
+    type: str
+    severity: str
 
 
 class PackageImagesMeta(NamedTuple):
@@ -59,27 +53,27 @@ class PackageImagesMeta(NamedTuple):
 
 
 class PackageMeta(NamedTuple):
-    pkghash: int
+    pkg_hash: int
     pkg_name: str
     pkg_version: str
     pkg_release: str
-    modified: datetime.datetime
-    branch: str
+    modified_date: datetime
+    pkgset_name: str
     vulns: list[VulnInfoMeta]
-    images: list[PackageImagesMeta] = []
+    images: list[PackageImagesMeta]
 
     def asdict(self) -> dict[str, Any]:
         return {
-            "pkghash": self.pkghash,
+            "pkghash": self.pkg_hash,
             "pkg_name": self.pkg_name,
             "pkg_version": self.pkg_version,
             "pkg_release": self.pkg_release,
-            "modified": self.modified,
-            "branch": self.branch,
-            "vulns": [el._asdict() for el in self.vulns],
-            "images": sorted(
-                [el._asdict() for el in self.images], key=lambda k: k["file"]
-            ),
+            "modified": self.modified_date,
+            "branch": self.pkgset_name,
+            "vulns": [vuln._asdict() for vuln in self.vulns],
+            "images": [
+                img._asdict() for img in sorted(self.images, key=lambda k: k.file)
+            ],
         }
 
 
@@ -91,300 +85,235 @@ class PackageBranchPair(NamedTuple):
 class PackagesOpenVulns(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
-        self.args = PackagesOpenVulnsArgs(**kwargs)
+        self.kwargs = kwargs
+        self.args: PackagesOpenVulnsArgs
         self.sql = sql
-        self.status: bool = False
-        self.package_vulns: dict[PackageBranchPair, PackageMeta] = {}
-        self.all_images: list[dict[str, str]] = []
         super().__init__()
 
-    @property
-    def _supported_branches(self) -> str:
-        """
-        Return SQL query to get supported branches.
-        """
-        branch_clause = (
-            f"AND pkgset_name = '{self.args.branch}'" if self.args.branch else ""
-        )
-        return self.sql.supported_branches.format(branch=branch_clause)
+    def check_params(self) -> bool:
+        self.args = PackagesOpenVulnsArgs(**self.kwargs)
 
-    @property
-    def _where_condition(self) -> str:
-        """
-        Search conditions for open vulnerabilities.
-        """
-        where_conditions = (
-            f" AND pkg_name ILIKE '%{self.args.input}%'"
-            if self.args.input
-            and not self.args.input.startswith("CVE-")
-            and not self.args.input.startswith("BDU:")
+        self.logger.debug("args: %s", self.args)
+
+        return True
+
+    def _select_pkg_hash(self, branches: Iterable[str]) -> str:
+        request_line: Union[str, None] = None
+
+        if self.args.by_acl == "by_nick":
+            request_line = self.sql.select_pkg_hash_by_nick_acl
+        if self.args.by_acl == "by_nick_leader":
+            request_line = self.sql.select_pkg_hash_by_nick_leader_acl
+        if self.args.by_acl == "by_nick_or_group":
+            request_line = self.sql.select_pkg_hash_by_nick_or_group_acl
+        if self.args.by_acl == "by_nick_leader_and_group":
+            request_line = self.sql.select_pkg_hash_by_nick_leader_and_group_acl
+        if self.args.by_acl == "by_packager":
+            request_line = self.sql.select_pkg_hash_by_packager
+
+        return (
+            request_line.format(
+                maintainer_nickname=self.args.maintainer_nickname,
+                branches=branches,
+            )
+            if request_line is not None
             else ""
         )
-        return where_conditions
 
-    def _maintainer_request_line(self, tmp_table: str) -> str:
-        """
-        Return SQL query for search for maintainer packages based on the filter.
-        """
-        request_line = ""
-        if self.args.by_acl == "by_nick":
-            request_line = self.sql.tmp_maintainer_pkg_by_nick_acl.format(
-                tmp_table=tmp_table,
-                columns=(
-                    "(pkg_hash UInt64, pkgset_name String, "
-                    "pkg_version String, pkg_release String)"
-                ),
-                maintainer_nickname=self.args.maintainer_nickname,
-                branches=self._supported_branches,
-            )
-        if self.args.by_acl == "by_nick_leader":
-            request_line = self.sql.tmp_maintainer_pkg_by_nick_leader_acl.format(
-                tmp_table=tmp_table,
-                columns=(
-                    "(pkg_hash UInt64, pkgset_name String, "
-                    "pkg_version String, pkg_release String)"
-                ),
-                maintainer_nickname=self.args.maintainer_nickname,
-                branches=self._supported_branches,
-            )
-        if self.args.by_acl == "by_nick_or_group":
-            request_line = self.sql.tmp_maintainer_pkg_by_nick_or_group_acl.format(
-                tmp_table=tmp_table,
-                columns=(
-                    "(pkg_hash UInt64, pkgset_name String, "
-                    "pkg_version String, pkg_release String)"
-                ),
-                maintainer_nickname=self.args.maintainer_nickname,
-                branches=self._supported_branches,
-            )
-        if self.args.by_acl == "by_nick_leader_and_group":
-            request_line = (
-                self.sql.tmp_maintainer_pkg_by_nick_leader_and_group_acl.format(
-                    tmp_table=tmp_table,
-                    columns=(
-                        "(pkg_hash UInt64, pkgset_name String, "
-                        "pkg_version String, pkg_release String)"
-                    ),
-                    maintainer_nickname=self.args.maintainer_nickname,
-                    branches=self._supported_branches,
-                )
-            )
-        if self.args.by_acl == "by_packager":
-            request_line = self.sql.tmp_maintainer_pkg.format(
-                tmp_table=tmp_table,
-                columns=(
-                    "(pkg_hash UInt64, pkgset_name String, "
-                    "pkg_version String, pkg_release String)"
-                ),
-                maintainer_nickname=self.args.maintainer_nickname,
-                branches=self._supported_branches,
-            )
-        return request_line
+    @rs.resultify_method
+    def _get_supported_branches(self) -> tuple[str, ...]:
+        branch_condition = (
+            f"AND pkgset_name = '{self.args.branch}'" if self.args.branch else ""
+        )
+        response = self.send_sql_request(
+            self.sql.supported_branches.format(branch=branch_condition)
+        )
+        if not self.sql_status:
+            raise Exception(self.error)
+        if not response:
+            self.store_error({"message": "Requested branch is not supported"})
+            raise Exception(self.error)
 
-    def _get_open_vulns(self) -> None:
-        """
-        Get all packages with open vulnerabilities.
-        """
-        self.status = False
-        severity_clause = (
-            f" AND vuln_severity = '{self.args.severity}'" if self.args.severity else ""
+        return tuple(branch for (branch,) in response)
+
+    @rs.resultify_method
+    def _get_open_vulns(self) -> tuple[dict[PackageBranchPair, PackageMeta], int]:
+        branches = self._get_supported_branches().unwrap()
+
+        severity_where_clause = (
+            f"WHERE vuln_severity = '{self.args.severity}'"
+            if self.args.severity
+            else ""
         )
 
-        maintainer_clause = ""
+        where_clause = f"WHERE pkgset_name IN {branches}"
+
         if self.args.maintainer_nickname and self.args.by_acl:
-            tmp_table = make_tmp_table_name("maintainer_pkgs")
-            _ = self.send_sql_request(self._maintainer_request_line(tmp_table))
-            if not self.sql_status:
-                return None
-            maintainer_clause = (
-                f"WHERE PKG.pkg_hash IN (SELECT pkg_hash FROM {tmp_table})"
+            where_clause += (
+                f" AND pkg_hash IN ({self._select_pkg_hash(branches=branches)})"
             )
+
+        if self.args.input and not is_any_vuln_id(self.args.input):
+            where_clause += f" AND pkg_name ILIKE '%{self.args.input}%'"
+
+        final_where_clause = ""
+        if self.args.input and is_any_vuln_id(self.args.input):
+            final_where_clause = (
+                f"WHERE arrayExists(v -> v.1 = '{self.args.input}', vulns)"
+            )
+
+        order_by_clause = ", ".join(
+            "{field} {direction}".format(
+                field=field_name,
+                direction="DESC" if sort_field.startswith("-") else "ASC",
+            )
+            for sort_field in self.args.sort or ["modified_date"]
+            if (field_name := sort_field.removeprefix("-")) in PackageMeta._fields
+        )
+
+        limit_clause = f"LIMIT {self.args.limit}" if self.args.limit else ""
+
+        offset_clause = (
+            f"OFFSET {(self.args.page - 1) * self.args.limit}"
+            if self.args.page and self.args.limit
+            else ""
+        )
 
         response = self.send_sql_request(
             self.sql.get_all_open_vulns.format(
-                branches=self._supported_branches,
-                where_clause=self._where_condition,
-                severity=severity_clause,
-                maintainer_clause=maintainer_clause,
+                where_clause=where_clause,
+                vuln_types=(BDU_ID_TYPE, GHSA_ID_TYPE),
+                severity_where_clause=severity_where_clause,
+                branches=branches,
+                final_where_clause=final_where_clause,
+                order_by_clause=order_by_clause,
+                limit_clause=limit_clause,
+                offset_clause=offset_clause,
             )
         )
+        if not self.sql_status:
+            raise Exception(self.error)
         if not response:
-            _ = self.store_error(
-                {
-                    "message": "No packages found with open vulnerabilities",
-                    "args": self.args._asdict(),
-                }
+            self.store_error({"message": "No packages with open vulnerabilities found"})
+            raise Exception(self.error)
+
+        packge_vulns = {
+            PackageBranchPair(pkg_name, pkgset_name): PackageMeta(
+                pkg_hash=pkg_hash,
+                pkg_name=pkg_name,
+                pkg_version=pkg_version,
+                pkg_release=pkg_release,
+                modified_date=modified_date,
+                pkgset_name=pkgset_name,
+                vulns=[
+                    VulnInfoMeta(id=vuln_id, type=vuln_type, severity=vuln_severity)
+                    for vuln_id, vuln_type, vuln_severity in vulns
+                ],
+                images=[],
             )
-            return None
-        if not self.sql_status:
-            return None
-        self.package_vulns = {
-            PackageBranchPair(el[1], el[-2]): PackageMeta(
-                *el[:-1], vulns=[VulnInfoMeta(*vuln) for vuln in el[-1]]
-            )
-            for el in response
+            for (
+                pkg_hash,
+                pkg_name,
+                pkg_version,
+                pkg_release,
+                modified_date,
+                pkgset_name,
+                vulns,
+                _,
+            ) in response
         }
-        self.status = True
 
-    def _get_related_vulns(self) -> None:
-        """
-        Get related vulnerability id's by CVE and append to the vulnerabilities list.
-        """
-        self.status = False
-        vulns: dict[str, list[VulnInfoMeta]] = {
-            vul.id: [vul] for el in self.package_vulns.values() for vul in el.vulns
-        }
+        return packge_vulns, response[0][-1]
 
-        tmp_table = make_tmp_table_name("vulns")
-        response = self.send_sql_request(
-            self.sql.get_related_vulns_by_cves.format(tmp_table=tmp_table),
-            external_tables=[
-                {
-                    "name": tmp_table,
-                    "structure": [
-                        ("vuln_id", "String"),
-                    ],
-                    "data": [{"vuln_id": el} for el in vulns.keys()],
-                }
-            ],
-        )
-        if not self.sql_status:
-            return None
-
-        for vuln in response:
-            vuln = VulnInfoMeta(
-                id=vuln[0],
-                type=vuln[1],
-                severity=vuln[4],
-                refs_link=vuln[-2],
-                refs_type=vuln[-1],
-            )
-            for ref_type, ref_link in zip(vuln.refs_type, vuln.refs_link):
-                if ref_type == CVE_ID_TYPE and ref_link in vulns:
-                    vulns[ref_link].append(vuln)
-
-        copy_vulns = self.package_vulns.copy()
-        for key, pkg in self.package_vulns.items():
-            pkg_vulns = []
-            for vuln in pkg.vulns:
-                if vuln.id in vulns:
-                    new_vulns = [
-                        new_vuln
-                        for new_vuln in vulns[vuln.id]
-                        if new_vuln not in pkg_vulns
-                    ]
-                    pkg_vulns += new_vulns
-            copy_vulns[key] = pkg._replace(vulns=pkg_vulns)
-
-            # filter packages if a vulnerability number is specified in the search input
-            if self.args.input and (
-                self.args.input.startswith(CVE_ID_PREFIX)
-                or self.args.input.startswith(BDU_ID_PREFIX)
-            ):
-                if not [
-                    el.id for el in copy_vulns[key].vulns if self.args.input in el.id
-                ]:
-                    del copy_vulns[key]
-        self.package_vulns = copy_vulns
-
-        self.status = True
-
-    def _get_pkg_images(self) -> None:
-        """
-        Get a list of images with the max version based on package hashes.
-        """
-        self.status = False
+    @rs.resultify_method
+    def _include_packages_images(
+        self,
+        package_vulns: dict[PackageBranchPair, PackageMeta],
+    ) -> list[PackageImagesMeta]:
         tmp_table = "pkgs_hashes"
         response = self.send_sql_request(
             self.sql.get_pkg_images.format(tmp_table=tmp_table),
             external_tables=[
                 {
                     "name": tmp_table,
-                    "structure": [
-                        ("pkg_hash", "UInt64"),
-                    ],
+                    "structure": [("pkg_hash", "UInt64")],
                     "data": [
-                        {"pkg_hash": el.pkghash} for el in self.package_vulns.values()
+                        {"pkg_hash": pkg.pkg_hash} for pkg in package_vulns.values()
                     ],
                 }
             ],
         )
         if not self.sql_status:
-            return None
+            raise Exception(self.error)
+
+        all_images: set[PackageImagesMeta] = set()
+
         if response:
-            for el in response:
-                key = PackageBranchPair(pkg_name=el[1], branch=el[2])
+            for pkg_srcrpm_hash, pkg_name, branch, tags in response:
+                key = PackageBranchPair(pkg_name=pkg_name, branch=branch)
                 if (
-                    key in self.package_vulns
-                    and self.package_vulns[key].pkghash == el[0]
+                    key in package_vulns
+                    and package_vulns[key].pkg_hash == pkg_srcrpm_hash
                 ):
-                    self.package_vulns[key] = self.package_vulns[key]._replace(
-                        images=[PackageImagesMeta(*img) for img in el[-1]]
+                    package_vulns[key].images.extend(
+                        PackageImagesMeta(
+                            tag=tag,
+                            file=file,
+                            show=show,
+                        )
+                        for tag, file, show in tags
                     )
-                    for img in self.package_vulns[key].images:
-                        if img._asdict() not in self.all_images:
-                            self.all_images.append(img._asdict())
-            self.all_images = sorted(self.all_images, key=lambda k: k["file"])
-        self.status = True
+                    all_images.update(package_vulns[key].images)
+
+        return sorted(all_images, key=lambda k: k.file)
 
     def get(self):
-        self._get_open_vulns()
-        if not self.status:
+        if (result := self._get_open_vulns()).is_err():
+            self.logger.debug("RESULT: %s", result)
             return self.error
 
-        # get related vulns for CVE
-        self._get_related_vulns()
-        if not self.status:
+        package_vulns, total_count = result.unwrap()
+
+        # include a list of images
+        if (result := self._include_packages_images(package_vulns)).is_err():
             return self.error
 
-        # get a list of images
-        self._get_pkg_images()
-        if not self.status:
-            return self.error
+        all_images = result.unwrap()
 
         if self.args.img:
             packages = [
-                el.asdict()
-                for el in self.package_vulns.values()
-                if el.vulns != []
-                and any(self.args.img == img.file for img in el.images)
+                pkg.asdict()
+                for pkg in package_vulns.values()
+                if pkg.vulns != []
+                and any(self.args.img == img.file for img in pkg.images)
             ]
         elif self.args.is_images:
             packages = [
-                el.asdict()
-                for el in self.package_vulns.values()
-                if el.vulns != [] and el.images != []
+                pkg.asdict()
+                for pkg in package_vulns.values()
+                if pkg.vulns != [] and pkg.images != []
             ]
         else:
             packages = [
-                el.asdict() for el in self.package_vulns.values() if el.vulns != []
+                pkg.asdict() for pkg in package_vulns.values() if pkg.vulns != []
             ]
+
         if not packages:
             return self.store_error(
-                {
-                    "message": "No packages with open vulnerabilities found",
-                    "args": self.args._asdict(),
-                }
+                {"message": "No packages with open vulnerabilities found"}
             )
-        if self.args.sort:
-            packages = rich_sort(packages, self.args.sort)
-
-        paginator = Paginator(packages, self.args.limit)
-        page_obj = paginator.get_page(self.args.page)
-
-        res: dict[str, Any] = {
-            "request_args": self.args._asdict(),
-            "length": len(page_obj),
-            "packages": page_obj,
-            "images": self.all_images,
-        }
 
         return (
-            res,
+            {
+                "request_args": self.args._asdict(),
+                "length": total_count,
+                "packages": packages,
+                "images": [img._asdict() for img in all_images],
+            },
             200,
             {
                 "Access-Control-Expose-Headers": "X-Total-Count",
-                "X-Total-Count": int(paginator.count),
+                "X-Total-Count": total_count,
             },
         )
 
