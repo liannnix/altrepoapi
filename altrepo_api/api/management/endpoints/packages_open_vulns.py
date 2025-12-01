@@ -269,7 +269,6 @@ class PackagesOpenVulns(APIWorker):
 
     def get(self):
         if (result := self._get_open_vulns()).is_err():
-            self.logger.debug("RESULT: %s", result)
             return self.error
 
         package_vulns, total_count = result.unwrap()
