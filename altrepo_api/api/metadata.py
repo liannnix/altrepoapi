@@ -17,7 +17,7 @@
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from logging import Logger
-from typing import Any, Union
+from typing import Any
 
 from flask import g
 from flask_restx import Model, Namespace, OrderedModel, Resource, fields
@@ -42,6 +42,7 @@ class KnownFilterTypes(str, Enum):
     Enum class representing known filter types for metadata.
     """
 
+    AUTOCOMPLETE = "autocomplete"
     STRING = "string"
     NUMBER = "number"
     CHOICE = "choice"
@@ -58,12 +59,21 @@ class MetadataChoiceItem:
 
 
 @dataclass
+class MetadataAutocompleteItem:
+    endpoint: str
+    data_path: str
+    search_param: str | None = None
+    pagination: bool | None = False
+
+
+@dataclass
 class MetadataItem:
     name: str
     label: str
     help_text: str
     type: KnownFilterTypes
     choices: list[MetadataChoiceItem] = field(default_factory=list)
+    autocomplete: MetadataAutocompleteItem | None = None
 
     def asdict(self) -> dict[str, Any]:
         res = asdict(self)
@@ -71,7 +81,7 @@ class MetadataItem:
         return res
 
 
-def _build_serializer(ns: Namespace) -> Union[Model, OrderedModel]:
+def _build_serializer(ns: Namespace) -> Model | OrderedModel:
     """
     Constructs the serializer model for metadata responses.
     """
@@ -84,6 +94,25 @@ def _build_serializer(ns: Namespace) -> Union[Model, OrderedModel]:
             "display_name": fields.String(
                 description="the human-readable display name for the choice",
                 required=True,
+            ),
+        },
+    )
+    metadata_autocomplete_model = ns.model(
+        "MetadataDynamicChoiceModel",
+        {
+            "endpoint": fields.String(
+                description="API endpoint to fetch choices from",
+                required=True,
+            ),
+            "data_path": fields.String(
+                description="JSONPath-like path to data in response", required=True
+            ),
+            "search_param": fields.String(
+                description="Query parameter name for search text"
+            ),
+            "pagination": fields.Boolean(
+                description="Whether the endpoint supports pagination",
+                default=False,
             ),
         },
     )
@@ -111,7 +140,10 @@ def _build_serializer(ns: Namespace) -> Union[Model, OrderedModel]:
                     "list of available options for fields with predefined choices"
                 ),
                 as_list=True,
-                required=True,
+            ),
+            "autocomplete": fields.Nested(
+                metadata_autocomplete_model,
+                description="Configuration for autocomplete filter",
             ),
         },
     )
