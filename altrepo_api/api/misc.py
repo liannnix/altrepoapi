@@ -532,6 +532,7 @@ class LookupTables:
     default_reason_source_type_cpe = "cpe"
     default_reason_source_type_comment = "comment"
     default_reason_source_type_pnc = "pnc"
+    default_reason_source_type_vuln_status = "vuln_status"
 
     default_reason_source_types = (
         errata_ref_type_vuln,
@@ -541,6 +542,7 @@ class LookupTables:
         default_reason_source_type_cpe,
         default_reason_source_type_exclusion,
         default_reason_source_type_comment,
+        default_reason_source_type_vuln_status,
     )
 
     vuln_status_statuses = ("new", "analyzing", "working", "resolved")
