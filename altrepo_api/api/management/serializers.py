@@ -1512,3 +1512,14 @@ errata_user_tracking_model = ns.model(
         ),
     },
 )
+
+image_list_model = ns.model(
+    "ImageListModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "images": fields.List(
+            fields.String,
+            description="image list",
+        ),
+    },
+)

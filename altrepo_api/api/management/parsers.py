@@ -639,3 +639,4 @@ errata_user_tracking_args = parser.build_parser(
     sort_opt,
 )
 errata_entity_subscriptions_args = parser.build_parser(entity_name)
+image_list_args = parser.build_parser(image_opt, limit_opt, page_opt)

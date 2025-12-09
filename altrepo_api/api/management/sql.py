@@ -2065,5 +2065,15 @@ FROM (
 {page_clause}
 """
 
+    get_img_files_list = """
+    SELECT DISTINCT 
+        img_file, 
+        count(1) OVER() AS total_count
+    FROM lv_all_image_packages
+    {where_clause}
+    {limit_clause}
+    {page_clause}
+    """
+
 
 sql = SQL()

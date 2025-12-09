@@ -88,6 +88,7 @@ from .endpoints.errata_user import (
 )
 from .endpoints.errata_user_tracking import ErrataUserTracking
 from .endpoints.packages_open_vulns import (
+    PackagesImageList,
     PackagesMaintainerList,
     PackagesOpenVulns,
     PackagesSupportedBranches,
@@ -131,6 +132,7 @@ from .parsers import (
     errata_user_subscriptions_args,
     errata_user_tracking_args,
     errata_entity_subscriptions_args,
+    image_list_args,
 )
 from .serializers import (
     change_history_response_model,
@@ -179,6 +181,7 @@ from .serializers import (
     errata_user_subscription_model,
     errata_user_subscriptions_model,
     errata_user_tracking_model,
+    image_list_model,
 )
 
 ns = get_namespace()
@@ -871,6 +874,25 @@ class routePackagesUnmapped(Resource):
         url_logging(logger, g.url)
         args = pkgs_unmapped_args.parse_args(strict=True)
         w = PackagesUnmapped(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/packages/image_list",
+    doc={
+        "description": "Get a list of all images.",
+        "responses": GET_RESPONSES_400_404,
+        "security": "Bearer",
+    },
+)
+class routePackagesImageList(Resource):
+    @ns.expect(image_list_args)
+    @ns.marshal_with(image_list_model)
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
+    def get(self):
+        url_logging(logger, g.url)
+        args = image_list_args.parse_args(strict=True)
+        w = PackagesImageList(g.connection, **args)
         return run_worker(worker=w, args=args)
 
 

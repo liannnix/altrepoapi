@@ -372,3 +372,71 @@ class PackagesMaintainerList(APIWorker):
                 "X-Total-Count": int(paginator.count),
             },
         )
+
+
+class PackagesImageListArgs(NamedTuple):
+    img: str | None
+    limit: int | None
+    page: int | None
+
+
+class PackagesImageList(APIWorker):
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.kwargs = kwargs
+        self.sql = sql
+        self.args: PackagesImageListArgs
+        super().__init__()
+
+    def check_params(self) -> bool:
+        self.args = PackagesImageListArgs(**self.kwargs)
+        self.logger.info("GET args: %s", self.args)
+        return True
+
+    @property
+    def _where_clause(self):
+        if self.args.img:
+            return f"WHERE img_file ILIKE '%{self.args.img}%'"
+        return ""
+
+    @property
+    def _limit_clause(self):
+        if self.args.limit:
+            return f"LIMIT {self.args.limit}"
+        return ""
+
+    @property
+    def _page_clause(self):
+        if self.args.limit and self.args.page:
+            page = self.args.page
+            per_page = self.args.limit
+            offset = (page - 1) * per_page
+            return f"OFFSET {offset}"
+        return ""
+
+    def get(self):
+        response = self.send_sql_request(
+            self.sql.get_img_files_list.format(
+                where_clause=self._where_clause,
+                limit_clause=self._limit_clause,
+                page_clause=self._page_clause,
+            )
+        )
+
+        if not self.sql_status:
+            return self.error
+
+        if not response:
+            return self.store_error({"message": "No images found"})
+
+        return (
+            {
+                "request_args": self.args._asdict(),
+                "images": [img_file for (img_file, _) in response],
+            },
+            200,
+            {
+                "Access-Control-Expose-Headers": "X-Total-Count",
+                "X-Total-Count": response[0][-1],
+            },
+        )
