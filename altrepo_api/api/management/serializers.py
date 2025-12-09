@@ -543,7 +543,6 @@ maintainer_list_model = ns.model(
     "MaintainerListModel",
     {
         "request_args": fields.Raw(description="request arguments"),
-        "length": fields.Integer(description="number of maintainers found"),
         "maintainers": fields.Nested(
             maintainer_list_el_model,
             description="maintainers list",

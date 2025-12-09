@@ -19,7 +19,6 @@ from typing import Any, Iterable, NamedTuple, Union
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.libs.errata_server import rusty as rs
-from altrepo_api.libs.pagination import Paginator
 from altrepo_api.utils import sort_branches
 
 from ..sql import sql
@@ -334,19 +333,61 @@ class PackagesSupportedBranches(APIWorker):
         return res, 200
 
 
+class PackagesMaintainerListArgs(NamedTuple):
+    branch: str | None
+    maintainer_nickname: str | None
+    limit: int | None
+    page: int | None
+
+
 class PackagesMaintainerList(APIWorker):
     def __init__(self, connection, **kwargs):
         self.conn = connection
-        self.args = kwargs
+        self.kwargs = kwargs
         self.sql = sql
+        self.args: PackagesMaintainerListArgs
         super().__init__()
 
+    def check_params(self) -> bool:
+        self.args = PackagesMaintainerListArgs(**self.kwargs)
+        self.logger.info("GET args: %s", self.args)
+        return True
+
+    @property
+    def _branch_clause(self):
+        if self.args.branch:
+            return f"AND pkgset_name = '{self.args.branch}'"
+        return ""
+
+    @property
+    def _nickname_clause(self):
+        if self.args.maintainer_nickname:
+            return f"AND packager_nick ILIKE '%{self.args.maintainer_nickname}%'"
+        return ""
+
+    @property
+    def _limit(self):
+        if self.args.limit:
+            return f"LIMIT {self.args.limit}"
+        return ""
+
+    @property
+    def _page(self):
+        if self.args.limit and self.args.page:
+            page = self.args.page
+            per_page = self.args.limit
+            offset = (page - 1) * per_page
+            return f"OFFSET {offset}"
+        return ""
+
     def get(self):
-        branch_clause = (
-            f"AND pkgset_name = '{self.args['branch']}'" if self.args["branch"] else ""
-        )
         response = self.send_sql_request(
-            self.sql.get_all_maintainers.format(branch=branch_clause)
+            self.sql.get_all_maintainers.format(
+                branch=self._branch_clause,
+                nickname=self._nickname_clause,
+                limit=self._limit,
+                page=self._page,
+            )
         )
         if not self.sql_status:
             return self.error
@@ -356,20 +397,15 @@ class PackagesMaintainerList(APIWorker):
             )
         maintainers = [{"name": el[0], "nickname": el[1]} for el in response]
 
-        paginator = Paginator(maintainers, self.args["limit"])
-        page_obj = paginator.get_page(self.args["page"])
-
-        res: dict[str, Any] = {
-            "request_args": self.args,
-            "length": len(page_obj),
-            "maintainers": page_obj,
-        }
         return (
-            res,
+            {
+                "request_args": self.args._asdict(),
+                "maintainers": maintainers,
+            },
             200,
             {
                 "Access-Control-Expose-Headers": "X-Total-Count",
-                "X-Total-Count": int(paginator.count),
+                "X-Total-Count": response[0][-1],
             },
         )
 

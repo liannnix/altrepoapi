@@ -45,7 +45,7 @@ WHERE BR.end_date > today()
 SELECT
     argMax(pkg_packager, cnt) AS name,
     argMax(packager_nick, cnt) AS nick,
-    sum(cnt) AS count
+    count() OVER() AS total_count
 FROM
 (
     SELECT DISTINCT
@@ -55,11 +55,14 @@ FROM
     FROM last_packages
     WHERE pkg_sourcepackage = 1
     {branch}
+    {nickname}
     GROUP BY
         pkg_packager,
         packager_nick
 )
 GROUP BY packager_nick ORDER BY lower(name)
+{limit}
+{page}
 """
 
     get_task_list = """
