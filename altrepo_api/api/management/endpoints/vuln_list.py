@@ -181,10 +181,13 @@ class VulnList(APIWorker):
             )
 
         if self.args.status:
+            if self.args.status == "new":
+                status_filter = f"(VULNS.status = 'new' OR VULNS.status = '')"
+            else:
+                status_filter = f"VULNS.status = '{self.args.status}'"
+
             where_clause += (
-                f" AND VULNS.status = '{self.args.status}'"
-                if where_clause
-                else f"WHERE VULNS.status =  '{self.args.status}'"
+                f" AND {status_filter}" if where_clause else f"WHERE {status_filter}"
             )
 
         if self.args.resolution:
