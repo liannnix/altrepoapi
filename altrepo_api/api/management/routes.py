@@ -799,6 +799,7 @@ class routeManageCpe(Resource):
         )
 
 
+@with_metadata(PackagesOpenVulns, ns, logger, require_auth=True)
 @ns.route(
     "/packages/open_vulns",
     doc={

@@ -17,11 +17,18 @@
 from datetime import datetime
 from typing import Any, Iterable, NamedTuple, Union
 
-from altrepo_api.api.base import APIWorker
+from altrepo_api.api.base import APIWorker, WorkerResult
+from altrepo_api.api.metadata import (
+    KnownFilterTypes,
+    MetadataAutocompleteItem,
+    MetadataChoiceItem,
+    MetadataItem,
+)
 from altrepo_api.libs.errata_server import rusty as rs
 from altrepo_api.utils import sort_branches
 
 from ..sql import sql
+from ..parsers import pkgs_open_vulns_args
 from .tools.constants import BDU_ID_TYPE, GHSA_ID_TYPE
 from .vuln_list import is_any_vuln_id
 
@@ -314,6 +321,76 @@ class PackagesOpenVulns(APIWorker):
                 "X-Total-Count": total_count,
             },
         )
+
+    def metadata(self) -> WorkerResult:
+        metadata = []
+        for arg in pkgs_open_vulns_args.args:
+            item_info = {
+                "name": arg.name,
+                "label": arg.name.replace("_", " ").capitalize(),
+                "help_text": arg.help,
+            }
+
+            if arg.name in ("by_acl", "severity"):
+                metadata.append(
+                    MetadataItem(
+                        **item_info,
+                        type=KnownFilterTypes.CHOICE,
+                        choices=[
+                            MetadataChoiceItem(
+                                value=choice,
+                                display_name=choice.replace("_", " ").capitalize(),
+                            )
+                            for choice in arg.choices
+                        ],
+                    )
+                )
+
+            if arg.name == "maintainer_nickname":
+                metadata.append(
+                    MetadataItem(
+                        **item_info,
+                        type=KnownFilterTypes.AUTOCOMPLETE,
+                        autocomplete=MetadataAutocompleteItem(
+                            endpoint="/packages/maintainer_list",
+                            data_path="$.maintainers[*].nickname",
+                            search_param="maintainer_nickname",
+                            pagination=False,
+                        ),
+                    )
+                )
+
+            if arg.name == "branch":
+                metadata.append(
+                    MetadataItem(
+                        **item_info,
+                        type=KnownFilterTypes.AUTOCOMPLETE,
+                        autocomplete=MetadataAutocompleteItem(
+                            endpoint="/packages/supported_branches",
+                            data_path="$.branches[*]",
+                            pagination=False,
+                        ),
+                    )
+                )
+
+            if arg.name == "img":
+                metadata.append(
+                    MetadataItem(
+                        **item_info,
+                        type=KnownFilterTypes.AUTOCOMPLETE,
+                        autocomplete=MetadataAutocompleteItem(
+                            endpoint="/packages/image_list",
+                            search_param="img",
+                            data_path="$.images[*]",
+                            pagination=True,
+                        ),
+                    )
+                )
+
+        return {
+            "length": len(metadata),
+            "metadata": [el.asdict() for el in metadata],
+        }, 200
 
 
 class PackagesSupportedBranches(APIWorker):
