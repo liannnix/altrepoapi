@@ -60,7 +60,8 @@ FROM
         pkg_packager,
         packager_nick
 )
-GROUP BY packager_nick ORDER BY lower(name)
+GROUP BY packager_nick
+ORDER BY lower(name)
 {limit}
 {page}
 """
@@ -2069,14 +2070,15 @@ FROM (
 """
 
     get_img_files_list = """
-    SELECT DISTINCT 
-        img_file, 
-        count(1) OVER() AS total_count
-    FROM lv_all_image_packages
-    {where_clause}
-    {limit_clause}
-    {page_clause}
-    """
+SELECT DISTINCT
+    img_file,
+    count(1) OVER() AS total_count
+FROM lv_all_image_packages
+{where_clause}
+ORDER BY img_file
+{limit_clause}
+{page_clause}
+"""
 
 
 sql = SQL()
