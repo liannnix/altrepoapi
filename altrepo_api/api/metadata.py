@@ -24,17 +24,7 @@ from flask_restx import Model, Namespace, OrderedModel, Resource, fields
 
 from .auth.decorators import token_required
 from .base import GET_RESPONSES_404, APIWorker, run_worker
-from ..settings import namespace as settings
 from ..utils import url_logging
-
-
-# allow access to metadata for all registered users
-METADATA_AUTH_LDAP_GROUPS = [
-    settings.AG.API_ADMIN,
-    settings.AG.API_USER,
-    settings.AG.CVE_ADMIN,
-    settings.AG.CVE_USER,
-]
 
 
 class KnownFilterTypes(str, Enum):
