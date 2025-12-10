@@ -182,7 +182,7 @@ class VulnList(APIWorker):
 
         if self.args.status:
             if self.args.status == "new":
-                status_filter = f"(VULNS.status = 'new' OR VULNS.status = '')"
+                status_filter = "(VULNS.status = 'new' OR VULNS.status = '')"
             else:
                 status_filter = f"VULNS.status = '{self.args.status}'"
 
