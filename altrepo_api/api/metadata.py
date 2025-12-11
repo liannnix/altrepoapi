@@ -37,6 +37,7 @@ class KnownFilterTypes(str, Enum):
     NUMBER = "number"
     CHOICE = "choice"
     MULTIPLE_CHOICE = "multiple_choice"
+    NESTED_CHOICE = "nested_choice"
     DATE = "date"
     DATE_RANGE = "date_range"
     BOOLEAN = "boolean"
@@ -46,6 +47,10 @@ class KnownFilterTypes(str, Enum):
 class MetadataChoiceItem:
     value: str
     display_name: str
+    name: str | None = None
+    label: str | None = None
+    help_text: str | None = None
+    choices: list["MetadataChoiceItem"] | None = None
 
 
 @dataclass
@@ -85,8 +90,26 @@ def _build_serializer(ns: Namespace) -> Model | OrderedModel:
                 description="the human-readable display name for the choice",
                 required=True,
             ),
+            "name": fields.String(
+                description="Parameter name (if different from parent`s)",
+                required=False,
+            ),
+            "label": fields.String(
+                description="the user-friendly label for the field (if different from parent`s)",
+                required=False,
+            ),
+            "help_text": fields.String(
+                description="help text or description explaining the field (if different from parent`s)",
+                required=False,
+            ),
         },
     )
+    metadata_choice_model["choices"] = fields.List(
+        fields.Nested(metadata_choice_model),
+        required=False,
+        description="Nested choice item",
+    )
+
     metadata_autocomplete_model = ns.model(
         "MetadataDynamicChoiceModel",
         {
