@@ -545,7 +545,17 @@ class LookupTables:
         default_reason_source_type_vuln_status,
     )
 
-    vuln_status_statuses = ("new", "analyzing", "working", "resolved")
+    vuln_status_new = "new"
+    vuln_status_analyzing = "analyzing"
+    vuln_status_working = "working"
+    vuln_status_resolved = "resolved"
+
+    vuln_status_statuses = (
+        vuln_status_new,
+        vuln_status_analyzing,
+        vuln_status_working,
+        vuln_status_resolved,
+    )
     vuln_status_resolutions = ("not_for_us", "not_affected", "wont_fix", "our")
     vuln_status_json_fields = ("note", "project_name", "cpes")
 

@@ -31,6 +31,7 @@ from .tools.constants import (
 from .tools.utils import make_date_condition
 from ..parsers import vuln_list_args
 from ..sql import sql
+from ...misc import lut
 
 
 class VulnListArgs(NamedTuple):
@@ -416,7 +417,7 @@ class VulnList(APIWorker):
                     )
                 )
 
-            if arg.name in ("severity", "status", "type"):
+            if arg.name in ("severity", "type"):
                 metadata.append(
                     MetadataItem(
                         **item_info,
@@ -430,21 +431,42 @@ class VulnList(APIWorker):
                     )
                 )
 
-            if arg.name == "resolution":
+            if arg.name == "status":
                 metadata.append(
                     MetadataItem(
                         **item_info,
-                        type=KnownFilterTypes.CHOICE,
+                        type=KnownFilterTypes.NESTED_CHOICE,
                         choices=[
                             MetadataChoiceItem(
-                                value=resolution,
-                                display_name=(
-                                    resolution.replace("wont", "won't")
-                                    .replace("_", " ")
-                                    .capitalize()
-                                ),
-                            )
-                            for resolution in arg.choices
+                                value=lut.vuln_status_new,
+                                display_name=lut.vuln_status_new.capitalize(),
+                            ),
+                            MetadataChoiceItem(
+                                value=lut.vuln_status_analyzing,
+                                display_name=lut.vuln_status_analyzing.capitalize(),
+                            ),
+                            MetadataChoiceItem(
+                                value=lut.vuln_status_working,
+                                display_name=lut.vuln_status_working.capitalize(),
+                            ),
+                            MetadataChoiceItem(
+                                value=lut.vuln_status_resolved,
+                                display_name=lut.vuln_status_resolved.capitalize(),
+                                choices=[
+                                    MetadataChoiceItem(
+                                        value=resolution,
+                                        display_name=(
+                                            resolution.replace("wont", "won't")
+                                            .replace("_", " ")
+                                            .capitalize()
+                                        ),
+                                        name="resolution",
+                                        label="Resolution",
+                                        help_text="Vulnerability resolution",
+                                    )
+                                    for resolution in lut.vuln_status_resolutions
+                                ],
+                            ),
                         ],
                     )
                 )
