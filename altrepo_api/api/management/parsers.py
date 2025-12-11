@@ -24,6 +24,7 @@ from altrepo_api.api.parser import (
     errata_search_type,
     open_vulns_search_type,
     pkg_name_type,
+    packager_name_type,
     packager_nick_type,
     positive_integer_type,
     project_name_type,
@@ -442,7 +443,7 @@ vuln_status_resolution_opt = parser.register_item(
 )
 user_name_input = parser.register_item(
     "input",
-    type=packager_nick_type,
+    type=packager_name_type,
     required=True,
     help="User name input",
     location="args",
@@ -458,14 +459,14 @@ vuln_type_opt = parser.register_item(
 
 user_name = parser.register_item(
     "name",
-    type=packager_nick_type,
+    type=packager_name_type,
     required=True,
     help="User name",
     location="args",
 )
 user_name_opt = parser.register_item(
     "name",
-    type=packager_nick_type,
+    type=packager_name_type,
     required=False,
     help="User name",
     location="args",

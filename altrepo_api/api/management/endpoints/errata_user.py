@@ -158,18 +158,6 @@ class ErrataUserInfo(APIWorker):
         self.sql = sql
         super().__init__()
 
-    def check_params(self) -> bool:
-        self.logger.debug("args: %s", self.kwargs)
-
-        user_name = self.kwargs["name"]
-
-        try:
-            packager_nick_type(user_name)
-        except ValueError:
-            self.validation_results.append(f"Invalid nickname: {user_name}")
-
-        return self.validation_results == []
-
     def get(self) -> WorkerResult:
         response = self.send_sql_request(
             self.sql.get_errata_user.format(user=self.kwargs["name"])
@@ -229,18 +217,6 @@ class ErrataUserLastActivities(APIWorker):
         self.kwargs = kwargs
         self.sql = sql
         super().__init__()
-
-    def check_params(self) -> bool:
-        self.logger.debug("args: %s", self.kwargs)
-
-        user_name = self.kwargs["name"]
-
-        try:
-            packager_nick_type(user_name)
-        except ValueError:
-            self.validation_results.append(f"Invalid nickname: {user_name}")
-
-        return self.validation_results == []
 
     def get(self) -> WorkerResult:
         response = self.send_sql_request(
@@ -350,18 +326,6 @@ class ErrataUserSubscriptions(APIWorker):
         self.payload = payload
         self.sql = sql
         super().__init__()
-
-    def check_params(self) -> bool:
-        self.logger.debug("payload: %s", self.payload)
-
-        user_name = self.payload["name"]
-
-        try:
-            packager_nick_type(user_name)
-        except ValueError:
-            self.validation_results.append(f"Invalid nickname: {user_name}")
-
-        return self.validation_results == []
 
     def get(self) -> WorkerResult:
         response = self.send_sql_request(

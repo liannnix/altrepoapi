@@ -54,12 +54,7 @@ class ErrataUserTracking(APIWorker):
         self.args = ErrataUserTrackingArgs(**self.kwargs)
         self.logger.debug("args: %s", self.args)
 
-        try:
-            packager_nick_type(self.args.name)
-        except ValueError:
-            self.validation_results.append(f"Invalid nickname: {self.args.name}")
-
-        return self.validation_results == []
+        return True
 
     def _only_manual_ec_clause(self) -> str:
         if self.args.manual_errata_changes:
