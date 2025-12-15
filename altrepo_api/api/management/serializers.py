@@ -696,9 +696,6 @@ vuln_list_model = ns.model(
     "VulnerabilityListModel",
     {
         "request_args": fields.Raw(description="request arguments"),
-        "length": fields.Integer(
-            description="number of vulnerabilities found on the page"
-        ),
         "vulns": fields.Nested(
             vuln_list_el_model, description="list of vulnerability", as_list=True
         ),
