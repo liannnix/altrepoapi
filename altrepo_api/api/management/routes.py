@@ -102,6 +102,7 @@ from .endpoints.vuln_list import VulnList
 from .endpoints.vulns_info import VulnsInfo
 from .endpoints.vuln_status import VulnStatus
 from .endpoints.vuln_status_list import VulnStatusList
+from .endpoints.vuln_status_history import VulnStatusHistory
 from .namespace import get_namespace
 from .parsers import (
     change_history_args,
@@ -124,6 +125,7 @@ from .parsers import (
     vuln_list_args,
     default_reasons_list_args,
     vuln_status_list_args,
+    vuln_status_history_args,
     vuln_status_manage_args,
     errata_user_tag_args,
     errata_user_info_args,
@@ -174,6 +176,7 @@ from .serializers import (
     vuln_status_manage_create_model,
     vuln_status_list_response_model,
     vuln_status_response_model,
+    vuln_status_history_model,
     errata_user_info_model,
     errata_user_tag_model,
     errata_user_last_activities_model,
@@ -1271,6 +1274,27 @@ class routeManageVulnStatusList(Resource):
         args = vuln_status_list_args.parse_args(strict=True)
         w = VulnStatusList(g.connection, **args)
         return run_worker(worker=w)
+
+
+@ns.route("/vuln_status/history")
+class routeVulnStatusHistory(Resource):
+    @ns.doc(
+        description="Get history of vulnerability status",
+        responses=GET_RESPONSES_400_404,
+        security="Bearer",
+    )
+    @ns.expect(vuln_status_history_args)
+    @ns.marshal_with(vuln_status_history_model)
+    @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
+    def get(self):
+        url_logging(logger, g.url)
+        args = vuln_status_history_args.parse_args(strict=True)
+        w = VulnStatusHistory(g.connection, args=args)
+        return run_worker(
+            worker=w,
+            run_method=w.get,
+            check_method=w.check_params_get,
+        )
 
 
 @ns.route("/vuln_status/manage")

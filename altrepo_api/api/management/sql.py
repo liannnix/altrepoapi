@@ -1498,6 +1498,12 @@ GROUP BY vuln_id
 {page_clause}
 """
 
+    vuln_status_history = """
+SELECT * FROM VulnerabilityStatus
+WHERE vuln_id = '{vuln_id}'
+ORDER BY vs_updated DESC
+"""
+
     get_errata_user = """
 SELECT
     user,

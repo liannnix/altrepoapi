@@ -1237,6 +1237,18 @@ vuln_status_list_response_model = ns.model(
         ),
     },
 )
+vuln_status_history_model = ns.model(
+    "VulnStatusHistoryModel",
+    {
+        "vuln_id": fields.String(description="Vulnerability ID"),
+        "history": fields.Nested(
+            vuln_status_response_model,
+            description="History of vulnerabilities statuses",
+            as_list=True,
+            required=True,
+        ),
+    },
+)
 
 errata_user_info_model = ns.model(
     "ErrataUserInfoModel",
