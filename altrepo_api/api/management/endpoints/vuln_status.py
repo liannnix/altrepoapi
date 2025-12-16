@@ -229,17 +229,12 @@ class VulnStatus(APIWorker):
                     http_code=409,
                 )
 
-            if (
-                status_order[old_vuln_status.vs_status]
-                < status_order[new_vuln_status.vs_status]
-            ):
-                if (
-                    (old_vuln_status.vs_subscribers == new_vuln_status.vs_subscribers)
-                    and new_vuln_status.vs_author not in new_vuln_status.vs_subscribers
-                ):
+            for attr in VulnerabilityStatus._fields:
+                if getattr(old_vuln_status, attr) != getattr(new_vuln_status, attr):
                     new_vuln_status.vs_subscribers.append(new_vuln_status.vs_author)
+                    break
 
-            elif (
+            if (
                 status_order[old_vuln_status.vs_status]
                 > status_order[new_vuln_status.vs_status]
             ):
