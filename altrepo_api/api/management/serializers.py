@@ -1183,6 +1183,10 @@ vuln_status_response_model = ns.model(
 vuln_status_manage_create_model = ns.model(
     "VulnStatusManageCreateModel",
     {
+        "vuln_id": fields.String(
+            description="Vulnerability ID",
+            required=True,
+        ),
         "author": fields.String(
             description="Vulnerability status author",
             required=True,

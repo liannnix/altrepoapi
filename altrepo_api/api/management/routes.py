@@ -124,6 +124,7 @@ from .parsers import (
     vuln_list_args,
     default_reasons_list_args,
     vuln_status_list_args,
+    vuln_status_manage_args,
     errata_user_tag_args,
     errata_user_info_args,
     errata_user_last_activities_args,
@@ -1272,25 +1273,20 @@ class routeManageVulnStatusList(Resource):
         return run_worker(worker=w)
 
 
-@ns.route("/vuln_status/manage/<string:vuln_id>")
+@ns.route("/vuln_status/manage")
 class routeManageVulnStatus(Resource):
     @ns.doc(
-        params={"vuln_id": "Vulnerability ID"},
         description="Get info for vulnerability status",
         responses=GET_RESPONSES_400_404,
         security="Bearer",
     )
+    @ns.expect(vuln_status_manage_args)
     @ns.marshal_with(vuln_status_response_model)
     @token_required(settings.KEYCLOAK_MANAGE_LIST_ROLE)
-    def get(self, vuln_id: str):
+    def get(self):
         url_logging(logger, g.url)
-        w = VulnStatus(g.connection, vuln_id)
-        if not w._check_vuln_id():
-            ns.abort(
-                400,
-                message=f"Invalid vulnerability ID: '{vuln_id}'",
-                vuln_id=vuln_id,
-            )
+        args = vuln_status_manage_args.parse_args(strict=True)
+        w = VulnStatus(g.connection, args=args)
         return run_worker(
             worker=w,
             run_method=w.get,
@@ -1298,7 +1294,6 @@ class routeManageVulnStatus(Resource):
         )
 
     @ns.doc(
-        params={"vuln_id": "Vulnerability ID"},
         description="Create or update a new vulnerability status",
         responses=RESPONSES_400_404_409 | {201: "Created"},
         security="Bearer",
@@ -1306,15 +1301,9 @@ class routeManageVulnStatus(Resource):
     @ns.expect(vuln_status_manage_create_model)
     @ns.marshal_with(vuln_status_response_model)
     @token_required("vuln_status_create")
-    def post(self, vuln_id: str):
+    def post(self):
         url_logging(logger, g.url)
-        w = VulnStatus(g.connection, vuln_id, payload=ns.payload)
-        if not w._check_vuln_id():
-            ns.abort(
-                400,
-                message=f"Invalid vulnerability ID: '{vuln_id}'",
-                vuln_id=vuln_id,
-            )
+        w = VulnStatus(g.connection, payload=ns.payload)
         return run_worker(
             worker=w,
             run_method=w.post,
