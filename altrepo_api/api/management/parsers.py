@@ -85,7 +85,6 @@ errata_id = parser.register_item(
 is_errata_opt = parser.register_item(
     "is_errata",
     type=inputs.boolean,
-    default=False,
     required=False,
     help="is errata",
     location="args",
@@ -452,7 +451,7 @@ vuln_type_opt = parser.register_item(
     "type",
     type=str,
     required=False,
-    choices=("all", *lut.vuln_types),
+    choices=lut.vuln_types,
     help="Vulnerability type: " + ", ".join(lut.vuln_types),
     location="args",
 )
@@ -534,6 +533,15 @@ subscribed_end_date = parser.register_item(
 entity_name = parser.register_item(
     "input", type=errata_search_type, required=True, help="Entity name", location="args"
 )
+vuln_sort_opt = parser.register_item(
+    "sort",
+    type=sort_type,
+    action="split",
+    required=False,
+    default=["-modified"],
+    help="Vulnerability list sort arguments",
+    location="args",
+)
 
 task_list_args = parser.build_parser(
     task_input_val_opt,
@@ -583,7 +591,7 @@ vuln_list_args = parser.build_parser(
     vuln_our_opt,
     page_opt,
     limit_opt,
-    sort_opt,
+    vuln_sort_opt,
     vuln_modified_start_date_opt,
     vuln_modified_end_date_opt,
     vuln_published_start_date_opt,

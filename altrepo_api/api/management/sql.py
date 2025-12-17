@@ -1246,10 +1246,21 @@ ORDER BY pkg_name
 """
 
     get_vuln_list = """
-SELECT VULNS.*, count() OVER() AS total_count
+SELECT
+    vuln_id,
+    severity,
+    status,
+    resolution,
+    summary,
+    modified,
+    published,
+    errata_ids,
+    cpes,
+    our,
+    count() OVER () AS total_count
 FROM (
     SELECT
-        vulns.vuln_id as vuln_id,
+        vulns.vuln_id,
         argMax(vulns.vuln_severity, vulns.ts) AS severity,
         argMax(vs.vs_status, vs.ts) AS status,
         argMax(vs.vs_resolution, vs.ts) AS resolution,
@@ -1258,67 +1269,45 @@ FROM (
         argMax(vulns.vuln_published_date, vulns.ts) AS published
     FROM Vulnerabilities AS vulns
     LEFT JOIN VulnerabilityStatus AS vs ON vulns.vuln_id = vs.vuln_id
+    {where_vuln_input}
     GROUP BY vulns.vuln_id
-) AS VULNS
-{where_clause} {where_clause2}
-GROUP BY vuln_id, severity, summary, modified, published, status, resolution
-{order_by}
-{limit} {page}
-"""
-
-    get_erratas_vuln = """
-WITH cve_match AS (
-    SELECT cpm_cpe FROM (
-        SELECT cpm_cpe,
-               argMax(is_vulnerable, ts) AS is_vulnerable,
-               argMax(vuln_hash, ts) AS vuln_hash
-        FROM PackagesCveMatch
-        GROUP BY cpm_cpe
-    )
-)
-SELECT vuln_id, errata_ids, cpes, arrayExists(x -> (x in cve_match), cpes) as our
-FROM (
-    SELECT vuln_id,
-           ERR.errata_ids as errata_ids,
-           groupUniqArray(cpm_cpe) as cpes
-    FROM CpeMatch
+    {having_vulns}
+) AS base_vulns
+LEFT JOIN (
+    SELECT
+        cm.vuln_id as vuln_id,
+        arrayFilter(
+            t -> t.1 != '' AND t.1 IS NOT NULL,
+            groupUniqArray((eh.errata_id, eh.task_state))
+        ) AS errata_ids,
+        groupUniqArray(cm.cpm_cpe) AS cpes,
+        max(p.cpm_cpe_hash IS NOT NULL) AS our
+    FROM CpeMatch AS cm
     LEFT JOIN (
-        SELECT vuln_id,
-               groupUniqArray((errata_id, task_state)) AS errata_ids
-        FROM (
+        SELECT DISTINCT cpm_cpe_hash FROM PackagesCveMatch
+    ) AS p ON cm.cpe_hash = p.cpm_cpe_hash
+    LEFT JOIN (
+        SELECT
+            errata_id,
+            task_state,
+            arrayJoin(`eh_references.link`) AS vuln_id
+        FROM ErrataHistory
+        WHERE (errata_id, eh_updated) IN (
             SELECT
-                errata_id,
-                task_state,
-                arrayJoin(links) AS vuln_id
-            FROM
-            (
-                SELECT errata_id,
-                       task_state,
-                       `eh_references.link` as links
-                FROM ErrataHistory
-                WHERE (errata_id, eh_updated) IN (
-                SELECT
-                    eid, updated
-                FROM (
-                    SELECT
-                        errata_id_noversion,
-                        argMax(errata_id, eh_updated) AS eid,
-                        max(eh_updated) AS updated
-                    FROM ErrataHistory
-                    WHERE eh_type IN ('branch', 'task')
-                    GROUP BY errata_id_noversion
-                )
-                WHERE eid NOT IN (
-                    SELECT errata_id FROM last_discarded_erratas
-                )
-            )
-            )
-        ) {where_clause1}
-        GROUP BY vuln_id
-    ) AS ERR ON ERR.vuln_id = CpeMatch.vuln_id
-    {where_clause1}
-    GROUP BY vuln_id, errata_ids
-) {where_clause2}
+                argMax(errata_id, eh_updated) AS eid,
+                max(eh_updated) AS max_ts
+            FROM ErrataHistory
+            WHERE eh_type IN ('branch', 'task')
+            GROUP BY errata_id_noversion
+            HAVING eid NOT IN (SELECT errata_id FROM last_discarded_erratas)
+        )
+    ) AS eh ON eh.vuln_id = cm.vuln_id
+    GROUP BY cm.vuln_id
+) AS extras ON base_vulns.vuln_id = extras.vuln_id
+{where_clause}
+{order_by}
+{limit}
+{page}
 """
 
     get_change_history = """

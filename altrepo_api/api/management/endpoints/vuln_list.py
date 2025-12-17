@@ -19,7 +19,6 @@ from typing import Any, NamedTuple, Optional
 
 from altrepo_api.api.base import APIWorker, WorkerResult
 from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
-from altrepo_api.utils import make_tmp_table_name
 
 from .tools.constants import (
     BDU_ID_PREFIX,
@@ -35,7 +34,8 @@ from ...misc import lut
 
 
 class VulnListArgs(NamedTuple):
-    is_errata: bool
+    sort: list[str]
+    is_errata: Optional[bool] = None
     input: Optional[str] = None
     severity: Optional[str] = None
     status: Optional[str] = None
@@ -43,7 +43,6 @@ class VulnListArgs(NamedTuple):
     our: Optional[bool] = None
     limit: Optional[int] = None
     page: Optional[int] = None
-    sort: Optional[list[str]] = None
     modified_start_date: Optional[datetime] = None
     modified_end_date: Optional[datetime] = None
     published_start_date: Optional[datetime] = None
@@ -83,7 +82,9 @@ class VulnInfo(NamedTuple):
         }
 
 
-def is_any_vuln_id(id: str) -> bool:
+def is_any_vuln_id(id: Optional[str]) -> bool:
+    if not id:
+        return False
     return (
         id.startswith(CVE_ID_PREFIX)
         or id.startswith(BDU_ID_PREFIX)
@@ -126,7 +127,7 @@ class VulnList(APIWorker):
 
     @property
     def _order_by(self) -> str:
-        order_fields = self.args.sort or ["modified"]
+        order_fields = self.args.sort
         order_clauses = []
 
         for sort_field in order_fields:
@@ -136,261 +137,184 @@ class VulnList(APIWorker):
             if sort_field.startswith("-"):
                 direction = "DESC"
                 field_name = sort_field.removeprefix("-")
+
             if field_name in VulnInfo._fields:
                 order_clauses.append(f"{field_name} {direction}")
 
         return "ORDER BY " + ", ".join(order_clauses)
 
     @property
-    def _where_vuln(self) -> str:
-        """
-        Search conditions for vulnerabilities.
-        """
-        where_clause = (
-            f"WHERE severity = '{self.args.severity}'" if self.args.severity else ""
-        )
-        where_clause += (
-            (
-                f" AND vuln_id ILIKE '{self.args.input}%'"
-                if where_clause
-                else f"WHERE vuln_id ILIKE '{self.args.input}%'"
-            )
-            if self.args.input and is_any_vuln_id(self.args.input)
-            else ""
-        )
+    def _severity(self) -> str:
+        if self.args.severity:
+            return f"severity = '{self.args.severity}'"
+        return ""
 
+    @property
+    def _modified_date(self) -> str:
         if self.args.modified_start_date or self.args.modified_end_date:
             date_condition = make_date_condition(
                 self.args.modified_start_date, self.args.modified_end_date
             )
 
-            where_clause += (
-                f" AND VULNS.modified {date_condition}"
-                if where_clause
-                else f"WHERE VULNS.modified {date_condition}"
-            )
+            return f"modified {date_condition}"
+        return ""
 
+    @property
+    def _published_date(self) -> str:
         if self.args.published_start_date or self.args.published_end_date:
             date_condition = make_date_condition(
                 self.args.published_start_date, self.args.published_end_date
             )
-
-            where_clause += (
-                f" AND VULNS.published {date_condition}"
-                if where_clause
-                else f"WHERE VULNS.published {date_condition}"
-            )
-
-        if self.args.status:
-            if self.args.status == "new":
-                status_filter = "(VULNS.status = 'new' OR VULNS.status = '')"
-            else:
-                status_filter = f"VULNS.status = '{self.args.status}'"
-
-            where_clause += (
-                f" AND {status_filter}" if where_clause else f"WHERE {status_filter}"
-            )
-
-        if self.args.resolution:
-            where_clause += (
-                f" AND VULNS.resolution = '{self.args.resolution}'"
-                if where_clause
-                else f"WHERE VULNS.resolution = '{self.args.resolution}'"
-            )
-
-        if self.args.type and self.args.type != "all":
-            if vuln_prefix := VULN_ID_TYPE2PREFIX.get(self.args.type):
-                where_clause += (
-                    f"AND VULNS.vuln_id ILIKE '{vuln_prefix}%'"
-                    if where_clause
-                    else f"WHERE VULNS.vuln_id ILIKE '{vuln_prefix}%'"
-                )
-
-        return where_clause
+            return f"published {date_condition}"
+        return ""
 
     @property
-    def _where_errata(self) -> str:
-        """
-        Search conditions for erratas and CPE records.
-        """
-        where_clause = ""
+    def _status(self) -> str:
+        if self.args.status:
+            if self.args.status == "new":
+                return "(status = 'new' OR status = '')"
+            else:
+                return f"status = '{self.args.status}'"
+        return ""
+
+    @property
+    def _resolution(self) -> str:
+        if self.args.resolution:
+            return f"resolution = '{self.args.resolution}'"
+        return ""
+
+    @property
+    def _type(self) -> str:
+        if self.args.type:
+            if vuln_prefix := VULN_ID_TYPE2PREFIX.get(self.args.type):
+                return f"vuln_id ILIKE '{vuln_prefix}%'"
+        return ""
+
+    @property
+    def _is_errata(self) -> str:
+        if self.args.is_errata:
+            return "errata_ids != []"
+        elif self.args.is_errata is False:
+            return "errata_ids = []"
+        return ""
+
+    @property
+    def _our(self) -> str:
+        if self.args.our:
+            return "our = 1"
+        elif self.args.our is False:
+            return "our = 0"
+        return ""
+
+    @property
+    def _where_clause(self):
+        conditions = []
+
         if self.args.input:
             if self.args.input.startswith("ALT-"):
-                where_clause = (
-                    f"WHERE arrayExists(x -> "
-                    f"(x.1 LIKE '{self.args.input}%'), errata_ids)"
+                conditions.append(
+                    f"arrayExists(x -> " f"(x.1 LIKE '{self.args.input}%'), errata_ids)"
                 )
             elif not is_any_vuln_id(self.args.input):
-                where_clause = (
-                    f"WHERE arrayExists(x -> (x ILIKE '%{self.args.input}%'), cpes)"
+                conditions.append(
+                    f"arrayExists(x -> (x ILIKE '%{self.args.input}%'), cpes)"
                 )
-        if self.args.is_errata:
-            where_clause += (
-                "WHERE errata_ids != []"
-                if not where_clause
-                else " AND errata_ids != []"
-            )
-        if self.args.our is not None:
-            operator = "WHERE" if not where_clause else " AND"
-            where_clause += (
-                f"{operator} our = 1"
-                if self.args.our is True
-                else f"{operator} our = 0 AND errata_ids = []"
-            )
-        return where_clause
 
-    def _get_vulnerability_list(self):
-        """
-        Get all vulnerabilities.
-        """
-        self.status = False
+        if self._is_errata:
+            conditions.append(self._is_errata)
 
-        _tmp_table = "vuln_ids"
-        where_clause = (
-            (
-                f"WHERE vuln_id in {_tmp_table}"
-                if not self._where_vuln
-                else f" AND vuln_id in {_tmp_table}"
-            )
-            if self.vulns
-            else ""
-        )
+        if self._our:
+            conditions.append(self._our)
+
+        if conditions:
+            return "WHERE " + " AND ".join(conditions)
+        return ""
+
+    @property
+    def _where_vuln_input(self):
+        if is_any_vuln_id(self.args.input):
+            return f"WHERE vuln_id ILIKE '{self.args.input}%'"
+        return ""
+
+    @property
+    def _having_vulns(self):
+        conditions = []
+
+        if self._modified_date:
+            conditions.append(self._modified_date)
+
+        if self._published_date:
+            conditions.append(self._published_date)
+
+        if self._resolution:
+            conditions.append(self._resolution)
+
+        if self._severity:
+            conditions.append(self._severity)
+
+        if self._status:
+            conditions.append(self._status)
+
+        if self._type:
+            conditions.append(self._type)
+
+        if conditions:
+            return "HAVING " + " AND ".join(conditions)
+        return ""
+
+    def get(self):
         response = self.send_sql_request(
             self.sql.get_vuln_list.format(
-                where_clause=self._where_vuln,
-                where_clause2=where_clause,
+                where_clause=self._where_clause,
+                where_vuln_input=self._where_vuln_input,
+                having_vulns=self._having_vulns,
                 order_by=self._order_by,
                 limit=self._limit,
                 page=self._page,
-            ),
-            external_tables=[
-                {
-                    "name": _tmp_table,
-                    "structure": [
-                        ("id", "String"),
-                    ],
-                    "data": [{"id": vuln} for vuln in self.vulns.keys()],
-                }
-            ],
+            )
         )
+
+        if not self.sql_status:
+            return self.error
+
         if not response:
-            _ = self.store_error(
+            return self.store_error(
                 {
                     "message": "No vulnerabilities found",
                     "args": self.args._asdict(),
                 }
             )
-            return None
-        if not self.sql_status:
-            return None
 
-        self.total_count = response[0][-1]
-        if self.vulns:
-            self.vulns = {
-                vuln_id: VulnInfo(
-                    vuln_id,
-                    *body,
-                    erratas=self.vulns[vuln_id].erratas,
-                    cpes=self.vulns[vuln_id].cpes,
-                    our=self.vulns[vuln_id].our,
-                )
-                for vuln_id, *body, _ in response
-            }
-        else:
-            self.vulns = {
-                vuln_id: VulnInfo(vuln_id, *body) for vuln_id, *body, _ in response
-            }
-        self.status = True
-
-    def _get_erratas_and_cpes(self, first: bool = False):
-        """
-        Get a list of errata and CPE records for the vulnerability.
-        """
-        self.status = False
-
-        tmp_table = make_tmp_table_name("vuln_ids")
-        where_clause = f"WHERE vuln_id in {tmp_table}" if self.vulns else ""
-        response = self.send_sql_request(
-            self.sql.get_erratas_vuln.format(
-                where_clause1=where_clause,
-                where_clause2=self._where_errata,
-            ),
-            external_tables=[
-                {
-                    "name": tmp_table,
-                    "structure": [
-                        ("id", "String"),
-                    ],
-                    "data": [{"id": vuln} for vuln in self.vulns.keys()],
-                }
-            ],
-        )
-        if not self.sql_status:
-            return None
-
-        if first and not response:
-            if not response:
-                _ = self.store_error(
-                    {
-                        "message": "No vulnerabilities found",
-                        "args": self.args._asdict(),
-                    }
-                )
-                return None
-        if response:
-            if self.vulns:
-                for el in response:
-                    self.vulns[el[0]] = self.vulns[el[0]]._replace(
-                        erratas=[ErrataInfo(*errata) for errata in el[1]],
-                        cpes=el[2],
-                        our=True if el[1] else el[3],
-                    )
-            else:
-                self.vulns = {
-                    el[0]: VulnInfo(
-                        erratas=[ErrataInfo(*errata) for errata in el[1]],
-                        cpes=el[2],
-                        our=True if el[1] else el[3],
-                    )
-                    for el in response
-                }
-        self.status = True
-
-    def get(self):
-        # if filters related to errata or cpe are installed,
-        # then first execute the `_get_erratas_and_cpes` method
-        if (
-            (self.args.input and not is_any_vuln_id(self.args.input))
-            or self.args.is_errata
-            or self.args.our is not None
-        ):
-            self._get_erratas_and_cpes(True)
-            if not self.status:
-                return self.error
-            self._get_vulnerability_list()
-            if not self.status:
-                return self.error
-        else:
-            self.vulns: dict[str, VulnInfo] = {}
-            self._get_vulnerability_list()
-            if not self.status:
-                return self.error
-            self._get_erratas_and_cpes()
-            if not self.status:
-                return self.error
-
-        vulns = [el.asdict() for el in self.vulns.values()]
+        data = [
+            VulnInfo(
+                id=id,
+                severity=severity,
+                status=status,
+                resolution=resolution,
+                summary=summary,
+                modified=modified,
+                published=published,
+                erratas=(
+                    [
+                        ErrataInfo(id=id, task_state=task_state)
+                        for (id, task_state) in errata_ids
+                    ]
+                ),
+                cpes=cpes,
+                our=bool(our_cpes),
+            )
+            for id, severity, status, resolution, summary, modified, published, errata_ids, cpes, our_cpes, _ in response
+        ]
 
         return (
             {
                 "request_args": self.args._asdict(),
-                "length": len(vulns),
-                "vulns": vulns,
+                "vulns": [el.asdict() for el in data],
             },
             200,
             {
                 "Access-Control-Expose-Headers": "X-Total-Count",
-                "X-Total-Count": self.total_count,
+                "X-Total-Count": response[0][-1],
             },
         )
 
@@ -423,9 +347,7 @@ class VulnList(APIWorker):
                         **item_info,
                         type=KnownFilterTypes.CHOICE,
                         choices=[
-                            MetadataChoiceItem(
-                                value=choice, display_name=choice.capitalize()
-                            )
+                            MetadataChoiceItem(value=choice, display_name=choice)
                             for choice in arg.choices
                         ],
                     )
