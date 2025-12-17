@@ -1180,6 +1180,10 @@ vuln_status_response_model = ns.model(
 vuln_status_manage_create_model = ns.model(
     "VulnStatusManageCreateModel",
     {
+        "vuln_id": fields.String(
+            description="Vulnerability ID",
+            required=True,
+        ),
         "author": fields.String(
             description="Vulnerability status author",
             required=True,
@@ -1225,6 +1229,18 @@ vuln_status_list_response_model = ns.model(
         "statuses": fields.Nested(
             vuln_status_response_model,
             description="List of found vulnerabilities statuses",
+            as_list=True,
+            required=True,
+        ),
+    },
+)
+vuln_status_history_model = ns.model(
+    "VulnStatusHistoryModel",
+    {
+        "vuln_id": fields.String(description="Vulnerability ID"),
+        "history": fields.Nested(
+            vuln_status_response_model,
+            description="History of vulnerabilities statuses",
             as_list=True,
             required=True,
         ),

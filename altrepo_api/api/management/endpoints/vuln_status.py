@@ -53,12 +53,13 @@ class VulnStatus(APIWorker):
     def __init__(
         self,
         conn: ConnectionProtocol,
-        vuln_id: str,
+        args: Optional[dict[str, Any]] = None,
         payload: Optional[dict[str, Any]] = None,
     ) -> None:
         self.conn = conn
-        self.vuln_id = vuln_id
+        self.args = args or {}
         self.payload = payload or {}
+        self.vuln_id: str = self.args.get("vuln_id") or self.payload.get("vuln_id")  # type: ignore
         self.sql = sql
         super().__init__()
 
@@ -140,7 +141,7 @@ class VulnStatus(APIWorker):
             raise RuntimeError(self.error[0])
 
     def check_params_get(self) -> bool:
-        self.logger.info("GET payload: %s", self.payload)
+        self.logger.info("GET args: %s", self.args)
         return True
 
     def get(self) -> WorkerResult:
@@ -164,6 +165,9 @@ class VulnStatus(APIWorker):
         resolution: Optional[str] = self.payload.get("resolution")
         reason: Optional[str] = self.payload.get("reason")
         subscribers: Optional[str] = self.payload.get("subscribers")
+
+        if not self._check_vuln_id():
+            self.validation_results.append(f"Invalid vulnerability ID: {self.vuln_id}")
 
         if status == "resolved" and resolution is None:
             self.validation_results.append("No resolution for resolved status")
@@ -203,7 +207,7 @@ class VulnStatus(APIWorker):
                         vs_subscribers=sorted(
                             [
                                 *new_vuln_status.vs_subscribers,
-                                [new_vuln_status.vs_author],
+                                new_vuln_status.vs_author,
                             ]
                         )
                     )
@@ -225,17 +229,12 @@ class VulnStatus(APIWorker):
                     http_code=409,
                 )
 
-            if (
-                status_order[old_vuln_status.vs_status]
-                < status_order[new_vuln_status.vs_status]
-            ):
-                if (
-                    (old_vuln_status.vs_subscribers == new_vuln_status.vs_subscribers)
-                    and new_vuln_status.vs_author not in new_vuln_status.vs_subscribers
-                ):
+            for attr in VulnerabilityStatus._fields:
+                if getattr(old_vuln_status, attr) != getattr(new_vuln_status, attr):
                     new_vuln_status.vs_subscribers.append(new_vuln_status.vs_author)
+                    break
 
-            elif (
+            if (
                 status_order[old_vuln_status.vs_status]
                 > status_order[new_vuln_status.vs_status]
             ):

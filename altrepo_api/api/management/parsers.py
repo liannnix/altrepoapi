@@ -34,6 +34,7 @@ from altrepo_api.api.parser import (
     pkg_name_list_type,
     image_file_type,
     date_string_type,
+    vuln_id_type,
 )
 
 from .endpoints.tools.constants import DEFAULT_REASON_ACTION_TYPES, DRY_RUN_KEY
@@ -542,6 +543,13 @@ vuln_sort_opt = parser.register_item(
     help="Vulnerability list sort arguments",
     location="args",
 )
+vuln_id = parser.register_item(
+    "vuln_id",
+    type=vuln_id_type,
+    required=True,
+    help="Vulnerability ID",
+    location="args",
+)
 
 task_list_args = parser.build_parser(
     task_input_val_opt,
@@ -631,6 +639,8 @@ vuln_status_list_args = parser.build_parser(
     limit_opt,
     sort_opt,
 )
+vuln_status_history_args = parser.build_parser(vuln_id)
+vuln_status_manage_args = parser.build_parser(vuln_id)
 errata_user_tag_args = parser.build_parser(user_name_input, limit_opt)
 errata_user_info_args = parser.build_parser(user_name)
 errata_user_last_activities_args = parser.build_parser(user_name, limit_opt)
