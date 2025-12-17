@@ -83,9 +83,7 @@ class VulnInfo(NamedTuple):
 
 
 def is_any_vuln_id(id: Optional[str]) -> bool:
-    if not id:
-        return False
-    return (
+    return bool(id) and (
         id.startswith(CVE_ID_PREFIX)
         or id.startswith(BDU_ID_PREFIX)
         or id.startswith(GHSA_ID_PREFIX)
@@ -238,28 +236,17 @@ class VulnList(APIWorker):
 
     @property
     def _having_vulns(self):
-        conditions = []
+        conditions = [
+            self._modified_date,
+            self._published_date,
+            self._resolution,
+            self._severity,
+            self._status,
+            self._type,
+        ]
 
-        if self._modified_date:
-            conditions.append(self._modified_date)
-
-        if self._published_date:
-            conditions.append(self._published_date)
-
-        if self._resolution:
-            conditions.append(self._resolution)
-
-        if self._severity:
-            conditions.append(self._severity)
-
-        if self._status:
-            conditions.append(self._status)
-
-        if self._type:
-            conditions.append(self._type)
-
-        if conditions:
-            return "HAVING " + " AND ".join(conditions)
+        if any(conditions):
+            return "HAVING " + " AND ".join(c for c in conditions if c)
         return ""
 
     def get(self):
