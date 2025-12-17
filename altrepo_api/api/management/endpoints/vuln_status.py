@@ -207,7 +207,7 @@ class VulnStatus(APIWorker):
                         vs_subscribers=sorted(
                             [
                                 *new_vuln_status.vs_subscribers,
-                                [new_vuln_status.vs_author],
+                                new_vuln_status.vs_author,
                             ]
                         )
                     )
