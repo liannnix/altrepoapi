@@ -464,9 +464,6 @@ class ManagePnc(APIWorker):
 
         del matcher
 
-        # collect packages info from latest branch states
-        self._packages_cve_matches = self._collect_packages_cve_match_info(pcms)
-
         # XXX: update or create erratas
         try:
             self.eb.build_erratas_on_add(pcms, package_name)
@@ -564,9 +561,6 @@ class ManagePnc(APIWorker):
             matcher.store()
 
         del matcher
-
-        # collect packages info from latest branch states
-        self._packages_cve_matches = self._collect_packages_cve_match_info(pcms)
 
         # XXX: update or create erratas
         try:

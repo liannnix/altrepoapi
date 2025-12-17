@@ -554,7 +554,6 @@ class ManageCpe(APIWorker):
 
         # check if any records already exists in DB
         if db_cpes:
-            pncr = cpe_record2pnc_record(self.cpe)
             for p in db_cpes.get(self.cpe.project_name, []):
                 if compare_pnc_records(pncr, p, include_state=False):
                     return self.store_error(
