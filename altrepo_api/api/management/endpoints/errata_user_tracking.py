@@ -147,6 +147,11 @@ class ErrataUserTracking(APIWorker):
                 {"message": "Not found any tracked entity with provided criteria"}
             )
 
+        def format_info(type: str, info: dict[str, str]) -> dict[str, str]:
+            if type == "vuln":
+                info["text"] = f"Vulnerability updated by upstream. See: {info['text']}"
+            return info
+
         return (
             {
                 "request_args": self.args._asdict(),
@@ -159,7 +164,7 @@ class ErrataUserTracking(APIWorker):
                         "action": action,
                         "attr_type": attr_type,
                         "attr_link": attr_link,
-                        "info": info,
+                        "info": format_info(type, info),
                         "date": date,
                     }
                     for (

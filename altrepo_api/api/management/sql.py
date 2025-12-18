@@ -1831,7 +1831,7 @@ last_vulnerabilities AS (
         'update' AS action,
         '' AS attr_type,
         '' AS attr_link,
-        map('text', vuln_summary) AS info_json,
+        map('text', vuln_url) AS info_json,
         vuln_modified_date AS date
     FROM Vulnerabilities
     INNER JOIN
