@@ -1306,6 +1306,26 @@ errata_user_tag_model = ns.model(
     },
 )
 
+errata_user_activity_info_model = ns.model(
+    "ErrataUserActivityInfoModel",
+    {
+        "text": fields.String(
+            description="Text of errata user activity",
+            required=True,
+            default="",
+        ),
+        "old": fields.String(
+            description="Old value of entity of errata user activity",
+            required=True,
+            default="",
+        ),
+        "new": fields.String(
+            description="New value of entity of errata user activity",
+            required=True,
+            default="",
+        ),
+    },
+)
 errata_user_activity_model = ns.model(
     "ErrataUserActivityModel",
     {
@@ -1331,8 +1351,9 @@ errata_user_activity_model = ns.model(
             description="Attribute link of activity of errata user",
             required=True,
         ),
-        "text": fields.String(
-            description="Text for activity of errata user",
+        "info": fields.Nested(
+            errata_user_activity_info_model,
+            description="JSON info for activity of errata user",
             required=True,
         ),
         "date": fields.DateTime(
@@ -1465,6 +1486,26 @@ errata_user_subscriptions_model = ns.model(
     },
 )
 
+errata_user_tracking_element_info_model = ns.model(
+    "ErrataUserTrackingElementInfoModel",
+    {
+        "text": fields.String(
+            description="Description of tracked entity",
+            required=True,
+            default="",
+        ),
+        "old": fields.String(
+            description="Old value of entity of tracked entity",
+            required=True,
+            default="",
+        ),
+        "new": fields.String(
+            description="New value of entity of tracked entity",
+            required=True,
+            default="",
+        ),
+    },
+)
 errata_user_tracking_element_model = ns.model(
     "ErrataUserTrackingElementModel",
     {
@@ -1490,8 +1531,9 @@ errata_user_tracking_element_model = ns.model(
             description="Link of tracked entity",
             required=True,
         ),
-        "text": fields.String(
-            description="Description of tracked entity",
+        "info": fields.Nested(
+            errata_user_tracking_element_info_model,
+            description="JSON info of tracked entity",
             required=True,
         ),
         "date": fields.DateTime(

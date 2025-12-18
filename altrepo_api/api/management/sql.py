@@ -1534,6 +1534,16 @@ LIMIT {limit}
 WITH
 get_errata_user_aliases('{user}') AS target_user,
 {limit} AS target_limit,
+_last_vuln_status_changes_by_author AS (
+    SELECT
+        vuln_id,
+        vs_author,
+        vs_updated
+    FROM VulnerabilityStatus
+    WHERE has(target_user, vs_author)
+    ORDER BY vs_updated DESC
+    LIMIT target_limit
+),
 last_vuln_statuses AS (
     SELECT
         'vuln_status' AS type,
@@ -1541,12 +1551,25 @@ last_vuln_statuses AS (
         'update' AS action,
         '' AS attr_type,
         '' AS attr_link,
-        vs_reason AS text,
+        map(
+            'text', ((arraySlice(vs_history, arrayFirstIndex(vs -> ((vs.1, vs.2, vs.8) = (R.vuln_id, R.vs_author, R.vs_updated)), vs_history), 2) AS vcs)[1]).5,
+            'new', (vcs[1]).3,
+            'old', (vcs[2]).3
+        ) AS info_json,
         vs_updated AS date
-    FROM VulnerabilityStatus
-    WHERE has(target_user, vs_author)
-    ORDER BY date DESC
-    LIMIT target_limit
+    FROM
+    (
+        SELECT
+            vuln_id,
+            arrayReverseSort(vs -> (vs.8), groupUniqArray(tuple(*))) AS vs_history
+        FROM VulnerabilityStatus
+        WHERE vuln_id IN (
+            SELECT vuln_id
+            FROM _last_vuln_status_changes_by_author
+        )
+        GROUP BY vuln_id
+    ) AS VulnStatusHistory
+    RIGHT JOIN _last_vuln_status_changes_by_author AS R USING (vuln_id)
 ),
 last_comments AS (
     SELECT
@@ -1555,7 +1578,7 @@ last_comments AS (
         CAST(cc_action, 'String') AS action,
         comment_entity_type AS attr_type,
         comment_entity_link AS attr_link,
-        comment_text AS text,
+        map('text', comment_text) AS info_json,
         comment_created AS date
     FROM Comments
     RIGHT JOIN
@@ -1577,7 +1600,7 @@ last_errata AS (
         CAST(ec_type, 'String') AS action,
         'package' AS attr_type,
         ec_id AS attr_link,
-        JSONExtractString(ec_reason, 'message') AS text,
+        map('text', JSONExtractString(ec_reason, 'message')) AS info_json,
         ec_updated AS date
     FROM ErrataChangeHistory
     WHERE startsWith(errata_id, 'ALT-PU')
@@ -1594,7 +1617,7 @@ last_exclusions AS (
         CAST(ec_type, 'String') AS action,
         JSONExtractString(eh_json, 'type') AS attr_type,
         ec_id AS attr_link,
-        JSONExtractString(eh_json, 'reason') AS text,
+        map('text', JSONExtractString(eh_json, 'reason')) AS info_json,
         ec_updated AS date
     FROM ErrataHistory
     RIGHT JOIN (
@@ -1620,7 +1643,7 @@ last_cpes AS (
         CAST(pncc_type, 'String') AS action,
         pnc_type AS attr_type,
         pnc_result AS attr_link,
-        JSONExtractString(pncc_reason, 'message') AS text,
+        map('text', JSONExtractString(pncc_reason, 'message')) AS info_json,
         ts AS date
     FROM PncChangeHistory
     WHERE (pnc_type = 'cpe')
@@ -1637,7 +1660,7 @@ last_pncs AS (
         CAST(pncc_type, 'String') AS action,
         'pnc' AS attr_type,
         pkg_name AS attr_link,
-        JSONExtractString(pncc_reason, 'message') AS text,
+        map('text', JSONExtractString(pncc_reason, 'message')) AS info_json,
         ts AS date
     FROM PncChangeHistory
     WHERE (pnc_type != 'cpe')
@@ -1759,15 +1782,11 @@ subscriptions AS (
         entity_link
     HAVING last_state = 'active'
 ),
-last_vuln_statuses AS (
+_last_vuln_status_changes_by_author AS (
     SELECT
-        'vuln_status' AS type,
-        vuln_id AS id,
-        'update' AS action,
-        '' AS attr_type,
-        '' AS attr_link,
-        vs_reason AS text,
-        vs_updated AS date
+        vuln_id,
+        vs_author,
+        vs_updated
     FROM VulnerabilityStatus
     INNER JOIN
     (
@@ -1776,7 +1795,34 @@ last_vuln_statuses AS (
             last_date AS sub_date
         FROM subscriptions
     ) AS S ON vuln_id = S.id
-    HAVING date >= sub_date
+    WHERE target_user = vs_author AND vs_updated >= sub_date
+),
+last_vuln_statuses AS (
+    SELECT
+        'vuln_status' AS type,
+        vuln_id AS id,
+        'update' AS action,
+        '' AS attr_type,
+        '' AS attr_link,
+        map(
+            'text', ((arraySlice(vs_history, arrayFirstIndex(vs -> ((vs.1, vs.2, vs.8) = (R.vuln_id, R.vs_author, R.vs_updated)), vs_history), 2) AS vcs)[1]).5,
+            'new', (vcs[1]).3,
+            'old', (vcs[2]).3
+        ) AS info_json,
+        vs_updated AS date
+    FROM
+    (
+        SELECT
+            vuln_id,
+            arrayReverseSort(vs -> (vs.8), groupUniqArray(tuple(*))) AS vs_history
+        FROM VulnerabilityStatus
+        WHERE vuln_id IN (
+            SELECT vuln_id
+            FROM _last_vuln_status_changes_by_author
+        )
+        GROUP BY vuln_id
+    ) AS VulnStatusHistory
+    RIGHT JOIN _last_vuln_status_changes_by_author AS R USING (vuln_id)
 ),
 last_vulnerabilities AS (
     SELECT
@@ -1785,7 +1831,7 @@ last_vulnerabilities AS (
         'update' AS action,
         '' AS attr_type,
         '' AS attr_link,
-        vuln_summary AS text,
+        map('text', vuln_summary) AS info_json,
         vuln_modified_date AS date
     FROM Vulnerabilities
     INNER JOIN
@@ -1806,7 +1852,7 @@ last_errata AS (
         CAST(ec_type, 'String') AS action,
         'package' AS attr_type,
         ec_id AS attr_link,
-        JSONExtractString(ec_reason, 'message') AS text,
+        map('text', JSONExtractString(ec_reason, 'message')) AS info_json,
         ec_updated AS date
     FROM ErrataHistory
     RIGHT JOIN (
@@ -1847,7 +1893,7 @@ last_errata AS (
         CAST(ec_type, 'String') AS action,
         'package' AS attr_type,
         ec_id AS attr_link,
-        JSONExtractString(ec_reason, 'message') AS text,
+        map('text', JSONExtractString(ec_reason, 'message')) AS info_json,
         ec_updated AS date
     FROM ErrataHistory
     RIGHT JOIN (
@@ -1879,7 +1925,7 @@ last_errata AS (
         CAST(ec_type, 'String') AS action,
         'package' AS attr_type,
         ec_id AS attr_link,
-        JSONExtractString(ec_reason, 'message') AS text,
+        map('text', JSONExtractString(ec_reason, 'message')) AS info_json,
         ec_updated AS date
     FROM ErrataHistory
     RIGHT JOIN (
@@ -1910,7 +1956,7 @@ last_exclusions AS (
         CAST(ec_type, 'String') AS action,
         JSONExtractString(eh_json, 'type') AS attr_type,
         ec_id AS attr_link,
-        JSONExtractString(eh_json, 'reason') AS text,
+        map('text', JSONExtractString(eh_json, 'reason')) AS info_json,
         ec_updated AS date
     FROM ErrataHistory
     RIGHT JOIN (
@@ -1950,7 +1996,7 @@ last_exclusions AS (
         CAST(ec_type, 'String') AS action,
         JSONExtractString(eh_json, 'type') AS attr_type,
         ec_id AS attr_link,
-        JSONExtractString(eh_json, 'reason') AS text,
+        map('text', JSONExtractString(eh_json, 'reason')) AS info_json,
         ec_updated AS date
     FROM ErrataHistory
     RIGHT JOIN (
@@ -1990,7 +2036,7 @@ last_exclusions AS (
         CAST(ec_type, 'String') AS action,
         JSONExtractString(eh_json, 'type') AS attr_type,
         ec_id AS attr_link,
-        JSONExtractString(eh_json, 'reason') AS text,
+        map('text', JSONExtractString(eh_json, 'reason')) AS info_json,
         ec_updated AS date
     FROM ErrataHistory
     RIGHT JOIN (
@@ -2019,7 +2065,7 @@ last_comments AS (
         CAST(cc_action, 'String') AS action,
         comment_entity_type AS attr_type,
         comment_entity_link AS attr_link,
-        comment_text AS text,
+        map('text', comment_text) AS info_json,
         comment_created AS date
     FROM Comments
     RIGHT JOIN (
@@ -2044,7 +2090,7 @@ SELECT DISTINCT
     action,
     attr_type,
     attr_link,
-    text,
+    info_json,
     date,
     count(1) OVER() AS total_count
 FROM (

@@ -159,7 +159,7 @@ class ErrataUserTracking(APIWorker):
                         "action": action,
                         "attr_type": attr_type,
                         "attr_link": attr_link,
-                        "text": text,
+                        "info": info,
                         "date": date,
                     }
                     for (
@@ -168,7 +168,7 @@ class ErrataUserTracking(APIWorker):
                         action,
                         attr_type,
                         attr_link,
-                        text,
+                        info,
                         date,
                         _,
                     ) in response
