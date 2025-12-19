@@ -1493,6 +1493,28 @@ WHERE vuln_id = '{vuln_id}'
 ORDER BY vs_updated DESC
 """
 
+    vuln_status_select_next = """
+SELECT vuln_id
+FROM Vulnerabilities
+WHERE vuln_id NOT IN (
+        SELECT vuln_id
+        FROM VulnerabilityStatus
+        GROUP BY vuln_id
+        HAVING argMax(vs_status, vs_updated) != 'new'
+    )
+    AND vuln_hash IN (
+        SELECT argMax(vuln_hash, ts)
+        FROM Vulnerabilities
+        WHERE vuln_type = 'CVE'
+        GROUP BY vuln_id
+    )
+    {date_interval_condition}
+ORDER BY
+    vuln_score DESC,
+    (now() - vuln_modified_date) DESC
+LIMIT 1
+"""
+
     get_errata_user = """
 SELECT
     user,

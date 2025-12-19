@@ -1246,6 +1246,12 @@ vuln_status_history_model = ns.model(
         ),
     },
 )
+vuln_status_select_next_model = ns.model(
+    "VulnStatusSelectNextModel",
+    {
+        "vuln_id": fields.String(description="ID of next for analysis vulnerability"),
+    },
+)
 
 errata_user_info_model = ns.model(
     "ErrataUserInfoModel",
