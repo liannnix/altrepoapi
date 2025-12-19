@@ -93,5 +93,5 @@ class VulnStatusHistory(APIWorker):
                     json,
                     updated,
                 ) in response
-            ]
+            ],
         }, 200
