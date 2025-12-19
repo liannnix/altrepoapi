@@ -18,8 +18,7 @@
 from enum import Enum
 from typing import Any, NamedTuple, Optional
 
-from .base import JSONObject, JSONValue, ErrataServerConnection
-from .base import ErrataServerError  # noqa: F401
+from .base import ErrataServerError, JSONObject, JSONValue, UserInfo, ServiceBase
 from .rusty import Result, into_iter
 from .serde import serialize_enum, deserialize_enum, serialize, deserialize
 
@@ -82,11 +81,6 @@ _SA_REF_TYPE_CMP = {
     SaReferenceType.BUG: 2,
     SaReferenceType.WEB: 3,
 }
-
-
-class UserInfo(NamedTuple):
-    name: str
-    ip: str
 
 
 class ChangeReason(NamedTuple):
@@ -223,25 +217,16 @@ class SaManageResponse(NamedTuple):
     affected_pcm: list[AffectedPCM]
 
 
-def _deserialize(response: JSONObject):
-    return deserialize(SaManageResponse, response)
+def _deserialize(response: JSONObject) -> Result[SaManageResponse, Exception]:
+    return deserialize(SaManageResponse, response).map_err(
+        lambda e: ErrataServerError(
+            f"Failed to parse ErrataServer response due to: {e}"
+        )
+    )
 
 
-class ErrataSAService:
+class ErrataSAService(ServiceBase):
     """Errata SA manage service interface class."""
-
-    def __init__(
-        self, url: str, access_token: str, user: str, ip: str, dry_run: bool
-    ) -> None:
-        self.server = ErrataServerConnection(url)
-        self.user = user
-        self.user_ip = ip
-        self.dry_run = dry_run
-        self.access_token = access_token
-
-    @property
-    def dry_run_str(self) -> str:
-        return "true" if self.dry_run else "false"
 
     def list(self) -> list[Errata]:
         response: list[JSONObject] = self.server.get(SA_LIST_ROUTE).unwrap()  # type: ignore
@@ -255,12 +240,7 @@ class ErrataSAService:
     def create(self, errata_json: ErrataJson) -> SaManageResponse:
         response: Result[JSONObject, Exception] = self.server.post(
             SA_CREATE_ROUTE,
-            params={
-                "user": self.user,
-                "user_ip": self.user_ip,
-                "dry_run": self.dry_run_str,
-                "access_token": self.access_token,
-            },
+            params=self.params,
             json={"errata_json": serialize(sanitize_ej(errata_json))},
         )  # type: ignore
 
@@ -269,12 +249,7 @@ class ErrataSAService:
     def discard(self, reason: str, errata_json: ErrataJson) -> SaManageResponse:
         response: Result[JSONObject, Exception] = self.server.post(
             SA_DISCARD_ROUTE,
-            params={
-                "user": self.user,
-                "user_ip": self.user_ip,
-                "dry_run": self.dry_run_str,
-                "access_token": self.access_token,
-            },
+            params=self.params,
             json={
                 "reason": reason,
                 "errata_json": serialize(sanitize_ej(errata_json)),
@@ -288,12 +263,7 @@ class ErrataSAService:
     ) -> SaManageResponse:
         response: Result[JSONObject, Exception] = self.server.post(
             SA_UPDATE_ROUTE,
-            params={
-                "user": self.user,
-                "user_ip": self.user_ip,
-                "dry_run": self.dry_run_str,
-                "access_token": self.access_token,
-            },
+            params=self.params,
             json={
                 "reason": reason,
                 "prev_errata_json": serialize(sanitize_ej(prev_errata_json)),
