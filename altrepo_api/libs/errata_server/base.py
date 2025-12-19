@@ -18,7 +18,7 @@ import re
 
 from requests import Session, Response
 from requests.adapters import HTTPAdapter, Retry
-from typing import Any, Optional, Union
+from typing import Any, NamedTuple, Optional, Union
 from urllib.parse import urlparse, urlunparse
 
 from .rusty import Ok, Err, Result
@@ -181,3 +181,31 @@ class ErrataServerConnection:
             err = _try_extract_error_message(response)
             msg = _remove_sensitive_data("Failed on %s: %s" % (url, err or e))
             return Err(ErrataServerError(msg, status_code))
+
+class UserInfo(NamedTuple):
+    name: str
+    ip: str
+
+
+class ServiceBase:
+    """Errata server endpoint interface service base class."""
+
+    def __init__(
+        self, url: str, access_token: Optional[str], user: UserInfo, dry_run: bool
+    ) -> None:
+        self.server = ErrataServerConnection(url)
+        self.user = user
+        self.dry_run = dry_run
+        self.access_token = access_token
+
+    @property
+    def params(self) -> dict[str, Any]:
+        params =  {
+            "user": self.user.name,
+            "user_ip": self.user.ip,
+            "dry_run": "true" if self.dry_run else "false"
+        }
+
+        if self.access_token:
+            params["access_token"] = self.access_token
+        return params

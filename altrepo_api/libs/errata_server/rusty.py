@@ -34,6 +34,7 @@ from typing import (
 T = TypeVar("T")  # Contained value type
 E = TypeVar("E")  # Error value type
 U = TypeVar("U")  # Mapping return type
+R = TypeVar("R")  # Function call return type
 F = TypeVar("F")  # New error type
 
 
@@ -87,7 +88,7 @@ class Ok(NamedTuple, Generic[T]):
     def unwrap_or(self, _default: T) -> T:
         return self.value
 
-    def unwrap_or_else(self, _op: Callable[[E], T]) -> T:
+    def unwrap_or_else(self, _op: Callable[[E], U]) -> T:
         return self.value
 
     def map(self, op: Callable[[T], U]) -> "Ok[U]":
@@ -164,7 +165,7 @@ class Err(NamedTuple, Generic[E]):
     def unwrap_or_else(self, op: Callable[[E], T]) -> T:
         return op(self.error)
 
-    def map(self, _op: Callable[[Any], Any]) -> "Result[U, E]":
+    def map(self, _op: Callable[[T], U]) -> "Result[U, E]":
         return self
 
     def map_err(self, op: Callable[[E], F]) -> "Err[F]":
@@ -176,7 +177,7 @@ class Err(NamedTuple, Generic[E]):
     def map_or_else(self, default: Callable[[], U], _op: Callable[[T], U]) -> U:
         return default()
 
-    def and_then(self, _op: Callable[[Any], "Result[U, E]"]) -> "Result[U, E]":
+    def and_then(self, _op: Callable[[T], "Result[U, E]"]) -> "Result[U, E]":
         return self
 
     def or_else(self, op: Callable[[], "Result[U, E]"]) -> "Result[U, E]":
@@ -212,12 +213,15 @@ def resultify_method(f: Callable[..., T]) -> Callable[..., Result[T, Exception]]
     return wrapper
 
 
-class Option(NamedTuple, Generic[T]):
+class Option(Generic[T]):
     """
     A Rust-like Option type that represents either Some(value) or None.
     """
 
-    value: Optional[T] = None
+    __slots__ = ("_value",)
+
+    def __init__(self, value: Optional[T] = None) -> None:
+        self._value = value
 
     @classmethod
     def some(cls, value: T) -> "Option[T]":
@@ -230,10 +234,10 @@ class Option(NamedTuple, Generic[T]):
         return cls()
 
     def is_some(self) -> bool:
-        return self.value is not None
+        return self._value is not None
 
     def is_none(self) -> bool:
-        return self.value is None
+        return self._value is None
 
     def op_and(self, opt: "Option[U]") -> "Option[U]":
         return opt if self.is_some() else Option.none()
@@ -241,39 +245,60 @@ class Option(NamedTuple, Generic[T]):
     def op_or(self, opt: "Option[T]") -> "Option[T]":
         return self if self.is_some() else opt
 
+    def op_xor(self, opt: "Option[T]") -> "Option[T]":
+        return self if self.is_some() else opt
+
     def expect(self, msg: str) -> T:
-        if self.value is None:
+        if self._value is None:
             raise ValueError(msg)
-        return self.value
+        return self._value
 
     def inspect(self, op: Callable[[T], Any]) -> "Option[T]":
-        if self.value is not None:
-            op(self.value)
+        if self._value is not None:
+            op(self._value)
         return self
 
     def iter(self) -> "Iter[T]":
-        return Iter((self.value,)) if self.value is not None else Iter(())
+        return Iter((self._value,)) if self._value is not None else Iter(())
+
+    def take(self) -> "Option[T]":
+        if self.is_some():
+            t = self._value
+            self._value = None
+            return Option.some(t)
+        return Option.none()
 
     def unwrap(self) -> T:
         return self.expect("Called unwrap() on a None value")
 
     def unwrap_or(self, default: T) -> T:
-        return self.value if self.value is not None else default
+        return self._value if self._value is not None else default
 
     def unwrap_or_else(self, f: Callable[[], T]) -> T:
-        return self.value if self.value is not None else f()
+        return self._value if self._value is not None else f()
+
+    def zip(self, opt: "Option[U]") -> "Option[tuple[T, U]]":
+        return (
+            Option.some((self._value, opt._value))
+            if self._value is not None and opt._value is not None
+            else Option.none()
+        )
+
+    def zip_with(self, opt: "Option[U]", f: Callable[[T, U], R]) -> "Option[R]":
+        z = self.zip(opt)
+        return Option.some(f(*z.unwrap())) if z.is_some() else Option.none()
 
     def map(self, f: Callable[[T], U]) -> "Option[U]":
-        return Option.some(f(self.value)) if self.value is not None else Option.none()
+        return Option.some(f(self._value)) if self._value is not None else Option.none()
 
     def map_or(self, default: U, f: Callable[[T], U]) -> U:
-        return f(self.value) if self.value is not None else default
+        return f(self._value) if self._value is not None else default
 
     def map_or_else(self, default: Callable[[], U], f: Callable[[T], U]) -> U:
-        return f(self.value) if self.value is not None else default()
+        return f(self._value) if self._value is not None else default()
 
     def and_then(self, f: Callable[[T], "Option[U]"]) -> "Option[U]":
-        return f(self.value) if self.value is not None else Option.none()
+        return f(self._value) if self._value is not None else Option.none()
 
     def or_else(self, f: Callable[[], "Option[T]"]) -> "Option[T]":
         return self if self.is_some() else f()
@@ -281,23 +306,23 @@ class Option(NamedTuple, Generic[T]):
     def filter(self, predicate: Callable[[T], bool]) -> "Option[T]":
         return (
             self
-            if (self.value is not None and predicate(self.value))
+            if (self._value is not None and predicate(self._value))
             else Option.none()
         )
 
     def ok_or(self, err: E) -> "Result[T, E]":
-        return Ok(self.value) if self.value is not None else Err(err)
+        return Ok(self._value) if self._value is not None else Err(err)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Option):
             return False
-        return self.value == other.value
+        return self._value == other._value
 
     def __repr__(self) -> str:
-        return f"Some({self.value})" if self.is_some() else "None"
+        return f"Some({self._value})" if self.is_some() else "None"
 
     def __bool__(self) -> bool:
-        return self.is_some()
+        return self._value is not None
 
 
 def optionable(func: Callable[..., Optional[T]]) -> Callable[..., Option[T]]:
