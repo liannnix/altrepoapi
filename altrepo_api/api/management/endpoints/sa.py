@@ -59,14 +59,13 @@ class ErrataJsonType(Enum):
 
 
 def get_errata_service(
-    *, dry_run: bool, access_token: str, user: str, ip: str
+    *, dry_run: bool, access_token: str, user: UserInfo
 ) -> ErrataSAService:
     try:
         return ErrataSAService(
             url=settings.ERRATA_MANAGE_URL,
             access_token=access_token,
             user=user,
-            ip=ip,
             dry_run=dry_run,
         )
     except ErrataServerError as e:
@@ -74,7 +73,9 @@ def get_errata_service(
         raise RuntimeError("error: %s" % e)
 
 
-def _check_sa_overlap(ej: ErrataJson) -> Optional[tuple[str, str]]:
+def _check_sa_overlap(
+    service: ErrataSAService, ej: ErrataJson
+) -> Optional[tuple[str, str]]:
     """Checks if errata with given JSON is overlapping with existing SA errata form DB."""
 
     def filter_by_vuln_id(errata: Errata, id: str):
@@ -87,7 +88,6 @@ def _check_sa_overlap(ej: ErrataJson) -> Optional[tuple[str, str]]:
         return not errata.is_discarded and filter_by_vuln_id(errata, ej.vuln_id)
 
     # collect existing active SA erratas from DB using CVE ID
-    service = get_errata_service(dry_run=True, access_token="", user="", ip="")
     try:
         erratas = [e for e in service.list() if active_and_matches_vuln_id(e)]
     except ErrataServerError as e:
@@ -160,7 +160,7 @@ class ManageSa(APIWorker):
         self.logger.debug(f"args : {self.args}")
         # use direct indeces to fail early
         self.dry_run = self.args[DRY_RUN_KEY]
-        self.user = self.user = UserInfo(
+        self.user = UserInfo(
             name=self.args["user"],
             ip=get_real_ip(),
         )
@@ -175,8 +175,14 @@ class ManageSa(APIWorker):
                 http_code=400,
             )
 
+        service = get_errata_service(
+            dry_run=self.dry_run,
+            access_token=settings.ERRATA_SERVER_TOKEN,
+            user=self.user,
+        )
+
         try:
-            res = _check_sa_overlap(d.unwrap())
+            res = _check_sa_overlap(service, d.unwrap())
         except ErrataServerError as e:
             return self.store_error(
                 {"message": f"Error: {e}"},
@@ -193,12 +199,6 @@ class ManageSa(APIWorker):
                 http_code=409,
             )
 
-        service = get_errata_service(
-            dry_run=self.dry_run,
-            access_token=settings.ERRATA_SERVER_TOKEN,
-            user=self.user.name,
-            ip=self.user.ip,
-        )
         try:
             response = service.create(d.unwrap().sorted())
         except ErrataServerError as e:
@@ -227,8 +227,7 @@ class ManageSa(APIWorker):
         service = get_errata_service(
             dry_run=self.dry_run,
             access_token=settings.ERRATA_SERVER_TOKEN,
-            user=self.user.name,
-            ip=self.user.ip,
+            user=self.user,
         )
         try:
             response = service.update(
@@ -261,8 +260,7 @@ class ManageSa(APIWorker):
         service = get_errata_service(
             dry_run=self.dry_run,
             access_token=settings.ERRATA_SERVER_TOKEN,
-            user=self.user.name,
-            ip=self.user.ip,
+            user=self.user,
         )
         try:
             response = service.discard(
@@ -293,7 +291,6 @@ class ListSa(APIWorker):
         self.conn = connection
         self.kwargs = kwargs
         self.args: SaListArgs
-        self.user: UserInfo
         super().__init__()
 
     def check_params(self) -> bool:
@@ -324,7 +321,9 @@ class ListSa(APIWorker):
             else ErrataJsonType.ALL
         )
 
-        service = get_errata_service(dry_run=True, access_token="", user="", ip="")
+        service = get_errata_service(
+            dry_run=True, access_token="", user=UserInfo("", "")
+        )
         try:
             erratas = service.list()
         except ErrataServerError as e:

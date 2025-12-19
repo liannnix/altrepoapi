@@ -29,6 +29,7 @@ from altrepo_api.libs.errata_server.errata_sa_service import (
     Errata,
     ErrataServerError,
     ErrataSAService,
+    UserInfo,
 )
 
 
@@ -39,16 +40,13 @@ _advisory_input_match = re.compile(
 logger = get_logger(__name__)
 
 
-def get_errata_service(
-    *, dry_run: bool, access_token: str, user: str, ip: str
-) -> ErrataSAService:
+def get_errata_service() -> ErrataSAService:
     try:
         return ErrataSAService(
             url=settings.ERRATA_MANAGE_URL,
-            access_token=access_token,
-            user=user,
-            ip=ip,
-            dry_run=dry_run,
+            access_token="",
+            user=UserInfo(name="", ip=""),
+            dry_run=True,
         )
     except ErrataServerError as e:
         logger.error(f"Failed to connect to ErrataSA service: {e}")
@@ -137,7 +135,7 @@ class AdvisoryErrata(APIWorker):
         return lambda errata: all(f(errata) for f in filters)
 
     def get(self):
-        service = get_errata_service(dry_run=True, access_token="", user="", ip="")
+        service = get_errata_service()
         try:
             erratas = service.list()
         except ErrataServerError as e:
