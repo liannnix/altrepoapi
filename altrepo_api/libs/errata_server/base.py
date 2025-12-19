@@ -182,6 +182,7 @@ class ErrataServerConnection:
             msg = _remove_sensitive_data("Failed on %s: %s" % (url, err or e))
             return Err(ErrataServerError(msg, status_code))
 
+
 class UserInfo(NamedTuple):
     name: str
     ip: str
@@ -200,10 +201,10 @@ class ServiceBase:
 
     @property
     def params(self) -> dict[str, Any]:
-        params =  {
+        params = {
             "user": self.user.name,
             "user_ip": self.user.ip,
-            "dry_run": "true" if self.dry_run else "false"
+            "dry_run": "true" if self.dry_run else "false",
         }
 
         if self.access_token:
