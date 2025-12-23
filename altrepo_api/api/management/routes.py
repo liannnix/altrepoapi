@@ -1352,11 +1352,7 @@ class routeVulnStatusSelectNext(Resource):
         url_logging(logger, g.url)
         args = vuln_status_select_next_args.parse_args(strict=True)
         w = VulnStatusSelectNext(g.connection, args=args)
-        return run_worker(
-            worker=w,
-            run_method=w.get,
-            check_method=w.check_params_get,
-        )
+        return run_worker(worker=w, run_method=w.get)
 
 
 @ns.route("/user/info")

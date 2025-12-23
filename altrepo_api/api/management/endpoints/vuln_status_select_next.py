@@ -18,6 +18,7 @@ from typing import Any
 
 from altrepo_api.api.base import APIWorker, ConnectionProtocol, WorkerResult
 
+from .tools.utils import make_date_condition
 from ..sql import sql
 
 
@@ -32,20 +33,18 @@ class VulnStatusSelectNext(APIWorker):
         self.sql = sql
         super().__init__()
 
-    def check_params_get(self) -> bool:
-        self.logger.info("GET args: %s", self.args)
+    def check_params(self) -> bool:
+        self.logger.debug(f"args : {self.args}")
         return True
 
     def _date_interval_condition(self) -> str:
-        conditions: list[str] = []
+        start_date = self.args.get("modified_start_date")
+        end_date = self.args.get("modified_end_date")
 
-        if start_date := self.args.get("modified_start_date"):
-            conditions.append(f"(vuln_modified_date >= '{start_date}')")
+        if condition := make_date_condition(start_date, end_date):
+            return f"AND vuln_modified_date {condition}"
 
-        if end_date := self.args.get("modified_end_date"):
-            conditions.append(f"(vuln_modified_date <= '{end_date}')")
-
-        return ("AND " + " AND ".join(conditions)) if conditions else ""
+        return ""
 
     def get(self) -> WorkerResult:
         response = self.send_sql_request(
