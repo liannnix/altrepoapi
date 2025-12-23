@@ -140,8 +140,8 @@ class VulnStatus(APIWorker):
             )
             raise RuntimeError(self.error[0])
 
-    def check_params_get(self) -> bool:
-        self.logger.info("GET args: %s", self.args)
+    def check_params(self) -> bool:
+        self.logger.debug(f"args: {self.args}")
         return True
 
     def get(self) -> WorkerResult:

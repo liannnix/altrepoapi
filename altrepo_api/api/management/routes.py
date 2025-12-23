@@ -1290,11 +1290,7 @@ class routeVulnStatusHistory(Resource):
         url_logging(logger, g.url)
         args = vuln_status_history_args.parse_args(strict=True)
         w = VulnStatusHistory(g.connection, args=args)
-        return run_worker(
-            worker=w,
-            run_method=w.get,
-            check_method=w.check_params_get,
-        )
+        return run_worker(worker=w, run_method=w.get)
 
 
 @ns.route("/vuln_status/manage")
@@ -1311,11 +1307,7 @@ class routeManageVulnStatus(Resource):
         url_logging(logger, g.url)
         args = vuln_status_manage_args.parse_args(strict=True)
         w = VulnStatus(g.connection, args=args)
-        return run_worker(
-            worker=w,
-            run_method=w.get,
-            check_method=w.check_params_get,
-        )
+        return run_worker(worker=w, run_method=w.get)
 
     @ns.doc(
         description="Create or update a new vulnerability status",

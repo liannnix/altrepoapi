@@ -92,7 +92,7 @@ class TaskList(APIWorker):
     def check_params(self) -> bool:
         self.args = TaskListArgs(**self.kwargs)
         self.input = self._parse_input(self.args.input or [])
-        self.logger.debug(f"args : {self.kwargs}")
+        self.logger.debug(f"args: {self.args}")
         return True
 
     def _parse_input(self, input_values: list[str]) -> ParsedInput:

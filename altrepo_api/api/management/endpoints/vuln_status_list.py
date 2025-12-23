@@ -47,7 +47,7 @@ class VulnStatusList(APIWorker):
 
     def check_params(self) -> bool:
         self.args = VulnStatusListArgs(**self.kwargs)
-        self.logger.info("GET args: %s", self.args)
+        self.logger.debug(f"args: {self.args}")
         return True
 
     def _having_clause(self) -> str:

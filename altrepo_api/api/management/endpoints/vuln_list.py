@@ -107,7 +107,7 @@ class VulnList(APIWorker):
 
     def check_params(self) -> bool:
         self.args = VulnListArgs(**self.kwargs)
-        self.logger.debug(f"args: {self.kwargs}")
+        self.logger.debug(f"args: {self.args}")
         return True
 
     @property
