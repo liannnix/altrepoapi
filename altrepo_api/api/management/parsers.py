@@ -155,13 +155,6 @@ sort_opt = parser.register_item(
     help="sort arguments",
     location="args",
 )
-transaction_id_opt = parser.register_item(
-    "transaction_id",
-    type=uuid_type,
-    required=False,
-    help="transaction id (UUID)",
-    location="args",
-)
 dry_run = parser.register_item(
     DRY_RUN_KEY,
     type=inputs.boolean,
@@ -559,7 +552,7 @@ task_list_args = parser.build_parser(
     page_opt,
     limit_opt,
 )
-errata_manage_args = parser.build_parser(transaction_id_opt)
+errata_manage_args = parser.build_parser(dry_run)
 errata_manage_get_args = parser.build_parser(errata_id)
 pkgs_open_vulns_args = parser.build_parser(
     package_input_val,

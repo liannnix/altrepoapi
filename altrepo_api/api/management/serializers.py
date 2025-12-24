@@ -214,6 +214,7 @@ errata_manage_errata_change_model = ns.model(
         "source": fields.String(description="errata change source"),
         "origin": fields.String(description="errata change origin"),
         "errata_id": fields.String(description="changed errata id refernce"),
+        "transaction_id": fields.String(description="transaction id"),
     },
 )
 
