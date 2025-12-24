@@ -30,7 +30,7 @@ ERRATA_UPDATE_ROUTE = "errata/update"
 
 class Vulnerability(NamedTuple):
     id: str
-    type_: str
+    type: str
     summary: str
     score: float
     severity: str
