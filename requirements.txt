@@ -8,5 +8,4 @@ pyjwt
 redis-py
 python-ldap
 flask-cors
-altrepodb_libs
 python-keycloak

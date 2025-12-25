@@ -30,11 +30,6 @@ RUN \
         python3-module-orjson \
         python3-module-python-keycloak \
         tzdata \
-    # install altrepodb_libs module from tasks
-        apt-repo \
-    && apt-repo add 369524 \
-    && apt-get update \
-    && yes | apt-get install python3-module-altrepodb_libs \
     # clean-up Apt caches
     && rm -f /var/cache/apt/archives/*.rpm \
         /var/cache/apt/*.bin \
