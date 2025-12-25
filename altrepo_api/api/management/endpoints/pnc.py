@@ -20,7 +20,6 @@ from altrepo_api.api.base import APIWorker, WorkerResult
 from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
 from altrepo_api.api.misc import lut
 from altrepo_api.settings import namespace as settings
-
 from altrepo_api.utils import (
     get_logger,
     get_real_ip,
@@ -28,8 +27,8 @@ from altrepo_api.utils import (
     sort_branches,
 )
 
-from .tools.base import PncListElement, PncPackage, PncRecord
-from .tools.constants import (
+from .common.base import PncListElement, PncPackage, PncRecord
+from .common.constants import (
     CHANGE_ACTION_CREATE,
     CHANGE_ACTION_DISCARD,
     CHANGE_ACTION_UPDATE,
@@ -39,8 +38,7 @@ from .tools.constants import (
     PNC_STATE_INACTIVE,
     PNC_SOURCES,
 )
-
-from .tools.utils import validate_action
+from .common.utils import validate_action
 from ..parsers import pnc_list_args
 from ..sql import sql
 

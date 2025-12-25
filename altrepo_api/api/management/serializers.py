@@ -16,11 +16,11 @@
 
 from flask_restx import fields
 
-from .endpoints.tools.constants import DEFAULT_REASON_ACTION_TYPES
+from altrepo_api.api.misc import lut
 
+from .endpoints.common.constants import DEFAULT_REASON_ACTION_TYPES
 from .namespace import get_namespace
 
-from altrepo_api.api.misc import lut
 
 ns = get_namespace()
 

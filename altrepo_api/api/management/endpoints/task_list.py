@@ -23,7 +23,7 @@ from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, Metad
 from altrepo_api.utils import make_tmp_table_name, sort_branches
 from altrepo_api.api.misc import lut
 
-from .tools.constants import (
+from .common.constants import (
     BDU_ID_PREFIX,
     CVE_ID_PREFIX,
     ERRATA_PACKAGE_UPDATE_PREFIX,

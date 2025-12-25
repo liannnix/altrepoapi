@@ -36,8 +36,7 @@ from altrepo_api.libs.pagination import Paginator
 from altrepo_api.libs.sorting import rich_sort
 from altrepo_api.utils import get_logger, get_real_ip
 
-from .tools.constants import DRY_RUN_KEY
-
+from .common.constants import DRY_RUN_KEY
 from ..parsers import sa_list_args
 
 

@@ -20,14 +20,14 @@ from typing import Any, NamedTuple, Optional
 from altrepo_api.api.base import APIWorker, WorkerResult
 from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
 
-from .tools.constants import (
+from .common.constants import (
     BDU_ID_PREFIX,
     CVE_ID_PREFIX,
     DT_NEVER,
     GHSA_ID_PREFIX,
     VULN_ID_TYPE2PREFIX,
 )
-from .tools.utils import make_date_condition
+from .common.utils import make_date_condition
 from ..parsers import vuln_list_args
 from ..sql import sql
 from ...misc import lut

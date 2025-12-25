@@ -27,10 +27,10 @@ from altrepo_api.api.metadata import (
 from altrepo_api.libs.errata_server import rusty as rs
 from altrepo_api.utils import sort_branches
 
+from .common.constants import BDU_ID_TYPE, GHSA_ID_TYPE
+from .vuln_list import is_any_vuln_id
 from ..sql import sql
 from ..parsers import pkgs_open_vulns_args
-from .tools.constants import BDU_ID_TYPE, GHSA_ID_TYPE
-from .vuln_list import is_any_vuln_id
 
 
 class PackagesOpenVulnsArgs(NamedTuple):

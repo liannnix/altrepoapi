@@ -22,9 +22,12 @@ from typing import Any, NamedTuple, Optional
 from altrepo_api.api.base import APIWorker, WorkerResult
 from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
 
+from .common.constants import (
+    ERRATA_BRANCH_BULLETIN_PREFIX,
+    ERRATA_PACKAGE_UPDATE_PREFIX,
+)
 from ..parsers import change_history_args
 from ..sql import sql
-from .tools.constants import ERRATA_BRANCH_BULLETIN_PREFIX, ERRATA_PACKAGE_UPDATE_PREFIX
 
 
 @dataclass

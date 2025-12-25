@@ -28,7 +28,7 @@ from altrepo_api.settings import namespace as settings
 from altrepo_api.utils import get_logger, get_real_ip
 
 
-from .tools.constants import (
+from .common.constants import (
     CHANGE_ACTION_CREATE,
     CHANGE_ACTION_DISCARD,
     CHANGE_ACTION_UPDATE,
@@ -40,7 +40,7 @@ from .tools.constants import (
     DT_NEVER,
     DRY_RUN_KEY,
 )
-from .tools.utils import dt_from_iso, validate_action, validate_branch
+from .common.utils import dt_from_iso, validate_action, validate_branch
 from ..sql import sql
 
 

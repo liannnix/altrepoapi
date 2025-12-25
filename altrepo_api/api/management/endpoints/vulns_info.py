@@ -16,14 +16,14 @@
 
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
-from typing import Any
+from typing import Any, NamedTuple
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
 from altrepo_api.utils import make_tmp_table_name
 
-from .tools.base import Reference
-from .tools.constants import (
+from .common.base import Reference
+from .common.constants import (
     BDU_ID_TYPE,
     BUG_ID_TYPE,
     CVE_ID_TYPE,
@@ -32,9 +32,15 @@ from .tools.constants import (
     OVE_ID_TYPE,
     DT_NEVER,
 )
-from .tools.helpers.vuln import Bug
-from .tools.utils import parse_vuln_id
+from .common.utils import parse_vuln_id
 from ..sql import sql
+
+
+class Bug(NamedTuple):
+    id: int
+    summary: str = ""
+    last_changed: datetime = DT_NEVER
+    is_valid: bool = False
 
 
 @dataclass

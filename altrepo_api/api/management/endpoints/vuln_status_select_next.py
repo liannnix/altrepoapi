@@ -18,7 +18,7 @@ from typing import Any
 
 from altrepo_api.api.base import APIWorker, ConnectionProtocol, WorkerResult
 
-from .tools.utils import make_date_condition
+from .common.utils import make_date_condition
 from ..sql import sql
 
 

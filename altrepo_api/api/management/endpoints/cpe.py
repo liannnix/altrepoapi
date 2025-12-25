@@ -16,6 +16,8 @@
 
 from typing import Any, NamedTuple, Optional
 
+from altrepo_api.api.vulnerabilities.endpoints.common import CPE
+
 from altrepo_api.api.base import APIWorker, WorkerResult
 from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
 from altrepo_api.api.misc import lut
@@ -29,8 +31,7 @@ from altrepo_api.libs.sorting import rich_sort
 from altrepo_api.settings import namespace as settings
 from altrepo_api.utils import get_logger, get_real_ip
 
-from .processing.base import CPE, CpeRaw
-from .tools.constants import (
+from .common.constants import (
     CHANGE_ACTION_CREATE,
     CHANGE_ACTION_DISCARD,
     CHANGE_ACTION_UPDATE,
@@ -38,7 +39,7 @@ from .tools.constants import (
     PNC_STATES,
     PNC_STATE_CANDIDATE,
 )
-from .tools.utils import validate_action, validate_branch_with_tasks
+from .common.utils import validate_action, validate_branch_with_tasks
 from ..parsers import cpe_list_args
 from ..sql import sql
 
@@ -64,6 +65,14 @@ def get_cpe_manage_service(
     except ErrataServerError as e:
         logger.error(f"Failed to connect to Errata Server: {e}")
         raise RuntimeError("error: %s" % e)
+
+
+class CpeRaw(NamedTuple):
+    state: str
+    name: str
+    repology_name: str
+    repology_branch: str
+    cpe: str
 
 
 class CPECandidates(APIWorker):

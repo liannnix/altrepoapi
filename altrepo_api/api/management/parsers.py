@@ -36,8 +36,7 @@ from altrepo_api.api.parser import (
     vuln_id_type,
 )
 
-from .endpoints.tools.constants import DEFAULT_REASON_ACTION_TYPES, DRY_RUN_KEY
-
+from .endpoints.common.constants import DEFAULT_REASON_ACTION_TYPES, DRY_RUN_KEY
 from ..misc import lut
 
 task_input_val_opt = parser.register_item(

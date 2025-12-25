@@ -20,7 +20,7 @@ from typing import NamedTuple, Optional
 from altrepo_api.api.base import APIWorker, ConnectionProtocol, WorkerResult
 from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
 
-from .tools.utils import make_date_condition
+from .common.utils import make_date_condition
 from ..parsers import errata_user_tracking_args
 from ..sql import sql
 

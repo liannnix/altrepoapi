@@ -21,12 +21,12 @@ from typing import Any, Optional
 from altrepo_api.api.base import APIWorker
 from altrepo_api.utils import get_logger
 
-from .tools.constants import (
+from .common.constants import (
     CHANGE_ACTION_CREATE,
     CHANGE_ACTION_DISCARD,
     CHANGE_ACTION_UPDATE,
 )
-from .tools.utils import (
+from .common.utils import (
     validate_action,
     validate_default_reason_action,
     validate_default_reason_source,

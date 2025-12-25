@@ -19,10 +19,6 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class SQL:
-    drop_tmp_table = """
-DROP TABLE {tmp_table}
-"""
-
     check_task = """
 SELECT count(task_id)
 FROM TaskStates
@@ -452,184 +448,6 @@ WHERE (vuln_id, vuln_hash) IN (
 )
 """
 
-    get_errata_info_template = """
-SELECT DISTINCT
-    errata_id,
-    eh_type,
-    eh_source,
-    eh_created,
-    eh_updated,
-    pkg_hash,
-    pkg_name,
-    pkg_version,
-    pkg_release,
-    pkgset_name,
-    task_id,
-    subtask_id,
-    task_state,
-    arrayZip(eh_references.type, eh_references.link),
-    eh_hash,
-    if(discarded_id != '', 1, 0)
-FROM ErrataHistory
-LEFT JOIN (
-    SELECT errata_id AS discarded_id
-    FROM last_discarded_erratas
-) AS DE ON errata_id = DE.discarded_id
-{where_clause}
-"""
-
-    get_errata_by_id_where_clause = """
-WHERE errata_id = '{errata_id}'
-"""
-
-    get_bulletin_by_pkg_update_where_clause = """
-WHERE errata_id IN (
-    WITH bulletins AS (
-        SELECT
-            errata_id_noversion AS eid_no_ver,
-            argMax(errata_id, eh_updated) AS eid
-        FROM ErrataHistory
-        WHERE eh_type = 'bulletin'
-            AND has(eh_references.link, '{errata_id}')
-        GROUP BY errata_id_noversion
-    )
-    SELECT eid
-    FROM (
-        SELECT argMax(errata_id, eh_updated) AS eid
-        FROM ErrataHistory
-        WHERE errata_id_noversion IN (SELECT eid_no_ver FROM bulletins)
-        GROUP BY errata_id_noversion
-    )
-    WHERE eid IN (SELECT eid FROM bulletins)
-)
-"""
-
-    get_bulletin_by_branch_date_where_clause = """
-WHERE errata_id IN (
-    SELECT DISTINCT eid
-    FROM (
-        SELECT
-            errata_id_noversion,
-            argMax(errata_id, eh_updated) AS eid
-        FROM ErrataHistory
-        WHERE eh_type = 'bulletin'
-            AND pkgset_name = '{branch}'
-            AND eh_created = '{date}'
-        GROUP BY errata_id_noversion
-    )
-)
-"""
-
-    get_errata_by_task_where_clause = """
-WHERE errata_id IN (
-    SELECT DISTINCT eid
-    FROM (
-        SELECT
-            errata_id_noversion,
-            argMax(errata_id, eh_updated) AS eid
-        FROM ErrataHistory
-        WHERE task_state = 'DONE'
-            AND task_id = {task_id}
-            AND subtask_id = {subtask_id}
-        GROUP BY errata_id_noversion
-    )
-)
-"""
-
-    check_errata_id_is_discarded = """
-SELECT countDistinct(errata_id)
-FROM last_discarded_erratas
-WHERE errata_id = '{errata_id}'
-"""
-
-    get_ecc_by_errata_id = """
-SELECT
-    ec_id_noversion,
-    argMax(ec_id, ec_updated)
-FROM ErrataChangeHistory
-WHERE errata_id LIKE '{errata_id_noversion}-%%'
-GROUP BY ec_id_noversion
-"""
-
-    store_errata_history = """
-INSERT INTO ErrataHistory (* EXCEPT (ts, eh_json)) VALUES
-"""
-
-    store_errata_change_history = """
-INSERT INTO ErrataChangeHistory (* EXCEPT ts) VALUES
-"""
-
-    get_package_info_by_task_and_subtask = """
-WITH
-(
-    SELECT max(task_changed)
-    FROM TaskStates
-    WHERE task_id = {task_id} AND task_state = 'DONE'
-) AS t_changed,
-(
-    SELECT DISTINCT titer_srcrpm_hash
-    FROM TaskIterations
-    WHERE task_id = {task_id}
-        AND subtask_id = {subtask_id}
-        AND task_changed = t_changed
-) AS srcrpm_hash
-SELECT DISTINCT
-    pkg_hash,
-    pkg_name,
-    pkg_version,
-    pkg_release,
-    (SELECT DISTINCT task_repo FROM Tasks WHERE task_id  = {task_id}) AS pkgset_name,
-    {task_id} AS task_id,
-    {subtask_id} AS subtask_id,
-    'DONE' AS task_state,
-    t_changed AS task_changed
-FROM Packages
-WHERE pkg_hash = srcrpm_hash
-"""
-
-    get_done_tasks = """
-SELECT
-    task_id,
-    task_prev,
-    task_changed
-FROM TaskStates
-WHERE task_state = 'DONE'
-    AND task_id IN (
-        SELECT DISTINCT
-            task_id
-        FROM Tasks
-        WHERE task_repo = '{branch}'
-        AND task_changed >= parseDateTime32BestEffort('{changed}')
-    )
-    AND task_changed >= parseDateTime32BestEffort('{changed}')
-ORDER BY task_changed DESC
-"""
-
-    get_nearest_branch_point = """
-SELECT
-    pkgset_nodename,
-    pkgset_date,
-    toUInt32(pkgset_kv.v[indexOf(pkgset_kv.k, 'task')])
-FROM PackageSetName
-WHERE pkgset_depth = 0
-    AND pkgset_nodename = '{branch}'
-    AND pkgset_date >= parseDateTime32BestEffort('{changed}')
-ORDER BY pkgset_date ASC
-LIMIT 1
-"""
-
-    get_last_branch_state = """
-SELECT
-    pkgset_nodename,
-    pkgset_date,
-    toUInt32(pkgset_kv.v[indexOf(pkgset_kv.k, 'task')])
-FROM PackageSetName
-WHERE pkgset_depth = 0
-    AND pkgset_nodename = '{branch}'
-ORDER BY pkgset_date {order}
-LIMIT 1
-"""
-
     get_bugs_by_ids = """
 SELECT
     bz_id,
@@ -772,28 +590,6 @@ FROM (
 ) WHERE state IN {cpe_states}
     AND pkg_name IN {tmp_table}
 """
-
-    get_packages_by_project_names = """
-SELECT DISTINCT alt_name
-FROM (
-    SELECT
-        pkg_name AS alt_name,
-        pnc_result AS repology_name,
-        argMax(pnc_state, ts) AS state
-    FROM PackagesNameConversion
-    WHERE pnc_type IN {cpe_branches}
-    GROUP BY pkg_name, pnc_result, pnc_type
-) WHERE state = 'active' AND repology_name in {tmp_table}
-"""
-
-    store_pnc_records = """
-INSERT INTO PackagesNameConversion VALUES
-"""
-
-    store_pnc_change_records = """
-INSERT INTO PncChangeHistory (* EXCEPT ts) VALUES
-"""
-
     select_pkg_hash_by_nick_acl = """
 SELECT DISTINCT pkg_hash
 FROM static_last_packages
@@ -862,56 +658,6 @@ FROM last_packages
 WHERE pkg_sourcepackage = 1
     AND pkgset_name IN {branches}
     AND pkg_packager_email LIKE '{maintainer_nickname}@%'
-"""
-
-    get_maintainer_open_vulns = """
-WITH vulns AS (
-    SELECT pkg_hash,
-           pkg_name,
-           TT.pkgset_name AS branch,
-           TT.pkg_version AS version,
-           TT.pkg_release AS release,
-           vuln_id,
-           vuln_hash
-    FROM (
-        SELECT pkg_name,
-               vuln_id,
-               pkg_hash,
-               argMax(is_vulnerable, ts) AS is_vulnerable,
-               argMax(vuln_hash, ts) AS vuln_hash
-        FROM PackagesCveMatch
-        GROUP BY pkg_name, vuln_id, pkg_hash
-    ) AS ES
-     LEFT JOIN (
-        SELECT pkg_hash, pkgset_name, pkg_version, pkg_release
-        FROM {tmp_table}
-    ) AS TT ON TT.pkg_hash == ES.pkg_hash
-    WHERE pkg_hash IN (
-        SELECT pkg_hash FROM {tmp_table}
-    ) AND is_vulnerable = 1
-    GROUP BY pkg_name, pkg_hash, vuln_id, vuln_hash, branch, version, release
-)
-SELECT * FROM (
-    SELECT pkg_hash,
-           pkg_name,
-           version,
-           release,
-           max(VUL.vuln_modified_date) AS modified,
-           branch,
-           arrayReverseSort((x) -> x.1, groupUniqArray((vuln_id, VUL.vuln_type, VUL.vuln_severity))) AS vulns
-    FROM vulns
-    LEFT JOIN (
-        SELECT
-            vuln_id,
-            vuln_hash,
-            vuln_type,
-            vuln_severity,
-            vuln_modified_date
-        FROM Vulnerabilities
-    ) AS VUL ON VUL.vuln_id = vulns.vuln_id AND VUL.vuln_hash = vulns.vuln_hash
-    GROUP BY pkg_name, pkg_hash, branch, version, release
-)
-{where_clause}
 """
 
     get_all_open_vulns = """
@@ -1070,38 +816,6 @@ GROUP BY
     img_branch
 """
 
-    get_packages_info_by_hashes = """
-SELECT DISTINCT
-    toString(pkg_hash),
-    pkg_name,
-    pkg_version,
-    pkg_release,
-    pkgset_name
-FROM static_last_packages
-WHERE pkg_hash IN {tmp_table}
-"""
-
-    get_pkg_cve_matches_by_hashes = """
-SELECT DISTINCT
-    pkg_hash,
-    pkg_name,
-    pkg_cpe,
-    pkg_cpe_hash,
-    vuln_id,
-    vuln_hash,
-    cpm_cpe,
-    cpm_cpe_hash,
-    cpm_version_hash,
-    is_vulnerable
-FROM PackagesCveMatch
-WHERE (key_hash, ts) IN (
-    SELECT key_hash, max(ts)
-    FROM PackagesCveMatch
-    WHERE key_hash IN {tmp_table}
-    GROUP BY key_hash
-)
-"""
-
     get_cpes_by_vulns = """
 SELECT cpe
 FROM (
@@ -1155,31 +869,6 @@ FROM (
 INNER JOIN repology_names AS EN ON EN.repology_name = cpe_pkg_name
 {where}
 ORDER BY state, repology_name, pkg_name, repology_branch, cpe;
-"""
-
-    get_pnc_records = """
-SELECT
-    name,
-    state,
-    result,
-    type,
-    source
-FROM (
-    SELECT
-        pkg_name AS name,
-        argMax(pnc_state, ts) AS state,
-        pnc_result AS result,
-        pnc_type AS type,
-        argMax(pnc_source, ts) AS source
-    FROM PackagesNameConversion
-    WHERE pnc_type IN {pnc_branches}
-    GROUP BY
-        pkg_name,
-        pnc_type,
-        pnc_result
-)
-{where_clause}
-ORDER BY name, type, result
 """
 
     get_pnc_list = """

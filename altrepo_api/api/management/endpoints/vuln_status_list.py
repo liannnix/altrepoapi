@@ -19,9 +19,9 @@ from typing import Any, NamedTuple, Optional
 from altrepo_api.api.base import APIWorker, ConnectionProtocol, WorkerResult
 from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
 
+from .vuln_status import VulnerabilityStatus
 from ..sql import sql
 from ..parsers import vuln_status_list_args
-from .vuln_status import VulnerabilityStatus
 
 
 class VulnStatusListArgs(NamedTuple):

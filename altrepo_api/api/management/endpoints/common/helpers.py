@@ -14,8 +14,27 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from .base import _pAPIWorker
-from ..base import CommentChangeRecord, Comment
+from logging import Logger
+from typing import Any, Protocol
+
+from altrepo_api.api.management.sql import SQL
+
+from .base import CommentChangeRecord, Comment
+
+
+class _pAPIWorker(Protocol):
+    sql: SQL
+    status: bool
+    sql_status: bool
+    logger: Logger
+
+    def store_error(
+        self, message: dict[str, Any], severity: int = ..., http_code: int = ...
+    ) -> tuple[Any, int]: ...
+
+    def send_sql_request(
+        self, request_line: Any, http_code: int = ..., **kwargs
+    ) -> Any: ...
 
 
 def store_comment(cls: _pAPIWorker, comment: Comment) -> None:

@@ -22,7 +22,7 @@ from altrepo_api.api.base import APIWorker, WorkerResult
 from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
 from altrepo_api.utils import get_logger
 
-from .tools.constants import DEFAULT_REASON_ACTION_TYPES
+from .common.constants import DEFAULT_REASON_ACTION_TYPES
 from ..parsers import default_reasons_list_args
 from ..sql import sql
 

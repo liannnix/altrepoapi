@@ -17,8 +17,8 @@
 from altrepo_api.api.base import APIWorker
 from altrepo_api.utils import get_logger
 
-from .tools.utils import validate_comment_entity_type
-from .tools.base import CommentListElement, Comment
+from .common.utils import validate_comment_entity_type
+from .common.base import CommentListElement, Comment
 from ..sql import sql
 
 

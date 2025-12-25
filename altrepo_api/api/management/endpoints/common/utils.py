@@ -27,11 +27,8 @@ from .constants import (
     COMMENT_ENTITY_TYPES,
     DT_NEVER,
     CHANGE_ACTIONS,
-    ERRATA_VALID_SOURCES,
-    ERRATA_VALID_TYPES,
     SUPPORTED_BRANCHES,
     SUPPORTED_BRANCHES_WITH_TASKS,
-    SUPPORTED_BRANCHES_WITHOUT_TASKS,
     BDU_ID_TYPE,
     CVE_ID_TYPE,
     GHSA_ID_TYPE,
@@ -69,24 +66,12 @@ def validate_action(action: str) -> bool:
     return action in CHANGE_ACTIONS
 
 
-def validate_type(value: str) -> bool:
-    return value in ERRATA_VALID_TYPES
-
-
-def validate_source(value: str) -> bool:
-    return value in ERRATA_VALID_SOURCES
-
-
 def validate_branch(branch: str) -> bool:
     return branch in SUPPORTED_BRANCHES
 
 
 def validate_branch_with_tasks(branch: str) -> bool:
     return branch in SUPPORTED_BRANCHES_WITH_TASKS
-
-
-def validate_branch_without_tasks(branch: str) -> bool:
-    return branch in SUPPORTED_BRANCHES_WITHOUT_TASKS
 
 
 def validate_comment_entity_type(type: str) -> bool:

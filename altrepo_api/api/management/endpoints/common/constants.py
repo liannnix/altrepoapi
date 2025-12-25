@@ -27,18 +27,6 @@ CHANGE_SOURCE_KEY = "change_source"
 CHANGE_SOURCE_AUTO = "auto"
 CHANGE_SOURCE_MANUAL = "manual"
 
-# ChangeReason' object `details` dictionary keys
-KEY_ACTION = "action"
-KEY_CPE = "cpe"
-KEY_STATE = "state"
-KEY_PNC = "pnc"
-KEY_PACKAGE = "package"
-KEY_PROJECT = "project_name"
-
-
-BUG_REFERENCE_TYPE = lut.errata_ref_type_bug
-VULN_REFERENCE_TYPE = lut.errata_ref_type_vuln
-ERRATA_REFERENCE_TYPE = "errata"
 
 BDU_ID_TYPE = "BDU"
 BDU_ID_PREFIX = f"{BDU_ID_TYPE}:"
@@ -73,23 +61,11 @@ CHANGE_ACTION_DISCARD = "discard"
 CHANGE_ACTION_UPDATE = "update"
 CHANGE_ACTIONS = (CHANGE_ACTION_CREATE, CHANGE_ACTION_DISCARD, CHANGE_ACTION_UPDATE)
 
-BRANCH_BULLETIN_ERRATA_SOURCE = "branch"
-BRANCH_BULLETIN_ERRATA_TYPE = "bulletin"
 BRANCH_PACKAGE_ERRATA_TYPE = "branch"
 BRANCH_PACKAGE_ERRATA_SOURCE = "changelog"
 TASK_PACKAGE_ERRATA_TYPE = "task"
 TASK_PACKAGE_ERRATA_SOURCE = "changelog"
 
-ERRATA_VALID_TYPES = (
-    BRANCH_BULLETIN_ERRATA_TYPE,
-    BRANCH_PACKAGE_ERRATA_TYPE,
-    TASK_PACKAGE_ERRATA_TYPE,
-)
-ERRATA_VALID_SOURCES = (
-    BRANCH_BULLETIN_ERRATA_SOURCE,
-    BRANCH_PACKAGE_ERRATA_SOURCE,
-    TASK_PACKAGE_ERRATA_SOURCE,
-)
 
 ERRATA_PACKAGE_UPDATE_SOURCES = (
     BRANCH_PACKAGE_ERRATA_SOURCE,
@@ -100,48 +76,12 @@ ERRATA_PACKAGE_UPDATE_TYPES = (BRANCH_PACKAGE_ERRATA_TYPE, TASK_PACKAGE_ERRATA_T
 SUPPORTED_BRANCHES_WITH_TASKS = lut.errata_manage_branches_with_tasks
 SUPPORTED_BRANCHES_WITHOUT_TASKS = lut.errata_manage_branches_without_tasks
 SUPPORTED_BRANCHES = (*SUPPORTED_BRANCHES_WITH_TASKS, *SUPPORTED_BRANCHES_WITHOUT_TASKS)
-# errata comparison field sets
-CHECK_ERRATA_CONTENT_ON_UPDATE = (
-    "hash",
-    "task_id",
-    "subtask_id",
-)
-CHECK_ERRATA_CONTENT_ON_CREATE = (
-    "pkg_hash",
-    "pkg_name",
-    "pkg_version",
-    "pkg_release",
-    "pkgset_name",
-    "task_id",
-    "subtask_id",
-    "task_state",
-)
-CHECK_ERRATA_CONTENT_ON_DISCARD = (
-    "pkg_hash",
-    "pkg_name",
-    "pkg_version",
-    "pkg_release",
-    "pkgset_name",
-    "task_id",
-    "subtask_id",
-    "task_state",
-)
 
 PNC_STATE_ACTIVE = "active"
 PNC_STATE_INACTIVE = "inactive"
 PNC_STATE_CANDIDATE = "candidate"
 PNC_STATES = (PNC_STATE_ACTIVE, PNC_STATE_INACTIVE, PNC_STATE_CANDIDATE)
 PNC_SOURCES = (CHANGE_SOURCE_AUTO, CHANGE_SOURCE_MANUAL)
-
-TRANSACTION_ID_KEY = "transaction_id"
-
-ERRATA_MANAGE_RESPONSE_ERRATA_FIELD = "errata"
-ERRATA_MANAGE_RESPONSE_ERRATA_CHANGE_FIELD = "errata_change"
-SOURCE_ERRATA_POINT = "cpe"
-SOURCE_CHANGELOG = "changelog"
-SOURCE_CPE_DISCRAD = "CPE"
-SOURCE_PNC_DISCRAD = "PNC"
-SOURCE_ORDER = {SOURCE_ERRATA_POINT: 0, SOURCE_CHANGELOG: 1}
 
 COMMENT_ENTITY_TYPES = lut.comment_ref_types
 

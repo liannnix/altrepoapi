@@ -20,13 +20,12 @@ from typing import Any, Optional
 from altrepo_api.api.base import APIWorker
 from altrepo_api.utils import get_logger, get_real_ip, make_snowflake_id, mmhash
 
-from .tools.base import CommentListElement, UserInfo
-from .tools.base import ChangeReason, Comment, Reference
-from .tools.constants import CHANGE_ACTION_CREATE, CHANGE_ACTION_DISCARD
-from .tools.helpers.comments import store_comment, store_comment_change_record
-from .tools.comments_transaction import Transaction
-from .tools.utils import validate_action, validate_comment_entity_type
-
+from .common.base import CommentListElement, UserInfo
+from .common.base import ChangeReason, Comment, Reference
+from .common.constants import CHANGE_ACTION_CREATE, CHANGE_ACTION_DISCARD
+from .common.helpers import store_comment, store_comment_change_record
+from .common.comments_transaction import Transaction
+from .common.utils import validate_action, validate_comment_entity_type
 from ..sql import sql
 
 
