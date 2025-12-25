@@ -4,6 +4,7 @@ import pytest
 from altrepo_api.api.auth import decorators
 from altrepo_api.api.auth.exceptions import ApiUnauthorized
 
+
 os.environ["ALTREPO_API_CONFIG"] = "./tests/api.conf"
 from altrepo_api.app import app as test_api
 
@@ -37,3 +38,10 @@ def mocked_check_access_token(monkeypatch):
     fetch_result = FetchResult()
     fetch_result.headers = {}
     return fetch_result
+
+
+def feature_flag_pnc_multi_mapping():
+    from altrepo_api.settings import namespace as settings
+    from altrepo_api.api.misc import lut
+
+    return settings.FEATURE_FLAGS.get(lut.feature_pnc_multi_mapping, False)

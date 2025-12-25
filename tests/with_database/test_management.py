@@ -1,6 +1,10 @@
 import pytest
 from flask import url_for
 
+from conftest import feature_flag_pnc_multi_mapping
+
+FEAT_PNC_MULTI_MAPPING = feature_flag_pnc_multi_mapping()
+
 BRANCH_IN_DB = "sisyphus"
 BRANCH_NOT_IN_DB = "fakebranch"
 TASK_IN_DB = "310692"
@@ -360,7 +364,7 @@ def test_task_info(client, kwargs, mocked_check_access_token):
         },
         {
             "payload": {"vuln_ids": [VULN_NOT_IN_DB, VULN_NOT_IN_DB2]},
-            "status_code": 200,
+            "status_code": 404,
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },
         {
@@ -375,7 +379,7 @@ def test_task_info(client, kwargs, mocked_check_access_token):
         },
         {
             "payload": {"vuln_ids": []},
-            "status_code": 404,
+            "status_code": 400,
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },
         {
@@ -659,7 +663,7 @@ def test_packages_maintainer_list(client, kwargs, mocked_check_access_token):
         assert data != {}
         assert data["maintainers"] != []
         if params.get("limit", ""):
-            assert params["limit"] <= data["length"]
+            assert params["limit"] <= data["request_args"]["limit"]
 
 
 @pytest.mark.parametrize(
@@ -799,12 +803,12 @@ def test_pnc_list(client, kwargs, mocked_check_access_token):
     [
         {
             "name": PACKAGE_UNMAPPED_IN_DB,
-            "status_code": 200,
+            "status_code": 200 if not FEAT_PNC_MULTI_MAPPING else 404,
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },
         {
             "name": PACKAGE_UNMAPPED_IN_DB2,
-            "status_code": 200,
+            "status_code": 200 if not FEAT_PNC_MULTI_MAPPING else 404,
             "headers": {"Authorization": VALID_ACCESS_TOKEN},
         },
         {
