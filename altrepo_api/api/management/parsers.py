@@ -30,7 +30,6 @@ from altrepo_api.api.parser import (
     project_name_type,
     sort_type,
     task_search_type,
-    uuid_type,
     pkg_name_list_type,
     image_file_type,
     date_string_type,

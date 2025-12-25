@@ -334,8 +334,7 @@ cpe_records_model = ns.model(
         "cpe": fields.String(description="CPE match string"),
         "state": fields.String(description="CPE match state"),
         "project_name": fields.String(
-            attribute="repology_name",
-            description="Repology' common project package name",
+            description="Repology' common project package name"
         ),
         "packages": fields.Nested(
             cpe_package_el_model,
@@ -438,21 +437,6 @@ cpe_manage_response_model = ns.model(
         "cpe_change_records": fields.Nested(
             manage_pnc_change_record_model,
             description="list of CPE match change records",
-            as_list=True,
-        ),
-        "errata_records": fields.Nested(
-            errata_manage_errata_model,
-            description="modified Errata records contents",
-            as_list=True,
-        ),
-        "errata_change_records": fields.Nested(
-            errata_manage_errata_change_model,
-            description="Errata change records contents",
-            as_list=True,
-        ),
-        "packages_cve_matches": fields.Nested(
-            cpe_manage_pkg_cve_match_el_model,
-            description="list of updated packages' CVE match records",
             as_list=True,
         ),
     },
@@ -624,7 +608,7 @@ pnc_manage_response_model = ns.model(
         "related_cve_ids": fields.List(
             fields.String,
             description="CVE IDs are related to modified PNC records",
-        )
+        ),
     },
 )
 
