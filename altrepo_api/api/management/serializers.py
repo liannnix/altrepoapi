@@ -581,8 +581,20 @@ pnc_manage_get_model = ns.model(
     "PncManageGetModel",
     {
         "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of PNC records found in DB"),
         "pncs": fields.Nested(
             manage_pnc_record_model, description="list of PNC records", as_list=True
+        ),
+    },
+)
+
+manage_pnc_affetted_model = ns.model(
+    "ManagePncAffectedModel",
+    {
+        "package": fields.String(description="affected package name"),
+        "cves": fields.List(
+            fields.String,
+            description="list of related CVEs",
         ),
     },
 )
@@ -604,20 +616,15 @@ pnc_manage_response_model = ns.model(
             description="list of PNC change records",
             as_list=True,
         ),
-        "errata_records": fields.Nested(
-            errata_manage_errata_model,
-            description="modified Errata records contents",
-            as_list=True,
-        ),
-        "errata_change_records": fields.Nested(
-            errata_manage_errata_change_model,
-            description="Errata change records contents",
+        "affected": fields.Nested(
+            manage_pnc_affetted_model,
+            description="list of affected packages and CVEs",
             as_list=True,
         ),
         "related_cve_ids": fields.List(
             fields.String,
             description="CVE IDs are related to modified PNC records",
-        ),
+        )
     },
 )
 
