@@ -326,12 +326,15 @@ package_scores AS (
             positionCaseInsensitive(c.chlog_text, 'non-maintainer') > 0, 1,
             0
         ) AS has_nmu_text,
-        has(a.acl_list, extract(p.pkg_changelog.name, '<(.*)@')) AS is_in_acl,
+        if(%(branch)s = 'sisyphus',
+            has(a.acl_list, extract(p.pkg_changelog.name, '<(.*)@')),
+            0
+        ) AS is_in_acl,
         dateDiff('day', p.pkg_changelog.date, now()) AS age_days
     FROM Packages p
     ARRAY JOIN p.pkg_changelog
     LEFT JOIN Changelog c ON c.chlog_hash = p.pkg_changelog.hash
-    LEFT JOIN last_acl a ON a.acl_for = p.pkg_name AND a.acl_branch = %(branch)s
+    LEFT JOIN last_acl a ON a.acl_for = p.pkg_name AND a.acl_branch = 'sisyphus'
     WHERE p.pkg_hash IN (
         SELECT pkg_hash
         FROM last_packages

@@ -1114,7 +1114,7 @@ WITH
 acl_array AS (
     SELECT acl_list, 1 AS priority
     FROM Acl
-    WHERE acl_for = %(package)s AND acl_branch = %(branch)s
+    WHERE acl_for = %(package)s AND acl_branch = 'sisyphus'
     ORDER BY acl_date DESC
     LIMIT 1
     UNION ALL
@@ -1133,9 +1133,12 @@ changelog_scores AS (
             positionCaseInsensitive(Changelog.chlog_text, 'non-maintainer') > 0, 1,
             0
         ) AS has_nmu_text,
-        has(
-            (SELECT acl_list FROM acl_array ORDER BY priority LIMIT 1),
-            extract(pkg_changelog.name, '<(.*)@')
+        if(%(branch)s = 'sisyphus',
+            has(
+                (SELECT acl_list FROM acl_array ORDER BY priority LIMIT 1),
+                extract(pkg_changelog.name, '<(.*)@')
+            ),
+            0
         ) AS is_in_acl,
         dateDiff('day', pkg_changelog.date, now()) AS age_days
     FROM Packages
