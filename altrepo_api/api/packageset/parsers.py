@@ -109,3 +109,4 @@ pkgset_packages_args = parser.build_parser(
 repository_statistics_args = parser.build_parser(branch_opt)
 packages_by_uuid_args = parser.build_parser(uuid)
 packages_by_component_args = parser.build_parser(branch, arch, component)
+maintainer_scores_batch_args = parser.build_parser(branch)
