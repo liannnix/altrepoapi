@@ -772,3 +772,42 @@ def test_wds(client, kwargs):
         assert data != {}
         assert data["length"] != 0
         assert data["dependencies"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"branch": BRANCH_IN_DB, "name": "curl", "status_code": 200},
+        {"branch": BRANCH_NOT_IN_DB, "name": "curl", "status_code": 400},
+        {"branch": BRANCH_IN_DB, "name": PKG_NOT_IN_DB, "status_code": 404},
+    ],
+)
+def test_maintainer_score(client, kwargs):
+    url = url_for("api.package_route_maintainer_score")
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("status_code",):
+            continue
+        if v is not None:
+            params[k] = v
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert "package" in data
+        assert "branch" in data
+        assert "primary_maintainer" in data
+        assert "status" in data
+        assert data["status"] in ("active", "low_activity", "orphaned")
+        assert "maintainers" in data
+        assert isinstance(data["maintainers"], list)
+        if data["maintainers"]:
+            m = data["maintainers"][0]
+            assert "nick" in m
+            assert "score" in m
+            assert "base_score" in m
+            assert "bugfixes" in m
+            assert "recent_commits" in m
+            assert "bonus_applied" in m
+            assert "in_acl" in m
