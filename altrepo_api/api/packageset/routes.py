@@ -30,6 +30,7 @@ from .endpoints.pkgset_compare import PackagesetCompare
 from .endpoints.pkgset_packages import PackagesetPackages
 from .endpoints.pkgset_status import RepositoryStatus, ActivePackagesets
 from .endpoints.repository_status import RepositoryStatistics
+from .endpoints.maintainer_score import MaintainerScoresBatch
 
 from .namespace import get_namespace
 from .parsers import (
@@ -38,6 +39,7 @@ from .parsers import (
     repository_statistics_args,
     packages_by_uuid_args,
     packages_by_component_args,
+    maintainer_scores_batch_args,
 )
 from .serializers import (
     pkgset_compare_model,
@@ -47,6 +49,7 @@ from .serializers import (
     active_pkgsets_model,
     repository_statistics_model,
     packages_by_uuid_model,
+    maintainer_scores_batch_model,
 )
 
 ns = get_namespace()
@@ -190,3 +193,20 @@ class routePackagesByComponent(Resource):
         args = packages_by_component_args.parse_args(strict=True)
         w = PackagesByUuid(g.connection, **args)
         return run_worker(worker=w, args=args, run_method=w.get_by_component)
+
+
+@ns.route(
+    "/maintainer_scores",
+    doc={
+        "description": "Get maintainer scores for all source packages in a branch.",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeMaintainerScoresBatch(Resource):
+    @ns.expect(maintainer_scores_batch_args)
+    @ns.marshal_with(maintainer_scores_batch_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = maintainer_scores_batch_args.parse_args(strict=True)
+        w = MaintainerScoresBatch(g.connection, **args)
+        return run_worker(worker=w, args=args)
