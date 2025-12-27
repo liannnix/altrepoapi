@@ -80,6 +80,10 @@ pkgset_packages_model = ns.model(
             description="packages information",
             as_list=True,
         ),
+        "done_tasks": fields.List(
+            fields.Integer,
+            description="list of DONE task IDs applied to repository state",
+        ),
     },
 )
 
