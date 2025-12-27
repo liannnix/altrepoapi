@@ -14,6 +14,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from flask_restx import inputs
+
 from altrepo_api.api.parser import (
     parser,
     branch_name_type,
@@ -71,7 +73,7 @@ arch_list_opt = parser.register_item(
 )
 include_done_tasks = parser.register_item(
     "include_done_tasks",
-    type=bool,
+    type=inputs.boolean,
     required=False,
     default=False,
     help="include packages from tasks in DONE state",
