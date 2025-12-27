@@ -266,7 +266,15 @@ WHERE pkgh_sha256 IN
 )
 """
 
-    get_packages_by_hashes = """
+    create_tmp_hashes_table = """
+CREATE TEMPORARY TABLE {table} (pkghash UInt64)
+"""
+
+    insert_into_tmp_hashes_table = """
+INSERT INTO {table} VALUES
+"""
+
+    get_packages_by_tmp_table = """
 SELECT
     pkg_hash,
     pkg_name,
@@ -288,7 +296,7 @@ LEFT JOIN
     FROM last_acl
     WHERE acl_branch = '{branch}'
 ) AS Acl USING pkg_name
-WHERE pkg_hash IN {hashes}
+WHERE pkg_hash IN (SELECT pkghash FROM {table})
     AND pkg_sourcepackage IN {src}
     {archs}
     AND pkg_name NOT LIKE '%%-debuginfo'

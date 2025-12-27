@@ -18,6 +18,7 @@ from collections import namedtuple
 from typing import Any
 
 from altrepo_api.api.base import APIWorker
+from altrepo_api.utils import make_tmp_table_name
 from ..sql import sql
 
 
@@ -122,11 +123,29 @@ class PackagesetPackages(APIWorker):
                 }
             )
 
-        # get packages by final hashes
+        # create temporary table for package hashes
+        tmp_table = make_tmp_table_name("pkg_hshs")
+        self.send_sql_request(
+            self.sql.create_tmp_hashes_table.format(table=tmp_table)
+        )
+        if not self.sql_status:
+            return self.error
+
+        # insert hashes into temporary table
+        self.send_sql_request(
+            (
+                self.sql.insert_into_tmp_hashes_table.format(table=tmp_table),
+                ({"pkghash": h} for h in final_hashes),
+            )
+        )
+        if not self.sql_status:
+            return self.error
+
+        # get packages by hashes from temporary table
         response = self.send_sql_request(
-            self.sql.get_packages_by_hashes.format(
+            self.sql.get_packages_by_tmp_table.format(
                 branch=self.branch,
-                hashes=tuple(final_hashes),
+                table=tmp_table,
                 src=sourcef,
                 archs=archs,
             )
