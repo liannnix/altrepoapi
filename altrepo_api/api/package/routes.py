@@ -40,6 +40,7 @@ from .endpoints.misconflict_packages import PackageMisconflictPackages
 from .endpoints.build_dependency_set import PackageBuildDependencySet
 from .endpoints.specfile import SpecfileByPackageName, SpecfileByPackageHash
 from .endpoints.package_files import PackageFiles
+from .endpoints.maintainer_score import MaintainerScore
 from .parsers import (
     package_info_args,
     pkg_build_dep_args,
@@ -51,6 +52,7 @@ from .parsers import (
     unpackaged_dirs_args,
     build_dep_set_args,
     specfile_args,
+    maintainer_score_args,
 )
 from .serializers import (
     package_info_model,
@@ -65,6 +67,7 @@ from .serializers import (
     repocop_json_get_list_model,
     specfile_model,
     package_files_model,
+    maintainer_score_model,
 )
 
 ns = get_namespace()
@@ -338,4 +341,21 @@ class routeBinPackageFiles(Resource):
         url_logging(logger, g.url)
         args = {}
         w = PackageFiles(g.connection, pkghash)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/maintainer_score",
+    doc={
+        "description": "Get maintainer scores for a source package based on changelog activity.",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeMaintainerScore(Resource):
+    @ns.expect(maintainer_score_args)
+    @ns.marshal_with(maintainer_score_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = maintainer_score_args.parse_args(strict=True)
+        w = MaintainerScore(g.connection, **args)
         return run_worker(worker=w, args=args)
