@@ -103,6 +103,20 @@ def test_pkgset_status_post(client, kwargs):
             "archs": None,
             "status_code": 400,
         },
+        {
+            "branch": BRANCH_IN_DB,
+            "package_type": "source",
+            "archs": None,
+            "include_done_tasks": True,
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "package_type": "source",
+            "archs": None,
+            "include_done_tasks": False,
+            "status_code": 200,
+        },
     ],
 )
 def test_repository_packages(client, kwargs):
@@ -123,6 +137,10 @@ def test_repository_packages(client, kwargs):
         assert data["packages"] != []
         for pkg in PACKAGES_IN_DB:
             assert pkg in pkg_names
+        # check done_tasks field when include_done_tasks is set
+        if kwargs.get("include_done_tasks"):
+            assert "done_tasks" in data
+            assert isinstance(data["done_tasks"], list)
 
 
 @pytest.mark.parametrize(
