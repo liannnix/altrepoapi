@@ -1102,5 +1102,111 @@ LEFT JOIN
 ORDER BY filename
 """
 
+    get_maintainer_score = """
+WITH
+%(half_life_days)s AS half_life_days,
+%(w_update)s AS w_update,
+%(w_patch)s AS w_patch,
+%(w_nmu)s AS w_nmu,
+%(acl_non_member_factor)s AS acl_non_member_factor,
+%(recent_period_days)s AS recent_period_days,
+
+acl_array AS (
+    SELECT acl_list, 1 AS priority
+    FROM Acl
+    WHERE acl_for = %(package)s AND acl_branch = %(branch)s
+    ORDER BY acl_date DESC
+    LIMIT 1
+    UNION ALL
+    SELECT []::Array(String) AS acl_list, 2 AS priority
+),
+
+changelog_scores AS (
+    SELECT
+        extract(pkg_changelog.name, '<(.*)@') AS nick,
+        pkg_changelog.date AS chlog_date,
+        pkg_changelog.evr AS evr,
+        extractAll(pkg_changelog.evr, '-alt(.+)$')[1] AS rel,
+        multiIf(
+            positionCaseInsensitive(Changelog.chlog_text, 'NMU') > 0, 1,
+            positionCaseInsensitive(Changelog.chlog_text, 'rebuild') > 0, 1,
+            positionCaseInsensitive(Changelog.chlog_text, 'non-maintainer') > 0, 1,
+            0
+        ) AS has_nmu_text,
+        has(
+            (SELECT acl_list FROM acl_array ORDER BY priority LIMIT 1),
+            extract(pkg_changelog.name, '<(.*)@')
+        ) AS is_in_acl,
+        dateDiff('day', pkg_changelog.date, now()) AS age_days
+    FROM Packages
+    ARRAY JOIN pkg_changelog
+    LEFT JOIN Changelog ON Changelog.chlog_hash = pkg_changelog.hash
+    WHERE pkg_hash IN (
+        SELECT pkg_hash
+        FROM last_packages
+        WHERE pkgset_name = %(branch)s
+            AND pkg_name = %(package)s
+            AND pkg_sourcepackage = 1
+    )
+)
+
+SELECT
+    nick,
+    sum(
+        multiIf(
+            has_nmu_text = 1 AND is_in_acl = 0, w_nmu,
+            rel = '1' OR startsWith(rel, '0.'), w_update,
+            w_patch
+        )
+        * exp(-age_days * log(2) / half_life_days)
+        * if(is_in_acl, 1.0, acl_non_member_factor)
+    ) AS score,
+    countIf(rel = '1' OR startsWith(rel, '0.')) AS updates,
+    countIf(
+        NOT (rel = '1' OR startsWith(rel, '0.'))
+        AND NOT (has_nmu_text = 1 AND is_in_acl = 0)
+    ) AS patches,
+    countIf(has_nmu_text = 1 AND is_in_acl = 0) AS nmu_count,
+    any(is_in_acl) AS in_acl,
+    max(chlog_date) AS last_activity,
+    countIf(age_days <= recent_period_days) AS recent_commits
+FROM changelog_scores
+WHERE nick != ''
+GROUP BY nick
+ORDER BY score DESC
+"""
+
+    get_maintainer_bugfixes = """
+WITH
+%(half_life_days)s AS half_life_days,
+%(w_bugfix)s AS w_bugfix,
+%(recent_period_days)s AS recent_period_days
+
+SELECT
+    extractAll(bz_assignee, '^([^@]+)')[1] AS nick,
+    sum(
+        w_bugfix * exp(-dateDiff('day', bz_last_changed, now()) * log(2) / half_life_days)
+    ) AS bugfix_score,
+    count() AS bugfix_count,
+    0 AS bugfix_with_update,
+    countIf(dateDiff('day', bz_last_changed, now()) <= recent_period_days) AS recent_bugfixes,
+    max(bz_last_changed) AS last_bugfix
+FROM Bugzilla
+WHERE (
+        bz_component = %(package)s
+        OR bz_component IN (
+            SELECT DISTINCT pkg_name
+            FROM last_packages
+            WHERE pkgset_name = %(branch)s
+                AND pkg_sourcepackage = 0
+                AND pkg_sourcerpm LIKE concat(%(package)s, '-%%')
+        )
+    )
+    AND bz_status IN ('RESOLVED', 'CLOSED')
+    AND bz_resolution = 'FIXED'
+    AND extractAll(bz_assignee, '^([^@]+)')[1] != ''
+GROUP BY nick
+"""
+
 
 sql = SQL()
