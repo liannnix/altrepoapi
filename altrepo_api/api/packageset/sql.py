@@ -224,5 +224,86 @@ LEFT JOIN (
 WHERE pkg_hash IN (SELECT pkg_hash FROM pkg_hashes)
 """
 
+    get_done_tasks_after_last_repo = """
+WITH
+(
+    SELECT max(pkgset_date)
+    FROM static_last_packages
+    WHERE pkgset_name = '{branch}'
+) AS last_repo_date,
+(
+    SELECT toUInt32(pkgset_kv.v[indexOf(pkgset_kv.k, 'task')])
+    FROM PackageSetName
+    WHERE pkgset_nodename = '{branch}' AND pkgset_date = last_repo_date
+) AS last_repo_task,
+(
+    SELECT max(task_changed)
+    FROM TaskStates
+    WHERE (task_state = 'DONE') AND task_id = last_repo_task
+) AS last_repo_task_changed
+SELECT task_id
+FROM TaskStates
+WHERE task_state = 'DONE'
+    AND task_changed > last_repo_task_changed
+    AND task_id IN (SELECT task_id FROM Tasks WHERE task_repo = '{branch}')
+ORDER BY task_changed DESC
+"""
+
+    get_task_plan_hashes = """
+SELECT DISTINCT pkgh_mmh
+FROM PackageHash
+WHERE pkgh_sha256 IN
+(
+    SELECT tplan_sha256
+    FROM TaskPlanPkgHash
+    WHERE tplan_hash IN
+    (
+        SELECT tplan_hash
+        FROM task_plan_hashes
+        WHERE task_id IN {task_ids}
+    )
+    AND tplan_action = '{action}'
+)
+"""
+
+    get_packages_by_hashes = """
+SELECT
+    pkg_hash,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_summary,
+    groupUniqArray(pkg_packager_email) AS packagers,
+    pkg_url,
+    pkg_license,
+    pkg_group_,
+    groupUniqArray(pkg_arch),
+    Acl.acl_list
+FROM Packages
+LEFT JOIN
+(
+    SELECT
+        acl_for AS pkg_name,
+        acl_list
+    FROM last_acl
+    WHERE acl_branch = '{branch}'
+) AS Acl USING pkg_name
+WHERE pkg_hash IN {hashes}
+    AND pkg_sourcepackage IN {src}
+    {archs}
+    AND pkg_name NOT LIKE '%%-debuginfo'
+GROUP BY
+    pkg_hash,
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkg_summary,
+    pkg_url,
+    pkg_license,
+    pkg_group_,
+    Acl.acl_list
+ORDER BY pkg_name
+"""
+
 
 sql = SQL()
