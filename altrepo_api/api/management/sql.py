@@ -1177,7 +1177,16 @@ GROUP BY vuln_id
 """
 
     vuln_status_history = """
-SELECT * FROM VulnerabilityStatus
+SELECT
+    vuln_id,
+    vs_author,
+    vs_status,
+    vs_resolution,
+    vs_reason,
+    vs_subscribers,
+    vs_json,
+    vs_updated
+FROM VulnerabilityStatus
 WHERE vuln_id = '{vuln_id}'
 ORDER BY vs_updated DESC
 """
