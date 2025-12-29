@@ -116,7 +116,7 @@ class PackagesetPackages(APIWorker):
             if not self.status:
                 return self.error
 
-        # no `include_done_tasks` where provided or not DONE tasks found after 
+        # no `include_done_tasks` where provided or not DONE tasks found after
         # lates branh commit
         if not done_tasks:
             packages = [self.PkgMeta(*el)._asdict() for el in response]
