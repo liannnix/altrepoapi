@@ -71,7 +71,7 @@ arch_list_opt = parser.register_item(
     help="list of packages architectures",
     location="args",
 )
-include_done_tasks = parser.register_item(
+include_done_tasks_opt = parser.register_item(
     "include_done_tasks",
     type=inputs.boolean,
     required=False,
@@ -104,7 +104,7 @@ component = parser.register_item(
 # build parsers
 pkgset_compare_args = parser.build_parser(packageset_1, packageset_2)
 pkgset_packages_args = parser.build_parser(
-    branch, package_type_opt, arch_list_opt, include_done_tasks
+    branch, package_type_opt, arch_list_opt, include_done_tasks_opt
 )
 repository_statistics_args = parser.build_parser(branch_opt)
 packages_by_uuid_args = parser.build_parser(uuid)
