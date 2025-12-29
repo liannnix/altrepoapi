@@ -139,7 +139,7 @@ class CPECandidates(APIWorker):
                 self.logger.info(f"Failed to parse CPE from {el}")
                 continue
 
-        cpes_list = [{"cpe": k[0], "repology_name": k[1], **v} for k, v in cpes.items()]
+        cpes_list = [{"cpe": k[0], "project_name": k[1], **v} for k, v in cpes.items()]
 
         paginator = Paginator(cpes_list, limit)
         res = paginator.get_page(page)
@@ -589,7 +589,7 @@ class CPEList(APIWorker):
                 self.logger.info(f"Failed to parse CPE from {el}")
                 continue
 
-        result = [{"cpe": k[0], "repology_name": k[1], **v} for k, v in cpes.items()]
+        result = [{"cpe": k[0], "project_name": k[1], **v} for k, v in cpes.items()]
         if self.args.sort:
             result = rich_sort(result, self.args.sort)
 
