@@ -14,15 +14,26 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+A lightweight, type-safe JSON (de)serializer for NamedTuple-based models.
+
+Features:
+- Automatic handling of datetime, UUID, Enum, nested NamedTuples, and lists
+- Optional field support (Union[T, None])
+- Custom enum deserialization via `.deserialize()` classmethod
+- Strict boolean handling (only native JSON booleans accepted)
+- Configurable None-skipping during serialization
+"""
+
 import inspect
 
 from enum import Enum
 from datetime import datetime
-from typing import Any, List, NamedTuple, Type, TypeVar, Union, get_type_hints
+from typing import Any, Callable, List, NamedTuple, Type, TypeVar, Union, get_type_hints
 from uuid import UUID
 
 from .base import JSONValue, JSONObject
-from .rusty import Result, Ok, Err
+from .rusty import Result, Ok, Err, resultify
 
 SKIP_SERIALIZING_IF_NONE = "SKIP_SERIALIZING_IF_NONE"
 
@@ -34,19 +45,36 @@ class SerdeError(Exception):
 
 
 def serialize_enum(cls: Enum) -> str:
-    return cls.value
+    """Simple Enum serializer."""
+    return str(cls.value).lower()
 
 
 def deserialize_enum(cls: Type[ENUM], value: JSONValue) -> Result[ENUM, Exception]:
+    """
+    Deserialize a string into an Enum member.
+
+    Tries in order:
+    1. Enum member name (case-insensitive)
+    2. Enum value (converted to string, then case-insensitive match)
+
+    Returns Err if no match is found.
+    """
+
     if not isinstance(value, str):
-        return Err(SerdeError(f"Expected string, got {type(value)}"))
+        return Err(SerdeError(f"Invalid value {type(value).__name__}. Expected string"))
+
     v = value.upper()
+
     try:
-        return Ok(cls[v])  # type: ignore
+        return Ok(cls[v])
     except KeyError:
-        return Err(
-            SerdeError(f"'{v}'[{value}] is not a valid {cls.__name__} enum member")
-        )
+        pass
+
+    for member in cls:
+        if str(member.value).upper() == v:
+            return Ok(member)
+
+    return Err(SerdeError(f"'{value}' is not a valid {cls.__name__}"))
 
 
 def _is_namedtuple_type(obj_type: Type) -> bool:
@@ -61,7 +89,7 @@ def _is_namedtuple_type(obj_type: Type) -> bool:
 
 
 def _is_namedtuple_instance(obj) -> bool:
-    """Check if an object is a NamedTuple instance  with type annotations"""
+    """Check if an object is a NamedTuple instance with type annotations"""
     if not isinstance(obj, tuple):
         return False
     return (
@@ -87,38 +115,34 @@ def _get_underlying_namedtuple(type_hint):
 
 
 def _try_deserialize_enum(obj: Type, value) -> Result[Enum, Exception]:
-    # deserialize Enum if it implements `deserialize` method
-    if deserialize := getattr(obj, "deserialize"):
-        return deserialize(value)
+    # deserialize Enum if it implements `deserialize` static or class method
+    if hasattr(obj, "deserialize"):
+        deserialize: Callable[..., Enum] = obj.deserialize
+        try:
+            return Ok(deserialize(value))
+        except Exception as e:
+            return Err(e)
     return deserialize_enum(obj, value)
 
 
-def _try_deserialize_datetime(value) -> Result[datetime, Exception]:
-    try:
-        return Ok(datetime.fromisoformat(value))
-    except Exception as e:
-        return Err(e)
+@resultify
+def _try_deserialize_datetime(value):
+    return datetime.fromisoformat(value)
 
 
-def _try_deserialize_uuid(value) -> Result[UUID, Exception]:
-    try:
-        return Ok(UUID(value))
-    except Exception as e:
-        return Err(e)
+@resultify
+def _try_deserialize_uuid(value):
+    return UUID(value)
 
 
-def _try_deserialize_int(value) -> Result[int, Exception]:
-    try:
-        return Ok(int(value))
-    except Exception as e:
-        return Err(e)
+@resultify
+def _try_deserialize_int(value):
+    return int(value)
 
 
-def _try_deserialize_float(value) -> Result[float, Exception]:
-    try:
-        return Ok(float(value))
-    except Exception as e:
-        return Err(e)
+@resultify
+def _try_deserialize_float(value):
+    return float(value)
 
 
 def _try_deserialize(obj: Type, value) -> Result[Any, Exception]:
@@ -133,6 +157,7 @@ def _try_deserialize(obj: Type, value) -> Result[Any, Exception]:
         if issubclass(obj, UUID):
             return _try_deserialize_uuid(value)
         # deserialize bool
+        # Note: supports only native JSON boolean type
         if issubclass(obj, bool):
             return Ok(value)
         # deserialize int
@@ -173,7 +198,7 @@ def deserialize(cls: Type[T], data: JSONObject) -> Result[T, Exception]:
                 if not isinstance(item, dict):
                     return Err(
                         SerdeError(
-                            f"Expected dict in list for {field}, got {type(item)}"
+                            f"Expected dict for field '{field}', got {type(value).__name__}"
                         )
                     )
                 d = deserialize(namedtuple_cls, item)
@@ -208,7 +233,7 @@ def deserialize(cls: Type[T], data: JSONObject) -> Result[T, Exception]:
                             if not isinstance(item, dict):
                                 return Err(
                                     SerdeError(
-                                        f"Expected dict in list for {field}, got {type(item)}"
+                                        f"Expected dict in list for '{field}', got {type(item).__name__}"
                                     )
                                 )
                             d = deserialize(namedtuple_cls, item)
@@ -228,6 +253,8 @@ def deserialize(cls: Type[T], data: JSONObject) -> Result[T, Exception]:
                     # handle optional field without default value
                     kwargs[field] = None
                     break
+                else:
+                    return Err(SerdeError(f"Unexpected None value for field '{field}'"))
         # handle enum types that implements 'deserialize' method and primitive types
         else:
             v = _try_deserialize(field_type, value)
@@ -263,13 +290,13 @@ def serialize(cls: NamedTuple, skip_nones: bool = False) -> JSONObject:
         if isinstance(value, list):
             # handle list of serializable values
             serialized_list = []
-            # for item in value:
-            #     serialized_list.append(serialize(item, skip_nones))
+
             for item in value:
                 if _is_namedtuple_instance(item):
                     serialized_list.append(serialize(item, skip_nones))
                 else:
                     serialized_list.append(_serialize(item))
+
             v = serialized_list
         elif _is_namedtuple_instance(value):
             # handle nested objects serialization recursively

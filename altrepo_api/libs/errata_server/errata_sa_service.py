@@ -20,7 +20,7 @@ from typing import Any, NamedTuple, Optional
 
 from .base import ErrataServerError, JSONObject, JSONValue, UserInfo, ServiceBase
 from .rusty import Result, into_iter
-from .serde import serialize_enum, deserialize_enum, serialize, deserialize
+from .serde import serialize_enum, serialize, deserialize
 
 
 SA_LIST_ROUTE = "sa"
@@ -37,10 +37,6 @@ class SaType(Enum):
     def serialize(self) -> str:
         return serialize_enum(self)
 
-    @staticmethod
-    def deserialize(value: JSONValue):
-        return deserialize_enum(SaType, value)
-
 
 class SaAction(Enum):
     CVE = "cve"
@@ -51,10 +47,6 @@ class SaAction(Enum):
     def serialize(self) -> str:
         return serialize_enum(self)
 
-    @staticmethod
-    def deserialize(value: JSONValue):
-        return deserialize_enum(SaAction, value)
-
 
 class SaReferenceType(Enum):
     ERRATA = "errata"
@@ -64,10 +56,6 @@ class SaReferenceType(Enum):
 
     def serialize(self) -> str:
         return serialize_enum(self)
-
-    @staticmethod
-    def deserialize(value: JSONValue):
-        return deserialize_enum(SaReferenceType, value)
 
     def __lt__(self, other):
         if isinstance(other, SaReferenceType):

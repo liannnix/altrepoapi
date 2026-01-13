@@ -1,12 +1,10 @@
-from datetime import datetime, UTC
-from enum import Enum
-from typing import NamedTuple, Optional
-from uuid import UUID, uuid4
-
 import pytest
 
+from datetime import datetime, UTC
+from enum import Enum
+from typing import NamedTuple, Optional, Union
+from uuid import UUID, uuid4
 
-from altrepo_api.libs.errata_server.base import JSONValue
 from altrepo_api.libs.errata_server.rusty import Ok
 from altrepo_api.libs.errata_server.serde import (
     SerdeError,
@@ -30,10 +28,6 @@ class E(Enum):
     def serialize(self) -> str:
         return serialize_enum(self)
 
-    @staticmethod
-    def deserialize(value: JSONValue):
-        return deserialize_enum(E, value)
-
 
 class NM(NamedTuple):
     i: int = 42
@@ -54,10 +48,68 @@ def test_enum_serialization():
 
 
 def test_enum_deserialization():
-    assert E.deserialize("a") == Ok(E.A)
-    assert E.deserialize("b") == Ok(E.B)
-    assert E.deserialize("c") == Ok(E.C)
-    assert E.deserialize("d").is_err()
+    assert deserialize_enum(E, "a") == Ok(E.A)
+    assert deserialize_enum(E, "A") == Ok(E.A)
+    assert deserialize_enum(E, "b") == Ok(E.B)
+    assert deserialize_enum(E, "c") == Ok(E.C)
+    assert deserialize_enum(E, "d").is_err()
+
+def test_enum_deserialization_by_value():
+    class E(Enum):
+        A = "a"
+        B = "x"
+        C = 42
+
+    assert deserialize_enum(E, "a") == Ok(E.A)
+    assert deserialize_enum(E, "A") == Ok(E.A)
+    assert deserialize_enum(E, "b") == Ok(E.B)
+    assert deserialize_enum(E, "x") == Ok(E.B)
+    assert deserialize_enum(E, "c") == Ok(E.C)
+    assert deserialize_enum(E, "42") == Ok(E.C)
+    assert deserialize_enum(E, 42).is_err()
+
+def test_enum_custom_deserialization_class_method():
+    class E(Enum):
+        A = "a"
+        B = "b"
+        C = "c"
+        Z = "Z"
+
+        @classmethod
+        def deserialize(cls, value: str):
+            if cls.__getitem__(value.upper()):
+                return E.Z
+            raise ValueError
+
+    class NM(NamedTuple):
+        e: E
+
+    assert deserialize(NM, {"e": "a"}) == Ok(NM(e=E.Z))
+    assert deserialize(NM, {"e": "b"}) == Ok(NM(e=E.Z))
+    assert deserialize(NM, {"e": "C"}) == Ok(NM(e=E.Z))
+    assert deserialize(NM, {"e": "d"}).is_err()
+
+
+def test_enum_custom_deserialization_static_method():
+    class E(Enum):
+        A = "a"
+        B = "b"
+        C = "c"
+        Z = "Z"
+
+        @staticmethod
+        def deserialize(value: str):
+            if E.__getitem__(value.upper()):
+                return E.Z
+            raise ValueError
+
+    class NM(NamedTuple):
+        e: E
+
+    assert deserialize(NM, {"e": "a"}) == Ok(NM(e=E.Z))
+    assert deserialize(NM, {"e": "b"}) == Ok(NM(e=E.Z))
+    assert deserialize(NM, {"e": "C"}) == Ok(NM(e=E.Z))
+    assert deserialize(NM, {"e": "d"}).is_err()
 
 
 def test_named_tuple_simple_serialization():
@@ -240,3 +292,13 @@ def test_named_tuple_deserialization_nested_optional_no_default():
         deserialize(NM, json_invalid).unwrap()
 
     assert deserialize(NM, json_invalid).is_err()
+
+
+def test_named_tuple_deserialization_nested_union_without_none_and_no_default():
+    json = {"a": None, "b": 42}
+
+    class NM(NamedTuple):
+        a: Union[str, int]
+        b: int
+
+    assert deserialize(NM, json).is_err()
