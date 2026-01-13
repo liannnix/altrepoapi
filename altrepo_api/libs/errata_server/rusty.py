@@ -14,6 +14,57 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+Rust-inspired functional programming utilities for Python.
+
+This module provides type-safe, composable alternatives to Python's built-in
+error handling and optional value patterns, modeled after Rust's standard library:
+
+- **Result[T, E]**: Represents either success (Ok(T)) or failure (Err(E))
+  - Enables explicit error handling without exceptions
+  - Supports method chaining with `map`, `and_then`, `or_else`, etc.
+  - Includes `@resultify` decorator to automatically wrap exception-throwing functions
+
+- **Option[T]**: Represents an optional value (Some(T) or None)
+  - Eliminates ambiguous `None` checks
+  - Provides safe unwrapping with `expect()`, `unwrap_or()`, etc.
+  - Includes `@optionable` decorator for functions that may return None
+
+- **Iter[T]**: Lazy, chainable iterator with Rust-like combinators
+  - Methods like `map`, `filter`, `fold`, `windows`, `partition`
+  - Handles nested structures with `flatten()` and `flat_map()`
+  - Integrates seamlessly with Result and Option types
+
+Key Features:
+- **No hidden exceptions**: All error paths are explicit via Result/Option
+- **Composability**: Chain operations without intermediate variables
+- **Type safety**: Full mypy compatibility with generic types
+- **Lazy evaluation**: Iter operations are only computed when consumed
+- **Memory efficient**: Uses iterators instead of intermediate collections
+
+Usage Examples:
+    ## Result handling
+    @resultify
+    def divide(a: int, b: int) -> float:
+        return a / b
+
+    result = divide(10, 2).map(lambda x: x * 2).unwrap_or(0.0)
+
+    ## Option handling
+    @optionable
+    def find_user(id: int) -> Optional[User]:
+        return users.get(id)
+
+    user = find_user(123).map(lambda u: u.name).unwrap_or("Unknown")
+
+    ## Iterator chaining
+    numbers = into_iter([1, 2, 3, 4, 5])
+    doubled_evens = numbers.filter(lambda x: x % 2 == 0).map(lambda x: x * 2).collect()
+
+Designed for building robust, maintainable systems where error handling
+and data transformation pipelines need to be explicit, composable, and testable.
+"""
+
 from collections import deque
 from functools import reduce, wraps
 from itertools import islice, takewhile, dropwhile, chain
