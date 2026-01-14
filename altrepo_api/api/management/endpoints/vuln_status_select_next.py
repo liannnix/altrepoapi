@@ -46,10 +46,18 @@ class VulnStatusSelectNext(APIWorker):
 
         return ""
 
+    def _current_vuln_condidition(self) -> str:
+        current_vuln_id = self.args.get("current_vuln_id")
+
+        if current_vuln_id:
+            return f"AND vuln_id != '{current_vuln_id}'"
+        return ""
+
     def get(self) -> WorkerResult:
         response = self.send_sql_request(
             self.sql.vuln_status_select_next.format(
-                date_interval_condition=self._date_interval_condition()
+                date_interval_condition=self._date_interval_condition(),
+                current_vuln_id=self._current_vuln_condidition(),
             )
         )
         if not self.sql_status:

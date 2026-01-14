@@ -541,6 +541,13 @@ vuln_id = parser.register_item(
     help="Vulnerability ID",
     location="args",
 )
+current_vuln_id_opt = parser.register_item(
+    "current_vuln_id",
+    type=vuln_id_type,
+    required=False,
+    help="Current vulnerability ID",
+    location="args",
+)
 
 task_list_args = parser.build_parser(
     task_input_val_opt,
@@ -633,6 +640,7 @@ vuln_status_list_args = parser.build_parser(
 vuln_status_history_args = parser.build_parser(vuln_id)
 vuln_status_manage_args = parser.build_parser(vuln_id)
 vuln_status_select_next_args = parser.build_parser(
+    current_vuln_id_opt,
     vuln_modified_start_date_opt,
     vuln_modified_end_date_opt,
 )

@@ -1206,6 +1206,7 @@ WHERE vuln_id NOT IN (
         WHERE vuln_type = 'CVE'
         GROUP BY vuln_id
     )
+    {current_vuln_id}
     {date_interval_condition}
 ORDER BY
     vuln_score DESC,
