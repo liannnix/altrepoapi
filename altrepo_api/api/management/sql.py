@@ -1209,8 +1209,7 @@ WHERE vuln_id NOT IN (
     {current_vuln_id}
     {date_interval_condition}
 ORDER BY
-    vuln_score DESC,
-    (now() - vuln_modified_date) DESC
+    vuln_modified_date DESC
 LIMIT 1
 """
 
