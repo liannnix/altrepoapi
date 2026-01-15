@@ -18,7 +18,7 @@
 from enum import Enum
 from typing import Any, NamedTuple, Optional
 
-from .base import ErrataServerError, JSONObject, JSONValue, UserInfo, ServiceBase
+from .base import ErrataServerError, JSONObject, UserInfo, ServiceBase
 from .rusty import Result, into_iter
 from .serde import serialize_enum, serialize, deserialize
 
