@@ -1208,12 +1208,29 @@ WHERE vuln_id NOT IN (
         WHERE vuln_type = 'CVE'
         GROUP BY vuln_id
     )
-    {current_vuln_id}
+    {is_errata_condition}
+    {current_vuln_id_condition}
+    {vuln_severity_condition}
     {date_interval_condition}
 ORDER BY
-    vuln_score DESC,
-    (now() - vuln_modified_date) DESC
+    vuln_modified_date DESC
 LIMIT 1
+"""
+
+    vuln_status_select_next_is_errata_sub = """
+SELECT DISTINCT
+    arrayJoin(
+        arrayFilter(
+            (t, l) -> ((t = 'vuln') AND (l ILIKE 'CVE-%-%')),
+            arrayZip(eh_references.type, eh_references.link)
+        )
+    ).2 AS vuln_id
+FROM ErrataHistory
+WHERE errata_id IN (
+    SELECT argMax(errata_id, ts)
+    FROM ErrataHistory
+    GROUP BY errata_id_noversion
+)
 """
 
     get_errata_user = """
