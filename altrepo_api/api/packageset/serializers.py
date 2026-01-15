@@ -239,3 +239,50 @@ packages_by_uuid_model = ns.model(
         ),
     },
 )
+
+maintainer_scores_batch_maintainer_model = ns.model(
+    "MaintainerScoresBatchMaintainerModel",
+    {
+        "nick": fields.String(description="maintainer nickname"),
+        "score": fields.Float(description="maintainer score (with bonuses)"),
+        "base_score": fields.Float(description="base score (changelog + bugfixes)"),
+        "updates": fields.Integer(description="number of upstream updates (alt1)"),
+        "patches": fields.Integer(description="number of patches/fixes"),
+        "nmu": fields.Integer(description="number of NMU uploads"),
+        "bugfixes": fields.Integer(description="number of Bugzilla bugs fixed"),
+        "in_acl": fields.Boolean(description="maintainer is in current ACL"),
+        "last_activity": fields.String(description="last activity date"),
+        "recent_commits": fields.Integer(description="commits in last 6 months"),
+        "bonus_applied": fields.Boolean(description="recent maintainer bonus applied"),
+    },
+)
+maintainer_scores_batch_el_model = ns.model(
+    "MaintainerScoresBatchElementModel",
+    {
+        "package": fields.String(description="source package name"),
+        "primary_maintainer": fields.String(
+            description="primary maintainer nickname (highest score)"
+        ),
+        "status": fields.String(
+            description="package status: active, low_activity, orphaned"
+        ),
+        "maintainers": fields.Nested(
+            maintainer_scores_batch_maintainer_model,
+            description="list of maintainers with scores",
+            as_list=True,
+        ),
+    },
+)
+maintainer_scores_batch_model = ns.model(
+    "MaintainerScoresBatchModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "branch": fields.String(description="branch name"),
+        "length": fields.Integer(description="number of packages found"),
+        "packages": fields.Nested(
+            maintainer_scores_batch_el_model,
+            description="list of packages with maintainer scores",
+            as_list=True,
+        ),
+    },
+)

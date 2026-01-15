@@ -309,3 +309,4 @@ specfile_args = parser.build_parser(
     branch,
     src_package_name,
 )
+maintainer_score_args = parser.build_parser(branch, src_package_name)

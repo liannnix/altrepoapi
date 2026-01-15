@@ -301,3 +301,51 @@ def test_packages_by_component(client, kwargs):
         assert data != {}
         assert data["length"] != 0
         assert data["packages"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"branch": BRANCH_IN_DB, "status_code": 200},
+        {"branch": BRANCH_NOT_IN_DB, "status_code": 400},
+    ],
+)
+def test_maintainer_scores_batch(client, kwargs):
+    url = url_for("api.packageset_route_maintainer_scores_batch")
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("status_code",):
+            continue
+        if v is not None:
+            params[k] = v
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert "branch" in data
+        assert "length" in data
+        assert data["length"] > 0
+        assert "packages" in data
+        assert isinstance(data["packages"], list)
+        if data["packages"]:
+            p = data["packages"][0]
+            assert "package" in p
+            assert "primary_maintainer" in p
+            assert "status" in p
+            assert p["status"] in ("active", "low_activity", "orphaned")
+            assert "maintainers" in p
+            assert isinstance(p["maintainers"], list)
+            if p["maintainers"]:
+                m = p["maintainers"][0]
+                assert "nick" in m
+                assert "score" in m
+                assert "base_score" in m
+                assert "updates" in m
+                assert "patches" in m
+                assert "nmu" in m
+                assert "bugfixes" in m
+                assert "recent_commits" in m
+                assert "bonus_applied" in m
+                assert "in_acl" in m
+                assert "last_activity" in m
