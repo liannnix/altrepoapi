@@ -37,7 +37,16 @@ class VulnStatusSelectNext(APIWorker):
         self.logger.debug(f"args : {self.args}")
         return True
 
-    def _date_interval_condition(self) -> str:
+    def _published_date_interval_condition(self) -> str:
+        start_date = self.args.get("published_start_date")
+        end_date = self.args.get("published_end_date")
+
+        if condition := make_date_condition(start_date, end_date):
+            return f"AND vuln_published_date {condition}"
+
+        return ""
+
+    def _modified_date_interval_condition(self) -> str:
         start_date = self.args.get("modified_start_date")
         end_date = self.args.get("modified_end_date")
 
@@ -53,9 +62,19 @@ class VulnStatusSelectNext(APIWorker):
             return f"AND vuln_id != '{current_vuln_id}'"
         return ""
 
+    def _vuln_type_condition(self) -> str:
+        if vuln_type := self.args.get("type"):
+            return f"AND vuln_type = '{vuln_type}'"
+        return ""
+
     def _vuln_severity_condition(self) -> str:
         if vuln_severity := self.args.get("severity"):
             return f"AND vuln_severity = '{vuln_severity}'"
+        return ""
+
+    def _vuln_our_condition(self) -> str:
+        if self.args.get("our"):
+            return f"AND vuln_id IN ({self.sql.vuln_status_select_next_our_sub})"
         return ""
 
     def _is_errata_condition(self) -> str:
@@ -69,7 +88,10 @@ class VulnStatusSelectNext(APIWorker):
                 is_errata_condition=self._is_errata_condition(),
                 current_vuln_id_condition=self._current_vuln_id_condition(),
                 vuln_severity_condition=self._vuln_severity_condition(),
-                date_interval_condition=self._date_interval_condition(),
+                vuln_type_condition=self._vuln_type_condition(),
+                vuln_our_condition=self._vuln_our_condition(),
+                published_date_interval_condition=self._published_date_interval_condition(),
+                modified_date_interval_condition=self._modified_date_interval_condition(),
             )
         )
         if not self.sql_status:

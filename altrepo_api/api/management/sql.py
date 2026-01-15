@@ -1200,28 +1200,37 @@ WHERE vuln_id NOT IN (
         SELECT vuln_id
         FROM VulnerabilityStatus
         GROUP BY vuln_id
-        HAVING argMax(vs_status, vs_updated) != 'new'
+        HAVING argMax(vs_status, vs_updated) = 'working'
     )
     AND vuln_hash IN (
         SELECT argMax(vuln_hash, ts)
         FROM Vulnerabilities
-        WHERE vuln_type = 'CVE'
         GROUP BY vuln_id
     )
+    {vuln_our_condition}
     {is_errata_condition}
     {current_vuln_id_condition}
     {vuln_severity_condition}
-    {date_interval_condition}
+    {vuln_type_condition}
+    {published_date_interval_condition}
+    {modified_date_interval_condition}
 ORDER BY
     vuln_modified_date DESC
 LIMIT 1
+"""
+
+    vuln_status_select_next_our_sub = """
+SELECT vuln_id
+FROM VulnerabilityStatus
+GROUP BY vuln_id
+HAVING argMax(vs_resolution, vs_updated) = 'our'
 """
 
     vuln_status_select_next_is_errata_sub = """
 SELECT DISTINCT
     arrayJoin(
         arrayFilter(
-            (t, l) -> ((t = 'vuln') AND (l ILIKE 'CVE-%-%')),
+            (t, l) -> (t = 'vuln'),
             arrayZip(eh_references.type, eh_references.link)
         )
     ).2 AS vuln_id
