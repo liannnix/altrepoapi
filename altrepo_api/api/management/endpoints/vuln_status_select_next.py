@@ -53,11 +53,23 @@ class VulnStatusSelectNext(APIWorker):
             return f"AND vuln_id != '{current_vuln_id}'"
         return ""
 
+    def _vuln_severity_condition(self) -> str:
+        if vuln_severity := self.args.get("severity"):
+            return f"AND vuln_severity = '{vuln_severity}'"
+        return ""
+
+    def _is_errata_condition(self) -> str:
+        if self.args.get("is_errata"):
+            return f"AND vuln_id IN ({self.sql.vuln_status_select_next_is_errata_sub})"
+        return ""
+
     def get(self) -> WorkerResult:
         response = self.send_sql_request(
             self.sql.vuln_status_select_next.format(
+                is_errata_condition=self._is_errata_condition(),
+                current_vuln_id_condition=self._current_vuln_id_condition(),
+                vuln_severity_condition=self._vuln_severity_condition(),
                 date_interval_condition=self._date_interval_condition(),
-                current_vuln_id=self._current_vuln_id_condition(),
             )
         )
         if not self.sql_status:
