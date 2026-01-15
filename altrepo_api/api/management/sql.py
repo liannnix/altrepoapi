@@ -1196,34 +1196,32 @@ ORDER BY vs_updated DESC
     vuln_status_select_next = """
 SELECT vuln_id
 FROM Vulnerabilities
-WHERE vuln_id NOT IN (
-        SELECT vuln_id
-        FROM VulnerabilityStatus
-        GROUP BY vuln_id
-        HAVING argMax(vs_status, vs_updated) = 'working'
-    )
-    AND vuln_hash IN (
-        SELECT argMax(vuln_hash, ts)
-        FROM Vulnerabilities
-        GROUP BY vuln_id
-    )
-    {vuln_our_condition}
-    {is_errata_condition}
-    {current_vuln_id_condition}
-    {vuln_severity_condition}
-    {vuln_type_condition}
-    {published_date_interval_condition}
-    {modified_date_interval_condition}
+LEFT JOIN (
+    SELECT
+        vuln_id,
+        argMax(vs_status, vs_updated) AS last_vs_status,
+        argMax(vs_resolution, vs_updated) AS last_vs_resolution,
+        max(vs_updated) AS last_vs_updated
+    FROM VulnerabilityStatus
+    GROUP BY vuln_id
+) AS LVS USING vuln_id
+WHERE vuln_hash IN (
+    SELECT argMax(vuln_hash, ts)
+    FROM Vulnerabilities
+    GROUP BY vuln_id
+)
+AND vuln_modified_date >= last_vs_updated
+AND last_vs_status NOT IN ('new', 'working')
+{vuln_our_condition}
+{current_vuln_id_condition}
+{vuln_severity_condition}
+{vuln_type_condition}
+{published_date_interval_condition}
+{modified_date_interval_condition}
+{is_errata_condition}
 ORDER BY
     vuln_modified_date DESC
 LIMIT 1
-"""
-
-    vuln_status_select_next_our_sub = """
-SELECT vuln_id
-FROM VulnerabilityStatus
-GROUP BY vuln_id
-HAVING argMax(vs_resolution, vs_updated) = 'our'
 """
 
     vuln_status_select_next_is_errata_sub = """

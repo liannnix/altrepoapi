@@ -74,7 +74,7 @@ class VulnStatusSelectNext(APIWorker):
 
     def _vuln_our_condition(self) -> str:
         if self.args.get("our"):
-            return f"AND vuln_id IN ({self.sql.vuln_status_select_next_our_sub})"
+            return "AND last_vs_resolution = 'our'"
         return ""
 
     def _is_errata_condition(self) -> str:
