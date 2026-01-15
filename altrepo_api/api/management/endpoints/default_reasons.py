@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from typing import Any, Optional
 
@@ -37,12 +37,13 @@ logger = get_logger(__name__)
 
 
 @dataclass
-class DefaultReasonReasonPayload:
+class DefaultReasonRecord:
     text: str
     source: str
     action: str
     is_active: bool
-    updated: datetime = datetime.now()
+    is_deleted: bool = False
+    updated: datetime = field(init=False)
 
     def validate(self) -> list[str]:
         validation_errors = []
@@ -66,12 +67,14 @@ class DefaultReasonReasonPayload:
             "dr_source": self.source,
             "dr_action": self.action,
             "dr_is_active": int(self.is_active),
+            "dr_is_deleted": int(self.is_deleted),
         }
 
 
 @dataclass
 class DefaultReasonPayload:
-    default_reason: DefaultReasonReasonPayload
+    default_reason: DefaultReasonRecord
+    default_reason_prev: Optional[DefaultReasonRecord]
     action: str
 
     def validate(self) -> list[str]:
@@ -83,26 +86,10 @@ class DefaultReasonPayload:
             )
 
         validation_errors.extend(self.default_reason.validate())
+        if self.default_reason_prev is not None:
+            validation_errors.extend(self.default_reason_prev.validate())
 
         return validation_errors
-
-    def validate_with_match(
-        self, match: Optional[DefaultReasonReasonPayload]
-    ) -> list[str]:
-        validations = []
-
-        if self.action == CHANGE_ACTION_CREATE and match is not None:
-            validations.append("This default reason exists in DB already.")
-
-        if self.action != CHANGE_ACTION_CREATE:
-            if match is None:
-                validations.append("This default reason does not exist in DB.")
-            elif match.is_active and self.action == CHANGE_ACTION_UPDATE:
-                validations.append("This default reason is active already.")
-            elif (not match.is_active) and self.action == CHANGE_ACTION_DISCARD:
-                validations.append("This default reason is not active already.")
-
-        return validations
 
 
 class DefaultReasons(APIWorker):
@@ -115,8 +102,13 @@ class DefaultReasons(APIWorker):
         self.args = kwargs
         self.sql = sql
 
+        default_reason_prev = None
+        if dr_prev := payload.get("default_reason_prev"):
+            default_reason_prev = DefaultReasonRecord(**dr_prev)
+
         self.payload = DefaultReasonPayload(
-            default_reason=DefaultReasonReasonPayload(**payload["default_reason"]),
+            default_reason=DefaultReasonRecord(**payload["default_reason"]),
+            default_reason_prev=default_reason_prev,
             action=payload["action"],
         )
 
@@ -136,6 +128,10 @@ class DefaultReasons(APIWorker):
             self.validation_results.append(
                 f"Wrong action for this method: {self.payload.action}"
             )
+        if self.payload.default_reason_prev is None:
+            self.validation_results.append(
+                "Payload field 'default_reason_prev' is required"
+            )
         return self.validation_results == []
 
     def check_payload_delete(self) -> bool:
@@ -147,20 +143,111 @@ class DefaultReasons(APIWorker):
         return self.validation_results == []
 
     def post(self):
-        return self._handle_request()
+        existing_reason = self._get_existing_record(self.payload.default_reason)
+        if not self.status:
+            return self.error
+
+        if existing_reason is not None:
+            return {
+                "message": "Request payload validation error",
+                "errors": ["This default reason exists in DB already."],
+            }, 400
+
+        updated_dr = self.payload.default_reason
+        updated_dr.updated = datetime.now()
+        updated_dr.is_active = True
+
+        return self._store_dr_records([updated_dr])
 
     def put(self):
-        return self._handle_request()
+        existing_reason = self._get_existing_record(self.payload.default_reason)
+        if not self.status:
+            return self.error
+
+        # guarranteed by payload validation
+        assert self.payload.default_reason_prev is not None
+
+        existing_reason_prev = self._get_existing_record(
+            self.payload.default_reason_prev
+        )
+        if not self.status:
+            return self.error
+
+        # check if it is a regular undiscard update
+        if existing_reason is not None and existing_reason_prev is not None:
+            if (
+                existing_reason.text,
+                existing_reason.source,
+                existing_reason.action,
+            ) == (
+                existing_reason_prev.text,
+                existing_reason_prev.source,
+                existing_reason_prev.action,
+            ) and existing_reason.is_active == False:
+                updated_dr = self.payload.default_reason
+                updated_dr.updated = datetime.now()
+                updated_dr.is_active = True
+
+                return self._store_dr_records([updated_dr])
+
+        if existing_reason is not None:
+            # check if both reason records are the same -> means just undiscard
+            return {
+                "message": "Request payload validation error",
+                "errors": ["This default reason exists in DB already."],
+            }, 400
+
+        if existing_reason_prev is None:
+            return {
+                "message": "Request payload validation error",
+                "errors": ["Previous default reason does not exist in DB."],
+            }, 400
+        elif not existing_reason_prev.is_active:
+            return {
+                "message": "Request payload validation error",
+                "errors": ["Previous default reason is not active already."],
+            }, 400
+
+        updated_dr = self.payload.default_reason
+        updated_dr.updated = datetime.now()
+        updated_dr.is_active = True
+
+        updated_prev_dr = self.payload.default_reason_prev
+        updated_prev_dr.is_deleted = True
+
+        return self._store_dr_records([updated_dr, updated_prev_dr])
 
     def delete(self):
-        return self._handle_request()
+        existing_reason = self._get_existing_record(self.payload.default_reason)
+        if not self.status:
+            return self.error
 
-    def _handle_request(self):
-        # validate request payload with records from DB
+        if existing_reason is None:
+            return {
+                "message": "Request payload validation error",
+                "errors": ["This default reason does not exist in DB."],
+            }, 400
+        elif not existing_reason.is_active:
+            return {
+                "message": "Request payload validation error",
+                "errors": ["This default reason is not active already."],
+            }, 400
+
+        updated_dr = self.payload.default_reason
+        updated_dr.updated = datetime.now()
+        updated_dr.is_active = False
+
+        return self._store_dr_records([updated_dr])
+
+    def _get_existing_record(
+        self, dr: DefaultReasonRecord
+    ) -> Optional[DefaultReasonRecord]:
+        self.status = False
+
         where_clause = (
-            f"WHERE dr_text = '{self.payload.default_reason.text}' "
-            f"AND dr_source = '{self.payload.default_reason.source}'"
-            f"AND dr_action = '{self.payload.default_reason.action}'"
+            f"WHERE dr_text = '{dr.text}' "
+            f"AND dr_source = '{dr.source}' "
+            f"AND dr_action = '{dr.action}'"
         )
 
         response = self.send_sql_request(
@@ -168,30 +255,23 @@ class DefaultReasons(APIWorker):
                 where_clause=where_clause,
                 having_clause="",
                 order_by="",
-                limit="",
+                limit="LIMIT 1",
                 offset="",
             )
         )
 
         if not self.sql_status:
-            return self.error
+            return None
 
-        existing_reason = (
-            None if len(response) != 1 else DefaultReasonReasonPayload(*response[0][:4])
-        )
+        self.status = True
 
-        if validation_errors := self.payload.validate_with_match(existing_reason):
-            return {
-                "message": "Request payload validation error",
-                "errors": validation_errors,
-            }, 400
+        if not response:
+            return None
+        return DefaultReasonRecord(*response[0][:4])
 
-        # commit changes to DB
-        updated_reason = self.payload.default_reason
-        updated_reason.is_active = self.payload.action != CHANGE_ACTION_DISCARD
-
+    def _store_dr_records(self, dr_records: list[DefaultReasonRecord]):
         self.send_sql_request(
-            (self.sql.store_default_reason, [updated_reason.to_sql()])
+            (self.sql.store_default_reason, [r.to_sql() for r in dr_records])
         )
 
         if not self.sql_status:
@@ -202,5 +282,5 @@ class DefaultReasons(APIWorker):
         return {
             "request_args": self.args,
             "result": "OK",
-            "default_reason": asdict(updated_reason),
+            "default_reason": asdict(dr_records[0]),
         }, 200

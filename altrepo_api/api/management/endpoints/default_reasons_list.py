@@ -125,7 +125,7 @@ class DefaultReasonsList(APIWorker):
     @property
     def _having_clause(self) -> str:
         if self.args.is_active is not None:
-            return f"HAVING dr_is_active = {int(self.args.is_active)}"
+            return f"AND dr_is_active = {int(self.args.is_active)}"
         return ""
 
     @property
@@ -179,7 +179,7 @@ class DefaultReasonsList(APIWorker):
                 is_active=bool(is_active),
                 updated=updated,
             )
-            for text, source, action, is_active, updated, _ in response
+            for text, source, action, is_active, _, updated, _ in response
         ]
 
         return (

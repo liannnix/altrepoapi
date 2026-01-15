@@ -1112,6 +1112,11 @@ default_reasons_manage_model = ns.model(
             description="Default reason data to manage.",
             required=True,
         ),
+        "default_reason_prev": fields.Nested(
+            default_reasons_payload_model,
+            description="Previous default reason data to manage.",
+            required=False,
+        ),
         "action": fields.String(description="Default reason manage action."),
     },
 )

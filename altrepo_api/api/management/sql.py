@@ -1120,12 +1120,14 @@ SELECT
     dr_source,
     dr_action,
     argMax(dr_is_active, ts) as dr_is_active,
+    argMax(dr_is_deleted, ts) AS is_deleted,
     max(ts) as updated,
     count(*) OVER() as total_count
 FROM DefaultReasons
 {where_clause}
 GROUP BY dr_text, dr_source, dr_action
-{having_clause}
+HAVING is_deleted = 0
+    {having_clause}
 {order_by}
 {limit} {offset}
 """
