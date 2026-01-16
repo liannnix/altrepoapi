@@ -1211,7 +1211,7 @@ WHERE vuln_hash IN (
     GROUP BY vuln_id
 )
 AND vuln_modified_date >= last_vs_updated
-AND last_vs_status NOT IN ('new', 'working')
+AND last_vs_status != 'working'
 {vuln_our_condition}
 {current_vuln_id_condition}
 {vuln_severity_condition}
