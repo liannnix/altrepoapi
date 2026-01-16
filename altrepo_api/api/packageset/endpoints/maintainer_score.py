@@ -79,22 +79,26 @@ class MaintainerScoresBatch(APIWorker):
             nick = row[1]
             if pkg_name not in packages_dict:
                 packages_dict[pkg_name] = []
-            packages_dict[pkg_name].append({
-                "nick": nick,
-                "changelog_score": row[2],
-                "updates": row[3],
-                "patches": row[4],
-                "nmu": row[5],
-                "in_acl": bool(row[6]),
-                "last_activity": row[7],
-                "recent_commits": row[8],
-            })
+            packages_dict[pkg_name].append(
+                {
+                    "nick": nick,
+                    "changelog_score": row[2],
+                    "updates": row[3],
+                    "patches": row[4],
+                    "nmu": row[5],
+                    "in_acl": bool(row[6]),
+                    "last_activity": row[7],
+                    "recent_commits": row[8],
+                }
+            )
 
         # Build response with bonuses applied
         packages = []
         for pkg_name, maintainer_data in packages_dict.items():
             # Find last committer for this package
-            last_committer = max(maintainer_data, key=lambda x: x["last_activity"])["nick"]
+            last_committer = max(maintainer_data, key=lambda x: x["last_activity"])[
+                "nick"
+            ]
 
             maintainers = []
             for md in maintainer_data:
@@ -115,10 +119,10 @@ class MaintainerScoresBatch(APIWorker):
                 # - Has at least MIN_RECENT_BUGFIXES bugfix OR MIN_RECENT_COMMITS commits
                 # - AND is the last committer
                 has_recent_activity = (
-                    recent_bugfixes >= config.MIN_RECENT_BUGFIXES or
-                    recent_commits >= config.MIN_RECENT_COMMITS
+                    recent_bugfixes >= config.MIN_RECENT_BUGFIXES
+                    or recent_commits >= config.MIN_RECENT_COMMITS
                 )
-                is_last_committer = (nick == last_committer)
+                is_last_committer = nick == last_committer
 
                 if has_recent_activity and is_last_committer:
                     final_score = base_score * config.RECENT_MAINTAINER_BONUS
@@ -127,19 +131,25 @@ class MaintainerScoresBatch(APIWorker):
                     final_score = base_score
                     bonus_applied = False
 
-                maintainers.append({
-                    "nick": nick,
-                    "score": round(final_score, 2),
-                    "base_score": round(base_score, 2),
-                    "updates": md["updates"],
-                    "patches": md["patches"],
-                    "nmu": md["nmu"],
-                    "bugfixes": bugfix_count,
-                    "in_acl": md["in_acl"],
-                    "last_activity": md["last_activity"].strftime("%Y-%m-%d") if md["last_activity"] else None,
-                    "recent_commits": recent_commits,
-                    "bonus_applied": bonus_applied,
-                })
+                maintainers.append(
+                    {
+                        "nick": nick,
+                        "score": round(final_score, 2),
+                        "base_score": round(base_score, 2),
+                        "updates": md["updates"],
+                        "patches": md["patches"],
+                        "nmu": md["nmu"],
+                        "bugfixes": bugfix_count,
+                        "in_acl": md["in_acl"],
+                        "last_activity": (
+                            md["last_activity"].strftime("%Y-%m-%d")
+                            if md["last_activity"]
+                            else None
+                        ),
+                        "recent_commits": recent_commits,
+                        "bonus_applied": bonus_applied,
+                    }
+                )
 
             # Re-sort by final score
             maintainers.sort(key=lambda x: x["score"], reverse=True)
@@ -154,12 +164,14 @@ class MaintainerScoresBatch(APIWorker):
 
             primary = maintainers[0]["nick"] if maintainers and top_score > 0 else None
 
-            packages.append({
-                "package": pkg_name,
-                "primary_maintainer": primary,
-                "status": status,
-                "maintainers": maintainers,
-            })
+            packages.append(
+                {
+                    "package": pkg_name,
+                    "primary_maintainer": primary,
+                    "status": status,
+                    "maintainers": maintainers,
+                }
+            )
 
         return {
             "request_args": self.args,

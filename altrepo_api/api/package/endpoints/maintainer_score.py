@@ -84,16 +84,18 @@ class MaintainerScore(APIWorker):
         # SQL returns: nick, score, updates, patches, nmu_count, in_acl, last_activity, recent_commits
         changelog_data = []
         for row in response:
-            changelog_data.append({
-                "nick": row[0],
-                "changelog_score": row[1],
-                "updates": row[2],
-                "patches": row[3],
-                "nmu": row[4],
-                "in_acl": bool(row[5]),
-                "last_activity": row[6],
-                "recent_commits": row[7],
-            })
+            changelog_data.append(
+                {
+                    "nick": row[0],
+                    "changelog_score": row[1],
+                    "updates": row[2],
+                    "patches": row[3],
+                    "nmu": row[4],
+                    "in_acl": bool(row[5]),
+                    "last_activity": row[6],
+                    "recent_commits": row[7],
+                }
+            )
 
         # Find who made the last commit (for bonus calculation)
         last_committer = max(changelog_data, key=lambda x: x["last_activity"])["nick"]
@@ -119,10 +121,10 @@ class MaintainerScore(APIWorker):
             # - Has at least MIN_RECENT_BUGFIXES bugfix OR MIN_RECENT_COMMITS commits
             # - AND is the last committer
             has_recent_activity = (
-                recent_bugfixes >= config.MIN_RECENT_BUGFIXES or
-                recent_commits >= config.MIN_RECENT_COMMITS
+                recent_bugfixes >= config.MIN_RECENT_BUGFIXES
+                or recent_commits >= config.MIN_RECENT_COMMITS
             )
-            is_last_committer = (nick == last_committer)
+            is_last_committer = nick == last_committer
 
             if has_recent_activity and is_last_committer:
                 final_score = base_score * config.RECENT_MAINTAINER_BONUS
@@ -131,20 +133,26 @@ class MaintainerScore(APIWorker):
                 final_score = base_score
                 bonus_applied = False
 
-            maintainers.append({
-                "nick": nick,
-                "score": round(final_score, 2),
-                "base_score": round(base_score, 2),
-                "updates": cd["updates"],
-                "patches": cd["patches"],
-                "nmu": cd["nmu"],
-                "bugfixes": bugfix_count,
-                "bugfixes_with_update": bugfix_with_update,
-                "in_acl": cd["in_acl"],
-                "last_activity": cd["last_activity"].strftime("%Y-%m-%d") if cd["last_activity"] else None,
-                "recent_commits": recent_commits,
-                "bonus_applied": bonus_applied,
-            })
+            maintainers.append(
+                {
+                    "nick": nick,
+                    "score": round(final_score, 2),
+                    "base_score": round(base_score, 2),
+                    "updates": cd["updates"],
+                    "patches": cd["patches"],
+                    "nmu": cd["nmu"],
+                    "bugfixes": bugfix_count,
+                    "bugfixes_with_update": bugfix_with_update,
+                    "in_acl": cd["in_acl"],
+                    "last_activity": (
+                        cd["last_activity"].strftime("%Y-%m-%d")
+                        if cd["last_activity"]
+                        else None
+                    ),
+                    "recent_commits": recent_commits,
+                    "bonus_applied": bonus_applied,
+                }
+            )
 
         # Re-sort by final score
         maintainers.sort(key=lambda x: x["score"], reverse=True)

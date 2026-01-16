@@ -42,6 +42,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class MaintainerScoreConfig:
+    # fmt: off
     # Score weights for different contribution types
     W_UPDATE: float = 3.0      # Weight for version updates (alt1, 0.x releases)
     W_PATCH: float = 1.5       # Weight for patches/fixes (alt2+)
@@ -64,6 +65,7 @@ class MaintainerScoreConfig:
     ACTIVE_THRESHOLD: float = 1.0         # Score >= this = "active"
     LOW_ACTIVITY_THRESHOLD: float = 0.3   # Score >= this = "low_activity"
     # Score < LOW_ACTIVITY_THRESHOLD = "orphaned"
+    # fmt: on
 
 
 # Singleton instance for use throughout the application
