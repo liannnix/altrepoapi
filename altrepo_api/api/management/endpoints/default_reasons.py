@@ -183,7 +183,7 @@ class DefaultReasons(APIWorker):
                 existing_reason_prev.text,
                 existing_reason_prev.source,
                 existing_reason_prev.action,
-            ) and existing_reason.is_active is False:
+            ) and not existing_reason.is_active:
                 updated_dr = self.payload.default_reason
                 updated_dr.updated = datetime.now()
                 updated_dr.is_active = True
