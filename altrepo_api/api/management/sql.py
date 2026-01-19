@@ -1240,6 +1240,7 @@ WHERE errata_id IN (
     FROM ErrataHistory
     GROUP BY errata_id_noversion
 )
+AND errata_id NOT IN (SELECT errata_id FROM last_discarded_erratas)
 """
 
     get_errata_user = """
