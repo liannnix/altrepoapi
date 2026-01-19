@@ -491,6 +491,7 @@ class LookupTables:
     errata_ref_type_vuln = "vuln"
     errata_ref_type_branch = "branch"
     errata_ref_type_errata = "errata"
+    errata_ref_type_package = "package"
 
     errata_manage_branches_with_tasks = (
         "c9f1",

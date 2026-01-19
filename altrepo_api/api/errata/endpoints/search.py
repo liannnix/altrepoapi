@@ -25,7 +25,13 @@ from altrepo_api.api.misc import lut
 from altrepo_api.libs.pagination import Paginator
 from altrepo_api.libs.sorting import rich_sort
 from altrepo_api.utils import make_tmp_table_name, sort_branches
+from altrepo_api.libs.errata_server.errata_sa_service import (
+    Errata,
+    ErrataServerError,
+    serialize,
+)
 
+from .advisory import get_errata_service
 from .common import ErrataID, get_erratas_by_search_conditions
 from ..parsers import find_erratas_args
 from ..sql import sql
@@ -45,6 +51,7 @@ class ErrataInfo(NamedTuple):
     is_discarded: bool
     vulnerabilities: list[dict[str, str]] = []
     packages: list[dict[str, str]] = []
+    json: dict[str, Any] = {}
 
 
 class Vulns(NamedTuple):
@@ -53,10 +60,10 @@ class Vulns(NamedTuple):
 
 
 class PackageInfo(NamedTuple):
-    pkghash: int
-    pkg_name: str
-    pkg_version: str
-    pkg_release: str
+    pkghash: int = 0
+    pkg_name: str = ""
+    pkg_version: str = ""
+    pkg_release: str = ""
 
 
 class FindImagesArgs(NamedTuple):
@@ -213,6 +220,7 @@ class FindErratasArgs(NamedTuple):
     page: Optional[int] = None
     limit: Optional[int] = None
     state: Optional[str] = None
+    public_only: bool = True
 
 
 class FindErratas(APIWorker):
@@ -244,7 +252,7 @@ class FindErratas(APIWorker):
 
     @property
     def _state_clause(self) -> str:
-        if self.args.state:
+        if self.args.state and self.args.state != "all":
             return "discard = {}".format(self.args.state == "discarded")
         return ""
 
@@ -289,6 +297,107 @@ class FindErratas(APIWorker):
 
         return self.validation_results == []
 
+    def _build_sa_filter(self):
+        def filter_by_state(errata: Errata):
+            if self.args.state:
+                if self.args.state == "active":
+                    return errata.is_discarded is False
+                if self.args.state == "discarded":
+                    return errata.is_discarded is True
+            return True
+
+        def filter_by_publicity(errata: Errata):
+            if self.args.public_only:
+                return errata.eh.json.is_public is True  # type: ignore
+            return True
+
+        def filter_by_search_input(errata: Errata, search_input: list[str]):
+            inputs = [v.lower() for v in search_input if v]
+            fields = [
+                errata.eh.id.lower(),
+                *(r.link.lower() for r in errata.eh.references),
+            ]
+
+            for v in inputs:
+                if any(v in f for f in fields):
+                    return True
+
+            return False
+
+        def filter_by_branch(errata: Errata, branch: str):
+            branches = {
+                r.link
+                for r in errata.eh.references
+                if r.type == lut.errata_ref_type_branch
+            }
+            return branch in branches or branches == {"*"}
+
+        filters = [filter_by_state, filter_by_publicity]
+
+        if self.args.branch:
+            filters.append(lambda errata: filter_by_branch(errata, self.args.branch))  # type: ignore
+
+        if self.args.input:
+            filters.append(
+                lambda errata: filter_by_search_input(errata, self.args.input)  # type: ignore
+            )
+
+        return lambda errata: all(f(errata) for f in filters)
+
+    def _get_sa_erratas(self) -> Optional[list[dict[str, Any]]]:
+        service = get_errata_service()
+        try:
+            erratas = service.list()
+        except ErrataServerError as e:
+            self.store_error(
+                {"message": f"Failed to get records from Errata Server: {e}"},
+                severity=self.LL.ERROR,
+                http_code=e.status_code or 500,
+            )
+            return None
+
+        res = []
+
+        filter_fn = self._build_sa_filter()
+
+        for e in erratas:
+            if filter_fn(e):
+                # replace empty nullable ErrataJson `extra` filed
+                if e.eh.json.extra is None:  # type: ignore
+                    e = e._replace(
+                        eh=e.eh._replace(json=e.eh.json._replace(extra={}))  # type: ignore
+                    )
+
+                vulns = [
+                    Vulns(id=r.link, type=r.type)._asdict()
+                    for r in e.eh.references
+                    if r.type == lut.errata_ref_type_vuln
+                ]
+                pkgs = [
+                    PackageInfo(pkg_name=r.link)._asdict()
+                    for r in e.eh.references
+                    if r.type == lut.errata_ref_type_package
+                ]
+
+                res.append(
+                    ErrataInfo(
+                        errata_id=e.eh.id,
+                        eh_type=e.eh.type,
+                        task_id=e.eh.task_id,
+                        branch=e.eh.branch,
+                        pkgs=[],
+                        vuln_ids=[],
+                        vuln_types=[],
+                        changed=e.eh.updated,
+                        is_discarded=e.is_discarded,
+                        vulnerabilities=vulns,
+                        packages=pkgs,
+                        json=serialize(e.eh.json) if e.eh.json is not None else {},
+                    )._asdict()
+                )
+
+        return res
+
     def get(self):
 
         limit = self.args.limit
@@ -301,23 +410,34 @@ class FindErratas(APIWorker):
         )
         if not self.sql_status:
             return self.error
-        if not response:
+
+        erratas: list[dict[str, Any]] = []
+        if response:
+            for el in response:
+                errata_info = ErrataInfo(*el)
+                vulns = [
+                    Vulns(v_id, v_type)._asdict()
+                    for v_id, v_type in zip(
+                        errata_info.vuln_ids, errata_info.vuln_types
+                    )
+                ]
+                pkgs = [PackageInfo(*info)._asdict() for info in errata_info.pkgs]
+
+                erratas.append(
+                    errata_info._replace(vulnerabilities=vulns, packages=pkgs)._asdict()
+                )
+
+        sa_erratas = self._get_sa_erratas()
+        if sa_erratas is None:
+            return self.error
+
+        erratas.extend(sa_erratas)
+        if not erratas:
             return self.store_error(
                 {"message": "No data not found in database"},
             )
 
-        erratas = []
-        for el in response:
-            errata_info = ErrataInfo(*el)
-            vulns = [
-                Vulns(v_id, v_type)._asdict()
-                for v_id, v_type in zip(errata_info.vuln_ids, errata_info.vuln_types)
-            ]
-            pkgs = [PackageInfo(*info)._asdict() for info in errata_info.pkgs]
-
-            erratas.append(
-                errata_info._replace(vulnerabilities=vulns, packages=pkgs)._asdict()
-            )
+        erratas = sorted(erratas, key=lambda k: k["changed"], reverse=True)
 
         paginator = Paginator(erratas, limit)
         page_obj = paginator.get_page(page)
