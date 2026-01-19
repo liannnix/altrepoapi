@@ -1204,6 +1204,7 @@ LEFT JOIN (
         max(vs_updated) AS last_vs_updated
     FROM VulnerabilityStatus
     GROUP BY vuln_id
+    HAVING last_vs_status != 'new'
 ) AS LVS USING vuln_id
 WHERE vuln_hash IN (
     SELECT argMax(vuln_hash, ts)
