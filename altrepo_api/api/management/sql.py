@@ -936,7 +936,7 @@ ORDER BY pkg_name
 
     get_vuln_list = """
 SELECT
-    vuln_id,
+    vuln_id AS id,
     severity,
     status,
     resolution,
@@ -1220,7 +1220,8 @@ AND last_vs_status != 'working'
 {modified_date_interval_condition}
 {is_errata_condition}
 ORDER BY
-    vuln_modified_date DESC
+    vuln_modified_date DESC,
+    vuln_id DESC
 LIMIT 1
 """
 
