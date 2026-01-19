@@ -657,7 +657,7 @@ class routeFindErratas(Resource):
     def get(self):
         url_logging(logger, g.url)
         args = find_erratas_args.parse_args(strict=True)
-        w = FindErratas(g.connection, **args)
+        w = FindErratas(g.connection, **args, public_only=False)
         return run_worker(worker=w, args=args)
 
 

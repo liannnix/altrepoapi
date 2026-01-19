@@ -198,10 +198,11 @@ errata_last_changed_el_model = ns.model(
             description="is errata discarded", default=False
         ),
         "errata_id": fields.String(description="errata ID"),
-        "eh_type": fields.String(description=""),
+        "eh_type": fields.String(description="Errata History record type"),
         "task_id": fields.Integer(description="task ID"),
         "changed": fields.DateTime(description="changed"),
         "branch": fields.String(description="package set name"),
+        "json": fields.Raw(description="errata JSON payload (SA records only)"),
         "packages": fields.Nested(
             pkgs_el_model,
             description="affected packages",
