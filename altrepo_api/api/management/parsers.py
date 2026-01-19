@@ -530,7 +530,7 @@ vuln_sort_opt = parser.register_item(
     type=sort_type,
     action="split",
     required=False,
-    default=["-modified", "-id"],
+    default=["-modified"],
     help="Vulnerability list sort arguments",
     location="args",
 )

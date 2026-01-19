@@ -125,7 +125,7 @@ class VulnList(APIWorker):
 
     @property
     def _order_by(self) -> str:
-        order_fields = self.args.sort
+        order_fields = [*self.args.sort, "-id"]
         order_clauses = []
 
         for sort_field in order_fields:
