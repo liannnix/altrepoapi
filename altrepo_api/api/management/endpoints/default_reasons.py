@@ -245,18 +245,25 @@ class DefaultReasons(APIWorker):
         self.status = False
 
         where_clause = (
-            f"WHERE dr_text = '{dr.text}' "
-            f"AND dr_source = '{dr.source}' "
-            f"AND dr_action = '{dr.action}'"
+            "WHERE dr_text = %(text)s "
+            "AND dr_source = %(source)s "
+            "AND dr_action = %(action)s"
         )
 
         response = self.send_sql_request(
-            self.sql.get_default_reasons_list.format(
-                where_clause=where_clause,
-                having_clause="",
-                order_by="",
-                limit="LIMIT 1",
-                offset="",
+            (
+                self.sql.get_default_reasons_list.format(
+                    where_clause=where_clause,
+                    having_clause="",
+                    order_by="",
+                    limit="LIMIT 1",
+                    offset="",
+                ),
+                {
+                    "text": dr.text,
+                    "source": dr.source,
+                    "action": dr.action,
+                },
             )
         )
 

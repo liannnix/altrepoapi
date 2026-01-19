@@ -107,19 +107,19 @@ class DefaultReasonsList(APIWorker):
     @property
     def _create_text_condition(self) -> str:
         if self.args.text:
-            return f"dr_text ILIKE '%{self.args.text}%'"
+            return "dr_text ILIKE %(text_match)s"
         return ""
 
     @property
     def _create_source_condition(self) -> str:
         if self.args.source:
-            return f"dr_source = '{self.args.source}'"
+            return "dr_source = %(source)s"
         return ""
 
     @property
     def _create_action_condition(self) -> str:
         if self.args.action:
-            return f"dr_action IN {self.args.action}"
+            return "dr_action IN %(actions)s"
         return ""
 
     @property
@@ -145,17 +145,30 @@ class DefaultReasonsList(APIWorker):
             return "WHERE " + " AND ".join(conditions)
         return ""
 
+    def _sql_params(self) -> dict[str, object]:
+        params: dict[str, object] = {}
+        if self.args.text:
+            params["text_match"] = f"%{self.args.text}%"
+        if self.args.source:
+            params["source"] = self.args.source
+        if self.args.action:
+            params["actions"] = tuple(self.args.action)
+        return params
+
     def get(self):
         """
         Get a list of default reasons.
         """
         response = self.send_sql_request(
-            self.sql.get_default_reasons_list.format(
-                where_clause=self._where_clause,
-                having_clause=self._having_clause,
-                limit=self._limit,
-                offset=self._page,
-                order_by=self._order_by,
+            (
+                self.sql.get_default_reasons_list.format(
+                    where_clause=self._where_clause,
+                    having_clause=self._having_clause,
+                    limit=self._limit,
+                    offset=self._page,
+                    order_by=self._order_by,
+                ),
+                self._sql_params(),
             )
         )
 
