@@ -51,9 +51,12 @@ class CommentsList(APIWorker):
         Get a list of comments related to entity link and type.
         """
         response = self.send_sql_request(
-            self.sql.get_comments_list.format(
-                entity_type=self.args["entity_type"],
-                entity_link=self.args["entity_link"],
+            (
+                self.sql.get_comments_list,
+                {
+                    "entity_type": self.args["entity_type"],
+                    "entity_link": self.args["entity_link"],
+                },
             )
         )
 

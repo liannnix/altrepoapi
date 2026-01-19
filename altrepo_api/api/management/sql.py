@@ -1092,8 +1092,8 @@ LEFT JOIN (
     GROUP BY comment_id
 ) AS h ON c.comment_id = h.comment_id
 WHERE
-    c.comment_entity_type = '{entity_type}'
-    AND c.comment_entity_link = '{entity_link}'
+    c.comment_entity_type = %(entity_type)s
+    AND c.comment_entity_link = %(entity_link)s
 ORDER BY c.comment_id ASC;
 """
 
