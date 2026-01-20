@@ -123,12 +123,12 @@ class AntivirusScanResults(APIWorker):
         if self.args.scanner and self.args.scanner != "all":
             conditions.append(f"av_scanner = '{self.args.scanner}'")
         if self.args.issue:
-            conditions.append(f"av_issue = '{self.args.issue}'")
+            conditions.append("av_issue = %(issue)s")
         if self.args.target and self.args.target != "all":
             conditions.append(f"av_target IN ('{self.args.target}')")
         if self.args.input:
             conditions.append(
-                f"(pkg_name ILIKE '%{self.args.input}%' OR av_message ILIKE '%{self.args.input}%')"
+                "(pkg_name ILIKE %(input_match)s OR av_message ILIKE %(input_match)s)"
             )
 
         if conditions:
@@ -136,13 +136,24 @@ class AntivirusScanResults(APIWorker):
 
         return "AND av_target in ('images', 'branch')"
 
+    def _sql_params(self) -> dict[str, object]:
+        params: dict[str, object] = {}
+        if self.args.issue:
+            params["issue"] = self.args.issue
+        if self.args.input:
+            params["input_match"] = f"%{self.args.input}%"
+        return params
+
     def get(self):
         response = self.send_sql_request(
-            self.sql.src_av_detections.format(
-                where_clause=self._where_clause,
-                order_by_clause=self._order_by_clause,
-                limit_clause=self._limit_clause,
-                page_clause=self._page_clause,
+            (
+                self.sql.src_av_detections.format(
+                    where_clause=self._where_clause,
+                    order_by_clause=self._order_by_clause,
+                    limit_clause=self._limit_clause,
+                    page_clause=self._page_clause,
+                ),
+                self._sql_params(),
             )
         )
         if not self.sql_status:
