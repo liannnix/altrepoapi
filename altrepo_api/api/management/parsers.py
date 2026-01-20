@@ -657,6 +657,7 @@ vuln_status_select_next_args = parser.build_parser(
     vuln_published_end_date_opt,
     vuln_modified_start_date_opt,
     vuln_modified_end_date_opt,
+    vuln_sort_opt,
 )
 errata_user_tag_args = parser.build_parser(user_name_input, limit_opt)
 errata_user_info_args = parser.build_parser(user_name)

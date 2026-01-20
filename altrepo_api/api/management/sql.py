@@ -1220,9 +1220,7 @@ AND last_vs_status != 'working'
 {published_date_interval_condition}
 {modified_date_interval_condition}
 {is_errata_condition}
-ORDER BY
-    vuln_modified_date DESC,
-    vuln_id DESC
+{order_by_clause}
 LIMIT 1
 """
 

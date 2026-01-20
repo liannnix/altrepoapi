@@ -82,6 +82,34 @@ class VulnStatusSelectNext(APIWorker):
             return f"AND vuln_id IN ({self.sql.vuln_status_select_next_is_errata_sub})"
         return ""
 
+    def _order_by_clause(self) -> str:
+        order_fields: list[str] = self.args.get("sort", [])
+        order_clauses = []
+
+        # map names from VulnInfo._fields to names from the database
+        # note: only explicitly available for using filters are used
+        vuln_info_names_map = {
+            "severity": "vuln_severity",
+            "modified": "vuln_modified_date",
+            "published": "vuln_published_date",
+        }
+
+        for sort_field in order_fields:
+            direction = "ASC"
+            field_name = sort_field
+
+            if sort_field.startswith("-"):
+                direction = "DESC"
+                field_name = sort_field.removeprefix("-")
+
+            if db_field_name := vuln_info_names_map.get(field_name):
+                order_clauses.append(f"{db_field_name} {direction}")
+
+        # to act like a /vuln/list
+        order_clauses.append("vuln_id DESC")
+
+        return "ORDER BY " + ", ".join(order_clauses)
+
     def get(self) -> WorkerResult:
         response = self.send_sql_request(
             self.sql.vuln_status_select_next.format(
@@ -92,6 +120,7 @@ class VulnStatusSelectNext(APIWorker):
                 vuln_our_condition=self._vuln_our_condition(),
                 published_date_interval_condition=self._published_date_interval_condition(),
                 modified_date_interval_condition=self._modified_date_interval_condition(),
+                order_by_clause=self._order_by_clause(),
             )
         )
         if not self.sql_status:
