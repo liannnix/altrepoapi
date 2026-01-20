@@ -24,7 +24,12 @@ from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, Metad
 from altrepo_api.api.misc import lut
 from altrepo_api.libs.pagination import Paginator
 from altrepo_api.libs.sorting import rich_sort
-from altrepo_api.utils import make_tmp_table_name, sort_branches
+from altrepo_api.utils import (
+    make_tmp_table_name,
+    sort_branches,
+    datetime_to_tz_aware,
+    datetime_to_iso,
+)
 from altrepo_api.libs.errata_server.errata_sa_service import (
     Errata,
     ErrataServerError,
@@ -382,8 +387,8 @@ class FindErratas(APIWorker):
                 res.append(
                     ErrataInfo(
                         errata_id=e.eh.id,
-                        # replace type filed value with `advisory` for frontend
-                        eh_type="advisory",
+                        # replace type filed value with `exclusion` for a frontend
+                        eh_type="exclusion",
                         task_id=e.eh.task_id,
                         branch=e.eh.branch,
                         pkgs=[],
@@ -404,29 +409,37 @@ class FindErratas(APIWorker):
         limit = self.args.limit
         page = self.args.page
 
-        response = self.send_sql_request(
-            self.sql.find_erratas.format(
-                branch=self._branch_clause, where_clause=self._where_conditions
-            )
-        )
-        if not self.sql_status:
-            return self.error
-
         erratas: list[dict[str, Any]] = []
-        if response:
-            for el in response:
-                errata_info = ErrataInfo(*el)
-                vulns = [
-                    Vulns(v_id, v_type)._asdict()
-                    for v_id, v_type in zip(
-                        errata_info.vuln_ids, errata_info.vuln_types
-                    )
-                ]
-                pkgs = [PackageInfo(*info)._asdict() for info in errata_info.pkgs]
 
-                erratas.append(
-                    errata_info._replace(vulnerabilities=vulns, packages=pkgs)._asdict()
+        if self.args.type != "exclusion":
+            response = self.send_sql_request(
+                self.sql.find_erratas.format(
+                    branch=self._branch_clause, where_clause=self._where_conditions
                 )
+            )
+            if not self.sql_status:
+                return self.error
+
+            if response:
+                for el in response:
+                    errata_info = ErrataInfo(*el)
+                    vulns = [
+                        Vulns(v_id, v_type)._asdict()
+                        for v_id, v_type in zip(
+                            errata_info.vuln_ids, errata_info.vuln_types
+                        )
+                    ]
+                    pkgs = [PackageInfo(*info)._asdict() for info in errata_info.pkgs]
+
+                    erratas.append(
+                        errata_info._replace(
+                            changed=datetime_to_iso(
+                                datetime_to_tz_aware(errata_info.changed)  # type: ignore
+                            ),
+                            vulnerabilities=vulns,
+                            packages=pkgs,
+                        )._asdict()
+                    )
 
         sa_erratas = self._get_sa_erratas()
         if sa_erratas is None:

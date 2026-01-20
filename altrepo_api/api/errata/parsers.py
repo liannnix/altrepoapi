@@ -69,9 +69,9 @@ vuln_id_opt = parser.register_item(
 errata_type_opt = parser.register_item(
     "type",
     type=str,
-    choices=("packages", "repository", "bug", "vuln"),
+    choices=("packages", "repository", "bug", "vuln", "exclusion"),
     required=False,
-    help="errata type [packages|repository|bug|vuln]",
+    help="errata type [packages|repository|bug|vuln|exclusion]",
     location="args",
 )
 input_val_opt = parser.register_item(
