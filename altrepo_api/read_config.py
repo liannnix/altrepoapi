@@ -82,6 +82,7 @@ PARAMS = {
         "errata_server_token": ("ERRATA_SERVER_TOKEN", "str"),
         "errata_id_url": ("ERRATA_ID_URL", "str"),
         "errata_manage_url": ("ERRATA_MANAGE_URL", "str"),
+        "errata_refresh_url": ("ERRATA_REFRESH_URL", "str"),
     },
 }
 

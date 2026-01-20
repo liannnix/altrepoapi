@@ -30,6 +30,7 @@ from altrepo_api.api.parser import (
     project_name_type,
     sort_type,
     task_search_type,
+    uuid_type,
     pkg_name_list_type,
     image_file_type,
     date_string_type,
@@ -151,6 +152,13 @@ sort_opt = parser.register_item(
     action="split",
     required=False,
     help="sort arguments",
+    location="args",
+)
+transaction_id_opt = parser.register_item(
+    "transaction_id",
+    type=uuid_type,
+    required=False,
+    help="transaction id (UUID)",
     location="args",
 )
 dry_run = parser.register_item(
@@ -670,3 +678,4 @@ errata_user_tracking_args = parser.build_parser(
 )
 errata_entity_subscriptions_args = parser.build_parser(entity_name)
 image_list_args = parser.build_parser(image_opt, limit_opt, page_opt)
+errata_refresh_analyze_args = parser.build_parser(transaction_id_opt, manage_user)

@@ -143,6 +143,7 @@ class BasePathNamespace:
     ERRATA_SERVER_TOKEN = ""
     ERRATA_ID_URL = ""
     ERRATA_MANAGE_URL = ""
+    ERRATA_REFRESH_URL = ""
     # Flask CORS origins
     CORS_ORIGINS = "*"
     AUTH_COOKIES_OPTIONS = "HttpOnly;"
