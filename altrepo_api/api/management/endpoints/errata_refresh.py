@@ -114,13 +114,25 @@ class ErrataRefreshAnalyze(APIWorker):
     def get_suspicious_changes_from_errata_server(
         self,
     ) -> Iterable[tuple[ErrataHistory, ReferencesPatch]]:
-        service = ErrataRefreshService(
-            url=settings.ERRATA_REFRESH_URL,
-            access_token=settings.ERRATA_SERVER_TOKEN,
-            user=self.user.name,
-            ip=self.user.ip,
-        )
-        results = service.collect().results
+        self.status = False
+
+        try:
+            service = ErrataRefreshService(
+                url=settings.ERRATA_REFRESH_URL,
+                access_token=settings.ERRATA_SERVER_TOKEN,
+                user=self.user.name,
+                ip=self.user.ip,
+            )
+            results = service.collect().results
+        except Exception as e:
+            self.store_error(
+                message={"message": f"Errata Server error: {e}"},
+                severity=self.LL.ERROR,
+                http_code=getattr(e, "status_code") or 500,
+            )
+            return []
+
+        self.status = True
 
         for err in results:
             reverted_errata = revert_patch(err.errata, err.patch)
@@ -136,11 +148,17 @@ class ErrataRefreshAnalyze(APIWorker):
                 yield (reverted_errata, err.patch)
 
     def get_suspicious_changes_from_transaction_id(self) -> Iterable[ErrataWithPatch]:
+        self.status = False
+
         response = self.send_sql_request(
             self.sql.get_errata_history_by_transaction_id.format(
                 transaction_id=UUID(self.args["transaction_id"]),
             )
         )
+        if not self.sql_status:
+            return []
+
+        self.status = True
 
         for ec_type, _, old, new in response:
             old_eh = ErrataHistory(
@@ -181,6 +199,7 @@ class ErrataRefreshAnalyze(APIWorker):
         return list(method())
 
     def get_rejected_cves_ids(self, cves_ids: Iterable[str]) -> set[str]:
+        self.status = False
         _tmp_table_name = make_tmp_table_name("cves_ids")
         response = self.send_sql_request(
             self.sql.get_rejected_cves_ids.format(tmp_table_name=_tmp_table_name),
@@ -192,6 +211,10 @@ class ErrataRefreshAnalyze(APIWorker):
                 },
             ],
         )
+        if not self.sql_status:
+            return set()
+
+        self.status = True
 
         # TODO: Check rejection of other (not CVE) vulnerabilities.
         # The main reason why it can't be done for now is that we almost don't have
@@ -201,6 +224,7 @@ class ErrataRefreshAnalyze(APIWorker):
     def get_cve_cpe_triplets_histories(
         self, cves_ids: Iterable[str]
     ) -> dict[str, list[set[CpeTriplet]]]:
+        self.status = False
         _tmp_table_name = make_tmp_table_name("cves_ids")
         response = self.send_sql_request(
             self.sql.get_cve_cpe_history.format(tmp_table_name=_tmp_table_name),
@@ -212,6 +236,8 @@ class ErrataRefreshAnalyze(APIWorker):
                 },
             ],
         )
+        if not self.sql_status:
+            return {}
 
         cve_cpe_triplets_history = defaultdict(list)
         for cve_id, changes_history in response:
@@ -225,11 +251,13 @@ class ErrataRefreshAnalyze(APIWorker):
                         self.logger.warning(f"Failed to parse CPE: {cpe_match}")
                 cve_cpe_triplets_history[cve_id].append(cpe_triplets_at_history_point)
 
+        self.status = True
         return cve_cpe_triplets_history
 
     def get_cpe_triplets_packages(
         self, pkgs_names: Iterable[str]
     ) -> dict[CpeTriplet, set[str]]:
+        self.status = False
         _tmp_table_name = make_tmp_table_name("pkgs_names")
         response = self.send_sql_request(
             self.sql.get_cpe_triplets_packages.format(
@@ -244,6 +272,8 @@ class ErrataRefreshAnalyze(APIWorker):
                 },
             ],
         )
+        if not self.sql_status:
+            return {}
 
         packages_cpe_triplets = defaultdict(set)
         for cpe_triplet_str, matched_names in response:
@@ -253,10 +283,13 @@ class ErrataRefreshAnalyze(APIWorker):
             except ValueError:
                 self.logger.warning(f"Failed to parse CPE: {cpe_triplet_str}")
 
+        self.status = True
         return packages_cpe_triplets
 
     def get(self) -> WorkerResult:
         suspicious_changes = self.get_suspicious_changes()
+        if not self.status:
+            return self.error
 
         if not suspicious_changes:
             return "No vulnerabilities discards", 404
@@ -270,15 +303,22 @@ class ErrataRefreshAnalyze(APIWorker):
 
         # 1. collect rejected CVE's
         rejected_cves_ids = self.get_rejected_cves_ids(cve_errata_mapping)
+        if not self.status:
+            return self.error
 
         # 2. collect non-rejected CVE:[CpeTriplet] matches histories
         non_rejected_cves_ids = set(cve_errata_mapping).difference(rejected_cves_ids)
         cve_cpe_histories = self.get_cve_cpe_triplets_histories(non_rejected_cves_ids)
+        if not self.status:
+            return self.error
 
         # 2.1. collect active CpeTriplet:[Package] matches from PackagesNameConversion
         cpe_triplets_packages = self.get_cpe_triplets_packages(
             pkgs_names={errata.pkg_name for errata, _ in suspicious_changes}
         )
+        if not self.status:
+            return self.error
+
         # 2.2. and reversed mapping (Package:[CpeTriplet]) to reduce algorithm complexity
         packages_cpe_triplets: dict[str, set[CpeTriplet]] = defaultdict(set)
         for cpe_triplet, pkg_names in cpe_triplets_packages.items():
