@@ -73,11 +73,15 @@ class ErrataUserAliases(APIWorker):
         return self.validation_results == []
 
     def get(self) -> WorkerResult:
-        where_clause = "" if self.ua.name is None else f"WHERE user = '{self.ua.name}'"
+        where_clause = "" if self.ua.name is None else "WHERE user = %(name)s"
+        params = {"name": self.ua.name}
 
         response = self.send_sql_request(
-            self.sql.get_user_aliases.format(
-                where_clause=where_clause, having_clause=""
+            (
+                self.sql.get_user_aliases.format(
+                    where_clause=where_clause, having_clause=""
+                ),
+                params,
             )
         )
         if not self.sql_status:
@@ -96,14 +100,19 @@ class ErrataUserAliases(APIWorker):
         }, 200
 
     def post(self) -> WorkerResult:
-        having_clause = f"HAVING has(aka, '{self.ua.name}')"
+        having_clause = "HAVING has(aka, %(name)s)"
+        params: dict[str, Any] = {"name": self.ua.name}
 
         if self.ua.aliases:
-            having_clause += f" OR has({self.ua.aliases}, user)"
+            having_clause += " OR has(%(aliases)s, user)"
+            params["aliases"] = self.ua.aliases
 
         response = self.send_sql_request(
-            self.sql.get_user_aliases.format(
-                where_clause="", having_clause=having_clause
+            (
+                self.sql.get_user_aliases.format(
+                    where_clause="", having_clause=having_clause
+                ),
+                params,
             )
         )
         if not self.sql_status:
