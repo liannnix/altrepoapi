@@ -24,13 +24,9 @@ from altrepo_api.libs.errata_server.errata_refresh_service import (
     ErrataRefreshService,
     ReferencesPatch,
 )
-from altrepo_api.libs.errata_server.errata_sa_service import (
-    ErrataHistory,
-    Reference,
-    UserInfo,
-)
+from altrepo_api.libs.errata_server.errata_sa_service import ErrataHistory, Reference
 from altrepo_api.settings import namespace as settings
-from altrepo_api.utils import get_real_ip, make_tmp_table_name
+from altrepo_api.utils import make_tmp_table_name
 
 from ..sql import sql
 from .common.constants import CVE_ID_PREFIX
@@ -103,12 +99,6 @@ class ErrataRefreshAnalyze(APIWorker):
 
     def check_params(self) -> bool:
         self.logger.debug(f"args : {self.args}")
-
-        self.user = self.user = UserInfo(
-            name=self.args["user"],
-            ip=get_real_ip(),
-        )
-
         return True
 
     def get_suspicious_changes_from_errata_server(
@@ -120,8 +110,8 @@ class ErrataRefreshAnalyze(APIWorker):
             service = ErrataRefreshService(
                 url=settings.ERRATA_REFRESH_URL,
                 access_token=settings.ERRATA_SERVER_TOKEN,
-                user=self.user.name,
-                ip=self.user.ip,
+                user="altrepoapi",
+                ip="127.0.0.1",
             )
             results = service.collect().results
         except Exception as e:

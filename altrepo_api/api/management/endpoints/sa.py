@@ -155,7 +155,7 @@ class ManageSa(APIWorker):
         self.user: UserInfo
         super().__init__()
 
-    def check_params_post(self) -> bool:
+    def check_params(self) -> bool:
         self.logger.debug(f"args : {self.args}")
         # use direct indeces to fail early
         self.dry_run = self.args[DRY_RUN_KEY]
@@ -163,6 +163,11 @@ class ManageSa(APIWorker):
             name=self.args["user"],
             ip=get_real_ip(),
         )
+
+        if not self.user.name:
+            self.validation_results.append("User name should be specified")
+            return False
+
         return True
 
     def post(self):

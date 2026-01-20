@@ -1041,9 +1041,7 @@ class routeSaList(Resource):
         url_logging(logger, g.url)
         args = sa_manage_args.parse_args(strict=False)
         w = ManageSa(g.connection, payload=ns.payload, **args)
-        return run_worker(
-            worker=w, run_method=w.post, check_method=w.check_params_post, ok_code=200
-        )
+        return run_worker(worker=w, run_method=w.post, ok_code=200)
 
     @ns.doc(
         description="Update SA errata record.",
@@ -1057,9 +1055,7 @@ class routeSaList(Resource):
         url_logging(logger, g.url)
         args = sa_manage_args.parse_args(strict=False)
         w = ManageSa(g.connection, payload=ns.payload, **args)
-        return run_worker(
-            worker=w, run_method=w.put, check_method=w.check_params_post, ok_code=200
-        )
+        return run_worker(worker=w, run_method=w.put, ok_code=200)
 
     @ns.doc(
         description="Discard SA errata record.",
@@ -1073,9 +1069,7 @@ class routeSaList(Resource):
         url_logging(logger, g.url)
         args = sa_manage_args.parse_args(strict=False)
         w = ManageSa(g.connection, payload=ns.payload, **args)
-        return run_worker(
-            worker=w, run_method=w.delete, check_method=w.check_params_post, ok_code=200
-        )
+        return run_worker(worker=w, run_method=w.delete, ok_code=200)
 
 
 @with_metadata(ChangeHistory, ns, logger, require_auth=True)
