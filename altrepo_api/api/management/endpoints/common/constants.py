@@ -14,11 +14,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from datetime import datetime, timezone
-
 from altrepo_api.api.misc import lut
 
-DT_NEVER = datetime.fromtimestamp(0, tz=timezone.utc)
 
 ERRAT_CHANGE_ACTOR_DEFAULT = "Errata management API"
 

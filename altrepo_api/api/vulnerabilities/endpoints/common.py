@@ -34,13 +34,12 @@ from typing import (
 )
 
 from altrepo_api.api.misc import lut
-from altrepo_api.api.tools import get_nested_value
-from altrepo_api.utils import make_tmp_table_name, mmhash
 from altrepo_api.libs.librpm_functions import (
     compare_versions,
     version_less_or_equal,
     VersionCompareResult,
 )
+from altrepo_api.utils import get_nested_value, make_tmp_table_name, mmhash
 
 from ..sql import SQL
 

@@ -19,11 +19,11 @@ from typing import Any, NamedTuple, Optional
 
 from altrepo_api.api.base import APIWorker, WorkerResult
 from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
+from altrepo_api.utils import DT_NEVER
 
 from .common.constants import (
     BDU_ID_PREFIX,
     CVE_ID_PREFIX,
-    DT_NEVER,
     GHSA_ID_PREFIX,
     VULN_ID_TYPE2PREFIX,
 )

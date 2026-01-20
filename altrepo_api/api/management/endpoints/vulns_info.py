@@ -20,7 +20,7 @@ from typing import Any, NamedTuple
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
-from altrepo_api.utils import make_tmp_table_name
+from altrepo_api.utils import make_tmp_table_name, DT_NEVER
 
 from .common.base import Reference
 from .common.constants import (
@@ -30,7 +30,6 @@ from .common.constants import (
     GHSA_ID_TYPE,
     MFSA_ID_TYPE,
     OVE_ID_TYPE,
-    DT_NEVER,
 )
 from .common.utils import parse_vuln_id
 from ..sql import sql

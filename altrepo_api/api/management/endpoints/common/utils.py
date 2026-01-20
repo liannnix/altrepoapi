@@ -19,13 +19,12 @@ import re
 from datetime import datetime, timezone
 from typing import Optional
 
-from altrepo_api.utils import get_logger
+from altrepo_api.utils import get_logger, datetime_to_tz_aware, DT_NEVER
 from altrepo_api.api.parser import bug_id_type
 
 from .base import Reference
 from .constants import (
     COMMENT_ENTITY_TYPES,
-    DT_NEVER,
     CHANGE_ACTIONS,
     SUPPORTED_BRANCHES,
     SUPPORTED_BRANCHES_WITH_TASKS,
@@ -58,9 +57,6 @@ VULN_ID_REGEXS = (
     (BUG_ID_TYPE, re_bug_id),
 )
 
-_TZ_UTC = timezone.utc
-_TZ_LOCAL = datetime.now().astimezone(None).tzinfo
-
 
 def validate_action(action: str) -> bool:
     return action in CHANGE_ACTIONS
@@ -86,22 +82,9 @@ def validate_default_reason_action(action: str) -> bool:
     return action in DEFAULT_REASON_ACTION_TYPES
 
 
-def convert_dt_to_timezone_aware(dt: datetime) -> datetime:
-    """Checks if datetime object is timezone aware.
-    Converts timezone naive datetime to aware one assuming timezone is
-    equal to local one for API host."""
-
-    if dt.tzinfo is not None and dt.tzinfo.utcoffset is not None:
-        # datetime object is timezone aware
-        return dt
-
-    # datetime object is timezone naive
-    return dt.replace(tzinfo=_TZ_LOCAL).astimezone(_TZ_UTC)
-
-
 def dt_from_iso(value: str) -> datetime:
     try:
-        return convert_dt_to_timezone_aware(datetime.fromisoformat(value))
+        return datetime_to_tz_aware(datetime.fromisoformat(value))
     except (TypeError, ValueError):
         logger.warning(f"Failed to parse datetime: {value}")
         return DT_NEVER

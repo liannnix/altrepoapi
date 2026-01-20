@@ -25,7 +25,7 @@ from altrepo_api.libs.errata_server.errata_manage_service import (
     serialize,
 )
 from altrepo_api.settings import namespace as settings
-from altrepo_api.utils import get_logger, get_real_ip
+from altrepo_api.utils import get_logger, get_real_ip, DT_NEVER
 
 
 from .common.constants import (
@@ -37,7 +37,6 @@ from .common.constants import (
     ERRATA_PACKAGE_UPDATE_TYPES,
     TASK_PACKAGE_ERRATA_TYPE,
     TASK_STATE_DONE,
-    DT_NEVER,
     DRY_RUN_KEY,
 )
 from .common.utils import dt_from_iso, validate_action, validate_branch

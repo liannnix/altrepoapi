@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import datetime
 import logging
 import mmh3
 import re
@@ -23,10 +22,11 @@ import time
 
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from flask import Response, request, send_file, __version__ as FLASK_VERSION
 from logging import handlers
 from packaging import version
-from typing import Any, Iterable, Union
+from typing import Any, Iterable, TypeVar, Union
 from urllib.parse import unquote
 from uuid import UUID, uuid4
 
@@ -44,7 +44,7 @@ class logger_level:
 
 def json_default(obj):
     # convert datetime to ISO string representation
-    if isinstance(obj, datetime.datetime):
+    if isinstance(obj, datetime):
         return obj.isoformat()
     # convert UUID to string
     if isinstance(obj, UUID):
@@ -196,8 +196,26 @@ def func_time(logger: logging.Logger):
     return decorator
 
 
-def datetime_to_iso(dt: datetime.datetime) -> str:
+def datetime_to_iso(dt: datetime) -> str:
     return dt.isoformat()
+
+
+_TZ_UTC = timezone.utc
+_TZ_LOCAL = datetime.now().astimezone(None).tzinfo
+DT_NEVER = datetime.fromtimestamp(0, tz=timezone.utc)
+
+
+def datetime_to_tz_aware(dt: datetime) -> datetime:
+    """Checks if datetime object is timezone aware.
+    Converts timezone naive datetime to aware one assuming timezone is
+    equal to local one for API host."""
+
+    if dt.tzinfo is not None and dt.tzinfo.utcoffset is not None:
+        # datetime object is timezone aware
+        return dt
+
+    # datetime object is timezone naive
+    return dt.replace(tzinfo=_TZ_LOCAL).astimezone(_TZ_UTC)
 
 
 def sort_branches(branches: Iterable[str]) -> tuple[str, ...]:
@@ -416,7 +434,7 @@ def valid_task_id(task_id: int) -> bool:
     return task_id >= MIN_TASK_ID and task_id <= MAX_TASK_ID
 
 
-def make_snowflake_id(timestamp: Union[int, datetime.datetime], lower_32bit) -> int:
+def make_snowflake_id(timestamp: Union[int, datetime], lower_32bit) -> int:
     """
     Returns a 64-bit Snowflake-like ID using a custom epoch,
     with timestamp (int or datetime) in the upper 32 bits
@@ -424,7 +442,29 @@ def make_snowflake_id(timestamp: Union[int, datetime.datetime], lower_32bit) -> 
     """
     EPOCH = 1_000_000_000
 
-    if isinstance(timestamp, datetime.datetime):
+    if isinstance(timestamp, datetime):
         timestamp = int(timestamp.timestamp())
 
     return ((timestamp - EPOCH) << 32) | (lower_32bit & 0xFFFFFFFF)
+
+
+T = TypeVar("T")
+
+
+def get_nested_value(
+    data: dict[str, Any], key_path: str, default: T = None
+) -> Union[Any, T]:
+    """Traverses a nested dictionary and returns the value at the given key path."""
+
+    if not data or not key_path:
+        return default
+
+    keys = key_path.split(".")
+    current = data
+
+    for key in keys:
+        if not isinstance(current, dict) or key not in current:
+            return default
+        current = current[key]
+
+    return current
