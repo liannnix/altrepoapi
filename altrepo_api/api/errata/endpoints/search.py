@@ -382,7 +382,8 @@ class FindErratas(APIWorker):
                 res.append(
                     ErrataInfo(
                         errata_id=e.eh.id,
-                        eh_type=e.eh.type,
+                        # replace type filed value with `advisory` for frontend
+                        eh_type="advisory",
                         task_id=e.eh.task_id,
                         branch=e.eh.branch,
                         pkgs=[],
