@@ -17,7 +17,6 @@
 from flask import g
 from flask_restx import Resource
 
-from altrepo_api.api.vulnerabilities.endpoints.excluded import VulnExcluded
 from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
 from altrepo_api.api.vulnerabilities.parsers import vuln_info_args
@@ -48,6 +47,7 @@ from .endpoints.cve import VulnerablePackageByCve
 from .endpoints.packages import PackageOpenVulnerabilities, PackagesByOpenVuln
 from .endpoints.branch import BranchOpenVulnerabilities
 from .endpoints.maintainer import MaintainerOpenVulnerabilities
+from .endpoints.excluded import VulnExcluded
 
 ns = get_namespace()
 
