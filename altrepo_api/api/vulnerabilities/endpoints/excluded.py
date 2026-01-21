@@ -58,12 +58,6 @@ class VulnExcluded(APIWorker):
         self.sql = sql
         super().__init__()
 
-    def _handle_404_error(self):
-        return self.store_error(
-            {"message": f"No data found in DB for {self.args}"},
-            http_code=404,
-        )
-
     def _get_cpe_hashes(self, conditions_cpe: set[str]) -> dict[str, int]:
         """Get CPE hashes."""
 
@@ -236,14 +230,14 @@ class VulnExcluded(APIWorker):
         # filter errata records
         filtered_erratas = [e for e in erratas if is_relevant_errata(e)]
         if not filtered_erratas:
-            return self._handle_404_error()
+            return self.store_error({"message": f"No data found in DB for {self.args}"})
 
         # process conditions and query packages
         conditions_cpe, conditions_pkgs = self._build_conditions(filtered_erratas)
         cpe_hashes = self._get_cpe_hashes(conditions_cpe)
         packages = self._excluded_packages(vuln_id, conditions_pkgs, cpe_hashes)
         if not packages:
-            return self._handle_404_error()
+            return self.store_error({"message": f"No data found in DB for {self.args}"})
 
         matched_data = self._match_packages_with_errata(
             filtered_erratas=filtered_erratas, packages=packages, cpe_hashes=cpe_hashes
