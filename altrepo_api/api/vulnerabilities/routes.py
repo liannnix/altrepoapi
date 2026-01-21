@@ -17,6 +17,7 @@
 from flask import g
 from flask_restx import Resource
 
+from altrepo_api.api.vulnerabilities.endpoints.excluded import VulnExcluded
 from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
 from altrepo_api.api.vulnerabilities.parsers import vuln_info_args
@@ -105,6 +106,25 @@ class routeVulnerableCveFixes(Resource):
         url_logging(logger, g.url)
         args = cve_info_args.parse_args(strict=True)
         w = VulnFixes(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/cve/excluded",
+    doc={
+        "description": (
+            "Get a list of packages where the specified CVE vulnerability is excluded."
+        ),
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeVulnerableCveExcluded(Resource):
+    @ns.expect(cve_info_args)
+    @ns.marshal_with(vuln_fixes_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = cve_info_args.parse_args(strict=True)
+        w = VulnExcluded(g.connection, **args)
         return run_worker(worker=w, args=args)
 
 
