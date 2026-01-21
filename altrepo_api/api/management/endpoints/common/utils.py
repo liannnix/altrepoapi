@@ -16,7 +16,7 @@
 
 import re
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 from altrepo_api.utils import get_logger, datetime_to_tz_aware, DT_NEVER
