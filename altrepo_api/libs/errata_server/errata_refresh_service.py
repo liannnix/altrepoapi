@@ -17,10 +17,7 @@ from __future__ import annotations
 
 from typing import NamedTuple
 
-from .base import (
-    ErrataServerConnection,
-    ErrataServerError,  # noqa: F401
-)
+from .base import ErrataServerConnection, ErrataServerError  # noqa: F401
 from .errata_sa_service import ErrataHistory, Reference
 from .serde import deserialize
 
