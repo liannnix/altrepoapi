@@ -6,6 +6,79 @@ regards to the repository by GET requests.
 
 API documentation is available through Swagger web-interface.
 
+# Project Description
+
+## Project summary and purpose
+
+ALTRepo API is a REST API for the repository database of the ALT distribution. It exposes
+repository state, packages, build tasks, and security data to tools and UI clients without
+direct DB access. The API focuses on read-heavy queries against curated "latest" snapshots.
+
+Example: a client requests the latest package list for a branch and receives a consistent
+snapshot of current packages and maintainers.
+
+## Used terms explanation
+
+* Branch (package set): a named repository line (e.g., p10), stored as `pkgset_name`.
+* Package: a software artifact in the repository.
+* Source package: build input package (`pkg_sourcepackage = 1`).
+* Binary package: build output package (`pkg_sourcepackage = 0`).
+* Package hash: stable identifier (`pkg_hash`) used to link package data.
+* Architecture (arch): target CPU/ABI such as x86_64 or aarch64.
+* Dependency: declared relationship between packages (require/provide).
+* Task: build or repository action tracked over time.
+* Subtask: task component with per-arch details.
+* Errata: advisory record tied to tasks or branches.
+* Vulnerability: security issue record (CVE/BDU/GHSA).
+* CPE: standardized product naming for vulnerability matching.
+* ACL: access control list mapping packages to maintainer groups.
+* Image: built artifacts (ISO/images) tied to branches and packages.
+* Repocop: QA check results for package quality issues.
+
+## Architecture overview
+
+* Flask application with Flask-RESTX namespaces under `/api` and management endpoints under `/manage`.
+* ClickHouse database access via `clickhouse_driver`, using per-request connections.
+* APIWorker pattern for validation, SQL execution, and response handling.
+* Authentication supports Basic and Bearer tokens (LDAP/Keycloak), with optional token storage.
+* Swagger/OpenAPI docs are exposed at `/api/`.
+
+## API overview
+
+* auth: login/logout, token management.
+* task, task_progress, management: build task status and history.
+* package, packageset, dependencies, file: package metadata, package sets, dependencies, and files.
+* errata, vulnerabilities, bug, license: advisories, CVEs, bugs, and licensing.
+* image, av_scan, export: image data, antivirus scan results, and exports.
+* site_*: site-facing endpoints for packages, package sets, tasks, images, and maintainers.
+
+## Business logic description
+
+* Repository state queries: fetch current packages for a branch using "last packages" views.
+  Example: list all source packages in a branch and compare versions to another branch.
+* Package intelligence: lookup metadata, specfiles, changelogs, and file ownership.
+  Example: find which package owns a file or checksum.
+* Dependency analysis: build dependency sets, resolve provide/require, and sort dependencies.
+  Example: compute build dependencies for a source package across default arches.
+* Task tracking: expose task status, iterations, and related package hashes.
+  Example: get the latest iteration and per-arch subtask results for a build task.
+* Security and advisories: link packages to vulnerabilities via CPE matching and errata history.
+  Example: list CVEs affecting packages in a branch and the errata that fix them.
+* Maintainer and ACL data: expose ownership and QA results (Repocop).
+  Example: show maintainers for a package set and related QA issues.
+* Image and scan data: map packages to images and expose antivirus scan results.
+
+## Database structure description
+
+* `Packages` holds core package data; "last packages" views provide current snapshots.
+* `Depends` stores dependency edges (require/provide) keyed by `pkg_hash`.
+* `PackageSet` and `RepositoryStatus` track branch membership and metadata.
+* `Tasks`, `TaskStates`, and `TaskIterations` track build/repo task history.
+* `Vulnerabilities`, `CpeMatch`, and `PackagesVulnerabilityStatus` track security data.
+* `PackagesNameConversion` maps names to CPE/repology identities.
+* `ErrataHistory` stores advisory records and their changes.
+* `ImageStatus`, `AntivirusScanStatus`, `Changelog`, and `Bugzilla` cover auxiliary domains.
+
 # License
 
 [GNU AGPLv3](https://www.gnu.org/licenses/agpl-3.0.html)
