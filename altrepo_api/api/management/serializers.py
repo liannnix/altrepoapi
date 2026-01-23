@@ -1475,11 +1475,23 @@ errata_user_subscription_model = ns.model(
             description="Errata user display name",
             required=True,
         ),
+        "assigner_display_name": fields.String(
+            description="Errata user display name",
+            required=True,
+        ),
     },
 )
 errata_user_subscriptions_model = ns.model(
     "ErrataUserSubscriptionsModel",
     {
+        "request_args": fields.Raw(
+            description="Request arguments",
+            required=True,
+        ),
+        "length": fields.Integer(
+            description="Number of subscriptions found",
+            required=True,
+        ),
         "subscriptions": fields.Nested(
             errata_user_subscription_model,
             description="List of all use subscriptions",

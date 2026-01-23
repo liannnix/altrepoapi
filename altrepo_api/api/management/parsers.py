@@ -664,7 +664,9 @@ errata_user_info_args = parser.build_parser(user_name)
 errata_user_last_activities_args = parser.build_parser(user_name, limit_opt)
 errata_user_aliases_get_args = parser.build_parser(user_name_opt)
 errata_user_aliases_post_args = parser.build_parser(user_name, user_aliases_opt)
-errata_user_subscriptions_args = parser.build_parser(user_name)
+errata_user_subscriptions_args = parser.build_parser(
+    user_name, page_opt, limit_opt, sort_opt
+)
 errata_user_tracking_args = parser.build_parser(
     user_name,
     manual_errata_changes_opt,
