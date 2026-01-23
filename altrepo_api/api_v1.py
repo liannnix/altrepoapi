@@ -106,9 +106,6 @@ class ApiVersion(Resource):
 @api.route("/ping")
 @api.doc(False)
 class ApiPing(Resource):
-    @api.doc(description="API authorization check")
-    @api.doc(security="BasicAuth")
-    @auth_required
     def get(self):
         return {"message": "pong"}, 200
 
