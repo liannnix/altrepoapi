@@ -87,9 +87,10 @@ class ErrataManageService(ServiceBase):
 
         return response.and_then(_deserialize).unwrap()
 
-    def get(self, errata_id: str) -> ErrataManageGetResponse:
+    def get(self, errata_id: str, strict: bool = True) -> ErrataManageGetResponse:
         response: Result[JSONObject, Exception] = self.server.get(
-            ERRATA_LIST_ROUTE, params={"errata_id": errata_id}
+            ERRATA_LIST_ROUTE,
+            params={"errata_id": errata_id, "strict": "true" if strict else "false"},
         )  # type: ignore
         return response.and_then(_deserialize_get).unwrap()
 

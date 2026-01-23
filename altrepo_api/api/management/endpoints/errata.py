@@ -224,7 +224,9 @@ class ManageErrata(APIWorker):
         )
 
         try:
-            response = service.get(errata_id)
+            # XXX: set `strict` flag to False allow getting actual Errata state by 
+            # version outdated ID
+            response = service.get(errata_id, strict=False)
         except ErrataServerError as e:
             return self.store_error(
                 {"message": f"Failed to get data from Errata Server: {e}"},
