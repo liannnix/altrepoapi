@@ -16,42 +16,25 @@
 
 from dataclasses import dataclass
 
+from alt_releases_matrix import (
+    KNOW_BRANCHES,
+    KNOWN_ARCHS,
+    Beehive,
+    GITALT_BASE_URL,
+    GITALT_TASKS_BASE_URL,
+    BEEHIVE_BASE_URL,
+    PACKAGES_BASE_URL,
+    BUGZILLA_BASE_URL,
+    PUBLIC_FTP_BASE_URL,
+    ERRATA_BASE_URL,
+)
+
+_beehive = Beehive()
+
 
 @dataclass(frozen=True)
 class LookupTables:
-    known_branches = [
-        "4.0",
-        "4.1",
-        "5.0",
-        "5.1",
-        "c6",
-        "c7",
-        "c7.1",
-        "c8",
-        "c8.1",
-        "c9f1",
-        "c9f2",
-        "c10f1",
-        "c10f2",
-        "p5",
-        "p6",
-        "p7",
-        "p8",
-        "p9",
-        "p9_mipsel",
-        "p9_e2k",
-        "p10",
-        "p10_e2k",
-        "p11",
-        "sisyphus",
-        "sisyphus_mipsel",
-        "sisyphus_riscv64",
-        "sisyphus_e2k",
-        "sisyphus_loongarch64",
-        "t6",
-        "t7",
-        "icarus",
-    ]
+    known_branches = list(KNOW_BRANCHES)
     taskless_branches = [
         "p9_mipsel",
         "sisyphus_mipsel",
@@ -112,22 +95,7 @@ class LookupTables:
         ),
     }
 
-    known_archs = [
-        "noarch",
-        "i586",
-        "x86_64",
-        "x86_64-i586",
-        "armh",
-        "aarch64",
-        "ppc64le",
-        "riscv64",
-        "loongarch64",
-        "mipsel",
-        "e2k",
-        "e2kv4",
-        "e2kv5",
-        "e2kv6",
-    ]
+    known_archs = list(KNOWN_ARCHS)
     known_repo_components = [
         "debuginfo",
         "classic",
@@ -321,16 +289,8 @@ class LookupTables:
         "Toys",
         "Video",
     ]
-    known_beehive_branches = [
-        "sisyphus",
-        "p11",
-        "p10",
-        "p9",
-    ]
-    known_beehive_archs = [
-        "i586",
-        "x86_64",
-    ]
+    known_beehive_branches = list(_beehive.branches)
+    known_beehive_archs = list(_beehive.archs)
 
     known_image_components = ["iso", "rpms", "altinst", "live", "rescue"]
 
@@ -374,13 +334,13 @@ class LookupTables:
     known_image_releases = ["alpha", "beta", "rc", "release"]
     known_image_variants = ["install", "live", "rescue"]
 
-    gitalt_base = "https://git.altlinux.org"
-    beehive_base = "https://git.altlinux.org/beehive"
-    gitalt_tasks_base = "https://git.altlinux.org/tasks"
-    packages_base = "https://packages.altlinux.org/en"
-    bugzilla_base = "https://bugzilla.altlinux.org"
-    public_ftp_base = "http://ftp.altlinux.org/pub/distributions/ALTLinux"
-    errata_base = "https://errata.altlinux.org"
+    gitalt_base = GITALT_BASE_URL
+    beehive_base = BEEHIVE_BASE_URL
+    gitalt_tasks_base = GITALT_TASKS_BASE_URL
+    packages_base = PACKAGES_BASE_URL
+    bugzilla_base = BUGZILLA_BASE_URL
+    public_ftp_base = PUBLIC_FTP_BASE_URL
+    errata_base = ERRATA_BASE_URL
     nvd_cve_base = "https://nvd.nist.gov/vuln/detail"
     fstec_bdu_base = "https://bdu.fstec.ru/vul"
     ghsa_base = "https://github.com/advisories"

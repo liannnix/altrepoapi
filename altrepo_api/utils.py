@@ -30,6 +30,7 @@ from typing import Any, Iterable, TypeVar, Union
 from urllib.parse import unquote
 from uuid import UUID, uuid4
 
+from alt_releases_matrix import BRANCH_SORTING_ORDER
 from altrepo_api.settings import namespace as settings
 
 
@@ -222,45 +223,11 @@ def sort_branches(branches: Iterable[str]) -> tuple[str, ...]:
     """Use predefined sort list order for branch sorting."""
     res = []
     branches = set(branches)
-    sort_list = [
-        "sisyphus",
-        "sisyphus_e2k",
-        "sisyphus_mipsel",
-        "sisyphus_riscv64",
-        "sisyphus_loongarch64",
-        "p11",
-        "p10",
-        "p10_e2k",
-        "p9",
-        "p9_e2k",
-        "p9_mipsel",
-        "p8",
-        "p7",
-        "p6",
-        "p5",
-        "c10f2",
-        "c10f1",
-        "c9f2",
-        "c9f1",
-        "c9m2",
-        "c9m1",
-        "c8.1",
-        "c8",
-        "c7.1",
-        "c7",
-        "c6",
-        "t7",
-        "t6",
-        "5.1",
-        "5.0",
-        "4.1",
-        "4.0",
-    ]
-    # add branches to result in accordance to sort_list order
-    for branch in sort_list:
+    # add branches to result in accordance to BRANCH_SORTING_ORDER
+    for branch in BRANCH_SORTING_ORDER:
         if branch in branches:
             res.append(branch)
-    # fall back: add branches from input that are missing from sort_list
+    # fall back: add branches from input that are missing from sort order
     diff = branches - set(res)
     res += sorted([x for x in diff], reverse=True)
     return tuple(res)
