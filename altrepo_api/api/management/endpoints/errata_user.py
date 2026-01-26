@@ -213,7 +213,7 @@ class ErrataUserTag(APIWorker):
                 {"message": "No data not found in database"},
             )
 
-        users = [{"user": r[0], "group": r[1]} for r in response]
+        users = [{"user": r[0], "display_name": r[1], "group": r[2]} for r in response]
 
         return {
             "request_args": self.kwargs,

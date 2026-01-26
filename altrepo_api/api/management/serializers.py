@@ -1287,6 +1287,10 @@ errata_user_tag_element_model = ns.model(
             description="Max ranked group of user",
             required=True,
         ),
+        "display_name": fields.String(
+            description="Errata user display name",
+            required=True,
+        ),
     },
 )
 errata_user_tag_model = ns.model(

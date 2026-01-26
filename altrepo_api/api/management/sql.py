@@ -1263,18 +1263,35 @@ GROUP BY user
 """
 
     get_most_relevant_users = """
-WITH '{input}' AS query
+WITH lower('{input}') AS query
 SELECT
     user,
+    argMax(display_name, ts) AS dn,
     argMax(group, ts) AS g
 FROM ErrataUsers
-WHERE (positionCaseInsensitiveUTF8(user, query) AS pos) != 0
 GROUP BY user
+HAVING ((positionCaseInsensitiveUTF8(user, query) AS pos_u) != 0)
+    OR ((positionCaseInsensitiveUTF8(dn, query) AS pos_dn) != 0)
 ORDER BY
-    if((eq = 0) AND (st = 0), pos, 0) ASC,
-    toUInt8(lower(user) = query) AS eq DESC,
-    startsWithUTF8(lower(user), query) AS st DESC,
-    length(user) ASC
+    if((eq = 0) AND (st = 0), arrayMax([pos_u, pos_dn]), 0) ASC,
+    arrayMax(
+        arrayConcat(
+            [toUInt8(lower(user) = query)],
+            arrayMap(p -> toUInt8(p = query), splitByWhitespace(lower(dn)))
+        )
+    ) AS eq DESC,
+    arrayMax(
+        arrayConcat(
+            [startsWithUTF8(lower(user), query)],
+            arrayMap(p -> startsWithUTF8(p, query), splitByWhitespace(lower(dn)))
+        )
+    ) AS st DESC,
+    arrayMax(
+        arrayConcat(
+            [length(user)],
+            arrayMap(p -> length(p), splitByWhitespace(lower(dn)))
+        )
+    ) AS l ASC
 LIMIT {limit}
 """
 
