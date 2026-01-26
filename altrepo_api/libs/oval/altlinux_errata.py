@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from alt_releases_matrix import Vulnerability as Vuln, BUGZILLA_BASE_URL
 import xml.etree.ElementTree as xml
 
 from dataclasses import dataclass, field
@@ -21,18 +22,19 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from altrepo_api.api.misc import lut
-
 from .oval_definitions.utils import make_sub_element
+
+
+_vuln = Vuln()
 
 
 ALT_LINUX_COPYRIGHT = f"Copyright {datetime.now().year} BaseALT Ltd."
 ALT_LINUX_ADVISORY_FROM = "errata.altlinux.org"
-BUGZILLA_BASE_URL = lut.bugzilla_base
-BDU_ID_TYPE = "BDU"
-BDU_ID_PREFIX = f"{BDU_ID_TYPE}:"
-CVE_ID_TYPE = "CVE"
-CVE_ID_PREFIX = f"{CVE_ID_TYPE}-"
+BUGZILLA_BASE_URL = BUGZILLA_BASE_URL
+BDU_ID_TYPE = _vuln.bdu_id_type
+BDU_ID_PREFIX = _vuln.bdu_id_prefix
+CVE_ID_TYPE = _vuln.cve_id_type
+CVE_ID_PREFIX = _vuln.cve_id_prefix
 
 
 class Severity(Enum):

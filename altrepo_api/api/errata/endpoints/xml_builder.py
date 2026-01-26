@@ -18,6 +18,7 @@ import json
 import logging
 import xml.etree.ElementTree as xml
 
+from alt_releases_matrix import OvalXml
 from dataclasses import dataclass
 from datetime import datetime
 from io import BytesIO
@@ -89,94 +90,47 @@ from altrepo_api.libs.oval.independent_definitions import (
 from .common import ErrataID, BDU_ID_TYPE, BDU_ID_PREFIX, CVE_ID_TYPE, CVE_ID_PREFIX
 
 
+_ovalxml = OvalXml()
+
 LINK_BDU_BY_CVE = False
 
-GENERATOR_PRODUCT_NAME = "ALT Linux Errata System"
-ALT_LINUX_OVAL_ID_PREFIX = "org.altlinux.errata"
-XML_VERSION = 1
+GENERATOR_PRODUCT_NAME = _ovalxml.generator_product_name
+ALT_LINUX_OVAL_ID_PREFIX = _ovalxml.oval_id_prefix
+XML_VERSION = _ovalxml.xml_version
 ERRATA_BASE_URL = lut.errata_base
 NVD_CVE_BASE_URL = lut.nvd_cve_base
 FSTEC_BDU_BASE_URL = lut.fstec_bdu_base
 
 PRODUCTS = {
-    "p9": [
-        "ALT Server",
-        "ALT Virtualization Server",
-        "ALT Workstation",
-        "ALT Workstation K",
-        "ALT Education",
-        "Simply Linux",
-        "Starterkit",
-    ],
-    "p10": [
-        "ALT Server",
-        "ALT Virtualization Server",
-        "ALT Workstation",
-        "ALT Workstation K",
-        "ALT Education",
-        "Simply Linux",
-        "Starterkit",
-        "ALT Container",
-    ],
-    "p11": [
-        "ALT Container",
-        "ALT Education",
-        "ALT Workstation",
-        "ALT Workstation K",
-        "ALT Server",
-        "ALT Virtualization PVE Edition",
-    ],
-    "c9f2": ["ALT SPWorkstation", "ALT SPServer"],
-    "c10f1": ["ALT SP Workstation", "ALT SP Server"],
-    "c10f2": ["ALT SP Workstation", "ALT SP Server"],
+    "p9": _ovalxml.p9_products,
+    "p10": _ovalxml.p10_products,
+    "p11": _ovalxml.p11_products,
+    "c9f2": _ovalxml.c9f2_products,
+    "c10f1": _ovalxml.c10f1_products,
+    "c10f2": _ovalxml.c10f2_products,
 }
 PRODUCT_CPE = {
-    "p9": [
-        "cpe:/o:alt:kworkstation:9",
-        "cpe:/o:alt:workstation:9",
-        "cpe:/o:alt:server:9",
-        "cpe:/o:alt:server-v:9",
-        "cpe:/o:alt:education:9",
-        "cpe:/o:alt:slinux:9",
-        "cpe:/o:alt:starterkit:p9",  # XXX: now version in CPE set as `p9`
-    ],
-    "p10": [
-        "cpe:/o:alt:kworkstation:10",
-        "cpe:/o:alt:workstation:10",
-        "cpe:/o:alt:server:10",
-        "cpe:/o:alt:server-v:10",
-        "cpe:/o:alt:education:10",
-        "cpe:/o:alt:slinux:10",
-        "cpe:/o:alt:starterkit:10",
-        "cpe:/o:alt:starterkit:p10",
-        "cpe:/o:alt:container:10",
-    ],
-    "p11": [
-        "cpe:/o:alt:container:11",
-        "cpe:/o:alt:education:11",
-        "cpe:/o:alt:workstation:11",
-        "cpe:/o:alt:kworkstation:11",
-        "cpe:/o:alt:server:11",
-        "cpe:/o:alt:virtualization-pve:11",
-    ],
-    "c9f2": ["cpe:/o:alt:spworkstation:8.4", "cpe:/o:alt:spserver:8.4"],
-    "c10f1": ["cpe:/o:alt:spworkstation:10", "cpe:/o:alt:spserver:10"],
-    "c10f2": [
-        "cpe:/o:alt:spworkstation:10.2",
-        "cpe:/o:alt:spserver:10.2",
-        "cpe:/o:alt:spcontainer:10.2",
-    ],
+    "p9": _ovalxml.p9_cpes,
+    "p10": _ovalxml.p10_cpes,
+    "p11": _ovalxml.p11_cpes,
+    "c9f2": _ovalxml.c9f2_cpes,
+    "c10f1": _ovalxml.c10f1_cpes,
+    "c10f2": _ovalxml.c10f2_cpes,
+}
+_regex_match_map = {
+    k: v for k, v in zip(_ovalxml.cpe_regex_match_keys, _ovalxml.cpe_regex_match_values)
 }
 BRANCH_CHECK_REGEX = {
-    "p9": (r"cpe:\/o:alt:(?!sp)[a-z\-]+:p?(\d+)(?:\.\d)*", "9"),
-    "p10": (r"cpe:\/o:alt:(?!sp)[a-z\-]+:p?(\d+)(?:\.\d)*", "10"),
-    "p11": (r"cpe:\/o:alt:(?!sp)[a-z\-]+:p?(\d+)(?:\.\d)*", "11"),
-    "c9f2": (r"cpe:\/o:alt:sp(?:server|workstation):(\d\.\d)", "8.4"),
-    "c10f1": (r"cpe:\/o:alt:sp(?:server|workstation):(\d+)(?!.)", "10"),
-    "c10f2": ((r"cpe:\/o:alt:sp(?:server|workstation|container):(\d+\.\d)", "10.2")),
+    k: (r, _regex_match_map[k])
+    for k, r in zip(_ovalxml.cpe_regex_keys, _ovalxml.cpe_regex_values)
 }
 NUM_TO_SEVERITY = {0: "NONE", 1: "LOW", 2: "MEDUM", 3: "HIGH", 4: "CRITICAL"}
 SEVERITY_TO_NUM = {v: k for k, v in NUM_TO_SEVERITY.items()}
+
+EXPORT_BRANCHES = _ovalxml.export_branches
+EXPORT_BRANCHES_MAP = {
+    k: v for k, v in zip(_ovalxml.branches_map_keys, _ovalxml.branches_map_values)
+}
 
 logger = logging.getLogger(__name__)
 
@@ -299,7 +253,7 @@ def build_test_altlinux_distr_installed(
     # ALT linux distribution branch test is always the fisrt one
     seq = 1
     # ID's prefix is defined with `lut.oval_export_branches_map` dict
-    serial = lut.oval_export_branches_map.get(branch, "999")
+    serial = EXPORT_BRANCHES_MAP.get(branch, "999")
 
     cpe_version_pattern, version_value = BRANCH_CHECK_REGEX[branch]
 

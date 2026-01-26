@@ -31,6 +31,7 @@ from .xml_builder import (
     PackageInfo,
     VulnerabilityInfo,
     LINK_BDU_BY_CVE,
+    EXPORT_BRANCHES,
 )
 
 
@@ -51,10 +52,10 @@ class OvalExport(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.branch not in lut.oval_export_branches:
+        if self.branch not in EXPORT_BRANCHES:
             self.validation_results.append(f"unknown package set name : {self.branch}")
             self.validation_results.append(
-                f"allowed package set names are : {lut.oval_export_branches}"
+                f"allowed package set names are : {EXPORT_BRANCHES}"
             )
 
         if self.validation_results != []:
@@ -72,7 +73,7 @@ class OvalExport(APIWorker):
         return response[0][0]
 
     def _branch_tasks_history(self, branch: str) -> Union[list[int], None]:
-        branch_history: list[str] = [branch] + lut.branch_inheritance[branch]
+        branch_history: list[str] = [branch] + list(lut.branch_inheritance[branch])
 
         response = self.send_sql_request(
             self.sql.branches_tasks_histories.format(branches=branch_history),
@@ -277,5 +278,5 @@ class OvalBranches(APIWorker):
         super().__init__()
 
     def get(self):
-        branches = lut.oval_export_branches
+        branches = EXPORT_BRANCHES
         return {"length": len(branches), "branches": branches}, 200
