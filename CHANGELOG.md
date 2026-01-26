@@ -1,6 +1,391 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.24.4] - 2026-01-26
+
+Regular API code updates and fixes.
+
+### Added
+- `Docker`: healthcheck for `/api/ping`
+### Changed
+- ``api/management/errata``: allow outdated version IDs with non-strict lookups
+- ``api/ping``: drop auth requirement to support healthchecks
+- `README`: add project description
+### Fixed
+
+# [1.24.3] - 2026-01-23
+
+Regular API code updates and fixes.
+
+### Added
+- `api/vuln`: clone '`/cve/fixes`' route from `/manage`
+### Changed
+- `api/management/user/subscription`: refactor code
+### Fixed
+- `api/vuln`: fix code style
+- `api/vuln`: fix imports
+
+# [1.24.2] - 2026-01-21
+
+Regular API code updates and fixes.
+
+### Added
+- tests: add endpoints unit tests
+- `management`: add ordering param to `/vuln_status/select_next`
+### Changed
+- remove unused imports
+- `management`: partial revert `b2e41c054`
+### Fixed
+- fix code style
+
+# [1.24.1] - 2026-01-20
+
+Regular API code updates and fixes.
+
+### Added
+- `errata_refresh`: add initial analysis implementation
+- `management`: add filters to select next vuln
+### Changed
+- `api/errata`: merge SA records into search results
+- `libs/errata_server`: remove unused imports
+### Fixed
+- `api/errata/find_erratas`: fix errata record type for advisory records
+- `management/errata/refresh_analyze`: fix errors handling
+
+# [1.24.0] - 2025-12-25
+
+Regular API code updates and fixes.
+
+### Added
+- `altrepo_api/libs/errata_server`: add management API services for Errata, CPE and PNC
+- `manage/vuln_status_select_next`: add initial implementation
+### Changed
+- remove dependency on `altrepodb_libs` library
+- `api/management`: remove dead code
+### Fixed
+- `test`: fix tests failed on recent code changes
+- `altrepo_api/libs/errata_server`: fix model field name
+
+# [1.22.4] - 2025-10-03
+
+Regular API code updates and fixes.
+
+### Added
+- `altrepo_api/api/vulnerabilities`: add `/vuln/ghsa/fixes` and `/ghsa/fixes` routes
+- `api/management/task/list`: add metadata support
+### Changed
+- `cpe/list`: align implementation with other API endpoints
+- `default_reason/list`: align implementation with other API endpoints
+### Fixed
+- `/api/errata/search`: recursion error in `/find_erratas` endpoint
+- `libs/errata_server/serde`: fix typo
+
+# [1.22.3] - 2025-09-26
+
+Regular API code updates and fixes.
+
+### Added
+- `api/misc`: add `ALT SP` image editions
+- `default-reasons`: add new `dr_action` field support
+### Changed
+- `libs/errata_server`: refactor code
+- `altrepo_api/libs/errata_server`: refactor code
+### Fixed
+- `api/image/image_info`: fix empty image URL handling
+- `api/metadata`: generate unique operationId for metadata endpoints
+
+# [1.22.2] - 2025-09-15
+
+Regular API code updates and fixes.
+
+### Added
+- `test_management`: add default reasons list endpoint tests
+- `default-reasons`: add API routes and serializers for default reasons
+### Changed
+- `get_comments_list`: make ASC ordering by default
+- `api/management/comments`: refactor code
+### Fixed
+- `api/management/routes`: fix code indentation error
+- `api/management/default_reasons`: remove duplicated SQL error handling
+
+# [1.22.1] - 2025-09-01
+
+Regular API code updates and fixes.
+
+### Added
+- `routePackagesetFindPackages`: input multiple architectures
+### Changed
+### Fixed
+
+# [1.22.0] - 2025-09-01
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/errata`: fix empty vulnerability parsed details object
+- tests: fix type assertion
+
+# [1.20.30] - 2025-08-28
+
+Regular API code updates and fixes.
+
+### Added
+- `api/errata`: add vulnerability details parsing
+### Changed
+- `api/vulnerabilities`: refactor vulnerability details parsing
+### Fixed
+
+# [1.20.29] - 2025-08-27
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `api/management`: update serialization models import
+- `api/vulnerabilities`: refactor code
+### Fixed
+- `api/errata/xml_builder`: fix BDU and CVE JSON contents parsing
+- `test/with_database`: fix `test_acl` data
+
+# [1.20.28] - 2025-08-26
+
+Regular API code updates and fixes.
+
+### Added
+- `api/vulnerabilities`: add extracted references and CVSS vectors from vulnerability JSON contents
+- `altrepo_api/tools`: add nested dictionary traverse helper
+### Changed
+### Fixed
+- `altrepo_api/api/metadata`: fix LDAP groups list
+
+# [1.20.27] - 2025-08-21
+
+Regular API code updates and fixes.
+
+### Added
+- `comments-tests`: add tests for new parser, util function and `comments/list` route
+- `comments`: implement comment management endpoints
+### Changed
+- `altrepo_api/api/metadata`: refactor code
+- `altrepo_api/api/metadata`: refactor metadata filter types and add data classes for metadata items
+### Fixed
+- fix: metadata serializer structure for choices field
+- `api/management/routes`: fix imports
+
+# [1.20.26] - 2025-08-14
+
+Regular API code updates and fixes.
+
+### Added
+- `api/management/change_history`: add `TODO` notes
+- `management`: create `change_history` route
+### Changed
+- `altrepo_api/libs/errata_server`: refactor `rusty` module
+- `api/management/sa`: update payload deserialization errors handling
+### Fixed
+- `altrepo_api/libs/errata_server`: fix type alias declaration
+- `altrepo_api/libs/errata_server`: fix code formatting
+
+# [1.20.25] - 2025-07-23
+
+Regular API code updates and fixes.
+
+### Added
+- `cpe/candidates`: add pagination to cpe candidates endpoint
+- `api/management`: add `/manage/cve/excluded` route
+### Changed
+- `api/vulnerabilities`: refactor `VulnFixes`
+### Fixed
+- fix code style using `black`
+- `api/management/sa`: fix code indentation
+
+# [1.20.24] - 2025-07-21
+
+Regular API code updates and fixes.
+
+### Added
+- `api/misc`: add `alt-virt-pve` image edition
+### Changed
+### Fixed
+- `api/errata/oval`: fix `xml-builder` definitions
+
+# [1.20.23] - 2025-07-04
+
+Regular API code updates and fixes.
+
+### Added
+- `api/management`: add support for Errata record undiscard
+### Changed
+### Fixed
+- `altrepo_api/libs/errata_server`: fix docstring
+
+# [1.20.22] - 2025-07-01
+
+Regular API code updates and fixes.
+
+### Added
+- `sa`: add x-total-header for pagination
+### Changed
+### Fixed
+
+# [1.20.21] - 2025-06-30
+
+Regular API code updates and fixes.
+
+### Added
+- `api/management`: add pagination and sorting on `sa/manage` route
+### Changed
+- `api/management`: refactor records filtering logic on `sa/manage` route
+### Fixed
+- `altrepo_api/libs/errata_server`: fix ErrataJson serialization
+
+# [1.20.20] - 2025-06-27
+
+Regular API code updates and fixes.
+
+### Added
+- `altrepo_api/parser`: add Bug ID validator
+### Changed
+### Fixed
+- `management/vuln/info`: validate Bug IDs against internal DB representation limits
+- `altrepo_api/libs/errata_server`: fix objects serialization and deserialization
+
+# [1.20.19] - 2025-06-17
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/errata`: fix `find_image_erratas` route business logic
+- typo fixes and code cleaning
+
+# [1.20.18] - 2025-06-11
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `api/management/vuln/list`: add parsers for new args
+- `api/management/vuln/list`: add new request args and new where clause
+### Fixed
+- `altrepo_api`: fix code style
+
+# [1.20.17] - 2025-06-10
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `altrepo_api/misc`: update supported image platforms and editions
+### Fixed
+
+# [1.20.16] - 2025-06-04
+
+Regular API code updates and fixes.
+
+### Added
+- `altrepo_api`: add Errata Server management API related configuration options
+- `altrepo_api/libs/errata_server`: add `serialization/deserialization` helpers for DTO classes
+### Changed
+- `api/management`: add `sa/manage` routes
+- `api/management`: update ErrataID service interface usage
+### Fixed
+- `api/management/sa`: fix Errata Server response serialization
+
+# [1.20.15] - 2025-06-02
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/site_task`: fix `api/site/last_packages_by_tasks` floating result ordering error
+
+# [1.20.14] - 2025-05-23
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `api/management/serializers`: rename `VulnerabilityModel` serializer to `ManageVulnerabilityModel`
+### Fixed
+- `api/task`: fix SQL request error on ClickHouse version 25.3.3
+
+# [1.20.13] - 2025-05-20
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/management`: fix PNC records discard
+
+# [1.20.12] - 2025-05-05
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `api/management/errata_builder`: do not process changelog for Errata `create/update`
+- `api/management/errata_builder`: refactor packages changelog handling
+### Fixed
+- `api/management`: fix SQL request
+- `api/management/errata_builder`: fix Errata processing on `CPE/PNC` delete
+
+# [1.20.11] - 2025-04-07
+
+Regular API code updates and fixes.
+
+### Added
+- tests: add test for `export/beehive/ftbfs` route
+- `api/export`: add `/beehive/ftbfs` route
+### Changed
+### Fixed
+
+# [1.20.10] - 2025-03-24
+
+Regular API code updates and fixes.
+
+### Added
+- tests: add simple tests for `/manage` for GHSA
+### Changed
+### Fixed
+- `api/management`: fix SQL request
+- `api/management/routes`: fix import serializer models from other namespaces
+
+# [1.20.9] - 2025-03-13
+
+Regular API code updates and fixes.
+
+### Added
+- `management`: add `/vuln/ghsa` request to get GHSA info
+### Changed
+- `api/management`: refactor related vulnerability handling
+### Fixed
+
+# [1.20.8] - 2025-03-12
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/management`: fix typo from commit f7a92a2f
+
+# [1.20.7] - 2025-03-12
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- tests: update `api/management` tests
+### Fixed
+- `api/management`: fix related vulnerability handling
+- `api/management`: fix duplicated BDU references
+
 # [1.20.6] - 2025-03-11
 
 Regular API code updates and fixes.
@@ -56,7 +441,7 @@ Regular API code updates and fixes.
 - `api`: use `orjson` library for JSON serialization
 - `api/management`: remove dead code
 ### Fixed
-- `tests`: fixup fragile tests
+- tests: fixup fragile tests
 - fix SQL for compatibility with new `ErrataHistory` table structure
 
 # [1.20.0] - 2024-12-12
@@ -70,8 +455,8 @@ Regular API code updates and fixes.
 - `Docker`: migrate to `p11` based images
 ### Fixed
 - `bin`: fix gunicorn server argument parsing error
-- `tests\test_package_by_file_md5`: testcase data
-- `api\utils`: remove unused code
+- `tests/test_package_by_file_md5`: testcase data
+- `api/utils`: remove unused code
 - `api`: update Docker files
 - `api/database`: Clickhouse errors with `clickhouse-driver` version 0.2.9
 
@@ -147,7 +532,7 @@ Regular API code updates and fixes.
 - update project license year and README
 - `task/task_info`: add support for `states` request argument that used to distinguish task contents for particular try and iteration
 ### Fixed
-- `tests\test_parser`: update `test_file_name_wc_type` test cases
+- `tests/test_parser`: update `test_file_name_wc_type` test cases
 
 # [1.19.8] - 2024-09-18
 
@@ -189,7 +574,7 @@ Regular API code updates and fixes.
 ### Added
 ### Changed
 ### Fixed
-- `tests`: fix av_scan tests
+- tests: fix av_scan tests
 - `altrepo_api/parser`: `file_name_wc_type` validator regexp
 - `altrepo_api/image`: fix SQL compatibility with new CH version
 
