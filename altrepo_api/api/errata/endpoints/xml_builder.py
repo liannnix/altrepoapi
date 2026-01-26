@@ -252,7 +252,7 @@ def build_test_altlinux_distr_installed(
 ) -> tuple[TestType, ObjectType, StateType]:
     # ALT linux distribution branch test is always the fisrt one
     seq = 1
-    # ID's prefix is defined with `lut.oval_export_branches_map` dict
+    # ID's prefix is defined with `export_branches` mapping
     serial = EXPORT_BRANCHES_MAP.get(branch, "999")
 
     cpe_version_pattern, version_value = BRANCH_CHECK_REGEX[branch]
