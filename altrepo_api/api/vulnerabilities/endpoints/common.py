@@ -505,7 +505,7 @@ def _get_task_history(
 
     # use branches by inheritance
     branches = [cls.branch]
-    branches += lut.branch_inheritance[cls.branch]
+    branches += list(lut.branch_inheritance[cls.branch])
 
     tmp_table = make_tmp_table_name("pkg_names")
     external_tables = [
@@ -715,7 +715,7 @@ def get_errata_by_cve_ids(
     # add branches from branch inhertance LUT
     if use_branch_inheritance:
         if cls.branch in lut.branch_inheritance:
-            branches += lut.branch_inheritance[cls.branch]
+            branches += list(lut.branch_inheritance[cls.branch])
 
     where_clause = (
         # f"AND pkgset_name = '{cls.branch}' AND hasAny(eh_references.link, {cve_ids})"

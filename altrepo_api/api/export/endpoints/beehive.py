@@ -65,7 +65,7 @@ class BeehiveFTBFS(APIWorker):
     def get(self):
         branch = self.args["branch"]
         _arch = self.args.get("arch")
-        archs = (_arch,) if _arch else tuple(lut.known_beehive_archs)
+        archs = (_arch,) if _arch else lut.known_beehive_archs
         self.args["arch"] = archs
 
         response = self.send_sql_request(

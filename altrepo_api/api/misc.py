@@ -17,24 +17,40 @@
 from dataclasses import dataclass
 
 from alt_releases_matrix import (
-    KNOW_BRANCHES,
-    KNOWN_ARCHS,
     Beehive,
+    BranchInheritance,
+    Errata,
+    Images,
+    Repology,
+    Vulnerability,
+    BUGZILLA_BASE_URL,
+    ERRATA_BASE_URL,
     GITALT_BASE_URL,
     GITALT_TASKS_BASE_URL,
-    BEEHIVE_BASE_URL,
+    KNOW_BRANCHES,
+    KNOWN_ARCHS,
     PACKAGES_BASE_URL,
-    BUGZILLA_BASE_URL,
     PUBLIC_FTP_BASE_URL,
-    ERRATA_BASE_URL,
 )
 
 _beehive = Beehive()
+_branch_inheritance = BranchInheritance()
+_errata = Errata()
+_images = Images()
+_repology = Repology()
+_vuln = Vulnerability()
 
+
+_repology_branch_map = {
+    k: v for k, v in zip(_repology.branch_map_keys, _repology.branch_map_values)
+}
+_repology_reverse_branch_map: dict[str, list[str]] = {}
+for key, value in _repology_branch_map.items():
+        _repology_reverse_branch_map.setdefault(value, []).append(key)
 
 @dataclass(frozen=True)
 class LookupTables:
-    known_branches = list(KNOW_BRANCHES)
+    known_branches = KNOW_BRANCHES
     taskless_branches = [
         "p9_mipsel",
         "sisyphus_mipsel",
@@ -44,58 +60,15 @@ class LookupTables:
         "p9_e2k",
         "p10_e2k",
     ]
-    oval_export_branches = ["p9", "p10", "p11", "c9f2", "c10f1", "c10f2"]
-    oval_export_branches_map = {
-        "p9": "1",
-        "p10": "2",
-        "p11": "3",
-        "c9f2": "4",
-        "c10f1": "5",
-        "c10f2": "6",
-    }
+
     no_downloads_branches = ["sisyphus_e2k", "p9_e2k", "p10_e2k"]
 
-    repology_branches = ("altsisyphus", "alt_p9", "alt_p10", "alt_p11")
-    repology_export_branches = ["sisyphus", "p9", "p10", "p11"]
-    repology_branch_map = {
-        # P9
-        "p9": "alt_p9",
-        "c9f1": "alt_p9",
-        "c9f2": "alt_p9",
-        "p9_e2k": "alt_p9",
-        "p9_mipsel": "alt_p9",
-        # P10
-        "p10": "alt_p10",
-        "c10f1": "alt_p10",
-        "c10f2": "alt_p10",
-        "p10_e2k": "alt_p10",
-        # P11
-        "p11": "alt_p11",
-        # Sisyphus
-        "sisyphus": "altsisyphus",
-        "sisyphus_e2k": "altsisyphus",
-        "sisyphus_mipsel": "altsisyphus",
-        "sisyphus_riscv64": "altsisyphus",
-        "sisyphus_loongarch64": "altsisyphus",
-    }
-    repology_reverse_branch_map = {
-        # P9
-        "alt_p9": ("p9", "c9f1", "c9f2", "p9_e2k", "p9_mipsel"),
-        # P10
-        "alt_p10": ("p10", "c10f1", "c10f2", "p10_e2k"),
-        # P11
-        "alt_p11": ("p11",),
-        # Sisyphus
-        "altsisyphus": (
-            "sisyphus",
-            "sisyphus_e2k",
-            "sisyphus_mipsel",
-            "sisyphus_riscv64",
-            "sisyphus_loongarch64",
-        ),
-    }
+    repology_branches = _repology.branches
+    repology_export_branches = _repology.export_branches
+    repology_branch_map = _repology_branch_map
+    repology_reverse_branch_map= _repology_reverse_branch_map
 
-    known_archs = list(KNOWN_ARCHS)
+    known_archs = KNOWN_ARCHS
     known_repo_components = [
         "debuginfo",
         "classic",
@@ -289,53 +262,19 @@ class LookupTables:
         "Toys",
         "Video",
     ]
-    known_beehive_branches = list(_beehive.branches)
-    known_beehive_archs = list(_beehive.archs)
+    known_beehive_branches = _beehive.branches
+    known_beehive_archs = _beehive.archs
 
-    known_image_components = ["iso", "rpms", "altinst", "live", "rescue"]
-
-    known_image_platform = [
-        "tegra",
-        "rpi4",
-        "baikalm",
-        "mcom02",
-        "hifive",
-        "qemu",
-        "oci",
-        "k8s",
-    ]
-
-    known_image_editions = [
-        "alt-server",
-        "alt-server-v",
-        "alt-container",
-        "alt-education",
-        "alt-workstation",
-        "alt-kworkstation",
-        "alt-virt-pve",
-        "alt-sp-addon",
-        "alt-sp-server",
-        "alt-sp-workstation",
-        "slinux",
-        "cloud",
-        "starterkit",
-        "regular",
-    ]
-    known_image_archs = [
-        "i586",
-        "x86_64",
-        "aarch64",
-        "ppc64le",
-        "armh",
-        "riscv64",
-        "mipsel",
-    ]
-    known_image_types = ["iso", "tar", "img", "qcow", "oci"]
-    known_image_releases = ["alpha", "beta", "rc", "release"]
-    known_image_variants = ["install", "live", "rescue"]
+    known_image_components = _images.components
+    known_image_platform = _images.platforms
+    known_image_editions = _images.editions
+    known_image_archs = _images.archs
+    known_image_types = _images.types
+    known_image_releases = _images.releases
+    known_image_variants = _images.variants
 
     gitalt_base = GITALT_BASE_URL
-    beehive_base = BEEHIVE_BASE_URL
+    beehive_base = _beehive.base_url
     gitalt_tasks_base = GITALT_TASKS_BASE_URL
     packages_base = PACKAGES_BASE_URL
     bugzilla_base = BUGZILLA_BASE_URL
@@ -423,35 +362,35 @@ class LookupTables:
     ]
 
     branch_inheritance = {
-        "c10f2": ["c10f1", "p10", "sisyphus"],
-        "c10f1": ["p10", "sisyphus"],
-        "c9f2": ["c9f1", "p9", "sisyphus"],
-        "c9f1": ["p9", "sisyphus"],
+        "c10f2": _branch_inheritance.c10f2,
+        "c10f1": _branch_inheritance.c10f1,
+        "c9f2": _branch_inheritance.c9f2,
+        "c9f1": _branch_inheritance.c9f1,
         # "c8.1": ["c8", "p8", "sisyphus"],
         # "c8": ["p8", "sisyphus"],
         # "c7.1": ["c7", "p7", "sisyphus"],
         # "c7": ["p7", "sisyphus"],
-        "p11": ["sisyphus"],
-        "p10": ["sisyphus"],
-        "p9": ["sisyphus"],
+        "p11": _branch_inheritance.p11,
+        "p10": _branch_inheritance.p10,
+        "p9": _branch_inheritance.p9,
         # "p8": ["sisyphus"],
         # "p7": ["sisyphus"],
-        "sisyphus": ["sisyphus"],
+        "sisyphus": _branch_inheritance.sisyphus,
     }
-    branch_inheritance_root = "sisyphus"
+    branch_inheritance_root = _branch_inheritance.root
 
     known_errata_type = {"packages": ["branch", "task"], "repository": ["bulletin"]}
 
-    errata_branch_update_prefix = "ALT-BU"
-    errata_package_update_prefix = "ALT-PU"
-    errata_change_prefix = "ALT-EC"
-    errata_advisory_prefix = "ALT-SA"
+    errata_branch_update_prefix = _errata.branch_update_prefix
+    errata_package_update_prefix = _errata.package_update_prefix
+    errata_change_prefix = _errata.errata_change_prefix
+    errata_advisory_prefix = _errata.security_advisory_prefix
 
-    errata_ref_type_bug = "bug"
-    errata_ref_type_vuln = "vuln"
-    errata_ref_type_branch = "branch"
-    errata_ref_type_errata = "errata"
-    errata_ref_type_package = "package"
+    errata_ref_type_bug = _errata.reference_type_bug
+    errata_ref_type_vuln = _errata.reference_type_vulnerability
+    errata_ref_type_branch = _errata.reference_type_branch
+    errata_ref_type_errata = _errata.reference_type_errata
+    errata_ref_type_package = _errata.reference_type_package
 
     errata_manage_branches_with_tasks = (
         "c9f1",
@@ -475,10 +414,10 @@ class LookupTables:
     av_supported_branches = ("p10", "p11", "c9f2", "c10f1")
     av_known_scanners = ("drweb", "kesl")
 
-    comment_ref_type_errata = "errata"
-    comment_ref_type_task = "task"
-    comment_ref_type_web = "web"
-    comment_ref_type_package = "package"
+    comment_ref_type_errata = _errata.reference_type_errata
+    comment_ref_type_task = _errata.reference_type_task
+    comment_ref_type_web = _errata.reference_type_web
+    comment_ref_type_package = _errata.reference_type_package
 
     comment_ref_types = (
         errata_ref_type_bug,
@@ -489,11 +428,18 @@ class LookupTables:
         comment_ref_type_package,
     )
 
-    default_reason_source_type_exclusion = "exclusion"
-    default_reason_source_type_cpe = "cpe"
-    default_reason_source_type_comment = "comment"
-    default_reason_source_type_pnc = "pnc"
-    default_reason_source_type_vuln_status = "vuln_status"
+    TYPE_COMMENT = "comment"
+    TYPE_CPE = "cpe"
+    TYPE_ERRATA = "errata"
+    TYPE_EXCLUSION = "exclusion"
+    TYPE_PNC = "pnc"
+    TYPE_VULN_STATUS = "vuln_status"
+
+    default_reason_source_type_exclusion = TYPE_EXCLUSION
+    default_reason_source_type_cpe = TYPE_CPE
+    default_reason_source_type_comment = TYPE_COMMENT
+    default_reason_source_type_pnc = TYPE_PNC
+    default_reason_source_type_vuln_status = TYPE_VULN_STATUS
 
     default_reason_source_types = (
         errata_ref_type_vuln,
@@ -521,21 +467,28 @@ class LookupTables:
     vuln_status_json_fields = ("note", "project_name", "cpes")
 
     errata_user_last_activities_types = (
-        "vuln_status",
-        "comment",
-        "errata",
-        "exclusion",
-        "cpe",
-        "pnc",
+        TYPE_VULN_STATUS,
+        TYPE_COMMENT,
+        TYPE_ERRATA,
+        TYPE_EXCLUSION,
+        TYPE_CPE,
+        TYPE_PNC,
     )
 
-    vuln_types = ("CVE", "GHSA", "BDU")
+    vuln_types = (_vuln.cve_id_type, _vuln.bdu_id_type, _vuln.ghsa_id_type)
 
     feature_pnc_multi_mapping = "PNC_MULTI_MAPPING"
 
-    errata_user_subscription_types = ("vuln", "package", "errata")
+    errata_user_subscription_types = (
+        _errata.reference_type_vulnerability,
+        _errata.reference_type_package,
+        _errata.reference_type_errata,
+    )
 
-    errata_user_tracking_types = (*errata_user_last_activities_types, "vuln")
+    errata_user_tracking_types = (
+        *errata_user_last_activities_types,
+        _errata.reference_type_vulnerability,
+    )
 
 
 lut = LookupTables()
