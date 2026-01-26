@@ -46,7 +46,8 @@ _repology_branch_map = {
 }
 _repology_reverse_branch_map: dict[str, list[str]] = {}
 for key, value in _repology_branch_map.items():
-        _repology_reverse_branch_map.setdefault(value, []).append(key)
+    _repology_reverse_branch_map.setdefault(value, []).append(key)
+
 
 @dataclass(frozen=True)
 class LookupTables:
@@ -66,7 +67,7 @@ class LookupTables:
     repology_branches = _repology.branches
     repology_export_branches = _repology.export_branches
     repology_branch_map = _repology_branch_map
-    repology_reverse_branch_map= _repology_reverse_branch_map
+    repology_reverse_branch_map = _repology_reverse_branch_map
 
     known_archs = KNOWN_ARCHS
     known_repo_components = [

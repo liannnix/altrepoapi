@@ -224,7 +224,7 @@ class ManageErrata(APIWorker):
         )
 
         try:
-            # XXX: set `strict` flag to False allow getting actual Errata state by 
+            # XXX: set `strict` flag to False allow getting actual Errata state by
             # version outdated ID
             response = service.get(errata_id, strict=False)
         except ErrataServerError as e:

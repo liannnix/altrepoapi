@@ -20,7 +20,6 @@ from flask_restx import Resource, fields
 
 from altrepo_api.version import __version__
 from altrepo_api.settings import namespace as settings
-from altrepo_api.api.auth.decorators import auth_required
 
 from altrepo_api.api.acl import ns as acl_ns
 from altrepo_api.api.bug import ns as bug_ns
