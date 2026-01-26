@@ -95,6 +95,7 @@ snapshot of current packages and maintainers.
 * python3-module-packaging
 * python3-module-redis-py
 * python3-module-python-keycloak
+* python3-module-alt_releases_matrix
 
 # Starting application
 

@@ -9,3 +9,4 @@ redis
 python-ldap
 flask-cors
 python-keycloak
+alt_releases_matrix
