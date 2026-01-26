@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -41,6 +41,10 @@ class PackagesUpdates(APIWorker):
             self.validation_results.append("Payload data parsing error")
             return False
 
+        if not errata_ids:
+            self.validation_results.append("At least one Errata ID should be provided")
+            return False
+
         for errata_id in errata_ids:
             try:
                 self.errata_ids.append(errata_id_type(errata_id))
@@ -66,8 +70,13 @@ class PackagesUpdates(APIWorker):
 
     def post(self):
         packages_updates = get_packges_updates_erratas(self, self.errata_ids)
+        exclude_json = self.args.get("exclude_json", False)
 
         if not self.status or packages_updates is None:
             return self.error
 
-        return {"packages_updates": [p.asdict() for p in packages_updates]}, 200
+        return {
+            "packages_updates": [
+                p.asdict(exclude_json=exclude_json) for p in packages_updates
+            ]
+        }, 200

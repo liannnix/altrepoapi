@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -17,7 +17,7 @@
 from dataclasses import asdict
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.utils import arch_sort_index
+from altrepo_api.utils import arch_sort_index, valid_task_id
 
 from ..dto import (
     TaskMeta,
@@ -39,6 +39,8 @@ class TaskInfo(APIWorker):
         super().__init__()
 
     def check_task_id(self):
+        if not valid_task_id(self.task_id):
+            return False
         response = self.send_sql_request(self.sql.check_task.format(id=self.task_id))
         if not self.sql_status:
             return False
@@ -73,8 +75,14 @@ class TaskInfo(APIWorker):
             # suppose task in progress table are always newer
             if state_p.state != state_a.state:
                 table_name = state_p.table
+                # XXX: workaround for manually reloaded tasks with missing progress
+                if (
+                    state_a.state in ("DONE", "EPERM", "TESTED")
+                    and state_a.changed > state_p.changed
+                ):
+                    table_name = state_a.table
             # if state is not 'consistent' one prefer task progress table
-            elif state_p.state not in ("DONE", "EPERM", "TESTED", "FAILED"):
+            elif state_p.state not in ("DONE", "EPERM", "TESTED"):
                 table_name = state_p.table
             else:
                 table_name = state_a.table
@@ -117,7 +125,9 @@ class TaskInfo(APIWorker):
             else:
                 response = self.send_sql_request(
                     self.sql.get_subtasks_status_by_id_from_state.format(
-                        id=self.task_id, sub_ids=tuple(subtasks.keys())
+                        id=self.task_id,
+                        sub_ids=tuple(subtasks.keys()),
+                        task_changed=task.task_changed,
                     )
                 )
 

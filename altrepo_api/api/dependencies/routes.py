@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -19,6 +19,8 @@ from flask_restx import Resource
 
 from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
+from .endpoints.dependency_search import FastDependencySearchLookup
+from .endpoints.pkg_build_dependency import PackageBuildDependency
 
 from .namespace import get_namespace
 from .endpoints.dependecy_info import (
@@ -27,12 +29,20 @@ from .endpoints.dependecy_info import (
     DependsSrcPackage,
 )
 from .endpoints.backport_helper import BackportHelper
-from .parsers import pkgs_depends_args, src_pkg_depends_args, backport_helper_args
+from .parsers import (
+    pkgs_depends_args,
+    src_pkg_depends_args,
+    backport_helper_args,
+    pkg_build_dep_args,
+    fast_lookup_args,
+)
 from .serializers import (
     package_dependencies_model,
     depends_packages_model,
     package_build_deps_model,
     backport_helper_model,
+    pkg_build_dep_model,
+    fast_deps_search_model,
 )
 
 ns = get_namespace()
@@ -106,3 +116,40 @@ class routeBackportHelper(Resource):
         args = backport_helper_args.parse_args(strict=True)
         w = BackportHelper(g.connection, **args)
         return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/what_depends_src",
+    doc={
+        "description": "Get packages build dependencies by set of parameters",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routePackageBuildDependency(Resource):
+    @ns.expect(pkg_build_dep_args)
+    @ns.marshal_with(pkg_build_dep_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = pkg_build_dep_args.parse_args(strict=True)
+        w = PackageBuildDependency(g.connection, **args)
+        return run_worker(worker=w, args=args)  # type: ignore
+
+
+@ns.route(
+    "/fast_lookup",
+    doc={
+        "description": """
+        Fast search for dependencies by name (case sensitive)
+        including partial occurrence.
+        """,
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeFastLookup(Resource):
+    @ns.expect(fast_lookup_args)
+    @ns.marshal_with(fast_deps_search_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = fast_lookup_args.parse_args(strict=True)
+        w = FastDependencySearchLookup(g.connection, **args)
+        return run_worker(worker=w, args=args)  # type: ignore

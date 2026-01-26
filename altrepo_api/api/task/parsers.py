@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -24,6 +24,9 @@ from altrepo_api.api.parser import (
     date_string_type,
     pkg_name_list_type,
     acl_group_type,
+    datetime_string_type,
+    task_id_type,
+    task_state_type,
 )
 
 # register parser items
@@ -129,7 +132,7 @@ branch = parser.register_item(
 )
 start_task_opt = parser.register_item(
     "start_task",
-    type=int,
+    type=task_id_type,
     default=0,
     required=False,
     help="start task ID",
@@ -137,7 +140,7 @@ start_task_opt = parser.register_item(
 )
 end_task_opt = parser.register_item(
     "end_task",
-    type=int,
+    type=task_id_type,
     default=0,
     required=False,
     help="end task ID",
@@ -175,9 +178,28 @@ no_chanche_opt = parser.register_item(
     location="args",
     default="",
 )
+before_datetime_opt = parser.register_item(
+    "before",
+    type=datetime_string_type,
+    default=None,
+    required=False,
+    help="show tasks' info before specified datetime (YYYY-MM-DD[ HH:MM:SS])",
+    location="args",
+)
+task_states_opt = parser.register_item(
+    "states",
+    type=task_state_type,
+    action="split",
+    default=None,
+    required=False,
+    help="Filter task states by given list (valid values is `DONE`, `EPERM` and `TESTED`)",
+    location="args",
+)
 
 # build parsers
-task_info_args = parser.build_parser(try_opt, iteration_opt, no_chanche_opt)
+task_info_args = parser.build_parser(
+    try_opt, iteration_opt, no_chanche_opt, task_states_opt
+)
 task_repo_args = parser.build_parser(include_task_packages_opt)
 task_build_dep_args = parser.build_parser(
     depth_opt,
@@ -196,4 +218,6 @@ task_buid_dep_set_args = parser.build_parser(arch_opt)
 task_history_args = parser.build_parser(
     branch, start_task_opt, end_task_opt, start_date_opt, end_date_opt
 )
-needs_approval_args = parser.build_parser(acl_group, branch_list_opt)
+needs_approval_args = parser.build_parser(
+    acl_group, branch_list_opt, before_datetime_opt
+)

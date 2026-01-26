@@ -1,6 +1,587 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.20.6] - 2025-03-11
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/vulnerabilities`: PackagesVulnerabilityStatus table related SQL request
+- `api/management`: `/vuln/open/packages` route serialisation model
+
+# [1.20.5] - 2025-03-04
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- remove predefined project name from docker compose files
+
+# [1.20.4] - 2025-03-03
+
+Regular API code updates and fixes.
+
+### Added
+- `/errata/export/oval`: `c10f2` branch support
+### Changed
+### Fixed
+
+# [1.20.3] - 2025-01-28
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/management`: `/errata/change_history` route SQL request
+
+# [1.20.2] - 2025-01-28
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/management`: `ErrataHistory` table data insertion
+
+# [1.20.1] - 2025-01-27
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `api`: use `orjson` library for JSON serialization
+- `api/management`: remove dead code
+### Fixed
+- `tests`: fixup fragile tests
+- fix SQL for compatibility with new `ErrataHistory` table structure
+
+# [1.20.0] - 2024-12-12
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `errata/export/oval`: add `p11` branch support
+- `errata/export/oval`: update product' CPEs (closes #52399, #52400, #52401)
+- `Docker`: migrate to `p11` based images
+### Fixed
+- `bin`: fix gunicorn server argument parsing error
+- `tests\test_package_by_file_md5`: testcase data
+- `api\utils`: remove unused code
+- `api`: update Docker files
+- `api/database`: Clickhouse errors with `clickhouse-driver` version 0.2.9
+
+# [1.19.16] - 2024-11-27
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/site/site+package`: `site/binary_package_archs_and_versions` route error on certain branch and package with multiple versions
+
+# [1.19.15] - 2024-11-25
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/task_progress`: serialization models
+
+# [1.19.14] - 2024-11-14
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/management`: Errata processing error on CPE records changes
+
+# [1.19.13] - 2024-11-06
+
+Regular API code updates and fixes.
+
+### Added
+- `manage` API: `/vuln/open/packages` route
+### Changed
+### Fixed
+
+# [1.19.12] - 2024-10-24
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/errata/export/oval`: Errata gathering SQL request to filter out deleted subtasks
+
+# [1.19.11] - 2024-10-16
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/package/package_info`: ignore architecture argument handling for source packages
+
+# [1.19.10] - 2024-10-07
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/management`: Errata change originator and service info contents handling
+
+# [1.19.9] - 2024-09-25
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- update project license year and README
+- `task/task_info`: add support for `states` request argument that used to distinguish task contents for particular try and iteration
+### Fixed
+- `tests\test_parser`: update `test_file_name_wc_type` test cases
+
+# [1.19.8] - 2024-09-18
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `altrepo_api/libs/errata_service`: ErrataID service URL handling
+- `api/management/sql`: fix gathering latests `task_changed` value for `DONE` task
+
+# [1.19.7] - 2024-09-12
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `package/packages_by_file_names`:
+  - update file name validator
+  - add a list of files that are not belong to any package
+
+# [1.19.6] - 2024-09-10
+
+Regular API code updates and fixes.
+
+### Added
+- `altrepo_api/site_pkgset_info`: new endpoint `tasks_history`
+- `altrepo_api/package`: new endpoint `packages_by_file_names`
+### Changed
+- project `flake8` settings
+### Fixed
+- `altrepo_api/parser`: `file_name_wc_type` validator regexp
+
+# [1.19.5] - 2024-08-29
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `tests`: fix av_scan tests
+- `altrepo_api/parser`: `file_name_wc_type` validator regexp
+- `altrepo_api/image`: fix SQL compatibility with new CH version
+
+# [1.19.4] - 2024-08-09
+
+Regular API code updates and fixes.
+
+### Added
+- `api/antivirus_scan` namespace and routes
+### Changed
+### Fixed
+
+# [1.19.3] - 2024-08-08
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `api/management`: update `/packages/open_vulns` route
+### Fixed
+- `api/management`: fix SQL compatibility with new CH version
+- `tests/with_database/test_management`: fix missing assertions, update tests
+
+# [1.19.2] - 2024-08-05
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/[package|task]/what_depends_src`: fix SQL errors with CH v24.3.4
+
+# [1.19.1] - 2024-07-11
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/vulnerabilities`: revert SQL request bug introduced in v1.19.0
+
+# [1.19.0] - 2024-07-03
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `api/management`: make `Errata` object hashable
+### Fixed
+- `api`: fix SQL requests to be compatible with ClickHouse v24.3.4
+- fix fragile tests
+
+# [1.18.9] - 2024-06-07
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `errata/export/oval`: use branch inheritance to collect errata for OVAL XML files export
+
+# [1.18.8] - 2024-06-03
+
+Regular API code updates and fixes.
+
+### Added
+- `management`: add `vuln/list` route
+### Changed
+### Fixed
+- `management`: fix `cpe/manage[PUT]` route
+
+# [1.18.7] - 2024-05-30
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- use `registry.altlinux.org` instead of `Docker Hub`
+### Fixed
+
+# [1.18.6] - 2024-05-27
+
+Regular API code updates and fixes.
+
+### Added
+- `api/export/repology`: support for `p11` branch
+### Changed
+### Fixed
+
+# [1.18.5] - 2024-05-24
+
+Regular API code updates and fixes.
+
+### Added
+- initial support for `p11` branch
+### Changed
+### Fixed
+
+## [1.18.4] - 2024-05-20
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `management/packages/open_vulns`: add vulnerability modified date field
+### Fixed
+- `api/bug`: SQL requests (closes #50388)
+
+## [1.18.3] - 2024-05-16
+
+Regular API code updates and fixes.
+
+### Added
+- `management`: clone several routes from `api` namespace for convenience
+### Changed
+### Fixed
+
+## [1.18.2] - 2024-05-03
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- **Breaking change** `api/site/binary_package_scripts`: add pretrans and postrans scripts support (closes #50149). Requires DB version 2.14.0
+### Fixed
+
+## [1.18.1] - 2024-05-03
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `management/task/list`: fix subtasks gathering for `EPERM` tasks
+
+## [1.18.0] - 2024-05-02
+
+Regular API code updates and fixes.
+
+### Added
+- `site/package_info`: add VCS tag info
+- `dependencies/fast_lookup` route
+### Changed
+- `management/task`:
+  - `info`: return tasks in 'DONE', 'EPERM' and 'TESTED' states
+  - `list`: return tasks in 'DONE', 'EPERM' and 'TESTED' states; add filter by status
+- `management/packages/open_vulns`:
+  - add filter by image name
+  - retrieve hidden images
+- `errata/find_erratas`: extend search type options
+- `dependencies/what_depends_src`: make the `dp_type` argument optional
+- minor code refactoring
+### Fixed
+- `task_progress/find_tasks`: fix SQL query for deleted subtasks
+- `task/needs_approval`: fix server error on ceratin cases
+
+## [1.17.4] - 2024-04-05
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- update project dependencies
+### Fixed
+- bug introduced in v1.17.3
+- `management`: implement failsafe Errata ID update
+
+## [1.17.3] - 2024-04-01
+
+Regular API code updates and fixes.
+
+### Added
+- `api`: support for temporary DB name from configuration
+- `api/management`: use temporary DB name prefixing in `DELETE FROM` mutations wrapper
+- **Breaking change** `api/management`: pass temporar DB name to `PackageCVEMatcher` class instances. Requires `altrepodb_libs` version 2.13.12+
+### Changed
+### Fixed
+- `api/site_package/changelog`: fix validator upper bound
+
+## [1.17.1] - 2024-03-28
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/auth`: token parsing errors handling
+
+## [1.17.0] - 2024-03-28
+
+Regular API code updates and fixes.
+
+### Added
+- merged `errata_namagement` branch
+### Changed
+### Fixed
+- API arguments validation flaws
+
+## [1.15.29] - 2024-03-11
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `/task/progress/task_info`: fix task architectures handling
+
+## [1.15.29] - 2024-03-11
+
+Regular API code updates and fixes.
+
+### Added
+- `api/vuln/cve`: collect related BDU IDs
+### Changed
+- `api/vuln`: use all branches for package name to project name mapping
+### Fixed
+- `api/task_progress/find_tasks`: handling of package names with `_` symbols
+
+## [1.15.28] - 2024-02-16
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `auth`: LDAP group membership check
+- `tests/authorization`: tests and test assets
+
+## [1.15.27] - 2024-02-15
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `vuln/cve/fixes`: branch' task inheritance algo
+
+## [1.15.26] - 2024-02-14
+
+Regular API code updates and fixes.
+
+### Added
+- `auth`: support for nested LDAP groups
+### Changed
+### Fixed
+
+## [1.15.25] - 2024-02-12
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `/task/progress/task_info`: subtasks gathering SQL request
+- `/api/auth`: user IP gathering when proxied
+
+## [1.15.24] - 2023-12-28
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `/vuln/cve/fixes`: fix task history handling
+- `/vuln/bdu/fixes`: fix task history handling
+
+## [1.15.23] - 2023-12-25
+
+Regular API code updates and fixes.
+
+### Added
+- `errat/find_image_erratas` route
+### Changed
+### Fixed
+
+## [1.15.22] - 2023-12-13
+
+Regular API code updates and fixes.
+
+### Added
+- `vuln/cve/fixes` route
+- `vuln/bdu/fixes` route
+### Changed
+### Fixed
+
+## [1.15.21] - 2023-12-06
+
+Regular API code updates and fixes.
+
+### Added
+- `export/translation`: add `from_date` optional argument support
+- support for `loongarch64` architecture
+### Changed
+### Fixed
+
+## [1.15.20] - 2023-12-01
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `vuln/common`: fix task history handling
+- `vuln/cve/packages`: extend affected packages search algorithm
+
+## [1.15.19] - 2023-11-23
+
+Regular API code updates and fixes.
+
+### Added
+- `site_package/package_info_brief` route
+### Changed
+- `task_progress/taskinfo`: force to use task progress as a source for tasks in 'FAILED' state
+### Fixed
+
+## [1.15.18] - 2023-11-21
+
+Regular API code updates and fixes.
+
+### Added
+- `dependencies/what_depends_src` route
+### Changed
+### Fixed
+- `site/fast_packages_search_lookup` result handling
+
+## [1.15.17] - 2023-11-20
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `api/vuln`: increase CVE matching algorithm efficiency
+
+## [1.15.16] - 2023-11-14
+
+Regular API code updates and fixes.
+
+### Added
+- `task/needs_approval`: support for `before` argument
+### Changed
+- `api/dependencies`: remove dead code
+### Fixed
+- `task/needs_approval`: task check logic
+
+## [1.15.15] - 2023-11-13
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `what_depends_src`: fix architectures defaults for ports branches
+
+## [1.15.14] - 2023-11-13
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `task/task_info`: fix task `DELETED` tasks handling
+
+## [1.15.13] - 2023-11-09
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `api/site_packageset`: suupport virtual `srpm` architecture
+### Fixed
+
+## [1.15.12] - 2023-11-07
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+### Fixed
+- `task/task_info`: fix task data gathering for tasks in `NEW` state
+
+## [1.15.11] - 2023-10-24
+
+Regular API code updates and fixes.
+
+### Added
+- `api/errata`: add initial `c10f2` branch support
+### Changed
+- `api/errata`: check for errata discard
+### Fixed
+- logging to console: split messageas to stderr/stdout by log level
+
 ## [1.15.10] - 2023-10-20
 
 Regular API code updates and fixes.

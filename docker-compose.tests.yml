@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app-test:
     container_name: app-test

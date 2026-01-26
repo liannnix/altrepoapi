@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -116,6 +116,43 @@ WHERE pkg_sourcepackage = 1
     AND pkg_hash IN (SELECT * FROM src_hashes)
 """
 
+    get_packages_and_cpes = """
+WITH
+repology_names AS (
+    SELECT
+        alt_name,
+        repology_name
+    FROM (
+        SELECT
+            pkg_name AS alt_name,
+            pnc_result AS repology_name,
+            argMax(pnc_state, ts) AS state
+        FROM PackagesNameConversion
+        WHERE pnc_type IN {cpe_branches}
+        GROUP BY pkg_name, pnc_result
+    ) WHERE state = 'active'
+)
+SELECT
+    alt_name AS pkg_name,
+    arraySort(groupUniqArray(cpe))
+FROM (
+    SELECT
+        cpe_pkg_name,
+        cpe
+    FROM (
+        SELECT
+            pkg_name AS cpe_pkg_name,
+            argMax(pnc_result, ts) AS cpe,
+            argMax(pnc_state, ts) AS state
+        FROM PackagesNameConversion
+        WHERE pnc_type = 'cpe'
+        GROUP BY pkg_name, pnc_result
+    ) WHERE state = 'active'
+) AS CPE
+INNER JOIN repology_names AS EN ON EN.repology_name = cpe_pkg_name
+GROUP BY alt_name
+"""
+
     get_branch_source_packages = """
 SELECT
     toString(pkg_hash),
@@ -173,6 +210,37 @@ WHERE pkgset_name IN {branches}
 ORDER BY pkg_name
 """
 
+    get_packages_descriptions_from_date = """
+WITH
+pkgset_roots AS (
+    SELECT pkgset_uuid
+    FROM PackageSetName
+    WHERE pkgset_depth = 0
+        AND pkgset_nodename IN {branches}
+        AND pkgset_date >= '{from_date}'
+),
+pkgset_uuids AS (
+    SELECT pkgset_uuid
+    FROM PackageSetName
+    WHERE pkgset_ruuid IN pkgset_roots
+        AND (
+            (pkgset_depth = 1 AND pkgset_nodename = 'srpm') OR
+            (pkgset_depth = 2 AND pkgset_nodename != 'debuginfo')
+        )
+)
+SELECT DISTINCT
+    pkg_name,
+    pkg_url,
+    pkg_summary,
+    pkg_description,
+    arrayStringConcat(arrayPopBack(arrayPopBack(splitByChar('-', pkg_sourcerpm))), '-') AS src_pkg_name
+FROM Packages
+WHERE pkg_hash IN (
+    SELECT DISTINCT pkg_hash from PackageSet WHERE pkgset_uuid IN pkgset_uuids
+)
+ORDER BY pkg_name;
+"""
+
     get_done_tasks = """
 WITH task_and_repo AS (
     SELECT DISTINCT
@@ -188,9 +256,10 @@ SELECT
     task_changed
 FROM TaskStates
 LEFT JOIN (SELECT * FROM task_and_repo) AS TR USING task_id
-WHERE task_state = 'DONE' and task_id IN (
-    SELECT task_id FROM task_and_repo
-)
+WHERE task_state = 'DONE'
+    AND task_id IN (
+        SELECT task_id FROM task_and_repo
+    )
 ORDER BY task_changed DESC
 """
 
@@ -202,6 +271,52 @@ SELECT
 FROM PackageSetName
 WHERE pkgset_depth = 0 AND pkgset_nodename IN {branches}
 ORDER BY pkgset_date DESC
+"""
+
+    get_beehive_errors_by_branch_and_arch = """
+WITH
+last_bh_updated AS
+(
+    SELECT
+        pkgset_name,
+        bh_arch as arch,
+        max(bh_updated) AS updated
+    FROM BeehiveStatus
+    WHERE pkgset_name = '{branch}' AND bh_arch IN {archs}
+    GROUP BY
+        pkgset_name,
+        bh_arch
+),
+src_packages AS
+(
+    SELECT
+        pkg_hash,
+        pkg_epoch
+    FROM last_packages
+    WHERE pkgset_name = '{branch}' AND pkg_sourcepackage = 1
+)
+SELECT
+    pkgset_name,
+    pkg_hash,
+    pkg_name,
+    Pkg.pkg_epoch,
+    pkg_version,
+    pkg_release,
+    bh_arch,
+    bh_updated,
+    bh_ftbfs_since
+FROM BeehiveStatus
+LEFT JOIN
+(SELECT pkg_hash, pkg_epoch FROM src_packages) AS Pkg USING (pkg_hash)
+WHERE pkgset_name = '{branch}'
+    AND bh_status = 'error'
+    AND (bh_arch, bh_updated) IN (
+        SELECT arch, updated FROM last_bh_updated
+    )
+    AND pkg_hash IN (
+        SELECT pkg_hash FROM src_packages
+    )
+ORDER BY pkg_name
 """
 
 

@@ -1,4 +1,3 @@
-import json
 import pytest
 import datetime
 
@@ -67,19 +66,6 @@ def test_join_tuples(test_input, expected):
     assert utils.join_tuples(test_input) == expected
 
 
-def test_convert_to_json():
-    values = [
-        ("elem1", "elem2", "elem3"),
-        ("elem1.1", "elem2.1", "elem3.1"),
-        ("elem1.2", "elem2.2", "elem3.2"),
-    ]
-    js = json.loads(utils.convert_to_json(["key1", "key2", "key3"], values))
-
-    assert "elem1" == js["0"]["key1"]
-    assert "elem2.1" == js["1"]["key2"]
-    assert "elem3.2" == js["2"]["key3"]
-
-
 def test_tuplelist_to_dict():
     assert {1: [2], 2: [3, 4], 7: [8, 9]} == utils.tuplelist_to_dict(
         [(1, 2), (2, 3, 4, 6), (7, 8, 9)], 2
@@ -138,3 +124,29 @@ def test_dp_flags_decode(test_input, expected):
 )
 def test_full_file_permissions(test_input, expected):
     assert utils.full_file_permissions(*test_input) == expected
+
+
+@pytest.mark.parametrize(
+    "timestamp, lower_32bit, expected",
+    [
+        (1_000_000_000 + 100, 0x12345678, (100 << 32) | 0x12345678),
+        (1_000_000_000, 0xFFFFFFFF, 0 | 0xFFFFFFFF),
+        (
+            1_000_000_000 + 0xFFFFFFFF,
+            0x0,
+            (0xFFFFFFFF << 32) | 0x0,
+        ),
+        (
+            datetime.datetime.fromtimestamp(1_000_000_000 + 500),
+            0xABCD,
+            (500 << 32) | 0xABCD,
+        ),
+        (
+            1_000_000_000 + 10,
+            0x1_2345_6789,
+            (10 << 32) | 0x2345_6789,
+        ),
+    ],
+)
+def test_make_snowflake_id(timestamp, lower_32bit, expected):
+    assert utils.make_snowflake_id(timestamp, lower_32bit) == expected

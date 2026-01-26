@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -266,8 +266,21 @@ pkg_by_file_name_model = ns.model(
             description="package set packages information",
             as_list=True,
         ),
+        "not_found": fields.List(
+            fields.String, description="list of not found filenames"
+        ),
     },
 )
+
+pkgs_by_file_names_json_model = ns.model(
+    "PackagesByFileNamesJsonModel",
+    {
+        "files": fields.List(fields.String(description="file names"), required=True),
+        "branch": fields.String(description="name of packageset", required=True),
+        "arch": fields.String(description="packages architecture", required=False),
+    },
+)
+
 
 unpackaged_dirs_args_el_model = ns.model(
     "UnpackagedDirsElementModel",
@@ -373,25 +386,38 @@ build_dep_set_model = ns.model(
 repocop_json_post_model = ns.model(
     "RepocopJsonPostModel",
     {
-        "pkg_name": fields.String(description="package name"),
-        "pkg_version": fields.String(description="package version"),
-        "pkg_release": fields.String(description="package release"),
-        "pkg_arch": fields.String(description="package arch"),
-        "pkgset_name": fields.String(description="package branch"),
-        "rc_srcpkg_name": fields.String(description="source package name"),
-        "rc_srcpkg_version": fields.String(description="source package version"),
-        "rc_srcpkg_release": fields.String(description="source package version"),
-        "rc_test_name": fields.String(description="repocop test name"),
-        "rc_test_status": fields.String(description="repocop test status"),
-        "rc_test_message": fields.String(description="repocop test message"),
-        "rc_test_date": fields.DateTime(description="repocop test date"),
+        "pkg_name": fields.String(description="package name", required=True),
+        "pkg_version": fields.String(description="package version", required=True),
+        "pkg_release": fields.String(description="package release", required=True),
+        "pkg_arch": fields.String(description="package arch", required=True),
+        "pkgset_name": fields.String(description="package branch", required=True),
+        "rc_srcpkg_name": fields.String(
+            description="source package name", required=True
+        ),
+        "rc_srcpkg_version": fields.String(
+            description="source package version", required=True
+        ),
+        "rc_srcpkg_release": fields.String(
+            description="source package version", required=True
+        ),
+        "rc_test_name": fields.String(description="repocop test name", required=True),
+        "rc_test_status": fields.String(
+            description="repocop test status", required=True
+        ),
+        "rc_test_message": fields.String(
+            description="repocop test message", required=True
+        ),
+        "rc_test_date": fields.DateTime(description="repocop test date", required=True),
     },
 )
 repocop_json_list_model = ns.model(
     "RepocopJsonPostListModel",
     {
         "packages": fields.Nested(
-            repocop_json_post_model, description="repocop packages info", as_list=True
+            repocop_json_post_model,
+            description="repocop packages info",
+            as_list=True,
+            required=True,
         )
     },
 )
@@ -457,6 +483,45 @@ package_files_model = ns.model(
         "length": fields.Integer(description="number of files found"),
         "files": fields.Nested(
             package_files_el_model, description="package file list", as_list=True
+        ),
+    },
+)
+
+maintainer_score_el_model = ns.model(
+    "MaintainerScoreElementModel",
+    {
+        "nick": fields.String(description="maintainer nickname"),
+        "score": fields.Float(description="maintainer score (with bonuses)"),
+        "base_score": fields.Float(description="base score (changelog + bugfixes)"),
+        "updates": fields.Integer(description="number of upstream updates (alt1)"),
+        "patches": fields.Integer(description="number of patches/fixes"),
+        "nmu": fields.Integer(description="number of NMU uploads"),
+        "bugfixes": fields.Integer(description="number of Bugzilla bugs fixed"),
+        "bugfixes_with_update": fields.Integer(
+            description="bugfixes with version update"
+        ),
+        "in_acl": fields.Boolean(description="maintainer is in current ACL"),
+        "last_activity": fields.String(description="last activity date"),
+        "recent_commits": fields.Integer(description="commits in last 6 months"),
+        "bonus_applied": fields.Boolean(description="recent maintainer bonus applied"),
+    },
+)
+maintainer_score_model = ns.model(
+    "MaintainerScoreModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "package": fields.String(description="source package name"),
+        "branch": fields.String(description="branch name"),
+        "primary_maintainer": fields.String(
+            description="primary maintainer nickname (highest score)"
+        ),
+        "status": fields.String(
+            description="package status: active, low_activity, orphaned"
+        ),
+        "maintainers": fields.Nested(
+            maintainer_score_el_model,
+            description="list of maintainers with scores",
+            as_list=True,
         ),
     },
 )

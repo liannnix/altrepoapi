@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -14,7 +14,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from altrepo_api.api.parser import parser, arch_name_type, branch_name_type
+from altrepo_api.api.parser import (
+    parser,
+    arch_name_type,
+    branch_name_type,
+    date_string_type,
+)
 
 # register parser items
 arch_opt = parser.register_item(
@@ -33,6 +38,24 @@ branch_list = parser.register_item(
     location="args",
 )
 
+from_date_opt = parser.register_item(
+    "from_date",
+    type=date_string_type,
+    default=None,
+    required=False,
+    help="take packages of branch states from date (YYYY-MM-DD)",
+    location="args",
+)
+
+branch_name = parser.register_item(
+    "branch",
+    type=branch_name_type,
+    required=True,
+    help="branch name",
+    location="args",
+)
+
 # build parsers
 pkgset_packages_args = parser.build_parser(arch_opt)
-translation_export_args = parser.build_parser(branch_list)
+translation_export_args = parser.build_parser(branch_list, from_date_opt)
+beehive_args = parser.build_parser(branch_name, arch_opt)

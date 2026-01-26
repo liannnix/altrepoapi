@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -148,6 +148,31 @@ WHERE pkg_sourcepackage = 1
     AND pkgset_name IN {branches}
 """
 
+    get_packages_versions_for_show_branches = """
+SELECT DISTINCT
+    toString(pkg_hash),
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    pkgset_name
+FROM static_last_packages
+WHERE pkg_sourcepackage = 1
+    AND pkg_name IN (
+        SELECT * FROM {tmp_table}
+    )
+    AND pkgset_name IN (
+        SELECT pkgset_name
+        FROM (
+            SELECT
+                pkgset_name,
+                argMax(rs_show, ts) AS show
+            FROM RepositoryStatus
+            GROUP BY pkgset_name
+        )
+        WHERE show = 1
+    )
+"""
+
     get_erratas = """
 SELECT
     errata_id,
@@ -176,6 +201,9 @@ WHERE (errata_id, eh_updated) IN (
         {where_clause}
         GROUP BY errata_id_noversion
     )
+    WHERE eid NOT IN (
+        SELECT errata_id FROM last_discarded_erratas
+    )
 )
 ORDER BY eh_updated DESC
 """
@@ -195,12 +223,18 @@ last_task_subtasks AS (
     SELECT
         task_id,
         groupUniqArray(subtask_id) AS subtasks
-    FROM Tasks
-    WHERE (task_id, task_changed) IN (
-        SELECT task_id, changed FROM last_task_states
+    FROM (
+        SELECT
+            task_id,
+            subtask_id,
+            subtask_deleted
+        FROM Tasks
+        WHERE (task_id, task_changed) IN (
+            SELECT task_id, changed FROM last_task_states
+        )
     )
+    WHERE subtask_deleted = 0
     GROUP BY task_id
-    HAVING subtask_deleted = 0
 )
 SELECT
     task_id,
@@ -289,79 +323,39 @@ FROM TaskStates
 WHERE task_id = {id}
 """
 
-    get_last_task_info = """
-WITH
-    last_task_state AS
-    (
-        SELECT
-            task_id,
-            argMax(task_state, task_changed) AS state,
-            argMax(task_depends, task_changed) AS depends,
-            argMax(task_testonly, task_changed) AS testonly,
-            argMax(task_message, task_changed) AS message,
+    get_task_cve_from_erratas = """
+WITH task_subtasks AS (
+    SELECT DISTINCT task_id, subtask_id
+    FROM Tasks
+    WHERE (task_id, task_changed) IN (
+        SELECT task_id,
             max(task_changed) AS changed
         FROM TaskStates
         WHERE task_id = {task_id}
         GROUP BY task_id
-    ),
-    task_try_iter AS
-    (
-        SELECT DISTINCT
-            task_id,
-            task_try,
-            task_iter
-        FROM TaskIterations
-        WHERE (task_id, task_changed) = (
-            SELECT
-                task_id,
-                changed
-            FROM last_task_state
-        )
-    ),
-    task_branch AS
-    (
-        SELECT DISTINCT
-            task_id,
-            task_repo,
-            task_owner
-        FROM Tasks
-        WHERE task_id = {task_id}
     )
-SELECT
-    TS.*,
-    task_try,
-    task_iter,
-    task_repo,
-    task_owner
-FROM last_task_state AS TS
-LEFT JOIN task_try_iter AS TI USING (task_id)
-LEFT JOIN task_branch AS TB ON TB.task_id = TI.task_id
-WHERE TS.state != 'DELETED'
-"""
-
-    get_task_cve = """
-WITH task_subtasks AS (
-    SELECT DISTINCT task_id, subtask_id
-    FROM Tasks
-    WHERE task_id = {task_id}
-    AND task_changed = '{task_changed}'
     AND subtask_deleted = 0
 )
-SELECT
-    argMax(pkg_hash, ts),
-    subtask_id,
-    argMax(pkg_name, ts),
-    argMax(pkg_version, ts),
-    argMax(pkg_release, ts),
-    argMax(pkgset_name, ts),
-    argMax(errata_id, ts),
-    argMax(eh_references.link, ts),
-    argMax(eh_references.type, ts)
-FROM ErrataHistory
-WHERE eh_type = 'task'
-AND (task_id, subtask_id) IN (SELECT * FROM task_subtasks)
-GROUP BY subtask_id
-ORDER BY subtask_id
+SELECT * FROM (
+    SELECT
+        argMax(pkg_hash, ts),
+        subtask_id,
+        argMax(pkg_name, ts),
+        argMax(pkg_version, ts),
+        argMax(pkg_release, ts),
+        argMax(pkgset_name, ts),
+        argMax(errata_id, ts) AS eid,
+        argMax(eh_references.link, ts),
+        argMax(eh_references.type, ts)
+    FROM ErrataHistory
+    WHERE eh_type = 'task'
+        AND (task_id, subtask_id) IN (SELECT * FROM task_subtasks)
+    GROUP BY subtask_id
+    ORDER BY subtask_id
+)
+WHERE eid NOT IN (
+    SELECT errata_id FROM last_discarded_erratas
+)
 """
 
     get_done_tasks_by_packages = """
@@ -372,6 +366,20 @@ SELECT DISTINCT
 FROM BranchPackageHistory
 WHERE pkgset_name in {branches}
     AND pkg_name IN {tmp_table}
+    AND pkg_sourcepackage = 1
+    AND tplan_action = 'add'
+ORDER BY task_changed DESC
+"""
+
+    get_done_tasks_by_packages_and_branches = """
+SELECT DISTINCT
+    task_id,
+    pkgset_name,
+    pkg_name
+FROM BranchPackageHistory
+WHERE (pkg_name, pkgset_name) IN (
+        SELECT pkg_name, pkgset_name FROM {tmp_table}
+    )
     AND pkg_sourcepackage = 1
     AND tplan_action = 'add'
 ORDER BY task_changed DESC
@@ -396,6 +404,121 @@ WHERE task_state = 'DONE' and task_id IN (
     SELECT task_id FROM task_and_repo
 )
 -- ORDER BY task_changed DESC
+"""
+
+    get_related_vulns_for_cve = """
+SELECT
+    vuln_id
+FROM Vulnerabilities
+WHERE (vuln_id, vuln_hash) IN (
+    SELECT
+        vuln_id,
+        argMax(vuln_hash, ts)
+    FROM Vulnerabilities
+    WHERE vuln_id IN (
+        SELECT vuln_id
+        FROM Vulnerabilities
+        WHERE arrayExists(x -> x IN {tmp_table}, `vuln_references.link`)
+        )
+    GROUP BY vuln_id
+)
+"""
+
+    get_packages_with_open_vuln = """
+SELECT DISTINCT
+    RES.pkg_hash,
+    RES.pkg_name,
+    RES.pkgset_name,
+    PKG.pkg_version,
+    PKG.pkg_release,
+FROM (
+    SELECT pkg_hash,
+           pkg_name,
+           pkgset_name
+    FROM (
+        SELECT pkg_hash,
+               pkg_name,
+               pkgset_name,
+               vuln_id,
+               any(vuln_hash) as vuln_hash,
+               has(groupArray(is_vulnerable), 1) as is_vuln,
+               has(groupArray(is_fixed), 1) as is_fix
+        FROM PackagesVulnerabilityStatus
+        GROUP BY pkg_name, pkgset_name, vuln_id, pkg_hash
+    ) AS vuln_status
+    LEFT JOIN (
+        SELECT vuln_hash, vuln_severity, vuln_modified_date
+        FROM Vulnerabilities
+    ) AS TT ON TT.vuln_hash = vuln_status.vuln_hash
+    WHERE is_fix = 0 AND is_vuln = 1
+    AND vuln_id IN {tmp_table}
+    GROUP BY pkg_hash, pkg_name, pkgset_name
+    ) AS RES
+    LEFT JOIN (
+        SELECT pkg_hash, pkg_version, pkg_release
+        FROM static_last_packages
+    ) AS PKG ON PKG.pkg_hash = RES.pkg_hash
+"""
+
+    get_bdu_related_cves = """
+SELECT arrayReduce(
+    'groupUniqArray',
+    arrayMap(
+        x -> (x.2),
+        arrayFilter(
+            (t, l) -> (t = 'CVE'),
+            arrayZip(vuln_references.type, vuln_references.link)
+        )
+    )
+)
+FROM Vulnerabilities
+WHERE vuln_hash = (
+    SELECT argMax(vuln_hash, ts)
+    FROM Vulnerabilities
+    WHERE vuln_id = '{bdu_id}'
+)
+"""
+
+    get_cpe_hash = """
+SELECT DISTINCT
+    cpm_cpe,
+    pkg_cpe_hash
+FROM PackagesCveMatch
+WHERE cpm_cpe IN {tmp_table}
+"""
+
+    get_excluded_packages = """
+WITH vulns as (
+    SELECT pkg_name,
+           vuln_id,
+           pkg_cpe_hash,
+           pkg_hash,
+           cpm_cpe,
+           argMax(is_vulnerable, ts) AS is_vulnerable,
+           argMax(vuln_hash, ts) AS vuln_hash
+     FROM PackagesCveMatch
+     WHERE vuln_id = '{vuln_id}'
+     {where_clause}
+     GROUP BY pkg_name, vuln_id, pkg_cpe_hash, cpm_cpe, pkg_hash
+)
+SELECT
+    pkg_hash,
+    pkg_name,
+    TT.pkgset_name as pkgset_name,
+    TT.pkg_version as pkg_version,
+    TT.pkg_release as pkg_release,
+    vuln_id,
+    cpm_cpe,
+    pkg_cpe_hash
+FROM vulns
+LEFT JOIN (
+        SELECT pkg_hash, pkgset_name, pkg_version, pkg_release
+        FROM static_last_packages
+        WHERE pkg_hash IN (
+            SELECT DISTINCT pkg_hash from vulns
+        )
+) AS TT ON TT.pkg_hash == pkg_hash
+WHERE is_vulnerable = 0
 """
 
 

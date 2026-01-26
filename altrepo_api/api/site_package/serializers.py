@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -131,6 +131,7 @@ package_info_model = ns.model(
         "license": fields.String(description="package license"),
         "category": fields.String(description="package group"),
         "url": fields.String(description="package url"),
+        "vcs": fields.String(description="package vcs"),
         "summary": fields.String(description="package summary"),
         "description": fields.String(description="package description"),
         "packager": fields.String(description="package packager name"),
@@ -173,6 +174,17 @@ package_info_model = ns.model(
     },
 )
 
+brief_package_info_model = ns.model(
+    "SiteBriefPackageInfoModel",
+    {
+        "name": fields.String(description="package name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "arch": fields.String(description="package arch"),
+        "summary": fields.String(description="package summary"),
+        "type": fields.String(description="package type (source | binary)"),
+    },
+)
 
 package_chlog_el_model = ns.model(
     "SiteChangelogElementModel",
@@ -310,10 +322,12 @@ pkgs_binary_list_model = ns.model(
 bin_package_scripts_el_model = ns.model(
     "SiteBinPackageScriptsElementModel",
     {
-        "postin": fields.String(description="post install script"),
-        "postun": fields.String(description="post uninstall script"),
         "prein": fields.String(description="pre install script"),
+        "postin": fields.String(description="post install script"),
         "preun": fields.String(description="pre uninstall script"),
+        "postun": fields.String(description="post uninstall script"),
+        "pretrans": fields.String(description="pre transaction script"),
+        "posttrans": fields.String(description="post transaction script"),
     },
 )
 depends_packages_model = ns.model(

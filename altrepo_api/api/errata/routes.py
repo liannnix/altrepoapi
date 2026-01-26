@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -17,12 +17,7 @@
 from flask import g
 from flask_restx import Resource, abort
 
-from altrepo_api.api.base import (
-    GET_RESPONSES_400_404,
-    GET_RESPONSES_404,
-    POST_RESPONSES_400_404,
-    run_worker,
-)
+from altrepo_api.api.base import GET_RESPONSES_400_404, GET_RESPONSES_404, run_worker
 from altrepo_api.utils import (
     get_logger,
     response_error_parser,
@@ -31,14 +26,18 @@ from altrepo_api.utils import (
 )
 
 from .endpoints.oval import OvalBranches, OvalExport
-from .endpoints.search import Search, ErrataIds, FindErratas
+from .endpoints.search import Search, ErrataIds, FindErratas, FindImageErratas
 from .endpoints.package import PackagesUpdates
 from .endpoints.branch import BranchesUpdates, ErrataBranches
+from .endpoints.advisory import AdvisoryErrata
 from .namespace import get_namespace
 from .parsers import (
     errata_search_args,
     oval_export_args,
     find_erratas_args,
+    find_img_erratas_args,
+    packages_updates_args,
+    advisory_errata_args,
 )
 from .serializers import (
     erratas_ids_json_list_model,
@@ -49,6 +48,8 @@ from .serializers import (
     oval_branches_model,
     errata_last_changed_model,
     errata_branches_model,
+    image_errata_model,
+    advisory_errata_model,
 )
 
 ns = get_namespace()
@@ -112,16 +113,16 @@ class routeOvalExport(Resource):
     "/packages_updates",
     doc={
         "description": "Get information about package update erratas",
-        "responses": POST_RESPONSES_400_404,
+        "responses": GET_RESPONSES_400_404,
     },
 )
 class routePackagesUpdates(Resource):
-    @ns.expect(erratas_ids_json_list_model)
+    @ns.expect(packages_updates_args, erratas_ids_json_list_model)
     @ns.marshal_with(errata_packages_updates_model)
     def post(self):
         url_logging(logger, g.url)
-        args = {}
-        w = PackagesUpdates(g.connection, json_data=ns.payload)
+        args = packages_updates_args.parse_args()
+        w = PackagesUpdates(g.connection, **args, json_data=ns.payload)
         return run_worker(worker=w, args=args, run_method=w.post, ok_code=200)
 
 
@@ -133,12 +134,12 @@ class routePackagesUpdates(Resource):
     },
 )
 class routeBranchesUpdates(Resource):
-    @ns.expect(erratas_ids_json_list_model)
+    @ns.expect(packages_updates_args, erratas_ids_json_list_model)
     @ns.marshal_with(errata_branches_updates_model)
     def post(self):
         url_logging(logger, g.url)
-        args = {}
-        w = BranchesUpdates(g.connection, json_data=ns.payload)
+        args = packages_updates_args.parse_args()
+        w = BranchesUpdates(g.connection, **args, json_data=ns.payload)
         return run_worker(worker=w, args=args, run_method=w.post, ok_code=200)
 
 
@@ -205,5 +206,39 @@ class routeFindErratas(Resource):
     def get(self):
         url_logging(logger, g.url)
         args = find_erratas_args.parse_args(strict=True)
-        w = FindErratas(g.connection, **args)
+        w = FindErratas(g.connection, **args, public_only=True)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/find_image_erratas",
+    doc={
+        "description": "Find errata by image UUID.",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeFindImageErratas(Resource):
+    @ns.expect(find_img_erratas_args)
+    @ns.marshal_with(image_errata_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = find_img_erratas_args.parse_args(strict=True)
+        w = FindImageErratas(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/advisory",
+    doc={
+        "description": "List of Security Advisory Errata records.",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeAdvisoryErratas(Resource):
+    @ns.expect(advisory_errata_args)
+    @ns.marshal_with(advisory_errata_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = advisory_errata_args.parse_args(strict=True)
+        w = AdvisoryErrata(g.connection, **args)
         return run_worker(worker=w, args=args)

@@ -28,7 +28,8 @@ from ..sql import sql
 
 # TODO: fill the table
 BACKPORT_TABLE: dict[str, list[str]] = {
-    "sisyphus": ["p10"],
+    "sisyphus": ["p11"],
+    "p11": ["p10"],
     "p10": ["p9", "c9f2"],
     "p9": ["p8"],
     "p8": ["p7"],

@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -123,7 +123,7 @@ class CheckPackages(APIWorker):
         # get tasks for packages that are not in branch
         if pkgs_not_found:
             response = self.send_sql_request(
-                self.sql.get_pkgs_tasks.format(hshs=tuple(pkgs_not_found))
+                self.sql.get_pkgs_tasks.format(hshs=list(pkgs_not_found))
             )
             if not self.sql_status:
                 return self.error

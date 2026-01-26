@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -23,6 +23,9 @@ from altrepo_api.api.parser import (
     branch_name_type,
     errata_search_type,
     positive_integer_type,
+    uuid_type,
+    img_component_type,
+    sort_type,
 )
 
 package_name_opt = parser.register_item(
@@ -50,6 +53,9 @@ errata_id_opt = parser.register_item(
 branch_name_opt = parser.register_item(
     "branch", type=branch_name_type, required=False, help="branch name", location="args"
 )
+branch = parser.register_item(
+    "branch", type=branch_name_type, required=True, help="branch name", location="args"
+)
 errata_pkg_name_opt = parser.register_item(
     "name",
     type=pkg_name_type,
@@ -63,17 +69,9 @@ vuln_id_opt = parser.register_item(
 errata_type_opt = parser.register_item(
     "type",
     type=str,
-    choices=("packages", "repository"),
+    choices=("packages", "repository", "bug", "vuln", "exclusion"),
     required=False,
-    help="errata type [packages|repository]",
-    location="args",
-)
-last_chngs_limit_opt = parser.register_item(
-    "limit",
-    type=int,
-    required=False,
-    default=1000,
-    help="number of last errata to get",
+    help="errata type [packages|repository|bug|vuln|exclusion]",
     location="args",
 )
 input_val_opt = parser.register_item(
@@ -98,11 +96,77 @@ page_opt = parser.register_item(
     help="number page",
     location="args",
 )
+is_discarded = parser.register_item(
+    "is_discarded",
+    type=inputs.boolean,
+    default=False,
+    required=False,
+    help="is errata discarded",
+    location="args",
+)
+errata_state_opt = parser.register_item(
+    "state",
+    choices=("all", "active", "discarded"),
+    default="all",
+    required=False,
+    help="errata state",
+    location="args",
+)
+img_uuid = parser.register_item(
+    "uuid", type=uuid_type, required=True, help="Image UUID", location="args"
+)
+img_component_opt = parser.register_item(
+    "component",
+    type=img_component_type,
+    required=False,
+    help="Image component",
+    location="args",
+)
+sort_opt = parser.register_item(
+    "sort",
+    type=sort_type,
+    action="split",
+    required=False,
+    help="sort arguments",
+    location="args",
+)
+exclude_json_opt = parser.register_item(
+    "exclude_json",
+    type=inputs.boolean,
+    default=False,
+    required=False,
+    help="exclude vulnerability raw JSON from results",
+    location="args",
+)
+
+advisory_input_opt = parser.register_item(
+    "input", type=str, required=False, help="CVE, BDU or Errata ID", location="args"
+)
 
 oval_export_args = parser.build_parser(package_name_opt, one_file_opt)
 errata_search_args = parser.build_parser(
     branch_name_opt, errata_pkg_name_opt, vuln_id_opt, errata_id_opt
 )
 find_erratas_args = parser.build_parser(
-    input_val_opt, branch_name_opt, errata_type_opt, page_opt, limit_opt
+    input_val_opt,
+    branch_name_opt,
+    errata_type_opt,
+    page_opt,
+    limit_opt,
+    errata_state_opt,
+)
+find_img_erratas_args = parser.build_parser(
+    img_uuid,
+    branch,
+    img_component_opt,
+    input_val_opt,
+    errata_type_opt,
+    page_opt,
+    limit_opt,
+    is_discarded,
+    sort_opt,
+)
+packages_updates_args = parser.build_parser(exclude_json_opt)
+advisory_errata_args = parser.build_parser(
+    branch_name_opt, advisory_input_opt, page_opt, limit_opt, sort_opt
 )

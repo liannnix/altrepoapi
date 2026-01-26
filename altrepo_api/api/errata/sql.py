@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -48,7 +48,24 @@ GROUP BY bz_id
 """
 
     get_errata_history_by_branch_tasks = """
-SELECT DISTINCT * EXCEPT ts
+WITH
+done_task_subtasks AS (
+    SELECT
+        task_id,
+        subtask_id
+    FROM Tasks
+    WHERE (task_id, task_changed) IN (
+        SELECT
+            task_id,
+            max(task_changed)
+        FROM TaskStates
+        WHERE task_id IN  {tmp_table_name}
+            AND task_state = 'DONE'
+        GROUP BY task_id
+    )
+    HAVING subtask_deleted = 0
+)
+SELECT DISTINCT * EXCEPT (ts, eh_json)
 FROM ErrataHistory
 WHERE eh_type = 'task' AND errata_id IN (
     SELECT eid
@@ -57,8 +74,11 @@ WHERE eh_type = 'task' AND errata_id IN (
             errata_id_noversion,
             argMax(errata_id, eh_updated) AS eid
         FROM ErrataHistory
-        WHERE task_state = 'DONE' AND pkgset_name = '{branch}'
+        WHERE (task_id, subtask_id) IN done_task_subtasks
         GROUP BY errata_id_noversion
+    )
+    WHERE eid NOT IN (
+        SELECT errata_id FROM last_discarded_erratas
     )
 )
 {pkg_name_clause}
@@ -170,32 +190,37 @@ WHERE errata_id IN (
 """
 
     search_valid_errata = """
-SELECT
-    errata_id_noversion,
-    argMax(
-        tuple(
-            errata_id,
-            eh_type,
-            eh_source,
-            eh_created,
-            eh_updated,
-            pkg_hash,
-            pkg_name,
-            pkg_version,
-            pkg_release,
-            pkgset_name,
-            task_id,
-            subtask_id,
-            task_state,
-            arrayZip(eh_references.type, eh_references.link)
-        ),
-        eh_updated
-    ),
-    max(eh_updated) AS max_ts
-FROM ErrataHistory
-{where_clause}
-GROUP BY errata_id_noversion
-ORDER BY max_ts DESC
+SELECT * FROM (
+    SELECT
+        errata_id_noversion,
+        argMax(
+            tuple(
+                errata_id,
+                eh_type,
+                eh_source,
+                eh_created,
+                eh_updated,
+                pkg_hash,
+                pkg_name,
+                pkg_version,
+                pkg_release,
+                pkgset_name,
+                task_id,
+                subtask_id,
+                task_state,
+                arrayZip(eh_references.type, eh_references.link)
+            ),
+            eh_updated
+        ) AS errata_tuple,
+        max(eh_updated) AS max_ts
+    FROM ErrataHistory
+    {where_clause}
+    GROUP BY errata_id_noversion
+    ORDER BY max_ts DESC
+)
+WHERE tupleElement(errata_tuple, 1) NOT IN (
+    SELECT errata_id FROM last_discarded_erratas
+)
 """
 
     get_valid_errata_ids = """
@@ -210,23 +235,29 @@ FROM (
     GROUP BY errata_id_noversion
     ORDER BY updated DESC
 )
+WHERE eid NOT IN (
+    SELECT errata_id FROM last_discarded_erratas
+)
 """
 
     get_errata_branches = """
 SELECT DISTINCT pkgset_name
 FROM ErrataHistory
 WHERE pkgset_name != 'icarus'
-AND pkgset_name IN (
-    SELECT pkgset_name
-    FROM (
-        SELECT
-            pkgset_name,
-            argMax(rs_show, ts) AS show
-        FROM RepositoryStatus
-        GROUP BY pkgset_name
+    AND pkgset_name IN (
+        SELECT pkgset_name
+        FROM (
+            SELECT
+                pkgset_name,
+                argMax(rs_show, ts) AS show
+            FROM RepositoryStatus
+            GROUP BY pkgset_name
+        )
+        WHERE show = 1
     )
-    WHERE show = 1
-)
+    AND errata_id NOT IN (
+        SELECT errata_id FROM last_discarded_erratas
+    )
 """
 
     find_erratas = """
@@ -305,7 +336,7 @@ errata_bulletin AS (
     )
     GROUP BY errata_id, eh_type, ref_link
 )
-SELECT * FROM (
+SELECT ER.*, if(DE.discarded_id != '', 1, 0) AS discard FROM (
     SELECT * FROM errata_tasks
     UNION ALL
     SELECT * FROM errata_branches
@@ -326,6 +357,7 @@ SELECT * FROM (
                        argMax(pkg_version, ts) AS pkg_version,
                        argMax(pkg_release, ts) AS pkg_release
                 FROM ErrataHistory
+                WHERE eh_type IN ('branch', 'task')
                 GROUP BY errata_id
            ) AS PKGS ON PKGS.errata_id = ref_link
            GROUP BY errata_id,
@@ -335,9 +367,163 @@ SELECT * FROM (
                   packages,
                   refs_types,
                   changed
+) AS ER
+LEFT JOIN (
+    SELECT errata_id AS discarded_id
+    FROM last_discarded_erratas
+) AS DE ON ER.errata_id = DE.discarded_id
+{where_clause}
+ORDER BY changed DESC
+"""
+
+    tmp_image_pkg_hashes = """
+CREATE TEMPORARY TABLE {tmp_table}
+(src_pkg_hash UInt64, src_pkg_name String, pkg_hash UInt64, pkg_name String, pkg_buildtime DateTime32)
+AS (
+    WITH
+    bin_src_hashes AS (
+        SELECT DISTINCT
+            pkg_srcrpm_hash,
+            pkg_hash,
+            pkg_name,
+            toDateTime32(pkg_buildtime) AS buildtime
+        FROM Packages
+        WHERE pkg_hash IN (
+            SELECT DISTINCT pkg_hash
+            FROM PackageSet
+            WHERE pkgset_uuid IN (
+                SELECT pkgset_uuid
+                FROM PackageSetName
+                WHERE pkgset_ruuid = '{uuid}'
+                    AND has(pkgset_kv.v, '{branch}')
+                    {component}
+            )
+        )
+        AND pkg_sourcepackage = 0
+        AND pkg_srcrpm_hash != 0
+    ),
+    src_pkgss AS (
+        SELECT DISTINCT pkg_hash, pkg_name
+        FROM Packages
+        WHERE pkg_hash IN (
+            SELECT pkg_srcrpm_hash FROM bin_src_hashes
+        )
+    )
+    SELECT
+        SP.pkg_hash AS src_pkg_hash,
+        SP.pkg_name AS src_pkg_name,
+        BSH.pkg_hash AS pkg_hash,
+        BSH.pkg_name AS pkg_name,
+        BSH.buildtime AS pkg_buildtime
+    FROM src_pkgss AS SP
+    INNER JOIN bin_src_hashes AS BSH
+    ON SP.pkg_hash = BSH.pkg_srcrpm_hash
+)
+"""
+
+    get_last_image_pkgs_info = """
+SELECT * FROM
+(
+    SELECT
+        pkg_hash,
+        pkg_summary,
+        pkg_name,
+        pkg_arch,
+        pkg_version,
+        pkg_release
+    FROM Packages
+    WHERE pkg_hash IN {tmp_table}
+) AS PKG
+LEFT JOIN (
+    SELECT pkg_hash,
+           pkg_version,
+           pkg_release,
+           pkg_name,
+           pkg_arch
+    FROM last_packages
+    WHERE pkgset_name = '{branch}'
+    AND pkg_sourcepackage = 0
+) AS TT ON (TT.pkg_name, TT.pkg_arch) = (PKG.pkg_name, PKG.pkg_arch)
+"""
+
+    find_imgs_erratas = """
+WITH errata_tasks AS (
+    SELECT
+        errata_id,
+        argMax(eh_type, ts)  AS type,
+        argMax(task_id, ts) AS tsk_id,
+        argMax(pkgset_name, ts) AS branch,
+        argMax(pkg_hash, ts) AS hash,
+        argMax(pkg_name, ts) AS name,
+        argMax(pkg_version, ts) AS ver,
+        argMax(pkg_release, ts) AS rel,
+        argMax(eh_references.link, ts) AS refs_links,
+        argMax(eh_references.type, ts) AS refs_types,
+        max(eh_updated) AS changed
+    FROM ErrataHistory
+    WHERE eh_type = 'task' AND errata_id IN (
+        SELECT eid
+        FROM (
+            SELECT
+                errata_id_noversion,
+                argMax(errata_id, errata_id_version) AS eid
+            FROM ErrataHistory
+            WHERE task_state = 'DONE' AND pkgset_name != 'icarus'
+            AND pkgset_name = '{branch}'
+            GROUP BY errata_id_noversion
+        )
+    )
+    GROUP BY errata_id
+)
+SELECT
+    HSH.pkg_hash,
+    HSH.pkg_name AS bin_pkg_name,
+    HSH.pkg_buildtime AS bin_pkg_buildtime,
+    HSH.src_pkg_hash,
+    ER.*,
+    if(DE.discarded_id != '', 1, 0) AS discard
+FROM errata_tasks AS ER
+LEFT JOIN (
+    SELECT errata_id AS discarded_id
+    FROM last_discarded_erratas
+) AS DE ON ER.errata_id = DE.discarded_id
+LEFT JOIN (
+    SELECT * FROM {tmp_table}
+) AS HSH ON HSH.src_pkg_name = ER.name
+WHERE name in (
+    SELECT src_pkg_name FROM {tmp_table}
 )
 {where_clause}
 ORDER BY changed DESC
+"""
+
+    get_last_branch_task = """
+SELECT
+    argMax(
+        toUInt32(pkgset_kv.v[indexOf(pkgset_kv.k, 'task')]),
+        pkgset_date
+    ) AS task
+FROM PackageSetName
+WHERE (pkgset_nodename = '{branch}') AND (pkgset_depth = 0)
+GROUP BY pkgset_nodename
+"""
+
+    branches_tasks_histories = """
+SELECT DISTINCT
+    task_id,
+    prev
+FROM Tasks AS L
+INNER JOIN (
+    SELECT DISTINCT
+        task_id,
+        argMax(task_state, task_changed) AS state,
+        argMax(task_prev, task_changed) AS prev,
+        max(task_changed) AS changed
+    FROM TaskStates
+    GROUP BY task_id
+    HAVING state='DONE'
+) AS R ON (L.task_id, L.task_changed) = (R.task_id, R.changed)
+HAVING task_repo IN {branches}
 """
 
 

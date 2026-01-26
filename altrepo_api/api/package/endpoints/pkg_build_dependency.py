@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -24,11 +24,12 @@ from altrepo_api.utils import (
     join_tuples,
     make_tmp_table_name,
 )
-
+from altrepo_api.api.misc import lut
 from altrepo_api.api.base import APIWorker
-from ..sql import sql
 from altrepo_api.libs.dependency_sorting import SortList
 from altrepo_api.api.task.endpoints.task_repo import LastRepoStateFromTask
+
+from ..sql import sql
 
 
 class BuildDependency(APIWorker):
@@ -65,23 +66,30 @@ class BuildDependency(APIWorker):
         self.result = {}
         super().__init__()
 
-    def build_dependencies(self, task_repo_hashes: Optional[tuple[int]] = None):
+    def build_dependencies(self, task_repo_hashes: Optional[tuple[int, ...]] = None):
         # do all kind of black magic here
         input_pkgs = self.packages
         depends_type_to_sql = {"source": (1,), "binary": (0,), "both": (1, 0)}
         sourcef = depends_type_to_sql[self.dptype]
 
         if self.arch:
+            # always add 'noarch' if not specified
             if "noarch" not in self.arch:
                 self.arch.append("noarch")
         else:
-            self.arch = ["x86_64", "noarch"]
+            # get default archs for given branch
+            self.arch = (
+                lut.branch_wds_default_archs.get(self.branch)
+                or lut.branch_wds_default_archs["default"]
+            )
 
         # store source packages by level
         # store source packages level 0
-        src_pkgs_by_level = {0: tuple(input_pkgs)}
+        src_pkgs_by_level: dict[int, tuple[str, ...]] = {0: tuple(input_pkgs)}
 
-        def store_src_pkgs_levels(levels_dict: dict, tmp_table: str) -> bool:
+        def store_src_pkgs_levels(
+            levels_dict: dict[int, tuple[str, ...]], tmp_table: str
+        ) -> bool:
             """Select and store packages from temporary table splitted by dependecy levels.
 
             Args:
@@ -98,9 +106,9 @@ class BuildDependency(APIWorker):
                 return False
 
             pkgs = [el[0] for el in response]  # type: ignore
-            pkgs_prev_level = []
+            pkgs_prev_level: set[str] = set()
             for p in levels_dict.values():
-                pkgs_prev_level += p
+                pkgs_prev_level.update(p)
             levels_dict[max(levels_dict.keys()) + 1] = tuple(
                 [pkg for pkg in pkgs if pkg not in pkgs_prev_level]
             )
@@ -404,7 +412,9 @@ class BuildDependency(APIWorker):
                         "archs": tuple(self.arch),
                         "pkgs": list(input_pkgs),
                     },
-                )
+                ),
+                # XXX: fix compatibility with CH v24.3.4
+                settings={"allow_experimental_analyzer": 0},
             )
             if not self.sql_status:
                 return
@@ -492,6 +502,8 @@ class BuildDependency(APIWorker):
         sorted_pkgs = tuple(result_dict.keys())
 
         # get output data for sorted package list
+        # XXX: some source packages are filtered here if it has no binaries built from
+        # it with specified archs due to using `INNER JOIN` in SQL request
         response = self.send_sql_request(
             self.sql.get_output_data.format(
                 branch=self.branch,

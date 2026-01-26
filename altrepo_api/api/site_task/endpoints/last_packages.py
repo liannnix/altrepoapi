@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -28,6 +28,9 @@ from altrepo_api.api.misc import lut
 from ..sql import sql
 
 
+MAX_LIMIT = 10_000
+
+
 class LastTaskPackages(APIWorker):
     """Retrieves packages information from last tasks."""
 
@@ -41,15 +44,13 @@ class LastTaskPackages(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["tasks_limit"] < 1:
+        limit = self.args["tasks_limit"]
+        if limit < 1 or limit > MAX_LIMIT:
             self.validation_results.append(
-                "last tasks limit should be greater or equal to 1"
+                f"last tasks limit should be in range 1 to {MAX_LIMIT}"
             )
 
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return self.validation_results == []
 
     def get(self):
         branch = self.args["branch"]
@@ -129,6 +130,8 @@ class LastTaskPackages(APIWorker):
         if not self.sql_status:
             return self.error
         if not response:
+            # FIXME: fails here if only tasks that deleting packages were commited
+            # from last repo state ?!
             return self.store_error(
                 {
                     "message": "No data found in database for packages",

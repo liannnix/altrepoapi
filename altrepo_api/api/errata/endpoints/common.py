@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import json
 import logging
 
 from dataclasses import dataclass
@@ -22,18 +23,32 @@ from typing import Any, Iterable, NamedTuple, Protocol, Union
 
 from altrepo_api.utils import make_tmp_table_name
 from altrepo_api.api.misc import lut
+from altrepo_api.api.vulnerabilities.endpoints.common import (
+    VulnerabilityInfo as _VulnInfo,
+    make_empty_parsed,
+    parse_vulnerability_details,
+    BDU_ID_TYPE,
+    BDU_ID_PREFIX,
+    CVE_ID_TYPE,
+    CVE_ID_PREFIX,
+    # GHSA_ID_TYPE,
+    # GHSA_ID_PREFIX,
+    MFSA_ID_TYPE,
+    MFSA_ID_PREFIX,
+    REFERENCE_TYPE_BUG,
+    REFERENCE_TYPE_VULN,
+)
 
 from ..sql import SQL
 
 
 DATETIME_NEVER = datetime.fromtimestamp(0)
-ERRATA_PACKAGE_UPDATE_PREFIX = "ALT-PU-"
-ERRATA_BRANCH_BULLETIN_PREFIX = "ALT-BU-"
+ERRATA_PACKAGE_UPDATE_PREFIX = f"{lut.errata_package_update_prefix}-"
+ERRATA_BRANCH_BULLETIN_PREFIX = f"{lut.errata_branch_update_prefix}-"
 PACKAGE_UPDATE_MAX_BATCH = 1000
 BRANCH_UPDATE_MAX_BATCH = 1000
 
 
-# @dataclass
 class Reference(NamedTuple):
     type: str
     id: str
@@ -144,6 +159,27 @@ class Vulnerability(NamedTuple):
     is_valid: bool = False
 
 
+def _convert_vuln_info(vuln: Vulnerability) -> _VulnInfo:
+    try:
+        body_json = json.loads(vuln.body)
+    except json.JSONDecodeError:
+        body_json = {}
+
+    return _VulnInfo(
+        id=vuln.id,
+        summary=vuln.summary,
+        score=vuln.score,
+        severity=vuln.severity,
+        url=vuln.url,
+        modified=vuln.modified_date,
+        published=vuln.published_date,
+        json=body_json,
+        # skip references from parsing as they are presented already
+        refs_type=[],
+        refs_link=[],
+    )
+
+
 class Bug(NamedTuple):
     id: int
     summary: str = ""
@@ -156,11 +192,23 @@ class PackageUpdate:
     bugs: list[Bug]
     vulns: list[Vulnerability]
 
-    def asdict(self) -> dict[str, Any]:
+    def asdict(self, *, exclude_json: bool) -> dict[str, Any]:
         res = self.errata.asdict()
 
         res["bugs"] = [bug._asdict() for bug in self.bugs]
-        res["vulns"] = [vuln._asdict() for vuln in self.vulns]
+        # res["vulns"] = [vuln._asdict() for vuln in self.vulns]
+        res["vulns"] = []
+        for vuln in self.vulns:
+            d = vuln._asdict()
+            if exclude_json:
+                d["body"] = {}
+
+            if parsed := parse_vulnerability_details(_convert_vuln_info(vuln)):
+                d["parsed"] = parsed.asdict()
+            else:
+                d["parsed"] = make_empty_parsed().asdict()
+
+            res["vulns"].append(d)
 
         return res
 
@@ -170,26 +218,28 @@ class BranchUpdate:
     errata: Errata
     packages_updates: list[PackageUpdate]
 
-    def asdict(self) -> dict[str, Any]:
+    def asdict(self, *, exclude_json: bool) -> dict[str, Any]:
         res = self.errata.asdict()
 
-        res["packages_updates"] = [pu.asdict() for pu in self.packages_updates]
+        res["packages_updates"] = [
+            pu.asdict(exclude_json=exclude_json) for pu in self.packages_updates
+        ]
 
         return res
 
 
 def empty_vuln(vuln_id: str) -> Vulnerability:
     vuln_type = ""
-    if vuln_id.startswith("CVE-"):
-        vuln_type = "CVE"
+    if vuln_id.startswith(CVE_ID_PREFIX):
+        vuln_type = CVE_ID_TYPE
         normalized_id = vuln_id.lower()
         vuln_url = f"{lut.nvd_cve_base}/{normalized_id}"
-    elif vuln_id.startswith("BDU:"):
-        vuln_type = "BDU"
-        normalized_id = vuln_id.removeprefix("BDU:")
+    elif vuln_id.startswith(BDU_ID_PREFIX):
+        vuln_type = BDU_ID_TYPE
+        normalized_id = vuln_id.removeprefix(BDU_ID_PREFIX)
         vuln_url = f"{lut.fstec_bdu_base}/{normalized_id}"
-    elif vuln_id.startswith("MFSA"):
-        vuln_type = "MFSA"
+    elif vuln_id.startswith(MFSA_ID_PREFIX):
+        vuln_type = MFSA_ID_TYPE
         normalized_id = vuln_id.replace("MFSA ", "mfsa").replace("MFSA-", "mfsa")
         vuln_url = f"{lut.mfsa_base}/{normalized_id}"
     else:
@@ -206,13 +256,11 @@ class _pAPIWorker(Protocol):
 
     def store_error(
         self, message: dict[str, Any], severity: int = ..., http_code: int = ...
-    ) -> tuple[Any, int]:
-        ...
+    ) -> tuple[Any, int]: ...
 
     def send_sql_request(
         self, request_line: Any, http_code: int = ..., **kwargs
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
 
 # Mixin
@@ -348,7 +396,7 @@ def get_packges_updates_erratas(
                 for v in (
                     empty_vuln(ref.id)
                     for ref in errata.references
-                    if ref.type == "vuln"
+                    if ref.type == REFERENCE_TYPE_VULN
                 )
             }
         )
@@ -358,7 +406,7 @@ def get_packges_updates_erratas(
                 for b in (
                     Bug(id=int(ref.id))
                     for ref in errata.references
-                    if ref.type == "bug"
+                    if ref.type == REFERENCE_TYPE_BUG
                 )
             }
         )
@@ -380,8 +428,16 @@ def get_packges_updates_erratas(
     # build package update erratas result
     packages_updates: list[PackageUpdate] = []
     for errata in erratas:
-        pu_bugs = [bugs[int(ref.id)] for ref in errata.references if ref.type == "bug"]
-        pu_vulns = [vulns[ref.id] for ref in errata.references if ref.type == "vuln"]
+        pu_bugs = [
+            bugs[int(ref.id)]
+            for ref in errata.references
+            if ref.type == REFERENCE_TYPE_BUG
+        ]
+        pu_vulns = [
+            vulns[ref.id]
+            for ref in errata.references
+            if ref.type == REFERENCE_TYPE_VULN
+        ]
         packages_updates.append(
             PackageUpdate(errata=errata, bugs=pu_bugs, vulns=pu_vulns)
         )

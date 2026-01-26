@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -18,15 +18,18 @@ import base64
 import datetime
 import hashlib
 import jwt
+import jwcrypto.jwt
+import time
 
-from flask import Request, request
+from flask import request
 from typing import Any, NamedTuple, Optional, Protocol, Union
 
 from altrepo_api.settings import namespace
+from altrepo_api.utils import get_real_ip
 from .redis import RedisStorage
 from .file_storage import FileStorage
-from ..constants import BLACKLISTED_ACCESS_TOKEN_KEY, JWT_ENCODE_ALGORITHM
-
+from ..constants import BLACKLISTED_ACCESS_TOKEN_KEY, JWT_ENCODE_ALGORITHM, AuthProvider
+from ..keycloak import keycloak_openid
 
 # define `STORAGE` using `namespace.TOKEN_STORAGE` value
 if namespace.TOKEN_STORAGE == "file":
@@ -38,6 +41,10 @@ else:
 
 
 class InvalidTokenError(Exception):
+    pass
+
+
+class ExpiredTokenError(Exception):
     pass
 
 
@@ -86,30 +93,68 @@ def parse_basic_auth_token(token: str) -> UserCredentials:
 
 def encode_jwt_token(payload: dict[str, Any]) -> str:
     return jwt.encode(
-        payload=payload, key=namespace.ADMIN_PASSWORD, algorithm=JWT_ENCODE_ALGORITHM
+        payload=payload,
+        key=namespace.ADMIN_PASSWORD,
+        algorithm=JWT_ENCODE_ALGORITHM,
+        headers={
+            "typ": "JWT",
+            "alg": JWT_ENCODE_ALGORITHM,
+            "provider": AuthProvider.LDAP.value,
+        },
     )
 
 
-def decode_jwt_token(token: str) -> dict[str, Any]:
+def decode_jwt_token(
+    token: str, verify_exp: bool = True
+) -> tuple[AuthProvider, dict[str, Any]]:
     try:
-        return jwt.decode(
-            token,
-            namespace.ADMIN_PASSWORD,
-            algorithms=[JWT_ENCODE_ALGORITHM],
-            options={"verify_signature": False},
+        header = jwt.get_unverified_header(token)
+
+        if header.get("provider") == AuthProvider.LDAP:
+            return AuthProvider.LDAP, jwt.decode(
+                jwt=token,
+                key=namespace.ADMIN_PASSWORD,
+                algorithms=[JWT_ENCODE_ALGORITHM],
+                options=None if verify_exp else {"verify_exp": False},
+            )
+
+        return AuthProvider.KEYCLOAK, keycloak_openid.decode_token(
+            token, validate=verify_exp
         )
+
     except (jwt.PyJWTError, jwt.DecodeError):
         raise InvalidTokenError("Invalid token")
+    except jwcrypto.jwt.JWTExpired:
+        raise ExpiredTokenError("Token expired")
 
 
-def user_fingerprint(request: Request) -> str:
+def token_user_name(auth_provider: AuthProvider, token_payload: dict[str, Any]) -> str:
+    match auth_provider:
+        case AuthProvider.LDAP:
+            return token_payload.get("nickname", "")
+        case AuthProvider.KEYCLOAK:
+            return token_payload.get("preferred_username", "")
+
+
+def token_user_display_name(
+    auth_provider: AuthProvider, token_payload: dict[str, Any]
+) -> str:
+    match auth_provider:
+        case AuthProvider.LDAP:
+            return token_payload.get("display_name", "")
+        case AuthProvider.KEYCLOAK:
+            return token_payload.get("name", "")
+
+
+def user_fingerprint() -> str:
     """
     Get user fingerprint MD5 hash based on ip, user-agent and accept-language.
     """
+    ip = get_real_ip()
 
     user_info = "|".join(
         [
-            str(request.remote_addr),
+            ip,
             str(request.user_agent),
             str(request.accept_languages),
         ]
@@ -125,15 +170,15 @@ def update_access_token(payload: dict[str, Any]) -> str:
     payload["exp"] = datetime.datetime.now(
         tz=datetime.timezone.utc
     ) + datetime.timedelta(seconds=namespace.EXPIRES_ACCESS_TOKEN)
-
-    return jwt.encode(payload, namespace.ADMIN_PASSWORD, algorithm="HS256")
+    payload["ns"] = time.perf_counter_ns()
+    return encode_jwt_token(payload)
 
 
 def check_fingerprint(fingerprint: str) -> bool:
     """
     Verifies if request context user's fingerprint is equal to given one.
     """
-    current_fingerprint = user_fingerprint(request)
+    current_fingerprint = user_fingerprint()
     return fingerprint == current_fingerprint
 
 
@@ -155,7 +200,7 @@ class AccessTokenBlacklist:
     def check(self) -> bool:
         """
         Check the access token in the blacklist.
-        if the fingerprint of the current user does not
+        If the fingerprint of the current user does not
         match the fingerprint of the access token, then
         add the token to the blacklist.
         """
@@ -163,19 +208,11 @@ class AccessTokenBlacklist:
         if self.get():
             return True
 
-        token_payload = decode_jwt_token(self.token)
-        saved_fingerprint = token_payload.get("fingerprint", "")
+        auth_provider, token_payload = decode_jwt_token(self.token)
 
-        return not self._check_fingerprint(saved_fingerprint)
+        if auth_provider == AuthProvider.LDAP:
+            if not check_fingerprint(token_payload.get("fingerprint", "")):
+                self.add()
+                return True
 
-    def _check_fingerprint(self, fingerprint: str) -> bool:
-        """
-        Check the fingerprint of the current user and
-        the fingerprint of the access token.
-        """
-
-        if fingerprint != user_fingerprint(request):
-            self.add()
-            return False
-
-        return True
+        return False

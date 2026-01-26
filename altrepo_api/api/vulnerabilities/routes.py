@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -19,12 +19,15 @@ from flask_restx import Resource
 
 from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.base import run_worker, GET_RESPONSES_400_404
+from altrepo_api.api.vulnerabilities.parsers import vuln_info_args
+from .endpoints.fixes import VulnFixes
 from .endpoints.tasks import TaskVulnerabilities
 
 from .namespace import get_namespace
 from .parsers import (
     cve_info_args,
     bdu_info_args,
+    ghsa_info_args,
     cve_vulnerable_packages_args,
     bdu_vulnerable_packages_args,
     package_vulnerabilities_args,
@@ -36,12 +39,15 @@ from .serializers import (
     cve_packages_model,
     cve_task_model,
     branch_cve_packages_model,
+    vuln_fixes_model,
+    vuln_open_model,
 )
 from .endpoints.vuln import VulnInfo
 from .endpoints.cve import VulnerablePackageByCve
-from .endpoints.packages import PackageOpenVulnerabilities
+from .endpoints.packages import PackageOpenVulnerabilities, PackagesByOpenVuln
 from .endpoints.branch import BranchOpenVulnerabilities
 from .endpoints.maintainer import MaintainerOpenVulnerabilities
+from .endpoints.excluded import VulnExcluded
 
 ns = get_namespace()
 
@@ -84,6 +90,45 @@ class routeVulnerablePackageByCve(Resource):
 
 
 @ns.route(
+    "/cve/fixes",
+    doc={
+        "description": (
+            "Get a list of packages in which "
+            "the specified CVE vulnerability is closed."
+        ),
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeVulnerableCveFixes(Resource):
+    @ns.expect(cve_info_args)
+    @ns.marshal_with(vuln_fixes_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = cve_info_args.parse_args(strict=True)
+        w = VulnFixes(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/cve/excluded",
+    doc={
+        "description": (
+            "Get a list of packages where the specified CVE vulnerability is excluded."
+        ),
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeVulnerableCveExcluded(Resource):
+    @ns.expect(cve_info_args)
+    @ns.marshal_with(vuln_fixes_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = cve_info_args.parse_args(strict=True)
+        w = VulnExcluded(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
     "/bdu/packages",
     doc=False,  # XXX: hide from Swagger UI
     # doc={
@@ -102,6 +147,26 @@ class routeVulnerablePackageByBdu(Resource):
 
 
 @ns.route(
+    "/bdu/fixes",
+    doc={
+        "description": (
+            "Get a list of packages in which "
+            "the specified BDU vulnerability is closed."
+        ),
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeVulnerableBduFixes(Resource):
+    @ns.expect(bdu_info_args)
+    @ns.marshal_with(vuln_fixes_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = bdu_info_args.parse_args(strict=True)
+        w = VulnFixes(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
     "/bdu",
     doc={
         "description": "Get BDU information",
@@ -115,6 +180,43 @@ class routeBduInfo(Resource):
         url_logging(logger, g.url)
         args = bdu_info_args.parse_args(strict=True)
         w = VulnInfo(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/ghsa",
+    doc={
+        "description": "Get GHSA information",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeGhsaInfo(Resource):
+    @ns.expect(ghsa_info_args)
+    # @ns.marshal_with(vulnerability_info_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = ghsa_info_args.parse_args(strict=True)
+        w = VulnInfo(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/ghsa/fixes",
+    doc={
+        "description": (
+            "Get a list of packages in which "
+            "the specified GHSA vulnerability is closed."
+        ),
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeVulnerableGhsaFixes(Resource):
+    @ns.expect(ghsa_info_args)
+    @ns.marshal_with(vuln_fixes_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = ghsa_info_args.parse_args(strict=True)
+        w = VulnFixes(g.connection, **args)
         return run_worker(worker=w, args=args)
 
 
@@ -193,4 +295,24 @@ class routeTaskVulnerabilities(Resource):
         w = TaskVulnerabilities(g.connection, id, **args)
         if not w.check_task_id():
             ns.abort(404, message=f"Task ID '{id}' not found in database", task_id=id)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/open/packages",
+    doc=False,  # XXX: hide from Swagger UI
+    # doc={
+    #     "description": (
+    #         "Get a list of packages in which the specified vulnerability is open."
+    #     ),
+    #     "responses": GET_RESPONSES_400_404,
+    # },
+)
+class routePackagesByOpenVuln(Resource):
+    @ns.expect(vuln_info_args)
+    @ns.marshal_with(vuln_open_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = vuln_info_args.parse_args(strict=True)
+        w = PackagesByOpenVuln(g.connection, **args)
         return run_worker(worker=w, args=args)

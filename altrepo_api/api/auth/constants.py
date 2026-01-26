@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023 BaseALT Ltd
+# Copyright (C) 2021-2026 BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -14,6 +14,14 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from enum import StrEnum
+
 JWT_ENCODE_ALGORITHM = "HS256"
 REFRESH_TOKEN_KEY = "refresh-token:{user}"
 BLACKLISTED_ACCESS_TOKEN_KEY = "blacklisted:access-token:{token}"
+USER_ROLES_KEY = "user:{user}"
+
+
+class AuthProvider(StrEnum):
+    LDAP = "ldap"
+    KEYCLOAK = "keycloak"

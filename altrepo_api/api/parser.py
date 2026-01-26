@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -22,11 +22,20 @@ from typing import Any
 from altrepo_api.api.misc import lut
 
 
+UINT32_MAX = (1 << 32) - 1
+
+MIN_BUG_ID = 1
+MAX_BUG_ID = UINT32_MAX
+
+MIN_TASK_ID = 1
+MAX_TASK_ID = UINT32_MAX
+
+
 class ParserFactory:
     """Registers request parser argument items and builds RequestParser by list of items."""
 
     def __init__(self) -> None:
-        self.items: list = []
+        self.items: list[tuple[str, dict[str, Any]]] = []
         self.lindex: int = 0
 
     def register_item(self, item_name: str, **kwargs) -> int:
@@ -53,6 +62,7 @@ parser = ParserFactory()
 # lookup tables
 # __pkg_groups = set(lut.pkg_groups)
 __known_archs = set(lut.known_archs)
+__known_archs_ext = set(lut.known_archs).union(("srpm",))
 __known_repo_components = set(lut.known_repo_components)
 __known_states = set(lut.known_states)
 __known_branches = set(lut.known_branches)
@@ -63,7 +73,7 @@ __known_img_variants = set(lut.known_image_variants)
 __known_img_components = set(lut.known_image_components)
 __known_img_platforms = set(lut.known_image_platform)
 __known_img_types = set(lut.known_image_types)
-
+__comment_ref_types = set(lut.comment_ref_types)
 
 # regex patterns
 __pkg_cs_match = re.compile(r"^[a-fA-F0-9]+$")
@@ -76,12 +86,15 @@ __packager_name_match = re.compile(r"^[a-zA-Z]+[\w\.\ \-\@]*$")
 __packager_email_match = re.compile(r"^[\w\.\-]+@[\w\.\-]+$")
 __packager_nickname_match = re.compile(r"^[\w\-]{2,}$")
 # file name match allows '*' wildcard symbol
-__file_name_wc_match = re.compile(r"^[\w\-.\/\*]{2,}$")
+__file_name_wc_match = re.compile(
+    r"^[\\\/\w\-\.\,\#\:\+\@\&\$\!\*\%\'\~\:\=\{\}\[\]\(\)]{2,}$"
+)
 __dp_name_match = re.compile(r"^[\w\/\(\)\.\:\-\+]{2,}$")
 # image name
 __uuid_string_match = re.compile(
     r"^[0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12}$"
 )
+__image_file_match = re.compile(r"^[a-zA-Z0-9\-\.\_:]+$")
 __image_tag_match = re.compile(r"^[a-zA-Z0-9\-\.\_:]+:[a-z]+$")
 __image_version_match = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
 __image_flavor_match = re.compile(r"^[a-zA-Z\-]+$")
@@ -91,27 +104,77 @@ __license_id_match = re.compile(r"^[A-Za-z0-9\-\.\+]+$")
 # acl
 __acl_group_match = re.compile(r"^@?[a-z0-9\_]+$")
 # task search
-__task_search_match = re.compile(r"^(@?[\w\.\+\-\_]{2,},?)+$")
+__task_search_match = re.compile(r"^(@?[\w\.\+\-\_:#]{2,},?)+$")
 # file search
 __file_search_match = re.compile(r"^[\w\/\.\+\- $#%:=@\{\}]{3,}$")
+# package vulnerabilities
+__pkgs_open_vulns_search_match = re.compile(r"^([\w\.\+\-\_:]{2,},?)+$")
 # vulnerabilities
 __cve_id_match = re.compile(r"^CVE-\d{4}-\d{4,}$")
 __cve_id_list_match = re.compile(r"^(CVE-\d{4}-\d{4,},?)+$")
 __bdu_id_match = re.compile(r"^BDU:\d{4}-\d{5}$")
 __bdu_id_list_match = re.compile(r"^(BDU:\d{4}-\d{5},?)+$")
+__ghsa_id_match = re.compile(r"^GHSA(-[23456789cfghjmpqrvwx]{4}){3}$")
+__ghsa_id_list_match = re.compile(r"^(GHSA(-[23456789cfghjmpqrvwx]{4}){3},?)+$")
+__vuln_id_match = re.compile(
+    r"^(CVE-|BDU:)\d{4}-\d{4,}$|^GHSA(-[23456789cfghjmpqrvwx]{4}){3}$"
+)
 __errata_id_match = re.compile(r"^ALT-[A-Z]+-2\d{3}-\d{4,}-\d{1,}$")
 __errata_search_match = re.compile(r"^([\w\.\+\-\_:]{2,},?)+$")
 __password_match = re.compile(r"^([\w|\W]+)$")
+__cpe_search_match = re.compile(r"^([\w\.\+\-\_:*]{2,},?)+$")
 # input
 __positive_integer = re.compile(r"^(?<![-.])\b[0-9]+\b(?!\.[0-9])$")
+__sort_match = re.compile(r"^(-?[a-z\_]{2,},?)+$")
+# package name conversion
+__project_name_match = re.compile(r"^[\w\.\+\-\:]{2,}$")
 
 
 # custom validators
+def __get_int(value: Any) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        raise ValueError("{0} is not a valid integer".format(value))
+
+
 def __get_string(value: Any) -> str:
     try:
         return str(value)
     except (TypeError, ValueError):
         raise ValueError("{0} is not a valid string".format(value))
+
+
+def bug_id_type(value: Any) -> int:
+    """Bug ID validator."""
+
+    value = __get_int(value)
+    if value < MIN_BUG_ID or value > MAX_BUG_ID:
+        raise ValueError("Invalid Bug ID: {0}".format(value))
+    return value
+
+
+bug_id_type.__schema__ = {
+    "type": "integer",
+    "minimum": MIN_BUG_ID,
+    "maximum": MAX_BUG_ID,
+}
+
+
+def task_id_type(value: Any) -> int:
+    """Task ID validator."""
+
+    value = __get_int(value)
+    if value < MIN_TASK_ID or value > MAX_TASK_ID:
+        raise ValueError("Invalid task ID: {0}".format(value))
+    return value
+
+
+task_id_type.__schema__ = {
+    "type": "integer",
+    "minimum": MIN_TASK_ID,
+    "maximum": MAX_TASK_ID,
+}
 
 
 def pkg_name_type(value: Any) -> str:
@@ -187,6 +250,19 @@ def arch_name_type(value: Any) -> str:
 
 
 arch_name_type.__schema__ = {"type": "string"}
+
+
+# __known_archs_ext
+def arch_name_type_ext(value: Any) -> str:
+    """Extended architecture name validator that includes virtual 'srpm' one."""
+
+    value = __get_string(value)
+    if value not in __known_archs_ext:
+        raise ValueError("Invalid architecture name: {0}".format(value))
+    return value
+
+
+arch_name_type_ext.__schema__ = {"type": "string"}
 
 
 def arch_component_name_type(value: Any) -> str:
@@ -340,6 +416,20 @@ def date_string_type(value: Any) -> datetime.datetime:
 date_string_type.__schema__ = {"type": "string", "format": "date"}
 
 
+def datetime_string_type(value: Any) -> datetime.datetime:
+    """ISO-8601 datetime validator."""
+
+    value = __get_string(value)
+    try:
+        as_datetime = datetime.datetime.fromisoformat(value)
+        return as_datetime
+    except ValueError:
+        raise ValueError("Invalid datetime: {0}".format(value))
+
+
+datetime_string_type.__schema__ = {"type": "string", "format": "datetime"}
+
+
 def uuid_type(value: Any) -> str:
     """UUID string validator."""
 
@@ -362,6 +452,18 @@ def image_tag_type(value: Any) -> str:
 
 
 image_tag_type.__schema__ = {"type": "string", "pattern": __image_tag_match.pattern}
+
+
+def image_file_type(value: Any) -> str:
+    """Image name validator."""
+
+    value = __get_string(value)
+    if not __image_file_match.search(value):
+        raise ValueError("Invalid image name: {0}".format(value))
+    return value
+
+
+image_file_type.__schema__ = {"type": "string", "pattern": __image_file_match.pattern}
 
 
 def image_version_type(value: Any) -> str:
@@ -610,6 +712,48 @@ def bdu_id_list_type(value: Any) -> str:
 bdu_id_list_type.__schema__ = {"type": "string", "pattern": __bdu_id_list_match.pattern}
 
 
+def ghsa_id_type(value: Any) -> str:
+    """GHSA id validator."""
+
+    value = __get_string(value)
+    if not __ghsa_id_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+ghsa_id_type.__schema__ = {"type": "string", "pattern": __ghsa_id_match.pattern}
+
+
+def ghsa_id_list_type(value: Any) -> str:
+    """GHSA id list validator."""
+
+    value = __get_string(value)
+    if not __ghsa_id_list_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+ghsa_id_list_type.__schema__ = {
+    "type": "string",
+    "pattern": __ghsa_id_list_match.pattern,
+}
+
+
+def vuln_id_type(value: Any) -> str:
+    """Vuln id validator"""
+
+    value = __get_string(value)
+    if not __vuln_id_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+vuln_id_type.__schema__ = {
+    "type": "string",
+    "pattern": __vuln_id_match.pattern,
+}
+
+
 def errata_id_type(value: Any) -> str:
     """Errata id validator."""
 
@@ -653,16 +797,88 @@ password_type.__schema__ = {
 }
 
 
-def positive_integer_type(value: Any) -> str:
+def positive_integer_type(value: Any) -> int:
     """Positive integer validator."""
 
     value = __get_string(value)
     if not __positive_integer.search(value):
         raise ValueError("Invalid positive integer: {0}".format(value))
-    return value
+    return int(value)
 
 
 positive_integer_type.__schema__ = {
-    "type": "string",
+    "type": "integer",
     "pattern": __positive_integer.pattern,
 }
+
+
+def sort_type(value: Any) -> str:
+    """Sort validator."""
+
+    value = __get_string(value)
+    if not __sort_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+sort_type.__schema__ = {
+    "type": "string",
+    "pattern": __sort_match.pattern,
+}
+
+
+def open_vulns_search_type(value: Any) -> str:
+    """Validator for searching packages with open vulnerabilities."""
+
+    value = __get_string(value)
+    if not __pkgs_open_vulns_search_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+open_vulns_search_type.__schema__ = {
+    "type": "string",
+    "pattern": __pkgs_open_vulns_search_match.pattern,
+}
+
+
+def cpe_search_type(value: Any) -> str:
+    """Validator for searching cpes."""
+
+    value = __get_string(value)
+    if not __cpe_search_match.search(value):
+        raise ValueError("Invalid input: {0}".format(value))
+    return value
+
+
+cpe_search_type.__schema__ = {
+    "type": "string",
+    "pattern": __cpe_search_match.pattern,
+}
+
+
+def project_name_type(value: Any) -> str:
+    """Project name validator."""
+
+    value = __get_string(value)
+    if not __project_name_match.search(value):
+        raise ValueError("Invalid project name: {0}".format(value))
+    return value
+
+
+project_name_type.__schema__ = {
+    "type": "string",
+    "pattern": __project_name_match.pattern,
+}
+
+
+def comment_ref_type(value: Any) -> str:
+    """Comment reference type validator"""
+
+    value = __get_string(value)
+    if value not in __comment_ref_types:
+        raise ValueError("Invalid comment reference type: {0}".format(value))
+    return value
+
+
+comment_ref_type.__schema__ = {"type": "string"}

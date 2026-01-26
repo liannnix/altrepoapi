@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -22,6 +22,9 @@ from ..sql import sql
 from ..dto import TaskMeta, TaskApprovalMeta, SubtaskMeta, SubtaskArchsMeta
 
 
+MAX_LIMIT = 10_000
+
+
 class LastTasks(APIWorker):
     """
     Get information about the latest changes of build tasks.
@@ -37,15 +40,13 @@ class LastTasks(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["tasks_limit"] and self.args["tasks_limit"] < 1:
+        limit = self.args["tasks_limit"]
+        if limit and (limit < 1 or limit > MAX_LIMIT):
             self.validation_results.append(
-                "tasks_limit should be greater or equal to 1"
+                f"tasks_limit should be in range 1 to {MAX_LIMIT}"
             )
 
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return self.validation_results == []
 
     def get(self):
         branch = self.args["branch"]

@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -16,10 +16,8 @@
 
 from altrepo_api.api.base import APIWorker
 
-# from altrepo_api.api.misc import lut
-
 from ..sql import sql
-from .common import VulnerabilityInfo
+from .common import VulnerabilityInfo, parse_vulnerability_details
 
 
 class VulnInfo(APIWorker):
@@ -37,6 +35,7 @@ class VulnInfo(APIWorker):
 
     def get(self):
         vuln_id = self.args["vuln_id"]
+        exclude_json = self.args.get("exclude_json", False)
 
         response = self.send_sql_request(
             self.sql.get_vuln_info_by_ids.format(
@@ -52,7 +51,20 @@ class VulnInfo(APIWorker):
 
         vuln = VulnerabilityInfo(*response[0][1:])
 
+        response = self.send_sql_request(
+            self.sql.get_related_vulns_for_cve.format(
+                tmp_table=(vuln_id,),
+            )
+        )
+        if not self.sql_status:
+            return self.error
+        if response:
+            vuln.refs_link = [ref[0] for ref in response] + vuln.refs_link
+
+        parsed = parse_vulnerability_details(vuln)
+
         return {
             "request_args": self.args,
-            "vuln_info": vuln.asdict(),
+            "vuln_info": vuln.asdict(exclude_json),
+            "parsed": parsed.asdict() if parsed else {},
         }, 200

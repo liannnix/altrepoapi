@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -17,7 +17,7 @@
 import logging
 import os
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 
 
@@ -25,15 +25,8 @@ class AccessGroups(Enum):
     API_ADMIN = auto()
     API_USER = auto()
     CVE_ADMIN = auto()
+    CVE_EXPERT = auto()
     CVE_USER = auto()
-
-
-AG_ALL = [
-    AccessGroups.API_ADMIN,
-    AccessGroups.API_USER,
-    AccessGroups.CVE_ADMIN,
-    AccessGroups.CVE_USER,
-]
 
 
 @dataclass
@@ -44,6 +37,9 @@ class BasePathNamespace:
     PROJECT_NAME = "altrepo-api"
     CONFIG_FILE = "/etc/{}/api.conf".format(PROJECT_NAME)
     LOG_FILE = "/var/log/{}/log".format(PROJECT_NAME)
+    # endpoint response OK code check settings
+    OK_RESPONSE_CODES = (200, 201, 202, 204)
+    OK_RESPONSE_CODE_STRICT_CHECK = False
     # application launch parameters
     DEFAULT_HOST = "127.0.0.1"
     DEFAULT_PORT = 5000
@@ -51,7 +47,9 @@ class BasePathNamespace:
     WORKER_TIMEOUT = "30"
     # database parameters
     DATABASE_HOST = "127.0.0.1"
+    DATABASE_PORT = 9000
     DATABASE_NAME = "default"
+    TMP_DATABASE_NAME = ""
     TRY_CONNECTION_NUMBER = 5
     TRY_TIMEOUT = 5
     DATABASE_USER = "default"
@@ -76,6 +74,64 @@ class BasePathNamespace:
     # LDAP access groups
     AG = AccessGroups  # used in tests only
     ACCESS_GROUPS = {g: "" for g in AccessGroups}
+    # Map LDAP groups to a list of API roles and user groups as keyCloak does for token
+    # contents uniformity
+    AG_ROLE_MAPPING = {
+        AccessGroups.CVE_ADMIN: (
+            "manage_list",
+            "comments_create",
+            "comments_discard",
+            "comments_enable",
+            "cpe_manage_create",
+            "cpe_manage_delete",
+            "cpe_manage_update",
+            "default_reasons_create",
+            "default_reasons_disable",
+            "default_reasons_enable",
+            "errata_manage_create",
+            "errata_manage_discard",
+            "errata_manage_update",
+            "pnc_manage_discard",
+            "pnc_manage_create",
+            "sa_manage_create",
+            "sa_manage_discard",
+            "sa_manage_update",
+            "vuln_status_create",
+            "user_aliases_create",
+        ),
+        AccessGroups.CVE_EXPERT: (
+            "manage_list",
+            "comments_create",
+            "comments_enable",
+            "cpe_manage_create",
+            "cpe_manage_update",
+            "default_reasons_create",
+            "errata_manage_create",
+            "errata_manage_update",
+            "pnc_manage_create",
+            "sa_manage_create",
+            "sa_manage_update",
+            "vuln_status_create",
+        ),
+        AccessGroups.CVE_USER: ("manage_list",),
+        # AccessGroups.API_ADMIN: ("api_admin",),
+        # AccessGroups.API_USER: ("api_user",),
+    }
+    AG_GROUP_MAPPING = {
+        AccessGroups.CVE_ADMIN: ("api_admin",),
+        AccessGroups.CVE_EXPERT: ("api_expert",),
+        AccessGroups.CVE_USER: ("api_user",),
+        # AccessGroups.API_ADMIN: ("api_admin",),
+        # AccessGroups.API_USER: ("api_user",),
+    }
+    # authentication using Keycloak server
+    KEYCLOAK_SERVER_URL = ""
+    KEYCLOAK_SERVER_CHECK_SSL = False
+    KEYCLOAK_SERVER_SSL_CERTIFICATE = ""
+    KEYCLOAK_REALM = ""
+    KEYCLOAK_CLIENT_ID = ""
+    KEYCLOAK_CLIENT_SECRET_KEY = ""
+    KEYCLOAK_MANAGE_LIST_ROLE = "manage_list"
     # authentication token settings
     TOKEN_STORAGE = "file"  # {file | redis}
     EXPIRES_ACCESS_TOKEN = 60 * 5  # access token storage time in seconds
@@ -83,6 +139,16 @@ class BasePathNamespace:
     MAX_REFRESH_SESSIONS_COUNT = 2
     # redis
     REDIS_URL = ""
+    # errata server services
+    ERRATA_SERVER_TOKEN = ""
+    ERRATA_ID_URL = ""
+    ERRATA_MANAGE_URL = ""
+    ERRATA_REFRESH_URL = ""
+    # Flask CORS origins
+    CORS_ORIGINS = "*"
+    AUTH_COOKIES_OPTIONS = "HttpOnly;"
+    # Feature flags mapping
+    FEATURE_FLAGS: dict[str, bool] = field(default_factory=dict)
 
 
 namespace = BasePathNamespace()

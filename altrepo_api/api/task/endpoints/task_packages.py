@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -17,7 +17,9 @@
 from collections import defaultdict
 from typing import NamedTuple
 
+from altrepo_api.utils import valid_task_id
 from altrepo_api.api.base import APIWorker
+
 from ..sql import sql
 
 
@@ -34,6 +36,8 @@ class TaskPackages(APIWorker):
         super().__init__()
 
     def check_task_id(self):
+        if not valid_task_id(self.task_id):
+            return False
         response = self.send_sql_request(self.sql.check_task.format(id=self.task_id))
         if not self.sql_status:
             return False

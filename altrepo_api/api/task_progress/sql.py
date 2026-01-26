@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -23,6 +23,22 @@ class SQL:
 SELECT count(task_id)
 FROM TaskStates
 WHERE task_id = {id}
+"""
+
+    where_tasks_by_pkg = """
+AND task_id IN (
+    SELECT DISTINCT task_id
+    FROM TaskIterations
+    WHERE titer_srcrpm_hash IN (
+        SELECT pkg_hash
+        FROM Packages
+        WHERE (pkg_name = '{pkg_name}')
+        AND (pkg_sourcepackage = 1)
+    )
+    AND (task_id, task_changed) IN (
+        SELECT task_id, max(task_changed) FROM TaskStates GROUP BY task_id
+    )
+)
 """
 
     get_last_tasks_from_progress = """
@@ -483,14 +499,14 @@ FROM (
     FROM t_state
     LEFT JOIN (
         SELECT
-        task_id,
-        any(task_repo) AS repo,
-        any(task_owner) AS owner
-    FROM Tasks
-    WHERE subtask_deleted = 0
-        AND (task_id, task_changed) = (SELECT t_id, changed FROM t_state)
-    GROUP BY task_id
-    ) AS TI USING task_id
+            task_id,
+            any(task_repo) AS repo,
+            any(task_owner) AS owner
+        FROM Tasks
+        WHERE subtask_deleted = 0
+            AND (task_id, task_changed) = (SELECT t_id, changed FROM t_state)
+        GROUP BY task_id
+    ) AS TI ON t_id=TI.task_id
 ) AS TS
 LEFT JOIN (
     SELECT
@@ -531,6 +547,10 @@ ORDER BY subtask_id ASC
 """
 
     get_subtasks_by_id_from_state = """
+WITH (
+    SELECT max(task_changed) FROM TaskStates
+    WHERE task_id = {id}
+) AS t_chaned
 SELECT * FROM (
     SELECT
         task_id,
@@ -548,7 +568,7 @@ SELECT * FROM (
         argMax(subtask_changed, ts) AS changed,
         if(has(groupUniqArray(subtask_deleted), 0), 'create', 'delete') AS tp
     FROM Tasks
-    WHERE (task_id = {id})
+    WHERE (task_id = {id}) AND (task_changed = t_chaned)
     GROUP BY task_id, subtask_id
 ) WHERE sub_type != 'unknown'
     OR arrayFilter(x -> notEmpty(x), [srpm, package, dir]) != []
@@ -610,9 +630,10 @@ FROM (
         task_id,
         subtask_id,
         subtask_arch,
-        argMax(titer_status, task_changed) as status
+        titer_status as status
     FROM TaskIterations
     WHERE task_id = {id}
+        AND task_changed = '{task_changed}'
         AND subtask_id IN (
             SELECT subtask_id
             FROM (
@@ -624,10 +645,6 @@ FROM (
                  GROUP BY subtask_id
             ) WHERE subdel = 0
         )
-    GROUP BY
-        task_id,
-        subtask_id,
-        subtask_arch
 )
 GROUP BY
     task_id,

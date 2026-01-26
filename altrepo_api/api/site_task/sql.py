@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -171,7 +171,6 @@ WHERE (task_id, subtask_id) IN
         ORDER BY task_changed DESC
         LIMIT {limit}
     )
-    ORDER BY task_changed DESC
 )
 """
 
@@ -179,7 +178,19 @@ WHERE (task_id, subtask_id) IN
 WITH
 last_tasks AS
 {last_tasks_preselect}
-SELECT * FROM
+SELECT
+    task_id,
+    subtask_id,
+    RQ.task_owner,
+    task_changed,
+    RQ.subtask_userid,
+    RQ.subtask_type,
+    RQ.subtask_package,
+    RQ.subtask_srpm_name,
+    RQ.subtask_pkg_from,
+    titer_srcrpm_hash,
+    LST.task_message
+FROM
 (
     SELECT DISTINCT
         task_id,
@@ -222,12 +233,12 @@ SELECT * FROM
                 task_changed
             FROM last_tasks
         )
-    ORDER BY task_changed DESC, subtask_id ASC
 ) AS RQ
 LEFT JOIN
 (
     SELECT * from last_tasks
 ) AS LST USING (task_id, task_changed)
+ORDER BY task_changed DESC, subtask_id ASC
 """
 
     get_last_pkgs_info = """

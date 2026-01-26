@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -14,13 +14,26 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from collections import namedtuple
+from typing import NamedTuple
 
 from altrepo_api.utils import tuplelist_to_dict, make_tmp_table_name
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
+from altrepo_api.api.parser import file_name_wc_type
 from ..sql import sql
+
+
+class PkgInfo(NamedTuple):
+    pkgcs: str
+    name: str
+    sourcepackage: str
+    version: str
+    release: str
+    disttag: str
+    arch: str
+    branch: str
+    files: list[str]
 
 
 class PackageByFileName(APIWorker):
@@ -38,6 +51,8 @@ class PackageByFileName(APIWorker):
 
     def get(self):
         self.file = self.args["file"]
+        # escape `%` sign
+        self.file = self.file.replace("%", "\\%")
         # replacae wildcards '*' with SQL-like '%'
         self.file = self.file.replace("*", "%")
         self.arch = self.args["arch"]
@@ -48,9 +63,8 @@ class PackageByFileName(APIWorker):
             self.arch = lut.known_archs
         self.arch = tuple(self.arch)
 
-        file_names = {}
         # if file:
-        tmp_file_names = make_tmp_table_name("file_names")
+        tmp_file_names = make_tmp_table_name("file_names_hash")
         _ = self.send_sql_request(
             (
                 self.sql.gen_table_fnhshs_by_file.format(tmp_table=tmp_file_names),
@@ -60,6 +74,69 @@ class PackageByFileName(APIWorker):
         if not self.sql_status:
             return self.error
 
+        return self._find_packages(tmp_file_names)
+
+    def check_params_post(self):
+        self.validation_results = []
+
+        self.files: list[str] = []
+        for file in self.args["json_data"]["files"]:
+            try:
+                file = file_name_wc_type(file)
+            except ValueError as e:
+                self.validation_results.append(str(e))
+            else:
+                if "*" in file:
+                    self.validation_results.append(
+                        "Invalid file name: {0}. wildcard symbols are not allowed".format(
+                            file
+                        )
+                    )
+                self.files.append(file)
+
+        self.branch = self.args["json_data"]["branch"]
+        if self.branch not in lut.known_branches:
+            self.validation_results.append(
+                "Invalid branch name: {0}".format(self.branch)
+            )
+
+        self.arch = self.args["json_data"].get("arch")
+        if self.arch:
+            if self.arch not in lut.known_archs:
+                self.validation_results.append(
+                    "Invalid architecture name: {0}".format(self.arch)
+                )
+            else:
+                self.arch = (self.arch, "noarch")
+        else:
+            self.arch = lut.known_archs
+
+        return self.validation_results == []
+
+    def post(self):
+        self.arch = tuple(self.arch)
+
+        tmp_file_names = make_tmp_table_name("file_names")
+        _ext_filenames = make_tmp_table_name("ext_filenames")
+
+        _ = self.send_sql_request(
+            self.sql.gen_table_fnhsh_by_files.format(
+                tmp_table=tmp_file_names, ext_table=_ext_filenames
+            ),
+            external_tables=[
+                {
+                    "name": _ext_filenames,
+                    "structure": [("fn_name", "String")],
+                    "data": [{"fn_name": file} for file in self.files],
+                }
+            ],
+        )
+        if not self.sql_status:
+            return self.error
+
+        return self._find_packages(tmp_file_names)
+
+    def _find_packages(self, tmp_file_names: str):
         response = self.send_sql_request(
             self.sql.select_all_tmp_table.format(tmp_table=tmp_file_names)
         )
@@ -73,6 +150,7 @@ class PackageByFileName(APIWorker):
                 }
             )
 
+        file_names: dict[int, str] = dict()
         for f in response:
             file_names[f[0]] = f[1]
 
@@ -104,14 +182,10 @@ class PackageByFileName(APIWorker):
                 }
             )
 
-        ids_filename_dict = tuplelist_to_dict(response, 1)  # type: ignore
+        ids_filename_dict: dict[str, list[str]] = {}
 
-        new_ids_filename_dict = {}
-
-        for k, v in ids_filename_dict.items():
-            new_ids_filename_dict[k] = [file_names[x] for x in v]
-
-        ids_filename_dict = new_ids_filename_dict
+        for k, v in tuplelist_to_dict(response, 1).items():
+            ids_filename_dict[k] = [file_names[x] for x in v]
 
         response = self.send_sql_request(
             (
@@ -122,29 +196,28 @@ class PackageByFileName(APIWorker):
         if not self.sql_status:
             return self.error
 
-        output_values = []
-        for package in response:  # type: ignore
-            package += (ids_filename_dict[package[0]],)  # type: ignore
-            output_values.append(package[1:])
+        packages: list[PkgInfo] = []
+        for package in response:
+            package += (ids_filename_dict[package[0]],)
+            packages.append(PkgInfo(*package[1:]))
 
-        PkgInfo = namedtuple(
-            "PkgInfo",
-            [
-                "pkgcs",
-                "name",
-                "sourcepackage",
-                "version",
-                "release",
-                "disttag",
-                "arch",
-                "branch",
-                "files",
-            ],
-        )
+        not_found = []
+        # get file name or file names count to include in response JSON
+        _files = ""
+        if hasattr(self, "file"):
+            _files = self.file
+        if hasattr(self, "files"):
+            _files = len(self.files)
+            not_found = list(
+                set(self.files) - set(f for p in packages for f in p.files)
+            )
 
-        retval = [PkgInfo(*el)._asdict() for el in output_values]
-
-        res = {"request_args": self.args, "length": len(retval), "packages": retval}
+        res = {
+            "request_args": {"branch": self.branch, "arch": self.arch, "files": _files},
+            "length": len(packages),
+            "packages": [p._asdict() for p in packages],
+            "not_found": not_found,
+        }
         return res, 200
 
 
@@ -242,21 +315,6 @@ class PackageByFileMD5(APIWorker):
         for package in response:  # type: ignore
             package += (ids_filename_dict[package[0]],)  # type: ignore
             output_values.append(package[1:])
-
-        PkgInfo = namedtuple(
-            "PkgInfo",
-            [
-                "pkgcs",
-                "name",
-                "sourcepackage",
-                "version",
-                "release",
-                "disttag",
-                "arch",
-                "branch",
-                "files",
-            ],
-        )
 
         res = [PkgInfo(*el)._asdict() for el in output_values]
 

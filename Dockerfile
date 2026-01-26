@@ -1,4 +1,4 @@
-FROM alt:p10
+FROM registry.altlinux.org/alt/alt:p11
 
 # set version label
 ARG UID=1000
@@ -10,8 +10,8 @@ ENV APP_HOME=/home/$UNAME/app
 RUN \
     # fix Apt source lists
     rm -f /etc/apt/sources.list.d/*.list \
-    && echo "rpm [p10] http://ftp.altlinux.org/pub/distributions/ALTLinux p10/branch/x86_64 classic" > /etc/apt/sources.list.d/alt.list \
-    && echo "rpm [p10] http://ftp.altlinux.org/pub/distributions/ALTLinux p10/branch/noarch classic" >> /etc/apt/sources.list.d/alt.list \
+    && echo "rpm [p11] http://ftp.altlinux.org/pub/distributions/ALTLinux p11/branch/x86_64 classic" > /etc/apt/sources.list.d/alt.list \
+    && echo "rpm [p11] http://ftp.altlinux.org/pub/distributions/ALTLinux p11/branch/noarch classic" >> /etc/apt/sources.list.d/alt.list \
     # installing packages
     && apt-get update \
     && yes | apt-get dist-upgrade \
@@ -25,6 +25,10 @@ RUN \
         python3-module-ldap \
         python3-module-jwt \
         python3-module-redis-py \
+        python3-module-flask-cors \
+        python3-module-requests \
+        python3-module-orjson \
+        python3-module-python-keycloak \
         tzdata \
     # clean-up Apt caches
     && rm -f /var/cache/apt/archives/*.rpm \

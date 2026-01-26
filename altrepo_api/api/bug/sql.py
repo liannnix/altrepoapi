@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -33,14 +33,14 @@ WHERE pkg_srcrpm_hash IN
 """
 
     get_bugzilla_info_by_srcpkg = """
-WITH bugs AS
-    (
-        SELECT DISTINCT
-            bz_id,
-            bz_component
-        FROM Bugzilla
-        WHERE bz_component IN {packages}
-    )
+WITH bugs AS (
+    SELECT DISTINCT
+        bz_id,
+        argMax(bz_component, ts) AS comp
+    FROM Bugzilla
+    GROUP BY bz_id
+    HAVING comp IN {packages}
+)
 SELECT *
 FROM
 (
@@ -64,19 +64,19 @@ FROM
     ORDER BY last_changed DESC
 )
 WHERE component IN (
-    SELECT bz_component
+    SELECT comp
     FROM bugs
 )
 """
 
     get_bugzilla_info_by_image_edition = """
-WITH bugs AS
-(
+WITH bugs AS (
     SELECT DISTINCT
         bz_id,
-        bz_product
+        argMax(bz_product, ts) AS product
     FROM Bugzilla
-    WHERE bz_product IN (
+    GROUP BY bz_id
+    HAVING product IN (
         SELECT DISTINCT img_name_bugzilla
         FROM ImageStatus
         WHERE img_branch = '{branch}'
@@ -101,29 +101,22 @@ FROM
         argMax(bz_summary, ts),
         argMax(bz_last_changed, ts) as last_changed
     FROM Bugzilla
-    WHERE bz_id IN (
-        SELECT bz_id
-        FROM bugs
-    )
+    WHERE bz_id IN (SELECT bz_id FROM bugs)
     GROUP BY bz_id
     ORDER BY last_changed DESC
-)
-WHERE product IN (
-    SELECT bz_product
-    FROM bugs
 )
 """
 
     get_bugzilla_info_by_maintainer = """
-WITH bugs AS
-    (
-        SELECT DISTINCT
-            bz_id,
-            bz_assignee
-        FROM Bugzilla
-        WHERE (bz_assignee LIKE '{maintainer_nickname}'
-            OR bz_assignee LIKE '{maintainer_nickname}@%')
-    )
+WITH bugs AS (
+    SELECT DISTINCT
+        bz_id,
+        argMax(bz_assignee, ts) AS assignee
+    FROM Bugzilla
+    GROUP BY bz_id
+    HAVING (assignee LIKE '{maintainer_nickname}'
+        OR assignee LIKE '{maintainer_nickname}@%')
+)
 SELECT *
 FROM
 (
@@ -139,10 +132,7 @@ FROM
         argMax(bz_summary, ts),
         argMax(bz_last_changed, ts) as last_changed
     FROM Bugzilla
-    WHERE bz_id IN (
-        SELECT bz_id
-        FROM bugs
-    )
+    WHERE bz_id IN (SELECT bz_id FROM bugs)
     GROUP BY bz_id
     ORDER BY last_changed DESC
 ) AS bugzilla
@@ -154,25 +144,28 @@ LEFT JOIN
     FROM PackagesSourceAndBinaries
     GROUP BY bin_pkg_name
 ) AS TT ON TT.bin_pkg_name = bugzilla.bz_cmp
-WHERE assignee IN (
-    SELECT bz_assignee
-    FROM bugs
-)
 """
 
     get_bugzilla_info_by_last_acl_with_group = """
-WITH acl_package AS
-(
-SELECT DISTINCT bin_pkg_name
-FROM PackagesSourceAndBinaries
-WHERE src_pkg_name IN (
-    SELECT pkgname
-    FROM last_acl_with_groups
-    WHERE acl_branch = 'sisyphus'
-        AND acl_user = '{maintainer_nickname}'
-        AND order_u = 1
-        {order_g}
-    )
+WITH acl_package AS (
+    SELECT DISTINCT bin_pkg_name
+    FROM PackagesSourceAndBinaries
+    WHERE src_pkg_name IN (
+        SELECT pkgname
+        FROM last_acl_with_groups
+        WHERE acl_branch = 'sisyphus'
+            AND acl_user = '{maintainer_nickname}'
+            AND order_u = 1
+            {order_g}
+        )
+),
+bugs AS (
+    SELECT DISTINCT
+        bz_id,
+        argMax(bz_component, ts) AS comp
+    FROM Bugzilla
+    GROUP BY bz_id
+    HAVING comp IN acl_package
 )
 SELECT *
 FROM
@@ -189,10 +182,7 @@ FROM
         argMax(bz_summary, ts),
         argMax(bz_last_changed, ts) as last_changed
     FROM Bugzilla
-    WHERE bz_component IN (
-        SELECT bin_pkg_name
-        FROM acl_package
-    )
+    WHERE (bz_id, bz_component) IN bugs
     GROUP BY bz_id
     ORDER BY last_changed DESC
 ) AS bugzilla
@@ -207,16 +197,23 @@ LEFT JOIN
 """
 
     get_bugzilla_info_by_nick_or_group_acl = """
-WITH acl_package AS
-(
-SELECT DISTINCT bin_pkg_name
-FROM PackagesSourceAndBinaries
-WHERE src_pkg_name IN (
-    SELECT acl_for
-    FROM last_acl_stage1
-    WHERE acl_branch = 'sisyphus'
-        AND has(acl_list, '{maintainer_nickname}')
-    )
+WITH acl_package AS (
+    SELECT DISTINCT bin_pkg_name
+    FROM PackagesSourceAndBinaries
+    WHERE src_pkg_name IN (
+        SELECT acl_for
+        FROM last_acl_stage1
+        WHERE acl_branch = 'sisyphus'
+            AND has(acl_list, '{maintainer_nickname}')
+        )
+),
+bugs AS (
+    SELECT DISTINCT
+        bz_id,
+        argMax(bz_component, ts) AS comp
+    FROM Bugzilla
+    GROUP BY bz_id
+    HAVING comp IN acl_package
 )
 SELECT *
 FROM
@@ -233,10 +230,7 @@ FROM
         argMax(bz_summary, ts),
         argMax(bz_last_changed, ts) as last_changed
     FROM Bugzilla
-    WHERE bz_component IN (
-        SELECT bin_pkg_name
-        FROM acl_package
-    )
+    WHERE (bz_id, bz_component) IN bugs
     GROUP BY bz_id
     ORDER BY last_changed DESC
 ) AS bugzilla
@@ -259,16 +253,23 @@ WITH
         AND acl_for LIKE ('@%')
         AND acl_branch = 'sisyphus'
 ) AS acl_group,
-acl_package AS (
-    SELECT DISTINCT bin_pkg_name
-    FROM PackagesSourceAndBinaries
-    WHERE src_pkg_name IN (
-        SELECT acl_for
-            FROM last_acl_stage1
-            WHERE acl_branch = 'sisyphus'
-                AND (has(acl_list, '{maintainer_nickname}')
-                OR hasAny(acl_list, acl_group))
-        )
+bugs AS (
+    SELECT DISTINCT
+        bz_id,
+        argMax(bz_component, ts) AS comp
+    FROM Bugzilla
+    GROUP BY bz_id
+    HAVING comp IN (
+        SELECT DISTINCT bin_pkg_name
+        FROM PackagesSourceAndBinaries
+        WHERE src_pkg_name IN (
+            SELECT acl_for
+                FROM last_acl_stage1
+                WHERE acl_branch = 'sisyphus'
+                    AND (has(acl_list, '{maintainer_nickname}')
+                    OR hasAny(acl_list, acl_group))
+            )
+    )
 )
 SELECT *
 FROM
@@ -285,10 +286,7 @@ FROM
         argMax(bz_summary, ts),
         argMax(bz_last_changed, ts) as last_changed
     FROM Bugzilla
-    WHERE bz_component IN (
-        SELECT bin_pkg_name
-        FROM acl_package
-    )
+    WHERE (bz_id, bz_component) IN bugs
     GROUP BY bz_id
     ORDER BY last_changed DESC
 ) AS bugzilla

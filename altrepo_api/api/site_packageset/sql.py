@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -241,6 +241,36 @@ WHERE NOT {name_like}
             )
     )
     {branch}
+GROUP BY pkg_name
+ORDER BY pkg_name
+"""
+
+    get_find_packages_by_src_name = """
+WITH
+lp_preselect AS
+(
+    SELECT
+        pkg_hash,
+        pkgset_name
+    FROM static_last_packages
+    WHERE {name_like}
+        AND pkg_sourcepackage = 1
+        {branch}
+)
+SELECT
+    pkg_name,
+    groupUniqArray((LP.pkgset_name, pkg_version, pkg_release, toString(pkg_hash))),
+    max(pkg_buildtime),
+    argMax(pkg_url, pkg_buildtime),
+    argMax(pkg_summary, pkg_buildtime),
+    any(pkg_group_),
+    1 AS is_source
+FROM Packages
+INNER JOIN lp_preselect AS LP USING (pkg_hash)
+WHERE pkg_hash IN
+(
+    SELECT pkg_hash FROM lp_preselect
+)
 GROUP BY pkg_name
 ORDER BY pkg_name
 """

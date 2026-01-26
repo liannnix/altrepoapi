@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -31,13 +31,15 @@ from .endpoints.sitemap import SitemapPackages
 from .endpoints.packageset import PackageSetBinaries
 from .endpoints.translation import TranslationExport
 from .endpoints.branch_tree import BranchTreeExport
+from .endpoints.beehive import BeehiveFTBFS
 
-from .parsers import pkgset_packages_args, translation_export_args
+from .parsers import pkgset_packages_args, translation_export_args, beehive_args
 from .serializers import (
     repology_export_model,
     sitemap_packages_export_model,
     pkgset_packages_export_model,
     branch_tree_model,
+    beehive_ftbfs_list_model,
 )
 
 ns = get_namespace()
@@ -152,4 +154,21 @@ class routeBranchTreeExport(Resource):
         url_logging(logger, g.url)
         args = {}
         w = BranchTreeExport(g.connection, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/beehive/ftbfs",
+    doc={
+        "description": "Beehive rebuild errors export",
+        "responses": GET_RESPONSES_404,
+    },
+)
+class routeBeehiveFTBFS(Resource):
+    @ns.expect(beehive_args)
+    @ns.marshal_with(beehive_ftbfs_list_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = beehive_args.parse_args(strict=True)
+        w = BeehiveFTBFS(g.connection, **args)
         return run_worker(worker=w, args=args)

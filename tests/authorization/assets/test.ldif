@@ -10,6 +10,43 @@ dn: ou=groups,o=test
 objectClass: organizationalUnit
 ou: groups
 
+# GROUPS #
+dn: cn=admins,ou=groups,o=test
+cn: admins
+objectClass: groupOfNames
+member: uid=admin,ou=people,o=test
+member: uid=admin2,ou=people,o=test
+
+dn: cn=users,ou=groups,o=test
+cn: users
+objectClass: groupOfNames
+member: uid=user,ou=people,o=test
+member: cn=admins,ou=groups,o=test
+
+dn: cn=users2,ou=groups,o=test
+cn: users2
+objectClass: groupOfNames
+member: uid=user2,ou=people,o=test
+member: cn=admins,ou=groups,o=test
+
+
+# POSIX GROUPS #
+dn: cn=test_admin,ou=groups,o=test
+objectClass: posixGroup
+cn: test_admin
+gidNumber: 100
+memberUid: admin
+memberUid: admin2
+
+dn: cn=test_user,ou=groups,o=test
+objectClass: posixGroup
+cn: test_user
+gidNumber: 500 
+memberUid: user
+memberUid: user2
+
+
+# USERS #
 dn: uid=admin,ou=people,o=test
 objectClass: person
 objectClass: organizationalPerson
@@ -65,36 +102,3 @@ gidNumber: 500
 givenName: Mark
 sn: User2
 homeDirectory: /home/user2
-
-# posixGroup objects
-dn: cn=test_admin,ou=groups,o=test
-objectClass: posixGroup
-cn: test_admin
-gidNumber: 100
-memberUid: admin
-memberUid: admin2
-
-dn: cn=test_user,ou=groups,o=test
-objectClass: posixGroup
-cn: test_user
-gidNumber: 500 
-memberUid: user
-memberUid: user2
-
-# groupOfNames objects
-dn: cn=users,ou=groups,o=test
-cn: users
-objectClass: groupOfNames
-member: uid=user,ou=people,o=test
-# member: uid=user2,ou=people,o=test
-
-dn: cn=users2,ou=groups,o=test
-cn: users2
-objectClass: groupOfNames
-member: uid=user2,ou=people,o=test
-
-dn: cn=admins,ou=groups,o=test
-cn: users
-objectClass: groupOfNames
-member: uid=admin,ou=people,o=test
-member: uid=admin2,ou=people,o=test

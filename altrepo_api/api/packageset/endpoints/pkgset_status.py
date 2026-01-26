@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -41,8 +41,8 @@ class RepositoryStatus(APIWorker):
     def check_params_post(self):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
-        self.input_params = []
-        self.known_param = [
+        input_params = []
+        known_params = [
             "pkgset_name",
             "rs_pkgset_name_bugzilla",
             "rs_start_date",
@@ -72,15 +72,12 @@ class RepositoryStatus(APIWorker):
                 self.validation_results.append("allowable values rs_show : 0 or 1")
 
             for key in elem.keys():
-                self.input_params.append(key)
+                input_params.append(key)
 
-        if set(self.input_params) != set(self.known_param):
-            self.validation_results.append(f"allowable values : {self.known_param}")
+        if set(input_params) != set(known_params):
+            self.validation_results.append(f"allowable values : {known_params}")
 
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return self.validation_results == []
 
     def post(self):
         """

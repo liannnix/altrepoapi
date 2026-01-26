@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -266,6 +266,7 @@ pkgs_json_model = ns.model(
         ),
         "packages": fields.Nested(
             pkgs_json_el_model,
+            required=True,
             description="list of packages",
             as_list=True,
         ),

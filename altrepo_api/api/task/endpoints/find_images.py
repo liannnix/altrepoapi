@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -18,7 +18,9 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Any, NamedTuple
 
+from altrepo_api.utils import valid_task_id
 from altrepo_api.api.base import APIWorker
+
 from ..sql import sql
 
 
@@ -37,6 +39,8 @@ class FindImages(APIWorker):
         super().__init__()
 
     def check_task_id(self):
+        if not valid_task_id(self.task_id):
+            return False
         response = self.send_sql_request(self.sql.check_task.format(id=self.task_id))
         if not self.sql_status:
             return False
@@ -61,6 +65,7 @@ class FindImages(APIWorker):
             pkg_release: str
             binpkg_name: str
             binpkg_arch: str
+            binpkg_hash: int
 
         class Image(NamedTuple):
             filename: str
@@ -71,7 +76,7 @@ class FindImages(APIWorker):
             binpkg_version: str
             binpkg_release: str
             binpkg_arch: str
-            binpkg_hash: str
+            binpkg_hash: int
 
         def inner_join(
             packages: list[SubtaskWithBinary],
@@ -166,23 +171,27 @@ class FindImages(APIWorker):
             arepo = []
             for subtask in subtasks:
                 arepo_base_pkg_name = f"i586-{subtask.binpkg_name}"
-                if (
-                    subtask.binpkg_arch == "i586"
-                    and (arepo_base_pkg_name, subtask.pkg_version, subtask.pkg_release)
-                    in response
-                ):
-                    arepo.append(
-                        SubtaskWithBinary(
-                            subtask.id,
-                            subtask.type,
-                            subtask.srpm_name,
-                            subtask.srpm_hash,
-                            subtask.pkg_version,
-                            subtask.pkg_release,
-                            arepo_base_pkg_name,
-                            "x86_64-i586",
+                for arepo_pkg in response:
+                    (pkg_name, pkg_version, pkg_release, pkg_hash) = arepo_pkg
+                    if (
+                        pkg_name == arepo_base_pkg_name
+                        and pkg_version == subtask.pkg_version
+                        and pkg_release == subtask.pkg_release
+                    ):
+                        arepo.append(
+                            SubtaskWithBinary(
+                                subtask.id,
+                                subtask.type,
+                                subtask.srpm_name,
+                                subtask.srpm_hash,
+                                subtask.pkg_version,
+                                subtask.pkg_release,
+                                arepo_base_pkg_name,
+                                "x86_64-i586",
+                                pkg_hash,
+                            )
                         )
-                    )
+                        break
 
             subtasks.extend(arepo)
 
@@ -212,7 +221,7 @@ class FindImages(APIWorker):
         if task["task_state"] == "DONE":
             # 0 - subtask, 1 - image
             joined = filter(
-                lambda entry: entry[1].buildtime <= task["task_changed"], joined
+                lambda entry: entry[1].binpkg_hash <= entry[0].binpkg_hash, joined
             )
 
         groupped_by_subtask: dict[Subtask, list[Image]] = defaultdict(list)

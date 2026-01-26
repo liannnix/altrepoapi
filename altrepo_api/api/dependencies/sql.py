@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -58,7 +58,7 @@ SELECT
     dp_flag,
     dp_type
 FROM Depends
-WHERE pkg_hash = {pkghash}
+WHERE pkg_hash = {pkg_hash}
 """
 
     make_src_depends_tmp = """
@@ -68,7 +68,7 @@ SELECT
     dp_version,
     dp_flag
 FROM Depends
-WHERE pkg_hash = {pkghash}
+WHERE pkg_hash = {pkg_hash}
     AND dp_type = 'require'
 """
 
@@ -123,20 +123,27 @@ SELECT
     pkg_release,
     pkg_buildtime
 FROM Packages
-WHERE pkg_hash = {pkghash}
+WHERE pkg_hash = {pkg_hash}
 """
 
     get_pkgs_depends = """
-SELECT pkg_hash
-FROM last_depends
+SELECT
+    pkg_hash,
+    groupUniqArray(dp_type)
+FROM Depends_buffer
 WHERE dp_name = '{dp_name}'
-    AND pkgset_name = '{branch}'
-    AND dp_type = '{dp_type}'
+    {dp_type_where_clause}
+    AND pkg_hash IN (
+        SELECT pkg_hash
+        FROM {table_name}
+        {branch_where_clause}
+    )
+GROUP BY pkg_hash
 """
 
     get_repo_packages = """
 SELECT DISTINCT
-    toString(pkg_hash),
+    pkg_hash,
     pkg_name,
     pkg_version,
     pkg_release,
@@ -159,7 +166,7 @@ SELECT
     pkgset_name
 FROM last_depends
 WHERE dp_name = '{dp_name}'
-    AND dp_type = '{dp_type}'
+    {dp_type}
 group by pkgset_name
 """
 
@@ -221,6 +228,125 @@ INNER JOIN
     )) AND dp_type = '{dptype}'
 ) AS H USING (pkg_hash)
 WHERE (pkg_arch IN {archs})
+"""
+
+    get_what_depends_src = """
+WITH
+(
+    SELECT DISTINCT pkg_hash
+    FROM static_last_packages
+    WHERE pkgset_name = '{branch}'
+        AND pkg_name = '{pkg_name}'
+        AND pkg_sourcepackage = 1
+) AS in_src_pkg_hash,
+in_bin_pkgs AS (
+    SELECT DISTINCT
+        pkg_hash,
+        pkg_name,
+        pkg_arch
+    FROM Packages
+    WHERE pkg_sourcepackage = 0
+        AND pkg_srcrpm_hash = in_src_pkg_hash
+        AND pkg_hash IN (
+            SELECT pkg_hash
+            FROM static_last_packages
+            WHERE pkgset_name = '{branch}'
+                AND pkg_sourcepackage = 0
+        )
+        AND pkg_arch in {archs}
+        AND pkg_name NOT LIKE '%%-debuginfo'
+),
+in_bin_pkgs_provides AS (
+    SELECT
+        pkg_hash AS in_bin_pkg_hash,
+        pkg_name AS in_bin_pkg_name,
+        pkg_arch AS in_bin_pkg_arch,
+        dp_name AS in_bin_dp_name,
+        dp_version AS in_bin_dp_version,
+        dp_flag AS in_bin_dp_flag
+    FROM Depends
+    LEFT JOIN in_bin_pkgs AS IPB USING pkg_hash
+    WHERE dp_type = 'provide'
+        AND pkg_hash IN (SELECT pkg_hash FROM in_bin_pkgs)
+    AND pkg_name NOT LIKE '%%-debuginfo'
+),
+repo_other_pkgs_hshs AS (
+    SELECT pkg_hash
+    FROM static_last_packages
+    WHERE pkgset_name = '{branch}'
+        AND pkg_hash NOT IN (SELECT pkg_hash FROM in_bin_pkgs)
+)
+SELECT
+    ROP.pkg_srcrpm_hash AS src_hash,
+    ROP.pkg_srcrpm_name AS src_name,
+    ROP.buildtime AS src_buildtime,
+    'sisyphus' AS branch,
+    groupUniqArray((
+        ROP.pkg_hash AS pkg_hash,
+        ROP.pkg_name AS pkg_name,
+        ROP.arch AS arch,
+        dp_name,
+        dp_version,
+        dp_flag,
+        IBPP.*
+    ))
+FROM Depends
+INNER JOIN (
+    SELECT DISTINCT
+            pkg_srcrpm_hash,
+            TT.pkg_name AS pkg_srcrpm_name,
+            TT.buildtime_str AS buildtime,
+            pkg_hash,
+            pkg_name,
+            if(pkg_sourcepackage = 0, pkg_arch, 'srpm') AS arch
+        FROM Packages
+        LEFT JOIN (
+            SELECT pkg_hash,
+                   pkg_name,
+                   CAST(toDateTime(any(pkg_buildtime)), 'String') AS buildtime_str
+            FROM Packages
+                WHERE pkg_hash IN (
+                    SELECT pkg_hash
+                    FROM static_last_packages
+                    WHERE pkgset_name = '{branch}'
+                    AND pkg_sourcepackage = 1
+                )
+            AND pkg_sourcepackage = 1
+            GROUP BY pkg_hash, pkg_name
+    ) AS TT ON TT.pkg_hash = Packages.pkg_srcrpm_hash
+    WHERE pkg_sourcepackage IN {sfilter}
+     AND pkg_hash IN repo_other_pkgs_hshs
+     AND arch in {src_archs}
+) AS ROP USING pkg_hash
+LEFT JOIN in_bin_pkgs_provides AS IBPP ON
+    (in_bin_dp_name = dp_name AND in_bin_pkg_arch = arch)
+    OR (in_bin_dp_name = dp_name AND arch = 'noarch' AND in_bin_pkg_arch = 'x86_64')
+    OR (in_bin_dp_name = dp_name AND arch = 'srpm' AND in_bin_pkg_arch IN {archs})
+WHERE dp_type = 'require'
+    AND dp_name IN (SELECT DISTINCT in_bin_dp_name FROM in_bin_pkgs_provides)
+GROUP BY src_hash, src_name, src_buildtime
+"""
+
+    get_acl = """
+SELECT DISTINCT
+    acl_for,
+    groupUniqArray(acl_list)
+FROM last_acl
+WHERE acl_for IN
+(
+    SELECT pkgname FROM {tmp_table}
+)
+    AND acl_branch = '{branch}'
+GROUP BY acl_for
+"""
+
+    fast_find_depends = """
+SELECT DISTINCT dp_name
+FROM last_depends
+WHERE dp_name ILIKE '%{dp_name}%'
+    AND pkgset_name = '{branch}'
+ORDER BY dp_name
+{limit}
 """
 
 

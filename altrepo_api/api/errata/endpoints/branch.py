@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -44,6 +44,10 @@ class BranchesUpdates(APIWorker):
             self.validation_results.append("Payload data parsing error")
             return False
 
+        if not errata_ids:
+            self.validation_results.append("At least one Errata ID should be provided")
+            return False
+
         for errata_id in errata_ids:
             try:
                 self.errata_ids.append(errata_id_type(errata_id))
@@ -68,6 +72,7 @@ class BranchesUpdates(APIWorker):
         return True
 
     def post(self):
+        exclude_json = self.args.get("exclude_json", False)
         # get branch update erratas
         bu_erratas = get_erratas_by_ids(self, self.errata_ids)
         if not self.status:
@@ -103,7 +108,11 @@ class BranchesUpdates(APIWorker):
             for errata in bu_erratas
         ]
 
-        return {"branches_updates": [bu.asdict() for bu in branches_updates]}, 200
+        return {
+            "branches_updates": [
+                bu.asdict(exclude_json=exclude_json) for bu in branches_updates
+            ]
+        }, 200
 
 
 class ErrataBranches(APIWorker):

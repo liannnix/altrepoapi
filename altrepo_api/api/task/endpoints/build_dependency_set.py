@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2025  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -14,9 +14,11 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from altrepo_api.utils import valid_task_id
 from altrepo_api.api.base import APIWorker
-from ..sql import sql
 from altrepo_api.api.package.endpoints.build_dependency_set import BuildDependencySet
+
+from ..sql import sql
 
 
 class TaskBuildDependencySet(APIWorker):
@@ -30,6 +32,8 @@ class TaskBuildDependencySet(APIWorker):
         super().__init__()
 
     def check_task_id(self):
+        if not valid_task_id(self.task_id):
+            return False
         response = self.send_sql_request(self.sql.check_task.format(id=self.task_id))
         if not self.sql_status:
             return False

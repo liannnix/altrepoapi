@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -18,7 +18,9 @@ from typing import NamedTuple
 
 from altrepo_api.api.base import APIWorker
 from altrepo_api.api.misc import lut
+from altrepo_api.utils import valid_task_id
 
+from .common import BDU_ID_PREFIX, CVE_ID_PREFIX, REFERENCE_TYPE_BUG
 from ..sql import sql
 
 
@@ -68,6 +70,8 @@ class TaskVulnerabilities(APIWorker):
         super().__init__()
 
     def check_task_id(self):
+        if not valid_task_id(self.task_id):
+            return False
         response = self.send_sql_request(self.sql.check_task.format(id=self.task_id))
         if not self.sql_status:
             return False
@@ -75,51 +79,44 @@ class TaskVulnerabilities(APIWorker):
         return response[0][0] != 0
 
     def get(self):
-        # get task info
+        # get fixed vulnerabilities in the task
+        vulnerabilities = []
         response = self.send_sql_request(
-            self.sql.get_last_task_info.format(task_id=self.task_id)
+            self.sql.get_task_cve_from_erratas.format(
+                task_id=self.task_id,
+            )
         )
         if not self.sql_status:
             return self.error
         if not response:
             return self.store_error(
-                {"Error": f"No data found in database for task '{self.task_id}'"}
+                {
+                    "Error": f"No fixed vulnerabilities found in database for task '{self.task_id}'"
+                }
             )
 
-        task_info = TaskInfo(*response[0])
+        for el in response:
+            errata_info = TaskErrataInfo(*el)
+            vulns = []
+            for v_id, v_type in zip(errata_info.vuln_ids, errata_info.vuln_types):
+                # build vulnerability link
+                if v_id.startswith(CVE_ID_PREFIX):
+                    url = f"{lut.nvd_cve_base}/{v_id}"
+                elif v_id.startswith(BDU_ID_PREFIX):
+                    url = f"{lut.fstec_bdu_base}/{v_id.split(':')[-1]}"
+                elif v_type == REFERENCE_TYPE_BUG:
+                    url = f"{lut.bugzilla_base}/{v_id}"
+                else:
+                    url = ""
+                vulns.append(TaskVulns(v_id, v_type, url)._asdict())
 
-        # get fixed vulnerabilities in the task
-        vulnerabilities = []
-        response = self.send_sql_request(
-            self.sql.get_task_cve.format(
-                task_id=task_info.task_id, task_changed=task_info.task_changed
+            # build errata link to errata.altlinux.org
+            errata_link = f"{lut.errata_base}/{errata_info.errata_id}"
+            errata_info = errata_info._replace(
+                vulnerabilities=vulns, errata_link=errata_link
             )
-        )
-        if not self.sql_status:
-            return self.error
-        if response:
-            for el in response:
-                errata_info = TaskErrataInfo(*el)
-                vulns = []
-                for v_id, v_type in zip(errata_info.vuln_ids, errata_info.vuln_types):
-                    # build vulnerability link
-                    if v_id.startswith("CVE-"):
-                        url = f"{lut.nvd_cve_base}/{v_id}"
-                    elif v_id.startswith("BDU:"):
-                        url = f"{lut.fstec_bdu_base}/{v_id.split(':')[-1]}"
-                    elif v_type == "bug":
-                        url = f"{lut.bugzilla_base}/{v_id}"
-                    else:
-                        url = ""
-                    vulns.append(TaskVulns(v_id, v_type, url)._asdict())
+            vulnerabilities.append(errata_info._asdict())
 
-                # build errata link to errata.altlinux.org
-                errata_link = f"{lut.errata_base}/{errata_info.errata_id}"
-                errata_info = errata_info._replace(
-                    vulnerabilities=vulns, errata_link=errata_link
-                )
-                vulnerabilities.append(errata_info._asdict())
-
-        res = {**task_info._asdict(), "packages": vulnerabilities}
+        res = {"packages": vulnerabilities}
 
         return res, 200

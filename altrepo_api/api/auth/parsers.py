@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -31,6 +31,17 @@ password = parser.register_item(
     help="User password",
     location="form",
 )
+
+auth_provider_opt = parser.register_item(
+    "auth_provider",
+    type=str,
+    choices=("ldap", "keycloak"),
+    required=False,
+    default="ldap",
+    help="authorization provider",
+    location="form",
+)
+
 token = parser.register_item(
     "access_token",
     type=str,
@@ -39,5 +50,5 @@ token = parser.register_item(
     location="form",
 )
 
-login_args = parser.build_parser(nickname, password)
+login_args = parser.build_parser(nickname, password, auth_provider_opt)
 refresh_token_args = parser.build_parser(token)

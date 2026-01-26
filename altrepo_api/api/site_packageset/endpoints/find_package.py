@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -14,8 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from collections import namedtuple
-from typing import Any, Callable
+from typing import Any, Callable, NamedTuple, Union
 
 from altrepo_api.utils import tuplelist_to_dict, sort_branches
 
@@ -49,11 +48,9 @@ def relevance_sort(
     """Sorts packages by some relevance. Values that matches by predicate function
     has precedence and those are not matched sorted in alphanumeric order."""
 
-    # names = sorted(n.lower() for n in pkg_names)
     names = [n.lower() for n in pkg_names]
 
     def relevance_weight(key: str):
-        # res = len(key) + 100 * key.find(names[0])
         res = len(key) + WEIGHT_MULT * sum(key.find(n) for n in names)
         return res
 
@@ -80,28 +77,32 @@ class PackagesetFindPackages(APIWorker):
         return True
 
     def get(self):
-        self.name = self.args["name"]
-        self.arch = ""
-        self.branch = ""
+        pkg_archs = self.args["arch"]
+        pkg_names = self.args["name"]
 
-        name_like_clause = " AND ".join([f"pkg_name ILIKE '%{n}%'" for n in self.name])
+        branch_clause = (
+            f"AND pkgset_name = '{self.args['branch']}'"
+            if self.args["branch"] is not None
+            else ""
+        )
 
-        if self.args["branch"] is not None:
-            self.branch = f"AND pkgset_name = '{self.args['branch']}'"
+        name_like_clause = " AND ".join([f"pkg_name ILIKE '%{n}%'" for n in pkg_names])
 
-        if self.args["arch"] is None:
-            self.arch = f"AND pkg_arch IN {(*lut.default_archs,)}"
+        if pkg_archs == ["srpm"]:
+            _sql = self.sql.get_find_packages_by_src_name.format(
+                branch=branch_clause, name_like=name_like_clause
+            )
+        elif pkg_archs is None:
             _sql = self.sql.get_find_packages_by_name.format(
-                branch=self.branch,
-                arch=self.arch,
+                branch=branch_clause,
                 name_like=name_like_clause,
+                arch=f"AND pkg_arch IN {(*lut.default_archs,)}",
             )
         else:
-            self.arch = f"AND pkg_arch IN {(self.args['arch'],)}"
             _sql = self.sql.get_find_packages_by_name_and_arch.format(
-                branch=self.branch,
-                arch=self.arch,
+                branch=branch_clause,
                 name_like=name_like_clause,
+                arch=f"AND pkg_arch IN {(pkg_archs)}",
             )
 
         response = self.send_sql_request(_sql)
@@ -109,16 +110,18 @@ class PackagesetFindPackages(APIWorker):
             return self.error
 
         res = []
-        PkgMeta = namedtuple(
-            "PkgMeta",
-            ["branch", "version", "release", "pkghash", "deleted"],
-            defaults=[False],  # 'deleted' default
-        )
+
+        class PkgMeta(NamedTuple):
+            branch: str
+            version: str
+            release: str
+            pkghash: int
+            deleted: bool = False
 
         if response:
             pkgs_sorted = relevance_sort(
                 tuplelist_to_dict(response, 6),
-                self.name,
+                pkg_names,
                 predicate_all_match_and_is_source,
             )
 
@@ -138,14 +141,14 @@ class PackagesetFindPackages(APIWorker):
         # search in deleted packages
         response = self.send_sql_request(
             self.sql.get_find_deleted_packages_by_name.format(
-                branch=self.branch, name_like=name_like_clause
+                branch=branch_clause, name_like=name_like_clause
             )
         )
         if not self.sql_status:
             return self.error
 
         if response:
-            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 5), self.name)
+            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 5), pkg_names)
 
             src_pkgs_found = {p["name"] for p in res}
 
@@ -173,7 +176,7 @@ class PackagesetFindPackages(APIWorker):
         if not res:
             return self.store_error(
                 {
-                    "message": f"Packages like '{' '.join(self.name)}' not found in database",
+                    "message": f"Packages like '{' '.join(pkg_names)}' not found in database",
                     "args": self.args,
                 }
             )
@@ -196,17 +199,19 @@ class FastPackagesSearchLookup(APIWorker):
         return True
 
     def get(self):
-        self.name = self.args["name"]
-        self.branch = ""
+        pkg_names = self.args["name"]
 
-        name_like_clause = " AND ".join([f"pkg_name ILIKE '%{n}%'" for n in self.name])
+        branch_clause = (
+            f"AND pkgset_name = '{self.args['branch']}'"
+            if self.args["branch"] is not None
+            else ""
+        )
 
-        if self.args["branch"] is not None:
-            self.branch = f"AND pkgset_name = '{self.args['branch']}'"
+        name_like_clause = " AND ".join([f"pkg_name ILIKE '%{n}%'" for n in pkg_names])
 
         response = self.send_sql_request(
             self.sql.get_fast_search_packages_by_name.format(
-                branch=self.branch, name_like=name_like_clause
+                branch=branch_clause, name_like=name_like_clause
             )
         )
         if not self.sql_status:
@@ -214,48 +219,40 @@ class FastPackagesSearchLookup(APIWorker):
 
         res = []
 
-        if response:
-            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 3), self.name)
+        def package2dict(
+            name: str,
+            is_sourcepackage: int,
+            branches: Union[list[str], tuple[str, ...]],
+        ) -> dict[str, Any]:
+            return {
+                "name": name,
+                "sourcepackage": "source" if is_sourcepackage else "binary",
+                "branches": sort_branches(branches),
+            }
 
-            for pkg in pkgs_sorted:
-                if pkg[1] == 1:
-                    sourcepackage = "source"
-                else:
-                    sourcepackage = "binary"
-                res.append(
-                    {
-                        "name": pkg[0],
-                        "sourcepackage": sourcepackage,
-                        "branches": sort_branches(pkg[2]),
-                    }
-                )
+        if response:
+            for pkg in relevance_sort(tuplelist_to_dict(response, 3), pkg_names):
+                # add found source package
+                res.append(package2dict(*pkg[:3]))
+                # add found binary package if any
+                if len(pkg) > 3:
+                    res.append(package2dict(pkg[0], *pkg[3:5]))
 
         # search for deleted packages
         response = self.send_sql_request(
             self.sql.get_fast_search_deleted_packages_by_name.format(
-                branch=self.branch, name_like=name_like_clause
+                branch=branch_clause, name_like=name_like_clause
             )
         )
         if not self.sql_status:
             return self.error
 
         if response:
-            pkgs_sorted = relevance_sort(tuplelist_to_dict(response, 5), self.name)
             src_pkgs_found = {p["name"] for p in res if p["sourcepackage"] == "source"}
 
-            for pkg in pkgs_sorted:
+            for pkg in relevance_sort(tuplelist_to_dict(response, 5), pkg_names):
                 if pkg[0] not in src_pkgs_found:
-                    if pkg[1] == 1:
-                        sourcepackage = "source"
-                    else:
-                        sourcepackage = "binary"
-                    res.append(
-                        {
-                            "name": pkg[0],
-                            "sourcepackage": sourcepackage,
-                            "branches": sort_branches(pkg[2]),
-                        }
-                    )
+                    res.append(package2dict(pkg[0], pkg[1], sort_branches(pkg[2])))
                 else:
                     for r in res:
                         if r["name"] == pkg[0]:
@@ -267,7 +264,7 @@ class FastPackagesSearchLookup(APIWorker):
         if not res:
             return self.store_error(
                 {
-                    "message": f"Packages like '{' '.join(self.name)}' not found in database",
+                    "message": f"Packages like '{' '.join(pkg_names)}' not found in database",
                     "args": self.args,
                 }
             )
@@ -290,17 +287,14 @@ class PackagesetPkghashByNVR(APIWorker):
         return True
 
     def get(self):
-        self.name = self.args["name"]
-        self.branch = self.args["branch"]
-        self.version = self.args["version"]
-        self.release = self.args["release"]
+        name = self.args["name"]
+        branch = self.args["branch"]
+        version = self.args["version"]
+        release = self.args["release"]
 
         response = self.send_sql_request(
             self.sql.get_pkghash_by_BVR.format(
-                branch=self.branch,
-                name=self.name,
-                version=self.version,
-                release=self.release,
+                branch=branch, name=name, version=version, release=release
             )
         )
         if not self.sql_status:
@@ -309,8 +303,8 @@ class PackagesetPkghashByNVR(APIWorker):
             return self.store_error(
                 {
                     "message": (
-                        f"Package '{self.name}-{self.version}-{self.release}' "
-                        f"not found in database for branch {self.branch}"
+                        f"Package '{name}-{version}-{release}' "
+                        f"not found in database for branch {branch}"
                     ),
                     "args": self.args,
                 }

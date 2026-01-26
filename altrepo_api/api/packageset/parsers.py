@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -13,6 +13,8 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from flask_restx import inputs
 
 from altrepo_api.api.parser import (
     parser,
@@ -69,6 +71,14 @@ arch_list_opt = parser.register_item(
     help="list of packages architectures",
     location="args",
 )
+include_done_tasks_opt = parser.register_item(
+    "include_done_tasks",
+    type=inputs.boolean,
+    required=False,
+    default=False,
+    help="include packages from tasks in DONE state",
+    location="args",
+)
 uuid = parser.register_item(
     "uuid",
     type=uuid_type,
@@ -93,7 +103,10 @@ component = parser.register_item(
 
 # build parsers
 pkgset_compare_args = parser.build_parser(packageset_1, packageset_2)
-pkgset_packages_args = parser.build_parser(branch, package_type_opt, arch_list_opt)
+pkgset_packages_args = parser.build_parser(
+    branch, package_type_opt, arch_list_opt, include_done_tasks_opt
+)
 repository_statistics_args = parser.build_parser(branch_opt)
 packages_by_uuid_args = parser.build_parser(uuid)
 packages_by_component_args = parser.build_parser(branch, arch, component)
+maintainer_scores_batch_args = parser.build_parser(branch)

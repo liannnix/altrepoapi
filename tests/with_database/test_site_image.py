@@ -81,6 +81,6 @@ def test_package_versions_from_images(client, kwargs):
                     )
                 ]
             )
-            assert type(version["version_major"]) == int
-            assert type(version["version_minor"]) == int
-            assert type(version["version_sub"]) == int
+            assert type(version["version_major"]) is int
+            assert type(version["version_minor"]) is int
+            assert type(version["version_sub"]) is int

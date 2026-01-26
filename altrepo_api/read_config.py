@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -19,15 +19,20 @@ import sys
 import logging
 import configparser
 
+from functools import partial
+
 from .settings import namespace as settings
 
 
 ACCESS_GROUPS_SECTION = "GROUPS"
+FEATURE_FLAGS_SECTION = "FEATURES"
 # dictionary of config arguments
 PARAMS = {
     "database": {
         "host": ("DATABASE_HOST", "str"),
+        "port": ("DATABASE_PORT", "int"),
         "name": ("DATABASE_NAME", "str"),
+        "tmp_name": ("TMP_DATABASE_NAME", "str"),
         "try_numbers": ("TRY_CONNECTION_NUMBER", "int"),
         "try_timeout": ("TRY_TIMEOUT", "int"),
         "user": ("DATABASE_USER", "str"),
@@ -38,6 +43,7 @@ PARAMS = {
         "port": ("DEFAULT_PORT", "int"),
         "processes": ("WORKER_PROCESSES", "str"),
         "timeout": ("WORKER_TIMEOUT", "str"),
+        "cors_origins": ("CORS_ORIGINS", "list"),
     },
     "other": {
         "admin_user": ("ADMIN_USER", "str"),
@@ -55,18 +61,45 @@ PARAMS = {
         "ldap_user_search": ("LDAP_USER_SEARCH", "str"),
         "ldap_require_group": ("LDAP_REQUIRE_GROUP", "str"),
     },
+    "keycloak": {
+        "keycloak_server_url": ("KEYCLOAK_SERVER_URL", "str"),
+        "keycloak_server_check_ssl": ("KEYCLOAK_SERVER_CHECK_SSL", "bool"),
+        "keycloak_server_ssl_certificate": ("KEYCLOAK_SERVER_SSL_CERTIFICATE", "str"),
+        "keycloak_realm": ("KEYCLOAK_REALM", "str"),
+        "keycloak_client_id": ("KEYCLOAK_CLIENT_ID", "str"),
+        "keycloak_client_secret_key": ("KEYCLOAK_CLIENT_SECRET_KEY", "str"),
+        "keycloack_common_list_role": ("KEYCLOAK_COMMON_LIST_ROLE", "str"),
+    },
     "authentication": {
         "token_storage": ("TOKEN_STORAGE", "str"),
         "expires_access_token": ("EXPIRES_ACCESS_TOKEN", "int"),
         "expires_refresh_token": ("EXPIRES_REFRESH_TOKEN", "int"),
         "max_refresh_sessions_count": ("MAX_REFRESH_SESSIONS_COUNT", "int"),
+        "auth_cookies_options": ("AUTH_COOKIES_OPTIONS", "str"),
     },
     "redis": {"redis_url": ("REDIS_URL", "str")},
+    "errata": {
+        "errata_server_token": ("ERRATA_SERVER_TOKEN", "str"),
+        "errata_id_url": ("ERRATA_ID_URL", "str"),
+        "errata_manage_url": ("ERRATA_MANAGE_URL", "str"),
+        "errata_refresh_url": ("ERRATA_REFRESH_URL", "str"),
+    },
 }
 
 
-def read_config(config_file: str, params: dict, namespace: object) -> bool:
+def read_config(
+    config_file: str, params: dict[str, dict[str, tuple[str, str]]], namespace: object
+) -> bool:
     config = configparser.ConfigParser(inline_comment_prefixes="#")
+
+    # patch ConfigParser object
+    def getlist(cls, section, option):
+        value: str = cls.get(section, option)
+        if not value:
+            return None
+        return [v.strip() for v in value.split(",") if v]
+
+    setattr(config, "getlist", partial(getlist, config))
 
     if not config.read(config_file):
         return False
@@ -92,6 +125,7 @@ def read_config(config_file: str, params: dict, namespace: object) -> bool:
         "str": config.get,
         "int": config.getint,
         "bool": config.getboolean,
+        "list": config.getlist,  # type: ignore
         "log_level": _log_level,
     }
 
@@ -109,6 +143,16 @@ def read_config(config_file: str, params: dict, namespace: object) -> bool:
                 if key is not None and val:
                     namespace.ACCESS_GROUPS[key] = val  # type: ignore
             continue
+        # handle feature flags section
+        if section.upper() == FEATURE_FLAGS_SECTION:
+            for option in config.options(section):
+                # extract boolean value if it is valid
+                try:
+                    val = config.getboolean(section, option)
+                except ValueError:
+                    continue
+                namespace.FEATURE_FLAGS[option.upper()] = val  # type: ignore
+            continue
         # handle other configuration sections
         for option in config.options(section):
             param = params.get(section.lower(), {}).get(option, None)
@@ -122,7 +166,7 @@ def read_config(config_file: str, params: dict, namespace: object) -> bool:
 
 
 # check python version
-assert sys.version_info >= (3, 7), "Pyhton version 3.7 or newer is required!"
+assert sys.version_info >= (3, 8), "Pyhton version 3.8 or newer is required!"
 
 # abort to run as root
 if os.geteuid() == 0:
@@ -145,3 +189,8 @@ if read_config(cfg_file, PARAMS, settings):
     print(f"*** Run ALTRepo API with config from {cfg_file} ***")
 else:
     raise RuntimeError("Failed to read configuration from {0}".format(cfg_file))
+
+if settings.KEYCLOAK_SERVER_CHECK_SSL is True:
+    cert_path = settings.KEYCLOAK_SERVER_SSL_CERTIFICATE
+    if not os.path.exists(cert_path):
+        raise FileNotFoundError(f"Keycloak certificate file not found: {cert_path}")

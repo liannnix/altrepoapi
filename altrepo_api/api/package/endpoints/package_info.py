@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -94,6 +94,9 @@ class PackageInfo(APIWorker):
             "packager_email": "pkg_packager_email",
         }
         for k, v in input_params.items():
+            if k == "arch" and self.args["source"]:
+                continue
+
             if self.args[k] is not None:
                 params_values.append(f"{v} = '{self.args[k]}'")
         if self.args["source"]:

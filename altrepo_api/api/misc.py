@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -42,10 +42,12 @@ class LookupTables:
         "p9_e2k",
         "p10",
         "p10_e2k",
+        "p11",
         "sisyphus",
         "sisyphus_mipsel",
         "sisyphus_riscv64",
         "sisyphus_e2k",
+        "sisyphus_loongarch64",
         "t6",
         "t7",
         "icarus",
@@ -54,15 +56,25 @@ class LookupTables:
         "p9_mipsel",
         "sisyphus_mipsel",
         "sisyphus_riscv64",
+        "sisyphus_loongarch64",
         "sisyphus_e2k",
         "p9_e2k",
         "p10_e2k",
     ]
-    oval_export_branches = ["p9", "p10", "c9f2", "c10f1"]
-    oval_export_branches_map = {"p9": "1", "p10": "2", "c9f2": "3", "c10f1": "4"}
+    oval_export_branches = ["p9", "p10", "p11", "c9f2", "c10f1", "c10f2"]
+    oval_export_branches_map = {
+        "p9": "1",
+        "p10": "2",
+        "p11": "3",
+        "c9f2": "4",
+        "c10f1": "5",
+        "c10f2": "6",
+    }
     no_downloads_branches = ["sisyphus_e2k", "p9_e2k", "p10_e2k"]
-    repology_export_branches = ["sisyphus", "p9", "p10"]
-    repology_cpe_branch_map = {
+
+    repology_branches = ("altsisyphus", "alt_p9", "alt_p10", "alt_p11")
+    repology_export_branches = ["sisyphus", "p9", "p10", "p11"]
+    repology_branch_map = {
         # P9
         "p9": "alt_p9",
         "c9f1": "alt_p9",
@@ -74,12 +86,32 @@ class LookupTables:
         "c10f1": "alt_p10",
         "c10f2": "alt_p10",
         "p10_e2k": "alt_p10",
+        # P11
+        "p11": "alt_p11",
         # Sisyphus
         "sisyphus": "altsisyphus",
         "sisyphus_e2k": "altsisyphus",
         "sisyphus_mipsel": "altsisyphus",
         "sisyphus_riscv64": "altsisyphus",
+        "sisyphus_loongarch64": "altsisyphus",
     }
+    repology_reverse_branch_map = {
+        # P9
+        "alt_p9": ("p9", "c9f1", "c9f2", "p9_e2k", "p9_mipsel"),
+        # P10
+        "alt_p10": ("p10", "c10f1", "c10f2", "p10_e2k"),
+        # P11
+        "alt_p11": ("p11",),
+        # Sisyphus
+        "altsisyphus": (
+            "sisyphus",
+            "sisyphus_e2k",
+            "sisyphus_mipsel",
+            "sisyphus_riscv64",
+            "sisyphus_loongarch64",
+        ),
+    }
+
     known_archs = [
         "noarch",
         "i586",
@@ -89,6 +121,7 @@ class LookupTables:
         "aarch64",
         "ppc64le",
         "riscv64",
+        "loongarch64",
         "mipsel",
         "e2k",
         "e2kv4",
@@ -103,6 +136,21 @@ class LookupTables:
         "gostcrypto",
     ]
     default_archs = ["x86_64", "i586", "aarch64", "armh", "ppc64le", "noarch"]
+    branch_wds_default_archs = {
+        # RISCV64
+        "sisyphus_riscv64": ["noarch", "riscv64"],
+        # MIPSEL
+        "sisyphus_mipsel": ["noarch", "mipsel"],
+        "p9_mipsel": ["noarch", "mipsel"],
+        # E2K
+        "sisyphus_e2k": ["noarch", "e2k", "e2kv4", "e2kv5", "e2kv6"],
+        "p10_e2k": ["noarch", "e2k", "e2kv4", "e2kv5", "e2kv6"],
+        "p9_e2k": ["noarch", "e2k", "e2kv4", "e2kv5", "e2kv6"],
+        # LOONGARCH
+        "sisyphus_loongarch64": ["noarch", "loongarch64"],
+        # MAIN
+        "default": ["noarch", "x86_64"],
+    }
     package_params = [
         "pkg_cs",
         "pkg_packager",
@@ -275,6 +323,7 @@ class LookupTables:
     ]
     known_beehive_branches = [
         "sisyphus",
+        "p11",
         "p10",
         "p9",
     ]
@@ -285,14 +334,28 @@ class LookupTables:
 
     known_image_components = ["iso", "rpms", "altinst", "live", "rescue"]
 
-    known_image_platform = ["tegra", "rpi4", "baikalm", "mcom02"]
+    known_image_platform = [
+        "tegra",
+        "rpi4",
+        "baikalm",
+        "mcom02",
+        "hifive",
+        "qemu",
+        "oci",
+        "k8s",
+    ]
 
     known_image_editions = [
         "alt-server",
         "alt-server-v",
+        "alt-container",
         "alt-education",
         "alt-workstation",
         "alt-kworkstation",
+        "alt-virt-pve",
+        "alt-sp-addon",
+        "alt-sp-server",
+        "alt-sp-workstation",
         "slinux",
         "cloud",
         "starterkit",
@@ -307,7 +370,7 @@ class LookupTables:
         "riscv64",
         "mipsel",
     ]
-    known_image_types = ["iso", "tar", "img", "qcow"]
+    known_image_types = ["iso", "tar", "img", "qcow", "oci"]
     known_image_releases = ["alpha", "beta", "rc", "release"]
     known_image_variants = ["install", "live", "rescue"]
 
@@ -320,6 +383,7 @@ class LookupTables:
     errata_base = "https://errata.altlinux.org"
     nvd_cve_base = "https://nvd.nist.gov/vuln/detail"
     fstec_bdu_base = "https://bdu.fstec.ru/vul"
+    ghsa_base = "https://github.com/advisories"
     mfsa_base = "https://www.mozilla.org/en-US/security/advisories"
 
     rpmsense_flags = [
@@ -371,6 +435,7 @@ class LookupTables:
     ]
 
     known_approvers = {
+        "p11": ["@maint", "@tester"],
         "p10": ["@maint", "@tester"],
         "p9": ["@maint", "@tester"],
         "p8": ["snowmix", "amakeenk", "jenya"],
@@ -382,6 +447,7 @@ class LookupTables:
 
     branch_tree_branches = [
         "sisyphus",
+        "p11",
         "p10",
         "p9",
         "p8",
@@ -396,25 +462,6 @@ class LookupTables:
         "c7",
     ]
 
-    cpe_branch_map = {
-        # P9
-        "p9": "alt_p9",
-        "c9f1": "alt_p9",
-        "c9f2": "alt_p9",
-        "p9_e2k": "alt_p9",
-        "p9_mipsel": "alt_p9",
-        # P10
-        "p10": "alt_p10",
-        "c10f1": "alt_p10",
-        "c10f2": "alt_p10",
-        "p10_e2k": "alt_p10",
-        # Sisyphus
-        "sisyphus": "altsisyphus",
-        "sisyphus_e2k": "altsisyphus",
-        "sisyphus_mipsel": "altsisyphus",
-        "sisyphus_riscv64": "altsisyphus",
-    }
-
     branch_inheritance = {
         "c10f2": ["c10f1", "p10", "sisyphus"],
         "c10f1": ["p10", "sisyphus"],
@@ -424,14 +471,111 @@ class LookupTables:
         # "c8": ["p8", "sisyphus"],
         # "c7.1": ["c7", "p7", "sisyphus"],
         # "c7": ["p7", "sisyphus"],
+        "p11": ["sisyphus"],
         "p10": ["sisyphus"],
         "p9": ["sisyphus"],
         # "p8": ["sisyphus"],
         # "p7": ["sisyphus"],
         "sisyphus": ["sisyphus"],
     }
+    branch_inheritance_root = "sisyphus"
 
     known_errata_type = {"packages": ["branch", "task"], "repository": ["bulletin"]}
+
+    errata_branch_update_prefix = "ALT-BU"
+    errata_package_update_prefix = "ALT-PU"
+    errata_change_prefix = "ALT-EC"
+    errata_advisory_prefix = "ALT-SA"
+
+    errata_ref_type_bug = "bug"
+    errata_ref_type_vuln = "vuln"
+    errata_ref_type_branch = "branch"
+    errata_ref_type_errata = "errata"
+    errata_ref_type_package = "package"
+
+    errata_manage_branches_with_tasks = (
+        "c9f1",
+        "c9f2",
+        "c10f1",
+        "c10f2",
+        "p9",
+        "p10",
+        "p11",
+        "sisyphus",
+    )
+    errata_manage_branches_without_tasks = (
+        "p9_mipsel",
+        "p9_e2k",
+        "p10_e2k",
+        "sisyphus_mipsel",
+        "sisyphus_riscv64",
+        "sisyphus_e2k",
+    )
+
+    av_supported_branches = ("p10", "p11", "c9f2", "c10f1")
+    av_known_scanners = ("drweb", "kesl")
+
+    comment_ref_type_errata = "errata"
+    comment_ref_type_task = "task"
+    comment_ref_type_web = "web"
+    comment_ref_type_package = "package"
+
+    comment_ref_types = (
+        errata_ref_type_bug,
+        errata_ref_type_vuln,
+        comment_ref_type_errata,
+        comment_ref_type_task,
+        comment_ref_type_web,
+        comment_ref_type_package,
+    )
+
+    default_reason_source_type_exclusion = "exclusion"
+    default_reason_source_type_cpe = "cpe"
+    default_reason_source_type_comment = "comment"
+    default_reason_source_type_pnc = "pnc"
+    default_reason_source_type_vuln_status = "vuln_status"
+
+    default_reason_source_types = (
+        errata_ref_type_vuln,
+        comment_ref_type_errata,
+        comment_ref_type_task,
+        default_reason_source_type_pnc,
+        default_reason_source_type_cpe,
+        default_reason_source_type_exclusion,
+        default_reason_source_type_comment,
+        default_reason_source_type_vuln_status,
+    )
+
+    vuln_status_new = "new"
+    vuln_status_analyzing = "analyzing"
+    vuln_status_working = "working"
+    vuln_status_resolved = "resolved"
+
+    vuln_status_statuses = (
+        vuln_status_new,
+        vuln_status_analyzing,
+        vuln_status_working,
+        vuln_status_resolved,
+    )
+    vuln_status_resolutions = ("not_for_us", "not_affected", "wont_fix", "our")
+    vuln_status_json_fields = ("note", "project_name", "cpes")
+
+    errata_user_last_activities_types = (
+        "vuln_status",
+        "comment",
+        "errata",
+        "exclusion",
+        "cpe",
+        "pnc",
+    )
+
+    vuln_types = ("CVE", "GHSA", "BDU")
+
+    feature_pnc_multi_mapping = "PNC_MULTI_MAPPING"
+
+    errata_user_subscription_types = ("vuln", "package", "errata")
+
+    errata_user_tracking_types = (*errata_user_last_activities_types, "vuln")
 
 
 lut = LookupTables()

@@ -1,7 +1,7 @@
 import os
 import pytest
 
-from flask import Flask
+from flask import Flask, request
 from flask import Blueprint
 from flask_restx import Api, Resource
 
@@ -9,10 +9,12 @@ os.environ["ALTREPO_API_CONFIG"] = "./tests/api.conf"
 
 from altrepo_api import read_config  # noqa
 from altrepo_api.utils import json_default, get_logger
+from altrepo_api.api.auth.endpoints.auth_login import AuthLogin
 from altrepo_api.api.auth.decorators import auth_required
 
 from tests.authorization.assets import slapdtest
 from tests.authorization.test_api_authorization import (
+    TEST_ROUTE_AUTH_LOGIN,
     TEST_ROUTE_ADMIN_AUTH,
     TEST_ROUTE_LDAP_USER_AUTH,
     TEST_ROUTE_LDAP_ADMIN_AUTH,
@@ -36,6 +38,14 @@ def make_app():
         default_label="basic functions",
         authorizations=authorizations,
     )
+
+    @api.route(TEST_ROUTE_AUTH_LOGIN)
+    class Login(Resource):
+        def get(self):
+            args = {k: v for k, v in request.args.items()}
+            w = AuthLogin(None, **args)
+            w.check_params_post()
+            return w.post()
 
     @api.route(TEST_ROUTE_ADMIN_AUTH)
     class Auth(Resource):

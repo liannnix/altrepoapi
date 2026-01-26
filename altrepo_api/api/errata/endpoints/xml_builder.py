@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -24,6 +24,10 @@ from io import BytesIO
 from typing import Any, Iterable, Literal, NamedTuple, Union
 
 from altrepo_api.api.misc import lut
+from altrepo_api.api.vulnerabilities.endpoints.common import (
+    VulnerabilityInfo as VulnInfo,
+    parse_vulnerability_details,
+)
 from altrepo_api.libs.oval.altlinux_errata import (
     ALTLinuxAdvisory,
     Bugzilla,
@@ -82,7 +86,7 @@ from altrepo_api.libs.oval.independent_definitions import (
     Textfilecontent54State,
     Textfilecontent54Test,
 )
-from .common import ErrataID
+from .common import ErrataID, BDU_ID_TYPE, BDU_ID_PREFIX, CVE_ID_TYPE, CVE_ID_PREFIX
 
 
 LINK_BDU_BY_CVE = False
@@ -112,9 +116,19 @@ PRODUCTS = {
         "ALT Education",
         "Simply Linux",
         "Starterkit",
+        "ALT Container",
+    ],
+    "p11": [
+        "ALT Container",
+        "ALT Education",
+        "ALT Workstation",
+        "ALT Workstation K",
+        "ALT Server",
+        "ALT Virtualization PVE Edition",
     ],
     "c9f2": ["ALT SPWorkstation", "ALT SPServer"],
     "c10f1": ["ALT SP Workstation", "ALT SP Server"],
+    "c10f2": ["ALT SP Workstation", "ALT SP Server"],
 }
 PRODUCT_CPE = {
     "p9": [
@@ -125,20 +139,6 @@ PRODUCT_CPE = {
         "cpe:/o:alt:education:9",
         "cpe:/o:alt:slinux:9",
         "cpe:/o:alt:starterkit:p9",  # XXX: now version in CPE set as `p9`
-        "cpe:/o:alt:kworkstation:9.1",
-        "cpe:/o:alt:workstation:9.1",
-        "cpe:/o:alt:server:9.1",
-        "cpe:/o:alt:server-v:9.1",
-        "cpe:/o:alt:education:9.1",
-        "cpe:/o:alt:slinux:9.1",
-        "cpe:/o:alt:starterkit:9.1",
-        "cpe:/o:alt:kworkstation:9.2",
-        "cpe:/o:alt:workstation:9.2",
-        "cpe:/o:alt:server:9.2",
-        "cpe:/o:alt:server-v:9.2",
-        "cpe:/o:alt:education:9.2",
-        "cpe:/o:alt:slinux:9.2",
-        "cpe:/o:alt:starterkit:9.2",
     ],
     "p10": [
         "cpe:/o:alt:kworkstation:10",
@@ -147,30 +147,33 @@ PRODUCT_CPE = {
         "cpe:/o:alt:server-v:10",
         "cpe:/o:alt:education:10",
         "cpe:/o:alt:slinux:10",
-        "cpe:/o:alt:starterkit:p10",  # XXX: now version in CPE set as `p10`
-        "cpe:/o:alt:kworkstation:10.1",
-        "cpe:/o:alt:workstation:10.1",
-        "cpe:/o:alt:server:10.1",
-        "cpe:/o:alt:server-v:10.1",
-        "cpe:/o:alt:education:10.1",
-        "cpe:/o:alt:slinux:10.1",
-        "cpe:/o:alt:starterkit:10.1",
-        "cpe:/o:alt:kworkstation:10.2",
-        "cpe:/o:alt:workstation:10.2",
-        "cpe:/o:alt:server:10.2",
-        "cpe:/o:alt:server-v:10.2",
-        "cpe:/o:alt:education:10.2",
-        "cpe:/o:alt:slinux:10.2",
-        "cpe:/o:alt:starterkit:10.2",
+        "cpe:/o:alt:starterkit:10",
+        "cpe:/o:alt:starterkit:p10",
+        "cpe:/o:alt:container:10",
+    ],
+    "p11": [
+        "cpe:/o:alt:container:11",
+        "cpe:/o:alt:education:11",
+        "cpe:/o:alt:workstation:11",
+        "cpe:/o:alt:kworkstation:11",
+        "cpe:/o:alt:server:11",
+        "cpe:/o:alt:virtualization-pve:11",
     ],
     "c9f2": ["cpe:/o:alt:spworkstation:8.4", "cpe:/o:alt:spserver:8.4"],
     "c10f1": ["cpe:/o:alt:spworkstation:10", "cpe:/o:alt:spserver:10"],
+    "c10f2": [
+        "cpe:/o:alt:spworkstation:10.2",
+        "cpe:/o:alt:spserver:10.2",
+        "cpe:/o:alt:spcontainer:10.2",
+    ],
 }
 BRANCH_CHECK_REGEX = {
     "p9": (r"cpe:\/o:alt:(?!sp)[a-z\-]+:p?(\d+)(?:\.\d)*", "9"),
     "p10": (r"cpe:\/o:alt:(?!sp)[a-z\-]+:p?(\d+)(?:\.\d)*", "10"),
+    "p11": (r"cpe:\/o:alt:(?!sp)[a-z\-]+:p?(\d+)(?:\.\d)*", "11"),
     "c9f2": (r"cpe:\/o:alt:sp(?:server|workstation):(\d\.\d)", "8.4"),
-    "c10f1": (r"cpe:\/o:alt:sp(?:server|workstation):(\d+)", "10"),
+    "c10f1": (r"cpe:\/o:alt:sp(?:server|workstation):(\d+)(?!.)", "10"),
+    "c10f2": ((r"cpe:\/o:alt:sp(?:server|workstation|container):(\d+\.\d)", "10.2")),
 }
 NUM_TO_SEVERITY = {0: "NONE", 1: "LOW", 2: "MEDUM", 3: "HIGH", 4: "CRITICAL"}
 SEVERITY_TO_NUM = {v: k for k, v in NUM_TO_SEVERITY.items()}
@@ -270,11 +273,11 @@ def serial_from_errata_id(errata_id: ErrataID) -> str:
 
 def vuln_id_to_sort_key(vuln: str) -> Union[tuple[int, int], str]:
     try:
-        if vuln.startswith("BDU:"):
-            s = vuln.lstrip("BDU:").split(":")[0]
+        if vuln.startswith(BDU_ID_PREFIX):
+            s = vuln.lstrip(BDU_ID_PREFIX).split(":")[0]
             return (int(s.split("-")[1]), int(s.split("-")[2]))
-        elif vuln.startswith("CVE-"):
-            s = vuln.lstrip("CVE-").split(":")[0]
+        elif vuln.startswith(CVE_ID_PREFIX):
+            s = vuln.lstrip(CVE_ID_PREFIX).split(":")[0]
             return (int(s.split("-")[1]), int(s.split("-")[2]))
         else:
             return vuln
@@ -295,7 +298,7 @@ def build_test_altlinux_distr_installed(
 ) -> tuple[TestType, ObjectType, StateType]:
     # ALT linux distribution branch test is always the fisrt one
     seq = 1
-    # ID's prefix  defined with `lut.oval_export_branches_map` dict
+    # ID's prefix is defined with `lut.oval_export_branches_map` dict
     serial = lut.oval_export_branches_map.get(branch, "999")
 
     cpe_version_pattern, version_value = BRANCH_CHECK_REGEX[branch]
@@ -355,44 +358,43 @@ def _build_vuln_from_cve(vuln: VulnerabilityInfo) -> Vulnerability:
     cwe = ""
     cvss = ""
     cvss3 = ""
-    public = None
     href = vuln.url
     impact = num_to_severity_enum(
         SEVERITY_TO_NUM.get(vuln.severity.upper(), SEVERITY_TO_NUM["LOW"])
     )
 
-    # parse CVE contents
-    _json: dict[str, Any] = {}
+    # parse CVE contents using implementation from `api.vulnerabilities.common`
+    vuln_json: dict[str, Any] = {}
     try:
-        _json = json.loads(vuln.json)
+        vuln_json = json.loads(vuln.json)
     except Exception:
         logger.debug(f"Failed to parse vulnerability JSON for {vuln.id}")
-        pass
     else:
-        # get CWE
-        try:
-            cwe = _json["cve"]["problemtype"]["problemtype_data"][0]["description"][0][
-                "value"
-            ]
-        except (IndexError, KeyError, TypeError):
-            pass
-        # get CVSS
-        try:
-            cvss = _json["impact"]["baseMetricV2"]["cvssV2"]["vectorString"]
-        except (IndexError, KeyError, TypeError):
-            pass
-        # get CVSS3
-        try:
-            cvss3 = _json["impact"]["baseMetricV3"]["cvssV3"]["vectorString"]
-        except (IndexError, KeyError, TypeError):
-            pass
-        # get published date
-        try:
-            public = datetime.fromisoformat(
-                _json["publishedDate"].replace("Z", "+00:00")
+        if parsed := parse_vulnerability_details(
+            VulnInfo(
+                id=vuln.id,
+                summary=vuln.summary,
+                score=vuln.score,
+                severity=vuln.severity,
+                url=vuln.url,
+                modified=vuln.modified,
+                published=vuln.published,
+                json=vuln_json,
+                refs_type=[],
+                refs_link=[],
             )
-        except (KeyError, ValueError, TypeError):
-            pass
+        ):
+            # get CWE
+            if parsed.cwes:
+                cwe = ", ".join(parsed.cwes)
+            # get CVSS V2.0
+            for vec in parsed.cvss_vectors:
+                if vec.version == "2.0":
+                    cvss = vec.vector
+            #  get CVSS V3.x
+            for vec in parsed.cvss_vectors:
+                if vec.version == "3.x":
+                    cvss3 = vec.vector
 
     return Vulnerability(
         id=vuln.id,
@@ -401,7 +403,7 @@ def _build_vuln_from_cve(vuln: VulnerabilityInfo) -> Vulnerability:
         href=href,
         impact=impact,  # type: ignore
         cwe=cwe,
-        public=public,
+        public=vuln.published,
     )
 
 
@@ -409,40 +411,43 @@ def _build_vuln_from_bdu(vuln: VulnerabilityInfo) -> Vulnerability:
     cwe = ""
     cvss = ""
     cvss3 = ""
-    public = None
     href = vuln.url
     impact = num_to_severity_enum(
         SEVERITY_TO_NUM.get(vuln.severity.upper(), SEVERITY_TO_NUM["LOW"])
     )
 
-    # parse BDU contents
-    _json: dict[str, Any] = {}
+    # parse BDU contents using implementation from `api.vulnerabilities.common`
+    vuln_json: dict[str, Any] = {}
     try:
-        _json = json.loads(vuln.json)
+        vuln_json = json.loads(vuln.json)
     except Exception:
         logger.debug(f"Failed to parse vulnerability JSON for {vuln.id}")
-        pass
     else:
-        # get CWE
-        try:
-            cwe = ", ".join(_json["cwe"])
-        except (IndexError, KeyError, TypeError):
-            pass
-        # get CVSS
-        try:
-            cvss = _json["cvss"]["vector"]["text"]
-        except (IndexError, KeyError, TypeError):
-            pass
-        # get CVSS3
-        try:
-            cvss3 = _json["cvss3"]["vector"]["text"]
-        except (IndexError, KeyError, TypeError):
-            pass
-        # get published date
-        try:
-            public = datetime.strptime(_json["identify_date"], "%d.%m.%Y")
-        except (KeyError, ValueError, TypeError):
-            pass
+        if parsed := parse_vulnerability_details(
+            VulnInfo(
+                id=vuln.id,
+                summary=vuln.summary,
+                score=vuln.score,
+                severity=vuln.severity,
+                url=vuln.url,
+                modified=vuln.modified,
+                published=vuln.published,
+                json=vuln_json,
+                refs_type=[],
+                refs_link=[],
+            )
+        ):
+            # get CWE
+            if parsed.cwes:
+                cwe = ", ".join(parsed.cwes)
+            # get CVSS V2.0
+            for vec in parsed.cvss_vectors:
+                if vec.version == "2.0":
+                    cvss = vec.vector
+            #  get CVSS V3.x
+            for vec in parsed.cvss_vectors:
+                if vec.version == "3.x":
+                    cvss3 = vec.vector
 
     return Vulnerability(
         id=vuln.id,
@@ -451,7 +456,7 @@ def _build_vuln_from_bdu(vuln: VulnerabilityInfo) -> Vulnerability:
         href=href,
         impact=impact,  # type: ignore
         cwe=cwe,
-        public=public,
+        public=vuln.published,
     )
 
 
@@ -484,15 +489,15 @@ class OVALBuilder:
         self.vulns = vulns
         self.bdus_by_cves = bdus_by_cves
         self.bdu_to_cve_map = {
-            bdu.id: {r for r in bdu.refs if r.startswith("CVE-")}
+            bdu.id: {r for r in bdu.refs if r.startswith(CVE_ID_PREFIX)}
             for bdu in self.bdus_by_cves.values()
         }
 
     def _errata_bug_links(self, errata: ErrataHistoryRecord) -> list[str]:
         return [
-            l
-            for t, l in zip(errata.eh_references_type, errata.eh_references_link)
-            if t == "bug"
+            rl
+            for rt, rl in zip(errata.eh_references_type, errata.eh_references_link)
+            if rt == lut.errata_ref_type_bug
         ]
 
     def _errata_vuln_links(
@@ -500,16 +505,18 @@ class OVALBuilder:
     ) -> list[str]:
         # collect vulnerabilities descriptions and references
         errata_linked_vulns = {
-            l
-            for t, l in zip(errata.eh_references_type, errata.eh_references_link)
-            if t == "vuln"
+            rl
+            for rt, rl in zip(errata.eh_references_type, errata.eh_references_link)
+            if rt == lut.errata_ref_type_vuln
         }
 
         if link_bdu_by_cve:
             # extend vulnerabilities list by BDUs mapped by CVEs
             linked_bdus: set[str] = set()
             for bdu_id, linked_cves in self.bdu_to_cve_map.items():
-                for cve_id in (c for c in errata_linked_vulns if c.startswith("CVE-")):
+                for cve_id in (
+                    c for c in errata_linked_vulns if c.startswith(CVE_ID_PREFIX)
+                ):
                     if cve_id in linked_cves:
                         linked_bdus.add(bdu_id)
             errata_linked_vulns = errata_linked_vulns.union(linked_bdus)
@@ -550,9 +557,9 @@ class OVALBuilder:
             vulns_list,
             key=lambda x: vuln_id_to_sort_key(x[0]),
         ):
-            if vuln_id.startswith("CVE-"):
+            if vuln_id.startswith(CVE_ID_PREFIX):
                 _vulns.append(_build_vuln_from_cve(vuln))
-            elif vuln_id.startswith("BDU:"):
+            elif vuln_id.startswith(BDU_ID_PREFIX):
                 _vulns.append(_build_vuln_from_bdu(vuln))
             else:
                 _vulns.append(_build_vuln_from_other(vuln))
@@ -602,37 +609,41 @@ class OVALBuilder:
             vuln = self._get_vuln_info_by_id(link)
             if vuln is not None:
                 vulns_list.append(f"{link}: {vuln.summary}")
-                if vuln.id.startswith("CVE-"):
+                if vuln.id.startswith(CVE_ID_PREFIX):
                     vuln_references.append(
-                        ReferenceType(source="CVE", ref_id=vuln.id, ref_url=vuln.url)
+                        ReferenceType(
+                            source=CVE_ID_TYPE, ref_id=vuln.id, ref_url=vuln.url
+                        )
                     )
-                elif link.startswith("BDU:"):
+                elif link.startswith(BDU_ID_PREFIX):
                     vuln_references.append(
-                        ReferenceType(source="BDU", ref_id=vuln.id, ref_url=vuln.url)
+                        ReferenceType(
+                            source=BDU_ID_TYPE, ref_id=vuln.id, ref_url=vuln.url
+                        )
                     )
                 else:
-                    logger.error(f"Failed to create reference for {link}")
+                    logger.warning(f"Failed to create reference for {link}")
             else:
                 logger.debug(f"Failed to get vulnerability details for {link}")
                 vulns_list.append(f"{link}: description unavailable")
-                if link.startswith("CVE-"):
+                if link.startswith(CVE_ID_PREFIX):
                     vuln_references.append(
                         ReferenceType(
-                            source="CVE",
+                            source=CVE_ID_TYPE,
                             ref_id=link,
                             ref_url=f"{NVD_CVE_BASE_URL}/{link}",
                         )
                     )
-                elif link.startswith("BDU:"):
+                elif link.startswith(BDU_ID_PREFIX):
                     vuln_references.append(
                         ReferenceType(
-                            source="BDU",
+                            source=BDU_ID_TYPE,
                             ref_id=link,
                             ref_url=f"{FSTEC_BDU_BASE_URL}/{link.split(':')[-1]}",
                         )
                     )
                 else:
-                    logger.error(f"Failed to create reference for {link}")
+                    logger.warning(f"Failed to create reference for {link}")
 
         references.extend(sorted(vuln_references, key=lambda x: x.ref_id))
 

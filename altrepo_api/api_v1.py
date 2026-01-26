@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -106,9 +106,6 @@ class ApiVersion(Resource):
 @api.route("/ping")
 @api.doc(False)
 class ApiPing(Resource):
-    @api.doc(description="API authorization check")
-    @api.doc(security="BasicAuth")
-    @auth_required
     def get(self):
         return {"message": "pong"}, 200
 

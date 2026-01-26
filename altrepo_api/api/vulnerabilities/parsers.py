@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -14,12 +14,17 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from flask_restx import inputs
+
 from altrepo_api.api.parser import (
     parser,
     cve_id_type,
     cve_id_list_type,
     bdu_id_type,
     bdu_id_list_type,
+    ghsa_id_type,
+    ghsa_id_list_type,
+    vuln_id_type,
     branch_name_type,
     maintainer_nick_type,
     pkg_name_type,
@@ -53,6 +58,28 @@ bdu_id_list = parser.register_item(
     action="split",
     required=True,
     help="BDU id",
+    location="args",
+)
+ghsa_id = parser.register_item(
+    "vuln_id",
+    type=ghsa_id_type,
+    required=True,
+    help="GHSA id",
+    location="args",
+)
+ghsa_id_list = parser.register_item(
+    "vuln_id",
+    type=ghsa_id_list_type,
+    action="split",
+    required=True,
+    help="GHSA id",
+    location="args",
+)
+vuln_id = parser.register_item(
+    "vuln_id",
+    type=vuln_id_type,
+    required=True,
+    help="Vuln id",
     location="args",
 )
 branch = parser.register_item(
@@ -91,9 +118,20 @@ maintainer_nick = parser.register_item(
     help="nickname of maintainer",
     location="args",
 )
+exclude_json_opt = parser.register_item(
+    "exclude_json",
+    type=inputs.boolean,
+    default=False,
+    required=False,
+    help="exclude vulnerability raw JSON from results",
+    location="args",
+)
 
-cve_info_args = parser.build_parser(cve_id)
-bdu_info_args = parser.build_parser(bdu_id)
+
+cve_info_args = parser.build_parser(cve_id, exclude_json_opt)
+bdu_info_args = parser.build_parser(bdu_id, exclude_json_opt)
+ghsa_info_args = parser.build_parser(ghsa_id, exclude_json_opt)
+vuln_info_args = parser.build_parser(vuln_id)
 cve_vulnerable_packages_args = parser.build_parser(cve_id_list, branch)
 bdu_vulnerable_packages_args = parser.build_parser(bdu_id_list, branch)
 package_vulnerabilities_args = parser.build_parser(pkg_name, branch)

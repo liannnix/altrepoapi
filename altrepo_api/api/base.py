@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,11 +29,9 @@ WorkerResult = Union[WorkerResultWithHeaders, WorkerResultWithoutHeaders]
 class ConnectionProtocol(Protocol):
     request_line: Union[str, tuple[str, Any]]
 
-    def send_request(self, **query_kwargs) -> tuple[bool, Any]:
-        ...
+    def send_request(self, **query_kwargs) -> tuple[bool, Any]: ...
 
-    def drop_connection(self) -> None:
-        ...
+    def drop_connection(self) -> None: ...
 
 
 class Response(NamedTuple):
@@ -123,6 +121,11 @@ class APIWorker:
     def get(self) -> WorkerResult:
         return "OK", 200
 
+    def metadata(self) -> WorkerResult:
+        raise NotImplementedError(
+            f"metadata() method is required for the {self.__class__.__name__} subclass"
+        )
+
 
 def _abort_on_validation_error(
     worker: APIWorker, method: Callable[[], bool], args: Any
@@ -141,11 +144,23 @@ def _abort_on_validation_error(
 def _abort_on_result_error(
     method: Callable[[], WorkerResult], ok_code: int
 ) -> Response:
-    """Call Flask abort() if APIWorker run method call returned not 'ok_code'."""
+    """Calls Flask abort() if APIWorker run method call returns not 'ok_code' if
+    strict mode set in API settings or return code not in OK codes list otherwise."""
 
     response = Response(*method())  # type: ignore
-    if response.http_code != ok_code:
+    if (settings.OK_RESPONSE_CODE_STRICT_CHECK and response.http_code != ok_code) or (
+        not settings.OK_RESPONSE_CODE_STRICT_CHECK
+        and response.http_code not in settings.OK_RESPONSE_CODES
+    ):
+        if 200 <= response.http_code <= 299:
+            # workaround for no exceptions registered for OK HTTP response codes
+            abort(
+                500,  # type: ignore
+                "Unexpected successful HTTP response code from APIWorker instance:"
+                f" {response.http_code} != {ok_code}",
+            )
         abort(response.http_code, **response_error_parser(response.result))  # type: ignore
+
     return response
 
 
@@ -160,7 +175,7 @@ def run_worker(
     """Calls APIWorker class's 'check_method' and 'run_method' and returns the result.
 
     Calls flask_restx abort() if check_method() returned False
-    or if run_method() returned code not equal to 'ok_code'.
+    or if run_method() returned not 'OK' code checked in accordance to the API settings.
     Otherwise returns run_method() results wrapped in `Response` class.
 
     Default 'run_method' is worker.get().
@@ -191,6 +206,13 @@ POST_RESPONSES_400_404 = {
     201: "Data loaded",
     400: "Request parameters validation error",
     404: "Requested data not found in database",
+}
+
+POST_RESPONSES_400_404_409 = {
+    201: "Data loaded",
+    400: "Request parameters validation error",
+    404: "Requested data not found in database",
+    409: "Data is inconsistent with DB",
 }
 
 POST_RESPONSES_401 = {

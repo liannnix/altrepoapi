@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -19,8 +19,6 @@ from typing import Any, NamedTuple
 
 from altrepo_api.utils import (
     datetime_to_iso,
-    tuplelist_to_dict,
-    sort_branches,
     get_nickname_from_packager,
     dp_flags_decode,
 )
@@ -30,6 +28,9 @@ from altrepo_api.api.misc import lut
 from ..sql import sql
 from altrepo_api.api.license.endpoints.license import LicenseParser
 from .common import FindBuildTaskMixixn, SQLRequestError, NoDataFoundInDB
+
+
+MAX_CHLOG_LENGTH = 100
 
 
 class PackageInfo(FindBuildTaskMixixn, APIWorker):
@@ -47,15 +48,14 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["changelog_last"] < 1:
+        chlog_length = self.args["changelog_last"]
+
+        if chlog_length < 1 or chlog_length > MAX_CHLOG_LENGTH:
             self.validation_results.append(
-                "Changelog history length should be not less than 1"
+                f"changelog history length should be in range 1 to {MAX_CHLOG_LENGTH}"
             )
 
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return self.validation_results == []
 
     class PackageMeta(NamedTuple):
         name: str
@@ -65,6 +65,7 @@ class PackageInfo(FindBuildTaskMixixn, APIWorker):
         epoch: int
         buildtime: int
         url: str
+        vcs: str
         license: str
         summary: str
         description: str
@@ -682,15 +683,9 @@ class PackagesBinaryListInfo(APIWorker):
         if not self.sql_status:
             return self.error
 
-        # sort package versions by branch
-        pkg_branches = sort_branches([el[0] for el in response])
-        pkg_versions = tuplelist_to_dict(response, 3)
-
-        # XXX: workaround for multiple versions of returned for certain branch
+        # XXX: some branches could has multiple versions of a certain package
         PkgVersions = namedtuple("PkgVersions", ["branch", "version", "release"])
-        pkg_versions = [
-            PkgVersions(*(b, *pkg_versions[b][-3:]))._asdict() for b in pkg_branches
-        ]
+        pkg_versions = [PkgVersions(*el[:3])._asdict() for el in response]
 
         res = {
             "request_args": self.args,
@@ -783,7 +778,7 @@ class PackageNameFromRepology(APIWorker):
             return True
 
     def get(self):
-        branch = lut.repology_cpe_branch_map[self.args["branch"]]
+        branch = lut.repology_branch_map[self.args["branch"]]
         pkg_name = self.args["name"]
 
         response = self.send_sql_request(
@@ -804,3 +799,34 @@ class PackageNameFromRepology(APIWorker):
         res = {"request_args": self.args, **PkgNameRepology(*response[0])._asdict()}
 
         return res, 200
+
+
+class BriefPackageInfo(APIWorker):
+    def __init__(self, connection, pkghash, **kwargs):
+        self.pkghash = pkghash
+        self.conn = connection
+        self.args = kwargs
+        self.sql = sql
+        super().__init__()
+
+    def get(self):
+        response = self.send_sql_request(
+            self.sql.get_brief_pkg_info.format(pkghash=self.pkghash)
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error(
+                {
+                    "message": (
+                        f"No information was found in the database "
+                        f"about the package with hash {self.pkghash}."
+                    ),
+                    "args": self.args,
+                }
+            )
+        PkgInfoMeta = namedtuple(
+            "PkgInfoMeta",
+            ["name", "version", "release", "arch", "type", "summary"],
+        )
+        return PkgInfoMeta(*response[0])._asdict(), 200

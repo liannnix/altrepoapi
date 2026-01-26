@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -15,6 +15,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from flask_restx import fields
+
+from altrepo_api.api.vulnerabilities.serializers import vuln_parsed_model
 
 from .namespace import get_namespace
 
@@ -32,7 +34,11 @@ oval_branches_model = ns.model(
 
 erratas_ids_json_list_model = ns.model(
     "ErrataJsonPostListModel",
-    {"errata_ids": fields.List(fields.String, description="errata ids list")},
+    {
+        "errata_ids": fields.List(
+            fields.String, required=True, description="errata ids list"
+        )
+    },
 )
 
 errata_reference_model = ns.model(
@@ -96,6 +102,9 @@ errata_vuln_model = ns.model(
         "published_date": fields.DateTime(description="vulnerability published date"),
         "body": fields.String(description="vulnerability body in JSON format"),
         "is_valid": fields.Boolean(description="vulnerability information is valid"),
+        "parsed": fields.Nested(
+            vuln_parsed_model, description="vulnerability parsed details"
+        ),
     },
 )
 errata_package_update_model = ns.model(
@@ -160,7 +169,6 @@ errata_branches_updates_model = ns.model(
     },
 )
 
-
 errata_ids_model = ns.model(
     "ErrataIdsListModel",
     {"errata_ids": fields.List(fields.String, description="errata ids list")},
@@ -186,11 +194,15 @@ vulns_el_model = ns.model(
 errata_last_changed_el_model = ns.model(
     "ErrataLastChangedElementModel",
     {
+        "is_discarded": fields.Boolean(
+            description="is errata discarded", default=False
+        ),
         "errata_id": fields.String(description="errata ID"),
-        "eh_type": fields.String(description=""),
+        "eh_type": fields.String(description="Errata History record type"),
         "task_id": fields.Integer(description="task ID"),
         "changed": fields.DateTime(description="changed"),
         "branch": fields.String(description="package set name"),
+        "json": fields.Raw(description="errata JSON payload (SA records only)"),
         "packages": fields.Nested(
             pkgs_el_model,
             description="affected packages",
@@ -216,11 +228,135 @@ errata_last_changed_model = ns.model(
     },
 )
 
-
 errata_branches_model = ns.model(
     "ErrataBranchesModel",
     {
         "length": fields.Integer(description="number of branches"),
         "branches": fields.List(fields.String, description="list of branches"),
+    },
+)
+
+image_errata_el_model = ns.model(
+    "ImageErrataElementModel",
+    {
+        "img_hash": fields.String(
+            attribute="img_pkg_hash",
+            description="package hash UInt64 as string in the image",
+        ),
+        "img_version": fields.String(
+            attribute="img_pkg_version", description="package version in the image"
+        ),
+        "img_release": fields.String(
+            attribute="img_pkg_release", description="package release in the image"
+        ),
+        "pkg_name": fields.String(description="binary package name"),
+        "pkg_arch": fields.String(description="package architecture in the repository"),
+        "pkg_hash": fields.String(
+            description="package hash UInt64 as string in the repository",
+        ),
+        "pkg_version": fields.String(description="package version in the repository"),
+        "pkg_release": fields.String(description="package release in the repository"),
+        "summary": fields.String(description="package summary"),
+        "errata_id": fields.String(description="errata ID"),
+        "eh_type": fields.String(description="errata type"),
+        "task_id": fields.Integer(description="task ID"),
+        "changed": fields.DateTime(description="changed"),
+        "branch": fields.String(description="package set name"),
+        "is_discarded": fields.Boolean(
+            description="is errata discarded", default=False
+        ),
+        "vulnerabilities": fields.Nested(
+            vulns_el_model,
+            description="fixed vulnerabilities list",
+            as_list=True,
+        ),
+    },
+)
+image_errata_model = ns.model(
+    "ImageErrataModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of erratas"),
+        "erratas": fields.Nested(
+            image_errata_el_model,
+            description="image errata list",
+            as_list=True,
+        ),
+    },
+)
+
+advisory_errata_reference_model = ns.model(
+    "AdvisoryErrataReferenceModel",
+    {
+        "type": fields.String(description="errata refernce type"),
+        "link": fields.String(description="errata reference link"),
+    },
+)
+advisory_errata_pkg_version_el_model = ns.model(
+    "AdvisoryErrataPackageVersionRangeModel",
+    {
+        "begin": fields.String(description="version range begin"),
+        "begin_exclude": fields.Boolean(description="is version range begin excluded"),
+        "end": fields.String(description="version range end"),
+        "end_exclude": fields.Boolean(description="is version range end excluded"),
+    },
+)
+advisory_errata_json_model = ns.model(
+    "AdvisoryErrataJsonModel",
+    {
+        "type": fields.String(description="SA errata type"),
+        "action": fields.String(description="SA errata type"),
+        "is_public": fields.Boolean(description="is SA errata public"),
+        "reason": fields.String(description=" SA errata reason"),
+        "description": fields.String(description=" SA errata description"),
+        "vuln_id": fields.String(description="vulnerability identifier"),
+        "vuln_cpe": fields.String(description="CPE string"),
+        "branches": fields.List(fields.String, description="list of branches"),
+        "pkg_name": fields.String(description="package name"),
+        "pkg_evr": fields.String(description="package EVR string"),
+        "pkg_versions": fields.Nested(
+            advisory_errata_pkg_version_el_model,
+            description="list of package version ranges",
+            as_list=True,
+        ),
+        "references": fields.Nested(
+            advisory_errata_reference_model,
+            description="list of references",
+            as_list=True,
+        ),
+        "extra": fields.Raw(description="SA errata extra details mapping"),
+    },
+)
+advisory_errata_el_model = ns.model(
+    "AdvisoryErrataElementModel",
+    {
+        "id": fields.String(description="errata id"),
+        "type": fields.String(description="errata type"),
+        "created": fields.Date(description="errata created date"),
+        "updated": fields.Date(description="errata updated date"),
+        "pkgset_name": fields.String(description="packageset name"),
+        "task_id": fields.Integer(description="task id"),
+        "subtask_id": fields.Integer(description="subtask id"),
+        "task_state": fields.String(description="task state"),
+        "pkg_hash": fields.String(description="package hash"),
+        "pkg_name": fields.String(description="package name"),
+        "pkg_version": fields.String(description="package version"),
+        "pkg_release": fields.String(description="package release"),
+        "references": fields.Nested(
+            advisory_errata_reference_model,
+            description="list of references",
+            as_list=True,
+        ),
+        "json": fields.Nested(advisory_errata_json_model, description="errata json"),
+    },
+)
+advisory_errata_model = ns.model(
+    "AdvisoryErrataModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of erratas"),
+        "erratas": fields.Nested(
+            advisory_errata_el_model, description="advisory errata list", as_list=True
+        ),
     },
 )

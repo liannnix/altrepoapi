@@ -4,6 +4,9 @@ from flask import url_for
 
 BRANCH_IN_DB = "sisyphus"
 BRANCH_NOT_IN_DB = "fakebranch"
+TASK_ID_WITH_BRANCH_COMMITS_IN_DB = 102418
+TASK_ID_WITHOUT_BRANCH_COMMITS_IN_DB = 102404
+TASK_ID_NOT_IN_DB = 1
 
 
 def test_all_pkgsets(client):
@@ -145,3 +148,32 @@ def test_pkgset_categories_count(client, kwargs):
         for cat in data["categories"]:
             assert cat["category"] != ""
             assert cat["count"] > 0
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"task_id": None, "status_code": 200},
+        {"task_id": TASK_ID_WITH_BRANCH_COMMITS_IN_DB, "status_code": 200},
+        {"task_id": TASK_ID_WITHOUT_BRANCH_COMMITS_IN_DB, "status_code": 200},
+        {"task_id": TASK_ID_NOT_IN_DB, "status_code": 400},
+    ],
+)
+def test_tasks_history(client, kwargs):
+    params = {k: v for k, v in kwargs.items() if k != "status_code"}
+    url = url_for("api.site_route_tasks_history")
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["branches"] != []
+        assert data["tasks"] != []
+        assert BRANCH_IN_DB in data["branches"]
+        assert BRANCH_NOT_IN_DB not in data["branches"]
+        if params.get("task_id", ""):
+            assert data["tasks"][0]["id"] == params["task_id"]
+        if params.get("task_id", "") == TASK_ID_WITH_BRANCH_COMMITS_IN_DB:
+            assert data["branch_commits"] != []
+        if params.get("task_id", "") == TASK_ID_WITHOUT_BRANCH_COMMITS_IN_DB:
+            assert data["branch_commits"] == []

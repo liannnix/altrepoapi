@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -215,11 +215,11 @@ LEFT JOIN
 
     get_pkgs_tasks = """
 SELECT DISTINCT
-    arrayJoin(titer_pkgs_hash) AS pkg_hash,
+    arrayJoin(arrayIntersect(titer_pkgs_hash, {hshs})) AS pkg_hash,
     task_id,
     subtask_id
 FROM TaskIterations
-WHERE pkg_hash IN {hshs}
+WHERE hasAny(titer_pkgs_hash, {hshs})
 """
 
     tmp_table_columns = (

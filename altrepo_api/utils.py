@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -14,25 +14,21 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import datetime
 import logging
 import mmh3
 import re
+import sys
 import time
 
 from collections import defaultdict
 from dataclasses import dataclass
-from flask import Response, send_file, __version__ as FLASK_VERSION
+from datetime import datetime, timezone
+from flask import Response, request, send_file, __version__ as FLASK_VERSION
 from logging import handlers
 from packaging import version
-from typing import Any, Iterable, Union
+from typing import Any, Iterable, TypeVar, Union
 from urllib.parse import unquote
 from uuid import UUID, uuid4
-
-try:
-    from ujson import dumps
-except ImportError:
-    from json import dumps
 
 from altrepo_api.settings import namespace as settings
 
@@ -48,7 +44,7 @@ class logger_level:
 
 def json_default(obj):
     # convert datetime to ISO string representation
-    if isinstance(obj, datetime.datetime):
+    if isinstance(obj, datetime):
         return obj.isoformat()
     # convert UUID to string
     if isinstance(obj, UUID):
@@ -104,10 +100,17 @@ def get_logger(name: str) -> logging.Logger:
             # stderr handler config
             fmt = logging.Formatter("%(levelname)-9s: %(message)s")
 
-            file_handler = logging.StreamHandler()
-            file_handler.setFormatter(fmt)
+            err_handler = logging.StreamHandler(sys.stderr)
+            err_handler.setLevel(logging.ERROR)
+            err_handler.setFormatter(fmt)
 
-            root_logger.addHandler(file_handler)
+            info_handler = logging.StreamHandler(sys.stdout)
+            info_handler.setLevel(settings.LOG_LEVEL)
+            info_handler.addFilter(lambda rec: rec.levelno < logging.ERROR)
+            info_handler.setFormatter(fmt)
+
+            root_logger.addHandler(err_handler)
+            root_logger.addHandler(info_handler)
 
         # pass if no logging handlers enabled
         pass
@@ -136,11 +139,9 @@ def response_error_parser(response: Any) -> dict[str, Any]:
         msg = response.get("message")
         if not msg:
             msg = response.get("error") or response.get("Error")
-        details = [
-            {k: v}
-            for k, v in response.items()
-            if k not in ("message", "error", "Error")
-        ]
+        details = {
+            k: v for k, v in response.items() if k not in ("message", "error", "Error")
+        }
         return {"message": msg, "details": details}
     except AttributeError:
         return {"message": response}
@@ -153,21 +154,6 @@ def convert_to_dict(keys: list[Any], values: list[Any]) -> dict[Any, Any]:
         res[i] = dict([(keys[j], values[i][j]) for j in range(len(values[i]))])
 
     return res
-
-
-def convert_to_json(keys: list[str], values: list[Any], sort: bool = False) -> str:
-    js = {}
-
-    for i in range(len(values)):
-        js[i] = dict([(keys[j], values[i][j]) for j in range(len(values[i]))])
-
-        for key in js[i]:
-            if key == "date":
-                js[i]["date"] = datetime.datetime.strftime(
-                    js[i]["date"], "%Y-%m-%d %H:%M:%S"
-                )
-
-    return dumps(js, sort_keys=sort)
 
 
 def join_tuples(tuple_list: list[tuple[Any, ...]]) -> tuple[Any, ...]:
@@ -210,8 +196,26 @@ def func_time(logger: logging.Logger):
     return decorator
 
 
-def datetime_to_iso(dt: datetime.datetime) -> str:
+def datetime_to_iso(dt: datetime) -> str:
     return dt.isoformat()
+
+
+_TZ_UTC = timezone.utc
+_TZ_LOCAL = datetime.now().astimezone(None).tzinfo
+DT_NEVER = datetime.fromtimestamp(0, tz=timezone.utc)
+
+
+def datetime_to_tz_aware(dt: datetime) -> datetime:
+    """Checks if datetime object is timezone aware.
+    Converts timezone naive datetime to aware one assuming timezone is
+    equal to local one for API host."""
+
+    if dt.tzinfo is not None and dt.tzinfo.utcoffset is not None:
+        # datetime object is timezone aware
+        return dt
+
+    # datetime object is timezone naive
+    return dt.replace(tzinfo=_TZ_LOCAL).astimezone(_TZ_UTC)
 
 
 def sort_branches(branches: Iterable[str]) -> tuple[str, ...]:
@@ -223,6 +227,8 @@ def sort_branches(branches: Iterable[str]) -> tuple[str, ...]:
         "sisyphus_e2k",
         "sisyphus_mipsel",
         "sisyphus_riscv64",
+        "sisyphus_loongarch64",
+        "p11",
         "p10",
         "p10_e2k",
         "p9",
@@ -396,10 +402,69 @@ def arch_sort_index(arch: str) -> int:
         "armh": -5,
         "ppc64le": -6,
         "riscv64": -7,
-        "mipsel": -8,
-        "e2k": -9,
-        "e2kv4": -10,
-        "e2kv5": -11,
-        "e2kv6": -12,
-        "x86_64-i586": -13,
+        "loongarch64": -8,
+        "mipsel": -9,
+        "e2k": -10,
+        "e2kv4": -11,
+        "e2kv5": -12,
+        "e2kv6": -13,
+        "x86_64-i586": -14,
     }.get(arch, -100)
+
+
+def get_real_ip() -> str:
+    """Get real user IP from 'X-Forwarded-For' header set by proxy if available."""
+
+    x_forwarded_for = request.headers.get("X-Forwarded-For")
+
+    if not x_forwarded_for:
+        ip = request.remote_addr
+    else:
+        ip = x_forwarded_for.split(",", maxsplit=1)[0].strip()
+
+    return ip or "unknown"
+
+
+def valid_task_id(task_id: int) -> bool:
+    """Validate that 'task_id' is an integer and within a valid range."""
+
+    MIN_TASK_ID = 1
+    MAX_TASK_ID = 4_000_000_000
+
+    return task_id >= MIN_TASK_ID and task_id <= MAX_TASK_ID
+
+
+def make_snowflake_id(timestamp: Union[int, datetime], lower_32bit) -> int:
+    """
+    Returns a 64-bit Snowflake-like ID using a custom epoch,
+    with timestamp (int or datetime) in the upper 32 bits
+    and lower_32bit (masked to 32 bits) in the lower bits.
+    """
+    EPOCH = 1_000_000_000
+
+    if isinstance(timestamp, datetime):
+        timestamp = int(timestamp.timestamp())
+
+    return ((timestamp - EPOCH) << 32) | (lower_32bit & 0xFFFFFFFF)
+
+
+T = TypeVar("T")
+
+
+def get_nested_value(
+    data: dict[str, Any], key_path: str, default: T = None
+) -> Union[Any, T]:
+    """Traverses a nested dictionary and returns the value at the given key path."""
+
+    if not data or not key_path:
+        return default
+
+    keys = key_path.split(".")
+    current = data
+
+    for key in keys:
+        if not isinstance(current, dict) or key not in current:
+            return default
+        current = current[key]
+
+    return current

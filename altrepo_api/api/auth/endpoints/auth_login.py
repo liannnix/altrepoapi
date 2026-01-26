@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -16,19 +16,25 @@
 
 import datetime
 import json
-
-from flask import request
+import time
+from typing import NamedTuple
 from uuid import uuid4
 
-from altrepo_api.api.base import APIWorker
-from altrepo_api.settings import namespace
+from altrepo_api.api.base import APIWorker, WorkerResult
+from altrepo_api.settings import namespace, AccessGroups
 from altrepo_api.utils import get_logger
 
-from ..auth import check_auth_ldap
-from ..constants import REFRESH_TOKEN_KEY
+from ..auth import check_auth_keycloak, check_auth_ldap, find_max_ranked_group
+from ..constants import REFRESH_TOKEN_KEY, AuthProvider
 from ..token import STORAGE, encode_jwt_token, user_fingerprint
 
 logger = get_logger(__name__)
+
+
+class AuthLoginArgs(NamedTuple):
+    nickname: str
+    password: str
+    auth_provider: AuthProvider
 
 
 class AuthLogin(APIWorker):
@@ -36,79 +42,168 @@ class AuthLogin(APIWorker):
 
     def __init__(self, connection, **kwargs):
         self.conn = connection
+        self.kwargs = kwargs
+        self.args: AuthLoginArgs
         self.storage = STORAGE
-        self.args = kwargs
-        self._name = ""
         self._token = ""
         super().__init__()
 
-    def post(self):
-        self._name = self.args["nickname"]
-        _password = self.args["password"]
-        self._token = REFRESH_TOKEN_KEY.format(user=self._name)
+    def check_params_post(self) -> bool:
+        auth_provider = self.kwargs["auth_provider"]
 
-        ldap_auth = check_auth_ldap(
-            self._name, _password, list(namespace.ACCESS_GROUPS.values())
+        if auth_provider not in AuthProvider:
+            self.validation_results.append(
+                f"Unknown authorization provider: {auth_provider}"
+            )
+
+        self.args = AuthLoginArgs(
+            nickname=self.kwargs["nickname"],
+            password=self.kwargs["password"],
+            auth_provider=AuthProvider(auth_provider),
         )
 
-        if ldap_auth.verified is False:
-            return {"message": ldap_auth.error}, 401
+        return self.validation_results == []
 
-        user_groups = ldap_auth.value["groups"]
+    def post(self) -> WorkerResult:
+        match self.args.auth_provider:
+            case AuthProvider.LDAP:
+                return self.ldap_auth()
+            case AuthProvider.KEYCLOAK:
+                return self.keycloak_auth()
+
+    def keycloak_auth(self) -> WorkerResult:
+        auth_result = check_auth_keycloak(self.args.nickname, self.args.password)
+
+        if auth_result.verified is False:
+            return {"message": auth_result.error}, 401
+
+        access_token: str = auth_result.value["access_token"]
+        refresh_token: str = auth_result.value["refresh_token"]
+        refresh_expires_in: int = auth_result.value["refresh_expires_in"]
+
+        self.add_refresh_session(
+            refresh_token=refresh_token,
+            refresh_expires_in=refresh_expires_in,
+        )
+
+        response = {"access_token": access_token, "refresh_token": refresh_token}
+        headers = {
+            "Set-Cookie": (
+                f"refresh_token={refresh_token}; Expires=f'{refresh_expires_in}'; "
+                f"{namespace.AUTH_COOKIES_OPTIONS}"
+            )
+        }
+
+        return response, 200, headers
+
+    def ldap_auth(self) -> WorkerResult:
+        auth_result = check_auth_ldap(
+            self.args.nickname,
+            self.args.password,
+            list(namespace.ACCESS_GROUPS.values()),
+        )
+
+        if auth_result.verified is False:
+            return {"message": auth_result.error}, 401
+
+        access_groups = auth_result.value["groups"]
+
+        def AG_REVERSED_LUT(group) -> set[AccessGroups]:
+            groups = set()
+            for k, v in namespace.ACCESS_GROUPS.items():
+                if v == group:
+                    groups.add(k)
+            return groups
+
+        # collect KeyCloak-wise groups and roles from  LDAP Access Groups mappings
+        user_groups = set()
+        user_roles = set()
+        for group in access_groups:
+            for g in AG_REVERSED_LUT(group):
+                if g in namespace.AG_GROUP_MAPPING:
+                    user_groups.update(namespace.AG_GROUP_MAPPING[g])
+                if g in namespace.AG_ROLE_MAPPING:
+                    user_roles.update(namespace.AG_ROLE_MAPPING[g])
+        user_groups = sorted(user_groups)
+        user_roles = sorted(user_roles)
+
+        refresh_token = str(uuid4())
+        refresh_expires_in = namespace.EXPIRES_REFRESH_TOKEN
 
         cookie_expires = (
-            datetime.datetime.now()
-            + datetime.timedelta(seconds=namespace.EXPIRES_REFRESH_TOKEN)
+            datetime.datetime.now() + datetime.timedelta(seconds=refresh_expires_in)
         ).ctime()
 
         token_expires = datetime.datetime.now(
             tz=datetime.timezone.utc
         ) + datetime.timedelta(seconds=namespace.EXPIRES_ACCESS_TOKEN)
 
-        refresh_token, fingerprint = self.add_refresh_session()
+        fingerprint = self.add_refresh_session(
+            refresh_token=refresh_token,
+            refresh_expires_in=refresh_expires_in,
+        )
 
         if not refresh_token:
             logger.warning("Refresh token is None")
             return {"message": "Unauthorized"}, 401
 
-        encoded_jwt = encode_jwt_token(
+        access_token = encode_jwt_token(
             {
-                "nickname": self._name,
+                "nickname": self.args.nickname,
+                "display_name": auth_result.value.get("display_name", ""),
                 "fingerprint": fingerprint,
                 "exp": token_expires,
-                "groups": user_groups,
+                "ns": time.perf_counter_ns(),
+                "group": find_max_ranked_group(user_groups),
+                "roles": user_roles,
+                "provider": self.args.auth_provider.value,
             }
         )
 
-        response = {"access_token": encoded_jwt, "refresh_token": refresh_token}
+        response = {"access_token": access_token, "refresh_token": refresh_token}
         headers = {
-            "Set-Cookie": f"refresh_token={refresh_token}; Expires=f'{cookie_expires}'; HttpOnly"
+            "Set-Cookie": (
+                f"refresh_token={refresh_token}; Expires=f'{cookie_expires}'; "
+                f"{namespace.AUTH_COOKIES_OPTIONS}"
+            )
         }
 
         return response, 200, headers
 
-    def add_refresh_session(self):
+    def add_refresh_session(self, refresh_token: str, refresh_expires_in: int):
         """
         Adds new session if stored user sessions does not exceeds MAX_REFRESH_SESSIONS_COUNT,
         else remove all user sessions and create a new session.
         """
-        fingerprint = user_fingerprint(request)
+        fingerprint = user_fingerprint()
+        user_session_name = REFRESH_TOKEN_KEY.format(user=self.args.nickname)
 
-        if self._exceeds_max_sessions():
-            self.storage.delete(self._token)
+        if self._exceeds_max_sessions(user_session_name):
+            self.storage.delete(user_session_name)
 
-        token = self._add_refresh_session(fingerprint)
+        self._add_refresh_session(
+            fingerprint,
+            user_session_name,
+            refresh_token,
+            refresh_expires_in,
+        )
 
-        return token, fingerprint
+        return fingerprint
 
-    def _exceeds_max_sessions(self) -> bool:
+    def _exceeds_max_sessions(self, user_session_name: str) -> bool:
         """
         Checks the number of sessions with the same user nickname.
         """
-        user_sessions = self.storage.map_getall(self._token)
+        user_sessions = self.storage.map_getall(user_session_name)
         return len(user_sessions.keys()) >= namespace.MAX_REFRESH_SESSIONS_COUNT
 
-    def _add_refresh_session(self, fingerprint: str):
+    def _add_refresh_session(
+        self,
+        fingerprint: str,
+        user_session_name: str,
+        refresh_token: str,
+        refresh_expires_in: int,
+    ):
         """
         Adds session to the storage, if the session exists, raises an exception.
         """
@@ -118,31 +213,21 @@ class AuthLogin(APIWorker):
         }
 
         if fingerprint not in active_fingerprints:
-            return self._new_refresh_token(fingerprint)
+            new_refresh_session = {
+                refresh_token: json.dumps(
+                    {
+                        "nickname": self.args.nickname,
+                        "fingerprint": fingerprint,
+                        "expires": refresh_expires_in,
+                        "create_at": int(datetime.datetime.now().timestamp()),
+                    }
+                )
+            }
+
+            self.storage.map_set(
+                user_session_name, new_refresh_session, refresh_expires_in
+            )
 
         for key, values in user_sessions.items():
             if fingerprint == json.loads(values)["fingerprint"]:
                 return key
-
-    def _new_refresh_token(self, fingerprint: str):
-        """
-        Creates session data and saves it in the storage.
-        """
-        token = str(uuid4())
-
-        new_refresh_session = {
-            token: json.dumps(
-                {
-                    "nickname": self._name,
-                    "fingerprint": fingerprint,
-                    "expires": namespace.EXPIRES_REFRESH_TOKEN,
-                    "create_at": int(datetime.datetime.now().timestamp()),
-                }
-            )
-        }
-
-        self.storage.map_set(
-            self._token, new_refresh_session, namespace.EXPIRES_REFRESH_TOKEN
-        )
-
-        return token

@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -26,7 +26,6 @@ repology_export_branch_stat_el_model = ns.model(
     {
         "arch": fields.String(description="source package arch"),
         "count": fields.Integer(
-            attribute="cnt",
             description="count of source packages by binary packages arch",
         ),
     },
@@ -58,7 +57,7 @@ repology_export_src_pkg_el_model = ns.model(
         "recipe": fields.String(description="package spec file"),
         "recipe_raw": fields.String(description="package spec file raw"),
         "bugzilla": fields.String(description="package bugs"),
-        "CPE": fields.String(description="package CPE"),
+        "CPE": fields.List(fields.String(description="package CPE"), attribute="cpe"),
         "binaries": fields.Nested(
             repology_export_bin_pkg_el_model,
             description="binary packages info",
@@ -173,6 +172,34 @@ branch_tree_model = ns.model(
         "branch_points": fields.Nested(
             branch_tree_branch_point_model,
             description="branch points list",
+            as_list=True,
+        ),
+    },
+)
+
+beehive_ftbfs_el_model = ns.model(
+    "ExportBeehiveFTBFSElementModel",
+    {
+        "branch": fields.String(description="Beehive branch"),
+        "hash": fields.String(description="package hash"),
+        "name": fields.String(description="package name"),
+        "epoch": fields.Integer(description="package epoch"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "arch": fields.String(description="Beehive arch"),
+        "updated": fields.String(description="Beehive rebuild date"),
+        "ftbfs_since": fields.String(description="Package FTBFS since date"),
+        "url": fields.String(description="Beehive package build error log URL"),
+    },
+)
+beehive_ftbfs_list_model = ns.model(
+    "ExportBeehiveFTBFSListModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "ftbfs": fields.Nested(
+            beehive_ftbfs_el_model,
+            description="Beehive packages rebuild errors",
             as_list=True,
         ),
     },

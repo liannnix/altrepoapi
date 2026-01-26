@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -17,30 +17,56 @@
 import re
 import json
 import logging
-import multiprocessing as mp
 
 from dataclasses import dataclass, asdict, field, replace
 from datetime import datetime
-from functools import partial
+
 from itertools import islice
-from typing import Any, Iterable, Literal, NamedTuple, Protocol, Union
+from typing import (
+    Any,
+    Iterable,
+    Literal,
+    NamedTuple,
+    Optional,
+    Protocol,
+    TypedDict,
+    Union,
+)
 
 from altrepo_api.api.misc import lut
-from altrepo_api.utils import make_tmp_table_name
 from altrepo_api.libs.librpm_functions import (
     compare_versions,
     version_less_or_equal,
     VersionCompareResult,
 )
+from altrepo_api.utils import get_nested_value, make_tmp_table_name, mmhash
 
 from ..sql import SQL
 
 logger = logging.getLogger(__name__)
 
 
-ROOT_BRANCH = "sisyphus"
+ROOT_BRANCH = lut.branch_inheritance_root
 CVE_MATCHER_MAX_CPU = 4  # running more than 4 processes is inefficient
 CVE_MATCHER_CHUNK_SIZE = 1000  # optimal chunk size is around 500-1000
+BDU_ID_TYPE = "BDU"
+BDU_ID_PREFIX = f"{BDU_ID_TYPE}:"
+CVE_ID_TYPE = "CVE"
+CVE_ID_PREFIX = f"{CVE_ID_TYPE}-"
+GHSA_ID_TYPE = "GHSA"
+GHSA_ID_PREFIX = f"{GHSA_ID_TYPE}-"
+MFSA_ID_TYPE = "MFSA"
+MFSA_ID_PREFIX = f"{MFSA_ID_TYPE}"
+REFERENCE_TYPE_BUG = lut.errata_ref_type_bug
+REFERENCE_TYPE_VULN = lut.errata_ref_type_vuln
+
+CVSS_VERSION_2 = "2.0"
+CVSS_VERSION_3 = "3.x"
+CVSS_VERSION_4 = "4.0"
+
+# type alias
+CPETriplet = tuple[str, str, str]
+JSONDict = dict[str, Any]
 
 
 def unescape(x: str) -> str:
@@ -64,6 +90,10 @@ def unescape(x: str) -> str:
         return x_
     else:
         return x_.replace("\\", "")
+
+
+def escape(x: str):
+    return re.sub(r":", r"\:", x)
 
 
 def chunks(data: dict[str, Any], size: int) -> Iterable[dict[str, Any]]:
@@ -94,6 +124,7 @@ class TaskState(NamedTuple):
 
 
 class CpeMatchVersions(NamedTuple):
+    cpe: str
     version_start: str
     version_end: str
     version_start_excluded: bool
@@ -101,6 +132,58 @@ class CpeMatchVersions(NamedTuple):
 
     def asdict(self) -> dict[str, Any]:
         return self._asdict()
+
+
+CPE_FIELDS = (
+    "part",
+    "vendor",
+    "product",
+    "version",
+    "update",
+    "edition",
+    "lang",
+    "sw_edition",
+    "target_sw",
+    "target_hw",
+    "other",
+)
+CPE_PARTS_COUNT = 13
+
+
+@dataclass
+class CPE:
+    """CPE record structure."""
+
+    part: str
+    vendor: str
+    product: str
+    version: str
+    update: str
+    edition: str
+    lang: str
+    sw_edition: str
+    target_sw: str
+    target_hw: str
+    other: str
+    hash: int
+
+    def __init__(self, cpe_str: str) -> None:
+        self.hash = mmhash(cpe_str)
+
+        parts = re.split(r"(?<!\\):", cpe_str)
+
+        if len(parts) != CPE_PARTS_COUNT:
+            raise ValueError("Failed to parse CPE from %s" % cpe_str)
+
+        for attr, value in zip(CPE_FIELDS, parts[2:]):
+            setattr(self, attr, unescape(value))
+
+    def __hash__(self) -> int:
+        return self.hash
+
+    def __repr__(self) -> str:
+        parts = ":".join(escape(getattr(self, field)) for field in CPE_FIELDS)
+        return f"cpe:2.3:{parts}"
 
 
 @dataclass(frozen=True)
@@ -162,58 +245,17 @@ class VulnerabilityInfo:
         if parsed is not None:
             self.json = parsed
 
-    def asdict(self) -> dict[str, Any]:
+    def asdict(self, exclude_json: bool) -> dict[str, Any]:
         res = asdict(self)
 
         del res["refs_type"]
         del res["refs_link"]
+        if exclude_json:
+            res["json"] = {}
+
         res["refs"] = [r for r in self.refs_link]
 
         return res
-
-
-@dataclass
-class CPE:
-    part: str
-    vendor: str
-    product: str
-    version: str
-    update: str
-    edition: str
-    lang: str
-    sw_edition: str
-    target_sw: str
-    target_hw: str
-    other: str
-
-    def __init__(self, cpe_str: str) -> None:
-        res = re.split(r"(?<!\\):", cpe_str)
-        (
-            _,
-            _,
-            self.part,
-            self.vendor,
-            self.product,
-            self.version,
-            self.update,
-            self.edition,
-            self.lang,
-            self.sw_edition,
-            self.target_sw,
-            self.target_hw,
-            self.other,
-        ) = res
-        # self.vendor = unescape(self.vendor)
-        # self.product = unescape(self.product)
-        # self.version = unescape(self.version)
-        # self.update = unescape(self.update)
-
-    def __repr__(self) -> str:
-        return (
-            f"cpe:2.3:{self.part}:{self.vendor}:{self.product}:{self.version}:"
-            f"{self.update}:{self.edition}:{self.lang}:{self.sw_edition}:"
-            f"{self.target_sw}:{self.target_hw}:{self.other}"
-        )
 
 
 @dataclass
@@ -223,7 +265,7 @@ class CpeMatch:
 
     def __init__(self, cpe: str, *args) -> None:
         self.cpe = CPE(cpe)
-        self.version = CpeMatchVersions(*args)
+        self.version = CpeMatchVersions(cpe, *args)
 
     def asdict(self) -> dict[str, Any]:
         return {"cpe": repr(self.cpe), "versions": self.version.asdict()}
@@ -261,42 +303,29 @@ class PackageVulnerabiltyInfo:
 
 
 def match_cpem_by_version(
-    pkg: PackageVersion, cpems: Iterable[CpeMatch], debug: bool = False
+    pkg: PackageVersion, cpems: Iterable[CpeMatch]
 ) -> list[CpeMatch]:
-    if not debug:
-        return [
-            cpem
-            for cpem in cpems
-            if version_less_or_equal(
-                pkg.version,
-                cpem.version.version_end,
-                cpem.version.version_end_excluded,
-            )
-            and version_less_or_equal(
-                cpem.version.version_start,
-                pkg.version,
-                cpem.version.version_start_excluded,
-            )
-        ]
-    else:
-        logger.debug(f"{pkg.name} {pkg.version}")
-        res = []
-        for cpem in cpems:
-            if version_less_or_equal(
-                pkg.version,
-                cpem.version.version_end,
-                cpem.version.version_end_excluded,
-            ) and version_less_or_equal(
-                cpem.version.version_start,
-                pkg.version,
-                cpem.version.version_start_excluded,
-            ):
-                res.append(cpem)
-                logger.debug(f"Overlap: {cpem}")
-            else:
-                logger.debug(f"Not overlap: {cpem}")
+    def match_versions(pkg: PackageVersion, cpem: CpeMatch) -> bool:
+        # XXX: always match the package for CPE with version unspecified
+        if (
+            cpem.version.version_start == ""
+            and cpem.version.version_end == ""
+            and not cpem.version.version_start_excluded
+            and not cpem.version.version_end_excluded
+        ):
+            return True
 
-        return res
+        return version_less_or_equal(
+            pkg.version,
+            cpem.version.version_end,
+            cpem.version.version_end_excluded,
+        ) and version_less_or_equal(
+            cpem.version.version_start,
+            pkg.version,
+            cpem.version.version_start_excluded,
+        )
+
+    return [cpem for cpem in cpems if match_versions(pkg, cpem)]
 
 
 @dataclass
@@ -354,13 +383,11 @@ class _pAPIWorker(Protocol):
 
     def store_error(
         self, message: dict[str, Any], severity: int = ..., http_code: int = ...
-    ) -> tuple[Any, int]:
-        ...
+    ) -> tuple[Any, int]: ...
 
     def send_sql_request(
         self, request_line: Any, http_code: int = ..., **kwargs
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
 
 class _pHasBranch(Protocol):
@@ -391,24 +418,20 @@ class _pHasPackagesVulnerabilities(Protocol):
     packages_vulnerabilities: list[PackageVulnerability]
 
 
-class _pGetErratasCompatible(_pHasErratas, _pHasBranch, _pAPIWorker, Protocol):
-    ...
+class _pGetErratasCompatible(_pHasErratas, _pHasBranch, _pAPIWorker, Protocol): ...
 
 
-class _pDedupErratasCompatible(_pHasErratas, _pAPIWorker, Protocol):
-    ...
+class _pDedupErratasCompatible(_pHasErratas, _pAPIWorker, Protocol): ...
 
 
 class _pGetPackagesCpesCompatible(
     _pHasPackagesCpes, _pHasBranch, _pAPIWorker, Protocol
-):
-    ...
+): ...
 
 
 class _pGetCveInfoCompatible(
     _pHasCveInfo, _pHasCveCpems, _pHasBranch, _pAPIWorker, Protocol
-):
-    ...
+): ...
 
 
 class _pGetCveMatchingByPackageCpesCompatible(
@@ -416,12 +439,10 @@ class _pGetCveMatchingByPackageCpesCompatible(
     _pHasPackagesCpes,
     _pAPIWorker,
     Protocol,
-):
-    ...
+): ...
 
 
-class _pGetCveInfoByIdsCompatible(_pHasCveInfo, _pAPIWorker, Protocol):
-    ...
+class _pGetCveInfoByIdsCompatible(_pHasCveInfo, _pAPIWorker, Protocol): ...
 
 
 class _pGetLastPackageVersionsCompatible(
@@ -429,8 +450,7 @@ class _pGetLastPackageVersionsCompatible(
     _pHasBranch,
     _pAPIWorker,
     Protocol,
-):
-    ...
+): ...
 
 
 class _pGetMatchedPackagesNamesCompatible(
@@ -438,8 +458,7 @@ class _pGetMatchedPackagesNamesCompatible(
     _pHasPackagesCpes,
     _pAPIWorker,
     Protocol,
-):
-    ...
+): ...
 
 
 class _pGetPackagesVulnerabilitiesCompatible(
@@ -449,14 +468,12 @@ class _pGetPackagesVulnerabilitiesCompatible(
     _pHasPackagesVulnerabilities,
     _pAPIWorker,
     Protocol,
-):
-    ...
+): ...
 
 
 class _pDedupPackagesVulnerabilitiesCompatible(
     _pHasPackagesVulnerabilities, _pAPIWorker, Protocol
-):
-    ...
+): ...
 
 
 class _pGetVulnerabilityFixErrataCompatible(
@@ -466,12 +483,10 @@ class _pGetVulnerabilityFixErrataCompatible(
     _pHasBranch,
     _pAPIWorker,
     Protocol,
-):
-    ...
+): ...
 
 
-class _pGetTaskHistoryCompatible(_pHasBranch, _pAPIWorker, Protocol):
-    ...
+class _pGetTaskHistoryCompatible(_pHasBranch, _pAPIWorker, Protocol): ...
 
 
 # Mixin
@@ -514,7 +529,7 @@ def _get_task_history(
         _ = cls.store_error({"message": "No 'DONE' tasks found in DB"})
         return None
 
-    # order by task_changed in descending order
+    # ordered by 'task_changed' in descending order in SQL request
     tasks: dict[str, list[Task]] = {}
     for task in (Task(*el) for el in response):
         if task.package not in tasks:
@@ -529,6 +544,9 @@ def _get_task_history(
         _branches = {t.branch for t in _tasks}
         _all_branches.update(_branches)
 
+        # cut tasks list until the first task in given branch
+        # we don't need them here due to errata history contents for
+        # current branch is collected directly by packages names
         if cls.branch in _branches:
             i = 0
             for ii, t in enumerate(_tasks):
@@ -561,17 +579,19 @@ def _get_task_history(
 
     tasks_history = {t.id: t for t in (TaskHistory(*el) for el in response)}
 
-    first_tasks: dict[str, TaskHistory] = {}
+    # get the map of latest task of each branch
+    newest_tasks: dict[str, TaskHistory] = {}
     for task in tasks_history.values():
         if (
-            task.branch not in first_tasks
-            or task.changed > first_tasks[task.branch].changed
+            task.branch not in newest_tasks
+            or task.changed > newest_tasks[task.branch].changed
         ):
-            first_tasks[task.branch] = task
+            newest_tasks[task.branch] = task
 
     branch_history: dict[str, set[int]] = {}
 
-    for branch, task in ((b, t) for b, t in first_tasks.items()):
+    # build the task and branch inheritance tree
+    for branch, task in newest_tasks.items():
         t = task
         tasks_set = set()
         intermediate_branches = set()
@@ -590,14 +610,19 @@ def _get_task_history(
 
         branch_history[branch] = tasks_set
 
-    # filter out tasks using branch tasks history
+    # filter out packages tasks using branch history
     for package, _tasks in tasks.items():
         if not _tasks:
             continue
-
-        _branch = _tasks[0].branch
-        tasks[package] = [t for t in _tasks if t.id in branch_history[_branch]]
-
+        # build task history using branch inheritance order
+        _all_pkg_task_branches = {t.branch for t in _tasks}
+        for _branch in lut.branch_inheritance[cls.branch]:
+            # skip if there is no tasks found for branch
+            if _branch not in _all_pkg_task_branches:
+                continue
+            # found first matched branch form branch inheritance list
+            tasks[package] = [t for t in _tasks if t.id in branch_history[_branch]]
+            break
     cls.status = True
     return tasks
 
@@ -683,10 +708,24 @@ def deduplicate_packages_vulnerabilities(
     cls.packages_vulnerabilities = list(set(cls.packages_vulnerabilities))
 
 
-def get_errata_by_cve_ids(cls: _pGetErratasCompatible, cve_ids: Iterable[str]) -> None:
+def get_errata_by_cve_ids(
+    cls: _pGetErratasCompatible, cve_ids: Iterable[str], use_branch_inheritance: bool
+) -> None:
+    branches = [cls.branch]
+    # add branches from branch inhertance LUT
+    if use_branch_inheritance:
+        if cls.branch in lut.branch_inheritance:
+            branches += lut.branch_inheritance[cls.branch]
+
     where_clause = (
-        f"AND pkgset_name = '{cls.branch}'" f"AND hasAny(eh_references.link, {cve_ids})"
+        # f"AND pkgset_name = '{cls.branch}' AND hasAny(eh_references.link, {cve_ids})"
+        f"AND pkgset_name IN {branches} AND hasAny(eh_references.link, {cve_ids})"
     )
+    return _get_erratas(cls, where_clause)
+
+
+def get_errata_by_cve_id(cls: _pGetErratasCompatible, cve_id: str) -> None:
+    where_clause = f"AND has(eh_references.link, '{cve_id}')"
     return _get_erratas(cls, where_clause)
 
 
@@ -799,8 +838,6 @@ def get_packages_cpes(
 ) -> None:
     cls.status = False
 
-    cpe_branches = (lut.cpe_branch_map[cls.branch],)
-
     pkg_names_clause = ""
     external_tables = []
     if pkg_names:
@@ -816,16 +853,14 @@ def get_packages_cpes(
 
     response = cls.send_sql_request(
         cls.sql.get_packages_and_cpes.format(
-            cpe_branches=cpe_branches, pkg_names_clause=pkg_names_clause
+            cpe_branches=lut.repology_branches, pkg_names_clause=pkg_names_clause
         ),
         external_tables=external_tables,
     )
     if not cls.sql_status:
         return None
     if not response:
-        _ = cls.store_error(
-            {"message": f"No CPE matches data info found in DB for {cpe_branches}"}
-        )
+        _ = cls.store_error({"message": "No CPE matches data info found in DB"})
         return None
 
     for pkg_name, cpe in response:
@@ -894,27 +929,55 @@ def matcher(
 
     result = []
 
-    for vuln_id, cpems in cve_cpems.items():
-        cve_cpe_triplets = {
-            (cpem.cpe.vendor, cpem.cpe.product, cpem.cpe.target_sw) for cpem in cpems
-        }
+    class CveMatch(NamedTuple):
+        vuln_id: str
+        cpms: list[CpeMatch]
 
-        for pkg in packages_versions:
-            pkg_cpe_triplets = {
-                (cpe.vendor, cpe.product, cpe.target_sw)
-                for cpe in packages_cpes.get(pkg.name, [])
-            }
+    class PkgMatch(NamedTuple):
+        version: PackageVersion
+        cpes: list[CPE]
 
-            if not cve_cpe_triplets.intersection(pkg_cpe_triplets):
-                continue
+    def cpe_triplet(cpe: CPE) -> CPETriplet:
+        return (cpe.vendor, cpe.product, cpe.target_sw)
 
+    # build-up CVE' CPE matches related data structures
+    cve_matches = tuple(
+        [CveMatch(vuln_id, cpems) for vuln_id, cpems in cve_cpems.items()]
+    )
+    # reverse index
+    cves_cpe_ridx: dict[CPETriplet, list[int]] = {}
+    for idx, cvem in enumerate(cve_matches):
+        for cpem in cvem.cpms:
+            triplet = cpe_triplet(cpem.cpe)
+            if triplet in cves_cpe_ridx:
+                cves_cpe_ridx[triplet].append(idx)
+            else:
+                cves_cpe_ridx[triplet] = [idx]
+
+    # loop through data using indexes
+    for idx, pkgm in enumerate(
+        pkgm
+        for pkgm in (
+            PkgMatch(pkg, packages_cpes.get(pkg.name, [])) for pkg in packages_versions
+        )
+        if pkgm.cpes
+    ):
+        #  collect related CVE's
+        pkg_cpe_triplets = {cpe_triplet(cpe) for cpe in pkgm.cpes}
+
+        related_cves_idxs: set[int] = set()
+        for idxs in (cves_cpe_ridx[t] for t in pkg_cpe_triplets if t in cves_cpe_ridx):
+            related_cves_idxs.update(idxs)
+
+        for cvem in (cve_matches[idx] for idx in sorted(related_cves_idxs)):
             result.append(
-                PackageVulnerability(**pkg._asdict(), vuln_id=vuln_id).match_by_version(
+                PackageVulnerability(
+                    **pkgm.version._asdict(), vuln_id=cvem.vuln_id
+                ).match_by_version(
                     (
                         cpem
-                        for cpem in cpems
-                        if (cpem.cpe.vendor, cpem.cpe.product, cpem.cpe.target_sw)
-                        in pkg_cpe_triplets
+                        for cpem in cvem.cpms
+                        if cpe_triplet(cpem.cpe) in pkg_cpe_triplets
                     )
                 )
             )
@@ -932,20 +995,9 @@ def get_packages_vulnerabilities(cls: _pGetPackagesVulnerabilitiesCompatible) ->
         f"Total CPE matches count: {len([c for cpems in cls.cve_cpems.values() for c in cpems])}"
     )
 
-    # # for pv in matcher(cls.cve_cpems, cls.packages_versions, cls.packages_cpes):
-    # for pv in _matcher(cls.cve_cpems):
-    #     cls.packages_vulnerabilities.append(pv)
-
-    _matcher = partial(
-        matcher,
-        packages_versions=cls.packages_versions,
-        packages_cpes=cls.packages_cpes,
-    )
-
-    with mp.Pool(processes=min(mp.cpu_count(), CVE_MATCHER_MAX_CPU)) as p:
-        for pvs in p.map(_matcher, chunks(cls.cve_cpems, CVE_MATCHER_CHUNK_SIZE)):
-            cls.packages_vulnerabilities.extend(pvs)
-
+    matched = matcher(cls.cve_cpems, cls.packages_versions, cls.packages_cpes)
+    cls.logger.debug(f"Matched packages vulnerabilities: {len(matched)}")
+    cls.packages_vulnerabilities.extend(matched)
     cls.logger.debug(f"Packages CVE matching finished: {datetime.now()}")
 
     cls.packages_vulnerabilities = sorted(
@@ -973,7 +1025,9 @@ def get_vulnerability_fix_errata(
                 if (pkg.name, pkg.branch) == (
                     errata.pkg_name,
                     errata.branch,
-                ) and pkg.vuln_id in errata.ref_ids(ref_type="vuln"):
+                ) and pkg.vuln_id in errata.ref_ids(
+                    ref_type=REFERENCE_TYPE_VULN  # type: ignore
+                ):
                     # no need to check version due to branch, package name and vulnerability id is equal already
                     pkg.fixed_in.append(errata)
 
@@ -1023,7 +1077,7 @@ def get_vulnerability_fix_errata(
             # if (pkg.branch, pkg.name) == (errata.branch, errata.pkg_name):
             if pkg.name == errata.pkg_name:
                 # get any vuln_id if it is linked with errata
-                vuln_ids = cve_ids_set.intersection(set(errata.ref_ids("vuln")))
+                vuln_ids = cve_ids_set.intersection(set(errata.ref_ids(REFERENCE_TYPE_VULN)))  # type: ignore
                 if not vuln_ids:
                     continue
 
@@ -1150,3 +1204,206 @@ def get_cve_info_by_ids(
         cls.cve_info[el[1]] = VulnerabilityInfo(*el[1:])
 
     cls.status = True
+
+
+class CVSS(NamedTuple):
+    version: str
+    score: float
+    vector: str
+
+
+class VulnerabilityReference(NamedTuple):
+    name: str
+    url: str
+    tags: list[str]
+
+
+class VulnerabilityConfiguration(TypedDict):
+    cpe: str
+    versionStartExcluding: str
+    versionStartIncluding: str
+    versionEndExcluding: str
+    versionEndIncluding: str
+
+
+class VulnerabilityParsed(NamedTuple):
+    references: list[VulnerabilityReference]
+    cvss_vectors: list[CVSS]
+    cwes: list[str]
+    configurations: list[VulnerabilityConfiguration]
+
+    def asdict(self) -> dict[str, Any]:
+        return {
+            "references": [ref._asdict() for ref in self.references],
+            "cvss_vectors": [cvss._asdict() for cvss in self.cvss_vectors],
+            "cwes": self.cwes,
+            "configurations": self.configurations,
+        }
+
+
+def make_empty_parsed() -> VulnerabilityParsed:
+    return VulnerabilityParsed(
+        references=[],
+        cvss_vectors=[],
+        cwes=[],
+        configurations=[],
+    )
+
+
+def parse_vulnerability_details(
+    vuln: VulnerabilityInfo,
+) -> Optional[VulnerabilityParsed]:
+    if vuln.id.startswith(CVE_ID_PREFIX):
+        return _parse_cve_info(vuln)
+    elif vuln.id.startswith(BDU_ID_PREFIX):
+        return _parse_bdu_info(vuln)
+    elif vuln.id.startswith(GHSA_ID_PREFIX):
+        return _parse_ghsa_info(vuln)
+    return None
+
+
+def _make_vuln_ref(ref: JSONDict) -> "VulnerabilityReference":
+    return VulnerabilityReference(
+        name=ref.get("name") or ref.get("text") or "",
+        url=ref.get("url") or ref.get("link") or "",
+        tags=ref.get("tags") or [t for t in (ref.get("type"),) if t] or [],
+    )
+
+
+def _get_cve_id_from_refs(vuln: VulnerabilityInfo) -> Optional[str]:
+    for ty, link in zip(vuln.refs_type, vuln.refs_link):
+        if ty == CVE_ID_TYPE:
+            return link
+    return None
+
+
+def _parse_cve_info(cve: VulnerabilityInfo) -> VulnerabilityParsed:
+    def find_primary_cvss(cvss_metrics: list[JSONDict]) -> JSONDict:
+        for metric in cvss_metrics:
+            if metric.get("type") == "Primary":
+                return metric
+
+        return cvss_metrics[0]
+
+    def find_primary_cwe(weaknesses: list[JSONDict]) -> JSONDict:
+        for weakness in weaknesses:
+            if weakness.get("type") == "Primary":
+                return weakness
+
+        return weaknesses[0]
+
+    # parse references
+    refs = get_nested_value(cve.json, "cve.references", [])
+    refernces = [_make_vuln_ref(ref) for ref in refs]
+
+    # parse CVSS
+    cvss_vectors = []
+
+    for version, keys in {
+        CVSS_VERSION_2: ("cvssMetricV2",),
+        CVSS_VERSION_3: ("cvssMetricV30", "cvssMetricV31"),
+        CVSS_VERSION_4: ("cvssMetricV40",),
+    }.items():
+        metrics = []
+        for key in keys:
+            if metric := get_nested_value(cve.json, f"cve.metrics.{key}", []):
+                metrics.extend(metric)
+        if metrics:
+            v = find_primary_cvss(metrics)
+            cvss_vectors.append(
+                CVSS(
+                    version,
+                    float(get_nested_value(v, "cvssData.baseScore", 0)),
+                    get_nested_value(v, "cvssData.vectorString", ""),
+                )
+            )
+
+    # parse CWE
+    cwes = []
+    if weaknesses := get_nested_value(cve.json, "cve.weaknesses", []):
+        for w in find_primary_cwe(weaknesses).get("description", []):
+            if (v := w.get("value")) and v.startswith("CWE-") and v not in cwes:
+                cwes.append(v)
+
+    # parse configurations
+    def parse_configuration(config: JSONDict) -> list[VulnerabilityConfiguration]:
+        configurations = []
+        if (nodes := config.get("nodes")) is None:
+            return configurations
+
+        for node in nodes:
+            for m in node.get("cpeMatch", []):
+                if (cpe := m.get("criteria")) and cpe.startswith("cpe:2.3:"):
+                    configurations.append(VulnerabilityConfiguration(cpe=cpe, **m))
+
+        return configurations
+
+    configurations = []
+    if configs := get_nested_value(cve.json, "cve.configurations", []):
+        for config in configs:
+            configurations.extend(parse_configuration(config))
+
+    return VulnerabilityParsed(refernces, cvss_vectors, cwes, configurations)
+
+
+def _parse_bdu_info(bdu: VulnerabilityInfo) -> VulnerabilityParsed:
+    # parse references
+    refs = get_nested_value(bdu.json, "identifiers", [])
+    refernces = [_make_vuln_ref(ref) for ref in refs]
+
+    # add reference to CVE from vulnerability references
+    if (cve_id := _get_cve_id_from_refs(bdu)) is not None:
+        refernces.append(VulnerabilityReference(name=cve_id, url=cve_id, tags=["CVE"]))
+
+    # parse CVSS
+    cvss_vectors = []
+    if cvss_v3 := get_nested_value(bdu.json, "cvss3.vector"):
+        cvss_vectors.append(
+            CVSS(
+                CVSS_VERSION_3, float(cvss_v3.get("score", 0)), cvss_v3.get("text", "")
+            )
+        )
+    if cvss_v2 := get_nested_value(bdu.json, "cvss.vector"):
+        cvss_vectors.append(
+            CVSS(
+                CVSS_VERSION_2, float(cvss_v2.get("score", 0)), cvss_v2.get("text", "")
+            )
+        )
+
+    # parse CWE
+    # XXX: looks like CWE is not in BDU JSON anymore
+    cwes = bdu.json.get("cwe", [])
+
+    return VulnerabilityParsed(refernces, cvss_vectors, cwes, [])
+
+
+def _parse_ghsa_info(ghsa: VulnerabilityInfo) -> VulnerabilityParsed:
+    # parse refernces
+    refs = get_nested_value(ghsa.json, "references", [])
+    refernces = [_make_vuln_ref(ref) for ref in refs]
+
+    # add reference to CVE from vulnerability references
+    if (cve_id := _get_cve_id_from_refs(ghsa)) is not None:
+        refernces.append(VulnerabilityReference(name=cve_id, url=cve_id, tags=["CVE"]))
+
+    # parse CVSS
+    cvss_vectors = []
+    VERSION_MAP = {
+        "CVSS_V2": CVSS_VERSION_2,
+        "CVSS_V3": CVSS_VERSION_3,
+        "CVSS_V4": CVSS_VERSION_4,
+    }
+    if severities := get_nested_value(ghsa.json, "severity", []):
+        for severity in severities:
+            if (ty := severity.get("type", "")) in VERSION_MAP:
+                cvss_vectors.append(
+                    CVSS(VERSION_MAP[ty], ghsa.score, severity.get("score", ""))
+                )
+
+    # TODO: parse affected ranges
+    pass
+
+    # parse CWE
+    cwes = get_nested_value(ghsa.json, "database_specific.cwe_ids", [])
+
+    return VulnerabilityParsed(refernces, cvss_vectors, cwes, [])

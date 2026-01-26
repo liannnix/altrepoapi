@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -120,10 +120,20 @@ class TranslationExport(APIWorker):
 
     def get(self):
         branches = tuple(self.args["branches"])
+        from_date = self.args["from_date"]
 
-        response = self.send_sql_request(
-            self.sql.get_packages_descriptions.format(branches=branches)
-        )
+        response = ""
+        if from_date is not None:
+            response = self.send_sql_request(
+                self.sql.get_packages_descriptions_from_date.format(
+                    branches=branches, from_date=from_date
+                )
+            )
+        else:
+            response = self.send_sql_request(
+                self.sql.get_packages_descriptions.format(branches=branches)
+            )
+
         if not self.sql_status:
             return self.error
         if not response:
@@ -134,8 +144,10 @@ class TranslationExport(APIWorker):
                 }
             )
 
-        packages = sorted([PkgInfo(*el) for el in response], key=lambda pkg: pkg.src_pkg_name)  # type: ignore
-        pkgs_by_1st = {}
+        packages = sorted(
+            [PkgInfo(*el) for el in response], key=lambda pkg: pkg.src_pkg_name
+        )
+        pkgs_by_1st: dict[str, list[PkgInfo]] = {}
         for pkg in packages:
             first_src_symbol = pkg.src_pkg_name[0].lower()
             if first_src_symbol not in pkgs_by_1st:

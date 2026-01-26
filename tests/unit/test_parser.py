@@ -265,13 +265,16 @@ def test_disttag_type(test_input, expected_exception, expected):
         ("test-123", None, "test-123"),
         ("test_test.123", None, "test_test.123"),
         ("/test/*/test.test*", None, "/test/*/test.test*"),
+        ("/test/*/test.test++", None, "/test/*/test.test++"),
+        ("test@123", None, "test@123"),
+        ("test-{123_abc}", None, "test-{123_abc}"),
         ("x*", None, "x*"),
         ("", ValueError, None),
         ("x", ValueError, None),
         (" test", ValueError, None),
-        ("/A.b.c+123", ValueError, None),
-        ("/abc-Test!", ValueError, None),
-        ("/test-123\\x.y", ValueError, None),
+        ("/A.b.c~123", None, "/A.b.c~123"),
+        ("/abc-Test!", None, "/abc-Test!"),
+        ("/test-123\\x.y{aaa}", None, "/test-123\\x.y{aaa}"),
     ],
 )
 def test_file_name_wc_type(test_input, expected_exception, expected):
@@ -557,3 +560,23 @@ def test_acl_group_type(test_input, expected_exception, expected):
         assert parser.acl_group_type(test_input) == expected
     else:
         pytest.raises(expected_exception, parser.acl_group_type, test_input)
+
+
+@pytest.mark.parametrize(
+    "test_input, expected_exception, expected",
+    [
+        ("task", None, "task"),
+        ("web", None, "web"),
+        ("errata", None, "errata"),
+        ("abc", ValueError, None),
+        ("", ValueError, None),
+        (None, ValueError, None),
+        (123, ValueError, None),
+    ],
+)
+def test_comment_ref_type(test_input, expected_exception, expected):
+    if expected_exception is None:
+        assert parser.comment_ref_type(test_input) == expected
+    else:
+        with pytest.raises(expected_exception):
+            parser.comment_ref_type(test_input)

@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -110,7 +110,6 @@ all_pkgsets_summary_model = ns.model(
     },
 )
 
-
 pkgsets_status_el_model = ns.model(
     "SitePackagesetStatusElementModel",
     {
@@ -137,6 +136,38 @@ pkgsets_summary_status_model = ns.model(
         "status": fields.Nested(
             pkgsets_status_el_model,
             description="list of branches status",
+            as_list=True,
+        ),
+    },
+)
+
+tasks_history_task_model = ns.model(
+    "TasksHistoryTaskModel",
+    {
+        "id": fields.Integer(description="task ID"),
+        "prev": fields.Integer(description="previous task ID"),
+        "branch": fields.String(description="task branch name"),
+        "date": fields.String(description="task build time"),
+    },
+)
+tasks_history_branch_commit_model = ns.model(
+    "TasksHistoryBranchCommitModel",
+    {
+        "name": fields.String(description="branch name"),
+        "date": fields.String(description="branch commit date"),
+        "task": fields.Integer(description="branch commit task ID"),
+    },
+)
+tasks_history_model = ns.model(
+    "SiteTasksHistoryModel",
+    {
+        "branches": fields.List(fields.String, description="list of active branches"),
+        "tasks": fields.Nested(
+            tasks_history_task_model, description="branches tasks list", as_list=True
+        ),
+        "branch_commits": fields.Nested(
+            tasks_history_branch_commit_model,
+            description="branches commits list",
             as_list=True,
         ),
     },

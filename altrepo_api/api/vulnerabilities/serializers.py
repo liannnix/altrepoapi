@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -34,12 +34,71 @@ vulnerability_model = ns.model(
         "json": fields.Raw(description="vulnerability original JSON"),
     },
 )
+vuln_reference_element_model = ns.model(
+    "VulnerabilityReferenceElementModel",
+    {
+        "name": fields.String(description="refernce name"),
+        "url": fields.String(description="refernce link"),
+        "tags": fields.List(fields.String, description="reference tags"),
+    },
+)
+vuln_cvss_vector_element_model = ns.model(
+    "VulnerabilityCVSSVectorElelementModel",
+    {
+        "version": fields.String(description="CVSS vector version"),
+        "score": fields.Float(description="CVSS base score"),
+        "vector": fields.String(description="CVSS vector"),
+    },
+)
+vuln_configuration_element_model = ns.model(
+    "VulnerabilityConfigurationElementModel",
+    {
+        "cpe": fields.String(description="configuration CPE"),
+        "version_start_excluding": fields.String(
+            description="configuration element value", attribute="versionStartExcluding"
+        ),
+        "version_start_including": fields.String(
+            description="configuration element value", attribute="versionStartIncluding"
+        ),
+        "version_end_excluding": fields.String(
+            description="configuration element value", attribute="versionEndExcluding"
+        ),
+        "version_end_including": fields.String(
+            description="configuration element value", attribute="versionEndIncluding"
+        ),
+    },
+)
+vuln_parsed_model = ns.model(
+    "VulnerabilityParsedDetailsModel",
+    {
+        "references": fields.Nested(
+            vuln_reference_element_model,
+            description="vulnerability references",
+            as_list=True,
+        ),
+        "cvss_vectors": fields.Nested(
+            vuln_cvss_vector_element_model,
+            description="vulnerability CVSS vectors",
+            as_list=True,
+        ),
+        "configurations": fields.Nested(
+            vuln_configuration_element_model,
+            description="vulnerability configurations",
+            as_list=True,
+        ),
+        "cwes": fields.List(fields.String, description="vulnerability CWEs"),
+    },
+)
 vulnerability_info_model = ns.model(
     "VulnerabilityInfoModel",
     {
         "request_args": fields.Raw(description="request arguments"),
         "vuln_info": fields.Nested(
             vulnerability_model, description="vulnerabilty information"
+        ),
+        "parsed": fields.Nested(
+            vuln_parsed_model,
+            description="Parsed vulnerability contents",
         ),
     },
 )
@@ -130,6 +189,74 @@ cve_packages_model = ns.model(
 )
 
 
+vuln_pkg_last_version_model = ns.model(
+    "VulnPackageLastVersionModel",
+    {
+        "pkghash": fields.String(description="package hash UInt64 as string"),
+        "name": fields.String(description="package name"),
+        "branch": fields.String(description="package set name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+    },
+)
+vuln_fixes_el_model = ns.model(
+    "VulnFixesPackagesElementModel",
+    {
+        "pkghash": fields.String(description="package hash UInt64 as string"),
+        "name": fields.String(description="package name"),
+        "branch": fields.String(description="package set name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "errata_id": fields.String(description="errata ID"),
+        "task_id": fields.Integer(description="task ID"),
+        "task_state": fields.String(description="task state"),
+        "last_version": fields.Nested(
+            vuln_pkg_last_version_model,
+            description="last package version and release from repository",
+        ),
+    },
+)
+vuln_fixes_model = ns.model(
+    "VulnFixesPackagesModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "packages": fields.Nested(
+            vuln_fixes_el_model,
+            description="vulnerable packages information",
+            as_list=True,
+        ),
+    },
+)
+
+vuln_open_el_model = ns.model(
+    "VulnOpenPackagesElementModel",
+    {
+        "pkghash": fields.String(description="package hash UInt64 as string"),
+        "name": fields.String(description="package name"),
+        "branch": fields.String(description="package set name"),
+        "version": fields.String(description="package version"),
+        "release": fields.String(description="package release"),
+        "last_version": fields.Nested(
+            vuln_pkg_last_version_model,
+            description="last package version and release from repository",
+        ),
+    },
+)
+vuln_open_model = ns.model(
+    "VulnOpenPackagesModel",
+    {
+        "request_args": fields.Raw(description="request arguments"),
+        "length": fields.Integer(description="number of packages found"),
+        "packages": fields.Nested(
+            vuln_open_el_model,
+            description="vulnerable packages information",
+            as_list=True,
+        ),
+    },
+)
+
+
 cve_task_package_vulns_el_model = ns.model(
     "CveTaskPackageVulnerableElementModel",
     {
@@ -159,16 +286,6 @@ cve_task_packages_el_model = ns.model(
 cve_task_model = ns.model(
     "CveVulnerableTaskModel",
     {
-        "task_id": fields.Integer(description="task id"),
-        "task_repo": fields.String(description="repository name"),
-        "task_state": fields.String(description="task state"),
-        "task_owner": fields.String(description="task owner"),
-        "task_try": fields.Integer(description="task try number"),
-        "task_iter": fields.Integer(description="task iteration number"),
-        "task_testonly": fields.Integer(description="task test only"),
-        "task_changed": fields.DateTime(description="task changed"),
-        "task_message": fields.String(description="task message"),
-        "dependencies": fields.List(fields.Integer, description="task dependencies"),
         "packages": fields.Nested(
             cve_task_packages_el_model,
             description="vulnerable packages information",

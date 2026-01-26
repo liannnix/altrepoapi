@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -28,6 +28,7 @@ from .endpoints.package_info import (
     PackagesBinaryListInfo,
     PackageNVRByHash,
     PackageNameFromRepology,
+    BriefPackageInfo,
 )
 from .endpoints.logs import BinaryPackageLog
 from .endpoints.changelog import PackageChangelog
@@ -62,6 +63,7 @@ from .serializers import (
     pkg_nvr_by_hash_model,
     misconflict_pkgs_by_src_model,
     package_name_from_repology_model,
+    brief_package_info_model,
 )
 
 ns = get_namespace()
@@ -84,6 +86,24 @@ class routePackageInfo(Resource):
         url_logging(logger, g.url)
         args = package_info_args.parse_args(strict=True)
         w = PackageInfo(g.connection, pkghash, **args)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/package_info_brief/<int:pkghash>",
+    doc={
+        "params": {"pkghash": "package hash"},
+        "description": "Get brief package info by hash",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeBriefPackageInfo(Resource):
+    # @ns.expect(brief_package_info_args)
+    @ns.marshal_with(brief_package_info_model)
+    def get(self, pkghash):
+        url_logging(logger, g.url)
+        args = {}
+        w = BriefPackageInfo(g.connection, pkghash, **args)
         return run_worker(worker=w, args=args)
 
 

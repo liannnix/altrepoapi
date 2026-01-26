@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -17,7 +17,6 @@
 from flask import g
 from flask_restx import Resource
 
-from altrepo_api.settings import AG_ALL
 from altrepo_api.utils import get_logger, url_logging
 from altrepo_api.api.base import run_worker, POST_RESPONSES_401, POST_RESPONSES_401_403
 from .decorators import token_required
@@ -27,6 +26,7 @@ from .endpoints.refresh_token import RefreshToken
 
 from .namespace import get_namespace
 from .parsers import login_args, refresh_token_args
+from .serializers import auth_response_model, auth_logout_response_model
 
 ns = get_namespace()
 
@@ -42,12 +42,17 @@ logger = get_logger(__name__)
 )
 class routeAuthLogin(Resource):
     @ns.expect(login_args)
-    # @ns.marshal_with(xxx)
+    @ns.marshal_with(auth_response_model)
     def post(self):
         url_logging(logger, g.url)
         args = login_args.parse_args(strict=True)
         w = AuthLogin(g.connection, **args)
-        return run_worker(worker=w, args=args, run_method=w.post)
+        return run_worker(
+            worker=w,
+            args=args,
+            run_method=w.post,
+            check_method=w.check_params_post,
+        )
 
 
 @ns.route(
@@ -59,11 +64,13 @@ class routeAuthLogin(Resource):
 )
 class routeAuthLogout(Resource):
     @ns.doc(security="Bearer")
-    @token_required(AG_ALL)
+    # XXX: decorators order is important here
+    @token_required("", validate_role=False)
+    @ns.marshal_with(auth_logout_response_model)
     def post(self):
         url_logging(logger, g.url)
         args = {}
-        w = AuthLogout(g.connection, self.post.token, self.post.exp, **args)
+        w = AuthLogout(g.connection, self.post.token, self.post.exp, **args)  # type: ignore
         return run_worker(worker=w, args=args, run_method=w.post)
 
 
@@ -76,6 +83,7 @@ class routeAuthLogout(Resource):
 )
 class routeRefreshToken(Resource):
     @ns.expect(refresh_token_args)
+    @ns.marshal_with(auth_response_model)
     def post(self):
         url_logging(logger, g.url)
         args = refresh_token_args.parse_args(strict=True)

@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -372,7 +372,7 @@ class PackageDependencies:
         PkgNames = namedtuple("PkgNames", ["bin", "src"])
 
         def reorder_pkg_names(
-            pkgs_names: dict[int, tuple[str, str]]
+            pkgs_names: dict[int, tuple[str, str]],
         ) -> tuple[dict[int, PkgNames], dict[str, int]]:
             res = {}
             # build lookup for hashes by binary package name

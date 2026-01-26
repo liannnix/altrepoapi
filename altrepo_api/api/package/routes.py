@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -31,12 +31,16 @@ from .endpoints.repocop import Repocop
 from .endpoints.package_info import PackageInfo
 from .endpoints.find_packageset import FindPackageset
 from .endpoints.unpackaged_dirs import UnpackagedDirs
-from .endpoints.package_by_file import PackageByFileName, PackageByFileMD5
+from .endpoints.package_by_file import (
+    PackageByFileName,
+    PackageByFileMD5,
+)
 from .endpoints.pkg_build_dependency import PackageBuildDependency
 from .endpoints.misconflict_packages import PackageMisconflictPackages
 from .endpoints.build_dependency_set import PackageBuildDependencySet
 from .endpoints.specfile import SpecfileByPackageName, SpecfileByPackageHash
 from .endpoints.package_files import PackageFiles
+from .endpoints.maintainer_score import MaintainerScore
 from .parsers import (
     package_info_args,
     pkg_build_dep_args,
@@ -48,6 +52,7 @@ from .parsers import (
     unpackaged_dirs_args,
     build_dep_set_args,
     specfile_args,
+    maintainer_score_args,
 )
 from .serializers import (
     package_info_model,
@@ -55,12 +60,14 @@ from .serializers import (
     misconflict_pkgs_model,
     pkg_find_pkgset_model,
     pkg_by_file_name_model,
+    pkgs_by_file_names_json_model,
     unpackaged_dirs_args_model,
     build_dep_set_model,
     repocop_json_list_model,
     repocop_json_get_list_model,
     specfile_model,
     package_files_model,
+    maintainer_score_model,
 )
 
 ns = get_namespace()
@@ -181,6 +188,31 @@ class routePackageByFileMD5(Resource):
         args = pkg_by_file_md5_args.parse_args(strict=True)
         w = PackageByFileMD5(g.connection, **args)
         return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/packages_by_file_names",
+    doc={
+        "description": (
+            "Get information about binary packages from  last package sets "
+            "by given file names array and package set name."
+            "\nFile name wildcars '*' is not allowed."
+        ),
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routePackagesByFileNames(Resource):
+    @ns.expect(pkgs_by_file_names_json_model)
+    @ns.marshal_with(pkg_by_file_name_model)
+    def post(self):
+        url_logging(logger, g.url)
+        w = PackageByFileName(g.connection, json_data=ns.payload)
+        return run_worker(
+            worker=w,
+            args=ns.payload,
+            run_method=w.post,
+            check_method=w.check_params_post,
+        )
 
 
 @ns.route(
@@ -309,4 +341,21 @@ class routeBinPackageFiles(Resource):
         url_logging(logger, g.url)
         args = {}
         w = PackageFiles(g.connection, pkghash)
+        return run_worker(worker=w, args=args)
+
+
+@ns.route(
+    "/maintainer_score",
+    doc={
+        "description": "Get maintainer scores for a source package based on changelog activity.",
+        "responses": GET_RESPONSES_400_404,
+    },
+)
+class routeMaintainerScore(Resource):
+    @ns.expect(maintainer_score_args)
+    @ns.marshal_with(maintainer_score_model)
+    def get(self):
+        url_logging(logger, g.url)
+        args = maintainer_score_args.parse_args(strict=True)
+        w = MaintainerScore(g.connection, **args)
         return run_worker(worker=w, args=args)

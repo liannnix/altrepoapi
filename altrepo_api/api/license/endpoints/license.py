@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -149,9 +149,9 @@ class LicenseInfo(APIWorker):
                 "type": license_info.type,
                 "urls": license_info.urls,
                 "header": license_info.header if license_info.type == "license" else "",
-                "comment": license_info.header
-                if license_info.type == "exception"
-                else "",
+                "comment": (
+                    license_info.header if license_info.type == "exception" else ""
+                ),
             }
             return res, 200
         else:

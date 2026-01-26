@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -28,32 +28,20 @@ class Repocop(APIWorker):
         self.conn = connection
         self.args = kwargs
         self.sql = sql
+        self.packages = []
         super().__init__()
 
     def check_params_post(self):
         self.validation_results = []
-        self.input_params = []
-        self.known_param = [
-            "pkg_name",
-            "pkg_version",
-            "pkg_release",
-            "pkg_arch",
-            "pkgset_name",
-            "rc_srcpkg_name",
-            "rc_srcpkg_version",
-            "rc_srcpkg_release",
-            "rc_test_name",
-            "rc_test_status",
-            "rc_test_message",
-            "rc_test_date",
-        ]
 
         for elem in self.args["json_data"]["packages"]:
-            for key in elem.keys():
-                self.input_params.append(key)
-
-        if set(self.input_params) != set(self.known_param):
-            self.validation_results.append(f"allowable values : {self.known_param}")
+            pkg = elem.copy()
+            try:
+                pkg["rc_test_date"] = dt.datetime.fromisoformat(pkg["rc_test_date"])
+                self.packages.append(pkg)
+            except (TypeError, ValueError):
+                self.validation_results.append(f"Invalid data: {elem}")
+                break
 
         if self.validation_results != []:
             return False
@@ -65,56 +53,49 @@ class Repocop(APIWorker):
         return True
 
     def post(self):
-        json_ = self.args["json_data"]["packages"]
-        for el in json_:
-            el["rc_test_date"] = dt.datetime.fromisoformat(el["rc_test_date"])
-
-        _ = self.send_sql_request((self.sql.insert_into_repocop, json_))
+        _ = self.send_sql_request((self.sql.insert_into_repocop, self.packages))
         if not self.sql_status:
             return self.error
 
         return "data loaded successfully", 201
 
     def get(self):
-        self.source_pakage = self.args["package_name"]
+        pkg_name = self.args["package_name"]
+        pkg_version = self.args["package_version"]
+        pkg_release = self.args["package_release"]
+        bin_pkg_arch = self.args["bin_package_arch"]
         branch = self.args["branch"]
-        self.pkg_type = self.args["package_type"]
-
-        pkg_type_to_sql = {"source": 1, "binary": 0}
-        source = pkg_type_to_sql[self.pkg_type]
+        is_source = {"source": 1, "binary": 0}[self.args["package_type"]]
 
         version_cond = ""
         release_cond = ""
         arch_cond = ""
-        if source == 1:
+
+        if is_source == 1:
             name_cond = f"""
 pkg_name IN (
     SELECT pkg_name
     FROM PackagesRepocop
-    WHERE rc_srcpkg_name = '{self.args['package_name']}'
+    WHERE rc_srcpkg_name = '{pkg_name}'
 )
 """
 
-            if self.args["package_version"] is not None:
-                version_cond = (
-                    f"AND rc_srcpkg_version = '{self.args['package_version']}'"
-                )
+            if pkg_version is not None:
+                version_cond = f"AND rc_srcpkg_version = '{pkg_version}'"
 
-            if self.args["package_release"] is not None:
-                release_cond = (
-                    f"AND rc_srcpkg_release = '{self.args['package_release']}'"
-                )
+            if pkg_release is not None:
+                release_cond = f"AND rc_srcpkg_release = '{pkg_release}'"
         else:
-            name_cond = f"pkg_name = '{self.args['package_name']}'"
+            name_cond = f"pkg_name = '{pkg_name}'"
 
-            if self.args["package_version"] is not None:
-                version_cond = f"AND pkg_version = '{self.args['package_version']}'"
+            if pkg_version is not None:
+                version_cond = f"AND pkg_version = '{pkg_version}'"
 
-            if self.args["package_release"] is not None:
-                release_cond = f"AND pkg_release = '{self.args['package_release']}'"
+            if pkg_release is not None:
+                release_cond = f"AND pkg_release = '{pkg_release}'"
 
-        if self.args["bin_package_arch"] is not None:
-            arch_cond = f"AND pkg_arch = '{self.args['bin_package_arch']}'"
+        if bin_pkg_arch is not None:
+            arch_cond = f"AND pkg_arch = '{bin_pkg_arch}'"
 
         response = self.send_sql_request(
             self.sql.get_last_repocop_results.format(

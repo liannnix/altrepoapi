@@ -13,7 +13,7 @@ BRANCHES_NOT_IN_DB = "fakebranch1,fakebranch2"
 PKG_NOT_IN_DB = "fakepackage"
 BIN_PKG_HASH_IN_DB = 2737734146634739740  # curl-7.80.0-alt1.x86_64.rpm
 SRC_PKG_HASH_IN_DB = 2737731585263144792  # curl-7.80.0-alt1.src.rpm
-FILE_MD5_IN_DB = "d2b0c6770f40995c844f3291acc8227b"  # /bin/bash4
+FILE_MD5_IN_DB = "53abf41773f3eee22042a778ab00cc9b"  # /bin/bash4
 
 
 @pytest.mark.parametrize(
@@ -41,7 +41,7 @@ def test_build_dependency_set(client, kwargs):
     if response.status_code == 200:
         assert data != {}
         assert data["length"] != 0
-        assert data["request_args"]["branch"] == "sisyphus"
+        assert data["request_args"]["branch"] == BRANCH_IN_DB
         assert data["packages"] != []
 
 
@@ -199,7 +199,7 @@ def test_package_by_file_md5(client, kwargs):
     if response.status_code == 200:
         assert data != {}
         assert data["length"] != 0
-        assert data["request_args"]["branch"] == "sisyphus"
+        assert data["request_args"]["branch"] == BRANCH_IN_DB
         assert data["packages"] != []
 
 
@@ -219,6 +219,12 @@ def test_package_by_file_md5(client, kwargs):
             "arch": None,
             "status_code": 200,
         },
+        {
+            "branch": BRANCH_IN_DB,
+            "file": "/usr/lib64/libstdc++.so*",
+            "arch": None,
+            "status_code": 200,
+        },
         {"branch": BRANCH_IN_DB, "file": None, "arch": None, "status_code": 400},
         {
             "branch": BRANCH_IN_DB,
@@ -229,12 +235,6 @@ def test_package_by_file_md5(client, kwargs):
         {
             "branch": BRANCH_NOT_IN_DB,
             "file": "/bin/bash",
-            "arch": None,
-            "status_code": 400,
-        },
-        {
-            "branch": BRANCH_IN_DB,
-            "file": "/bin/gcc++",
             "arch": None,
             "status_code": 400,
         },
@@ -261,7 +261,112 @@ def test_package_by_file_name(client, kwargs):
     if response.status_code == 200:
         assert data != {}
         assert data["length"] != 0
-        assert data["request_args"]["branch"] == "sisyphus"
+        assert data["request_args"]["branch"] == BRANCH_IN_DB
+        assert data["packages"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "branch": BRANCH_IN_DB,
+            "files": ["/bin/bash"],
+            "arch": None,
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "files": [
+                "/bin/bash4",
+            ],
+            "arch": "x86_64",
+            "status_code": 200,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "files": [
+                "/bin/bash*",
+            ],
+            "arch": None,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "files": [
+                "/usr/lib64/libstdc++.so*",
+            ],
+            "arch": None,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "files": [
+                "/usr/lib64/libstdc++.so*",
+                "/bin/bash4",
+            ],
+            "arch": None,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "files": [
+                "fakefile*",
+                "/bin/bash4",
+                "/bin/bash*",
+            ],
+            "arch": None,
+            "status_code": 400,
+        },
+        {"branch": BRANCH_IN_DB, "files": None, "arch": None, "status_code": 400},
+        {
+            "branch": BRANCH_IN_DB,
+            "files": [
+                "/bin/bash*",
+            ],
+            "arch": "fakearch",
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_NOT_IN_DB,
+            "files": [
+                "/bin/bash",
+            ],
+            "arch": None,
+            "status_code": 400,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "files": [
+                "/usr/bin/curl",
+            ],
+            "arch": "noarch",
+            "status_code": 404,
+        },
+        {
+            "branch": BRANCH_IN_DB,
+            "files": [
+                "fakefile",
+            ],
+            "arch": None,
+            "status_code": 404,
+        },
+    ],
+)
+def test_packages_by_file_names(client, kwargs):
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("pkghash", "status_code"):
+            continue
+        if v is not None:
+            params[k] = v
+    url = url_for("api.package_route_packages_by_file_names")
+    response = client.post(url, json=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert data["length"] != 0
+        assert data["request_args"]["branch"] == BRANCH_IN_DB
         assert data["packages"] != []
 
 
@@ -645,21 +750,11 @@ def test_unpackaged_dirs(client, kwargs):
     [
         {"branch": BRANCH_IN_DB, "packages": "curl", "depth": None, "status_code": 200},
         {"branch": BRANCH_IN_DB, "packages": "mc,bash", "depth": 2, "status_code": 200},
-        {
-            "branch": BRANCH_IN_DB,
-            "packages": "curl",
-            "depth": 1,
-            "use_last_tasks": "true",
-            "status_code": 200,
-        },
+        {"branch": BRANCH_IN_DB, "packages": "curl", "depth": 1, "use_last_tasks": "true", "status_code": 200},
+        {"branch": BRANCH_IN_DB, "packages": "curl", "dptype": "binary", "status_code": 200},
         {"branch": BRANCH_IN_DB, "packages": "", "depth": None, "status_code": 400},
         {"branch": BRANCH_IN_DB, "packages": "mc,x", "depth": None, "status_code": 400},
-        {
-            "branch": BRANCH_NOT_IN_DB,
-            "packages": "curl",
-            "depth": None,
-            "status_code": 400,
-        },
+        {"branch": BRANCH_NOT_IN_DB, "packages": "curl", "depth": None, "status_code": 400},
     ],
 )
 def test_wds(client, kwargs):
@@ -677,3 +772,42 @@ def test_wds(client, kwargs):
         assert data != {}
         assert data["length"] != 0
         assert data["dependencies"] != []
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"branch": BRANCH_IN_DB, "name": "curl", "status_code": 200},
+        {"branch": BRANCH_NOT_IN_DB, "name": "curl", "status_code": 400},
+        {"branch": BRANCH_IN_DB, "name": PKG_NOT_IN_DB, "status_code": 404},
+    ],
+)
+def test_maintainer_score(client, kwargs):
+    url = url_for("api.package_route_maintainer_score")
+    params = {}
+    for k, v in kwargs.items():
+        if k in ("status_code",):
+            continue
+        if v is not None:
+            params[k] = v
+    response = client.get(url, query_string=params)
+    data = response.json
+    assert response.status_code == kwargs["status_code"]
+    if response.status_code == 200:
+        assert data != {}
+        assert "package" in data
+        assert "branch" in data
+        assert "primary_maintainer" in data
+        assert "status" in data
+        assert data["status"] in ("active", "low_activity", "orphaned")
+        assert "maintainers" in data
+        assert isinstance(data["maintainers"], list)
+        if data["maintainers"]:
+            m = data["maintainers"][0]
+            assert "nick" in m
+            assert "score" in m
+            assert "base_score" in m
+            assert "bugfixes" in m
+            assert "recent_commits" in m
+            assert "bonus_applied" in m
+            assert "in_acl" in m

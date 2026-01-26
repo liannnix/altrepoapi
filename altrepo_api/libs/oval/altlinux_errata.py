@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -28,8 +28,11 @@ from .oval_definitions.utils import make_sub_element
 
 ALT_LINUX_COPYRIGHT = f"Copyright {datetime.now().year} BaseALT Ltd."
 ALT_LINUX_ADVISORY_FROM = "errata.altlinux.org"
-# BUGZILLA_BASE_URL = "https://bugzilla.altlinux.org"
 BUGZILLA_BASE_URL = lut.bugzilla_base
+BDU_ID_TYPE = "BDU"
+BDU_ID_PREFIX = f"{BDU_ID_TYPE}:"
+CVE_ID_TYPE = "CVE"
+CVE_ID_PREFIX = f"{CVE_ID_TYPE}-"
 
 
 class Severity(Enum):
@@ -51,9 +54,9 @@ class Vulnerability:
     public: Optional[datetime] = None
 
     def to_xml(self) -> xml.Element:
-        if self.id.startswith("CVE-"):
+        if self.id.startswith(CVE_ID_PREFIX):
             cls = "cve"
-        elif self.id.startswith("BDU:"):
+        elif self.id.startswith(BDU_ID_PREFIX):
             cls = "bdu"
         else:
             cls = "vuln"

@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -78,6 +78,7 @@ SELECT
     pkg_epoch,
     pkg_buildtime,
     pkg_url,
+    pkg_vcs,
     pkg_license,
     pkg_summary,
     pkg_description,
@@ -87,6 +88,18 @@ SELECT
 FROM Packages
 WHERE pkg_hash = {pkghash}
     {source}
+"""
+
+    get_brief_pkg_info = """
+SELECT
+    pkg_name,
+    pkg_version,
+    pkg_release,
+    if(pkg_sourcepackage = 1, 'srpm', pkg_arch) AS arch,
+    if(pkg_sourcepackage = 1, 'source', 'binary') AS sourcepackage,
+    pkg_summary
+FROM Packages
+WHERE pkg_hash = {pkghash}
 """
 
     get_package_build_tasks = """
@@ -740,21 +753,17 @@ GROUP BY
 
     get_bin_pkg_scripts = """
 SELECT
+    pkg_name,
+    pkg_arch,
     pkg_postin,
     pkg_postun,
     pkg_prein,
-    pkg_preun
+    pkg_preun,
+    pkg_pretrans,
+    pkg_posttrans
 FROM Packages
 WHERE pkg_hash = {pkghash}
     AND pkg_sourcepackage = 0
-"""
-
-    get_pkgs_name_and_arch = """
-    SELECT
-        pkg_name,
-        pkg_arch
-    FROM Packages
-    WHERE pkg_hash = {pkghash}
 """
 
     get_bin_pkg_log = """

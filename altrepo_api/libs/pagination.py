@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -16,15 +16,15 @@
 
 from functools import cached_property
 from math import ceil
-from typing import Any
+from typing import Any, Optional
 
 
 class Paginator:
-    def __init__(self, object_list: list, limit: int):
+    def __init__(self, object_list: list, limit: Optional[int]):
         self.object_list = object_list
-        self.limit = int(limit) if limit and int(limit) > 0 else self.count
+        self.limit = limit if limit is not None and limit > 0 else self.count
 
-    def validate_page_number(self, number):
+    def validate_page_number(self, number: Any):
         """Validate page number."""
         try:
             number = int(number)
@@ -57,6 +57,6 @@ class Paginator:
             top = self.count
         return self.object_list[bottom:top]
 
-    def get_page(self, to_page: int):
+    def get_page(self, to_page: Optional[int]):
         page_number = self.validate_page_number(to_page)
         return self.page(page_number)

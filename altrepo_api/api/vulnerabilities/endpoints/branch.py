@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -15,7 +15,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from altrepo_api.api.base import APIWorker
-from altrepo_api.api.misc import lut
 
 from .common import (
     CPE,
@@ -33,6 +32,7 @@ from .common import (
     get_packages_cpes,
     get_packages_vulnerabilities,
     get_vulnerability_fix_errata,
+    REFERENCE_TYPE_VULN,
 )
 from ..sql import sql
 
@@ -56,17 +56,7 @@ class BranchOpenVulnerabilities(APIWorker):
 
     def check_params(self):
         self.logger.debug(f"args : {self.args}")
-        branch = self.args["branch"]
-        if branch not in lut.cpe_branch_map:
-            self.validation_results.append(
-                f"No CPE matches is specified for branch {branch}. "
-                f"Use one of: {', '.join(lut.cpe_branch_map.keys())}"
-            )
-
-        if self.validation_results != []:
-            return False
-        else:
-            return True
+        return True
 
     def get(self):
         # get branch source packages
@@ -102,7 +92,11 @@ class BranchOpenVulnerabilities(APIWorker):
 
         cve_ids = set(self.cve_cpems.keys())
         cve_ids.update(
-            {vuln_id for errata in self.erratas for vuln_id in errata.ref_ids("vuln")}
+            {
+                vuln_id
+                for errata in self.erratas
+                for vuln_id in errata.ref_ids(REFERENCE_TYPE_VULN)  # type: ignore
+            }
         )
         # exclude vulnerabilities JSON field here
         get_cve_info_by_ids(self, cve_ids, True)
@@ -160,7 +154,8 @@ class BranchOpenVulnerabilities(APIWorker):
             "request_args": self.args,
             "result": self.result_message,
             "vuln_info": [
-                vuln.asdict() for vuln in sorted(vuln_info, key=lambda x: x.id)
+                vuln.asdict(exclude_json=True)
+                for vuln in sorted(vuln_info, key=lambda x: x.id)
             ],
             # "packages": [p.asdict() for p in self.packages_vulnerabilities],
             "packages": [p.asdict() for p in result.values()],

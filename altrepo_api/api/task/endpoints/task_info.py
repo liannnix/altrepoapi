@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -14,12 +14,17 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from collections import defaultdict, namedtuple
+from collections import defaultdict
+from datetime import datetime
+from typing import Any, NamedTuple, Optional, Union
 
-from altrepo_api.utils import datetime_to_iso, mmhash
-
+from altrepo_api.utils import datetime_to_iso, mmhash, valid_task_id
 from altrepo_api.api.base import APIWorker
+
 from ..sql import sql
+
+
+MAX_TRY_ITER = 1_000
 
 
 class TaskInfo(APIWorker):
@@ -32,10 +37,12 @@ class TaskInfo(APIWorker):
         self.args = kwargs
         self.sql = sql
         self.task_id = id_
-        self.task = defaultdict(lambda: None, key=None)
+        self.task: dict[str, Any] = defaultdict(lambda: None, key=None)
         super().__init__()
 
     def check_task_id(self):
+        if not valid_task_id(self.task_id):
+            return False
         response = self.send_sql_request(self.sql.check_task.format(id=self.task_id))
         if not self.sql_status:
             return False
@@ -46,69 +53,100 @@ class TaskInfo(APIWorker):
         self.logger.debug(f"args : {self.args}")
         self.validation_results = []
 
-        if self.args["try"] is not None and self.args["iteration"] is not None:
-            if self.args["try"] > 0 and self.args["iteration"] > 0:
-                pass
-            else:
-                self.validation_results.append(
-                    "Task try and iteration parameters should be both greater than 0"
-                )
-        elif self.args["try"] is None and self.args["iteration"] is None:
+        try_ = self.args["try"]
+        iter_ = self.args["iteration"]
+
+        if try_ is None and iter_ is None:
+            # neither of 'try' or 'iteration' args is provided
             pass
-        else:
+        elif try_ is None or iter_ is None:
             self.validation_results.append(
                 "Task try and iteration parameters should be both specified"
             )
-
-        if self.validation_results != []:
-            return False
         else:
-            return True
+            if try_ < 1 or try_ > MAX_TRY_ITER:
+                self.validation_results.append(
+                    f"task try argument should be in range 1 to {MAX_TRY_ITER}"
+                )
+            if iter_ < 1 or iter_ > MAX_TRY_ITER:
+                self.validation_results.append(
+                    f"task iteration argument should be in range 1 to {MAX_TRY_ITER}"
+                )
 
-    def build_task_state(self):
-        self.task = {"id": self.task_id, "try": self.task_try, "iter": self.task_iter}
-        if self.task_try is not None and self.task_iter is not None:
-            try_iter = (self.task_try, self.task_iter)
-        else:
-            try_iter = None
+        states = self.args["states"]
+        valid_states = ("DONE", "EPERM", "TESTED")
+        if states:
+            for state in states:
+                if state not in valid_states:
+                    self.validation_results.append(f"Invalid task state '{state}'")
 
-        response = self.send_sql_request(
-            self.sql.task_repo_owner.format(id=self.task_id)
-        )
-        if not self.sql_status:
-            return None
-        if not response:
-            _ = self.store_error(
-                {"Error": f"No data found in database for task '{self.task_id}'"}
-            )
-            return None
+        return self.validation_results == []
 
-        self.task["branch"] = response[0][0]  # type: ignore
-        self.task["user"] = response[0][1]  # type: ignore
+    class TaskState(NamedTuple):
+        task_id: int
+        task_state: str
+        task_changed: datetime
+        task_runby: str
+        task_depends: list[int]
+        task_try: int
+        task_testonly: int
+        task_failearly: int
+        task_shared: int
+        task_message: str
+        task_version: str
+        task_prev: int
+        task_eventlog_hash: list[int]
 
-        # check if task was deleted
-        is_task_deleted = False
+        def asdict(self) -> dict[str, Any]:
+            res = {}
+            for field in self._fields:
+                if field == "task_changed":
+                    res["last_changed"] = getattr(self, field)
+                else:
+                    res[field.removeprefix("task_")] = getattr(self, field)
+            return res
 
-        if try_iter is None:
+    def _get_task_state(
+        self, task_changed: Optional[datetime] = None
+    ) -> Union[TaskState, None]:
+        self.status = False
+
+        if task_changed is None:
             response = self.send_sql_request(
                 self.sql.task_state_last.format(id=self.task_id)
             )
-            if not self.sql_status:
-                return None
-            if not response:
-                _ = self.store_error(
-                    {"Error": f"No data found in database for task '{self.task_id}'"},
+        else:
+            response = self.send_sql_request(
+                self.sql.task_state_by_task_changed.format(
+                    id=self.task_id, changed=task_changed
                 )
-                return None
+            )
 
-            if response[0][0] == "DELETED":  # type: ignore
-                is_task_deleted = True
-                self.task["state"] = response[0][0]  # type: ignore
-                self.task["message"] = response[0][1]  # type: ignore
-                self.task["last_changed"] = datetime_to_iso(response[0][2])  # type: ignore
+        if not self.sql_status:
+            return None
+        if not response:
+            _ = self.store_error(
+                {"Error": f"No data found in database for task '{self.task_id}'"},
+            )
+            return None
+
+        self.status = True
+        return self.TaskState(*response[0])
+
+    def _get_task_rebuilds(self, try_iter: Optional[tuple[int, int]]):
+        self.status = False
+        # get task rebuilds
+        if self.task_states:
+            iterations_where_clause = self.sql.task_iterations_where_clause.format(
+                id=self.task_id, states=self.task_states
+            )
+        else:
+            iterations_where_clause = ""
 
         response = self.send_sql_request(
-            self.sql.task_all_iterations.format(id=self.task_id)
+            self.sql.task_all_iterations.format(
+                id=self.task_id, where_clause=iterations_where_clause
+            )
         )
         if not self.sql_status:
             return None
@@ -118,8 +156,8 @@ class TaskInfo(APIWorker):
             )
             return None
 
-        self.task["rebuilds"] = {
-            (i[0], i[1]): {"subtasks": [], "changed": i[3]} for i in response  # type: ignore
+        self.task["rebuilds"] = {  # type: ignore
+            (i[0], i[1]): {"subtasks": [], "changed": i[3]} for i in response
         }
 
         for ti in self.task["rebuilds"].keys():
@@ -140,46 +178,14 @@ class TaskInfo(APIWorker):
                 )
                 return None
         else:
-            try_iter = max(self.task["rebuilds"])
-            self.task["try"], self.task["iter"] = try_iter
+            self.task["try"], self.task["iter"] = max(self.task["rebuilds"])
 
-        # XXX: return here for deleted task
-        if is_task_deleted:
-            self.task["rebuilds"] = [
-                (str(x[0]) + "." + str(x[1]))
-                for x in sorted(self.task["rebuilds"].keys())
-            ]
-            self.task["subtasks"] = []
-            self.task["plan"] = {
-                "add": {"src": [], "bin": []},
-                "del": {"src": [], "bin": []},
-            }
+        self.status = True
 
-            self.status = True
-            return None
-
-        task_changed = self.task["rebuilds"][try_iter]["changed"]
-
-        self.task["subtasks"] = {
-            x: {} for x in self.task["rebuilds"][try_iter]["subtasks"]
-        }
-
-        response = self.send_sql_request(
-            self.sql.task_state_by_task_changed.format(
-                id=self.task_id, changed=task_changed
-            )
-        )
-        if not self.sql_status:
-            return None
-        if not response:
-            _ = self.store_error(
-                {
-                    "Error": f"No data found in database for task '{self.task_id}' with rebuild '{try_iter}'"
-                }
-            )
-            return None
-
-        self.task["state_raw"] = dict(zip(self.sql.task_state_keys, response[0]))  # type: ignore
+    def _get_subtasks(
+        self, task_changed: datetime
+    ) -> Union[list[dict[str, Any]], None]:
+        self.status = False
 
         response = self.send_sql_request(
             self.sql.task_subtasks_by_task_changed.format(
@@ -189,16 +195,24 @@ class TaskInfo(APIWorker):
         if not self.sql_status:
             return None
         if not response:
-            _ = self.store_error(
-                {
-                    "Error": f"No data found in database for task '{self.task_id}' with rebuild '{try_iter}'"
-                }
-            )
-            return None
+            if self.task["state"] != "NEW":
+                _ = self.store_error(
+                    {
+                        "Error": f"No data found in database for task '{self.task_id}' on {task_changed}"
+                    }
+                )
+                return None
+            else:
+                self.status = True
+                return []
 
-        self.task["subtasks_raw"] = [
-            dict(zip(self.sql.task_subtasks_keys, r)) for r in response
-        ]
+        self.status = True
+        return [dict(zip(self.sql.task_subtasks_keys, r)) for r in response]
+
+    def _get_iterations(
+        self, task_changed: datetime
+    ) -> Union[list[dict[str, Any]], None]:
+        self.status = False
 
         response = self.send_sql_request(
             self.sql.task_iterations_by_task_changed.format(
@@ -208,24 +222,34 @@ class TaskInfo(APIWorker):
         if not self.sql_status:
             return None
         if not response:
-            _ = self.store_error(
-                {
-                    "Error": f"No data found in database for task '{self.task_id}' with rebuild '{try_iter}'"
-                }
-            )
-            return None
+            if self.task["state"] != "NEW":
+                _ = self.store_error(
+                    {
+                        "Error": f"No data found in database for task '{self.task_id}' on {task_changed}"
+                    }
+                )
+                return None
+            else:
+                self.status = True
+                return []
 
-        self.task["iterations_raw"] = [
-            dict(zip(self.sql.task_iterations_keys, r)) for r in response
-        ]
+        self.status = True
+        return [dict(zip(self.sql.task_iterations_keys, r)) for r in response]
 
-        self.task["subtasks"] = {x["subtask_id"]: {} for x in self.task["subtasks_raw"]}
+    def _get_task_plan(self, iterations: list[dict[str, Any]]) -> None:
+        self.status = False
 
-        self.task["archs"] = set(("src", "noarch", "x86_64-i586"))
-        [self.task["archs"].add(x["subtask_arch"]) for x in self.task["iterations_raw"]]
-        self.task["archs"] = tuple(self.task["archs"])
+        class PkgInfo(NamedTuple):
+            name: str
+            version: str
+            release: str
+            filename: str
+            arch: str
 
-        self.task["tplan_hashes"] = {}
+        # collect archs from task iterations
+        archs = set(("src", "noarch", "x86_64-i586"))
+        [archs.add(x["subtask_arch"]) for x in iterations]
+        self.task["archs"] = tuple(archs)
 
         for arch in self.task["archs"]:
             t = (
@@ -236,11 +260,6 @@ class TaskInfo(APIWorker):
             )
             self.task["tplan_hashes"][arch] = mmhash(t)
 
-        self.task["plan"] = {
-            "add": {"src": {}, "bin": {}},
-            "del": {"src": {}, "bin": {}},
-        }
-
         response = self.send_sql_request(
             self.sql.task_plan_packages.format(
                 action="add",
@@ -250,12 +269,8 @@ class TaskInfo(APIWorker):
         if not self.sql_status:
             return None
 
-        PkgInfo = namedtuple(
-            "PkgInfo", ("name", "version", "release", "filename", "arch")
-        )
-
-        for el in response:  # type: ignore
-            if el[6] == 1:  # type: ignore
+        for el in response:
+            if el[6] == 1:
                 self.task["plan"]["add"]["src"][el[0]] = PkgInfo(*el[1:6])._asdict()
             else:
                 self.task["plan"]["add"]["bin"][el[0]] = PkgInfo(*el[1:6])._asdict()
@@ -269,8 +284,8 @@ class TaskInfo(APIWorker):
         if not self.sql_status:
             return None
 
-        for el in response:  # type: ignore
-            if el[6] == 1:  # type: ignore
+        for el in response:
+            if el[6] == 1:
                 self.task["plan"]["del"]["src"][el[0]] = PkgInfo(*el[1:6])._asdict()
             else:
                 self.task["plan"]["del"]["bin"][el[0]] = PkgInfo(*el[1:6])._asdict()
@@ -279,7 +294,7 @@ class TaskInfo(APIWorker):
             hsh
             for hsh in {
                 el["titer_srcrpm_hash"]
-                for el in self.task["iterations_raw"]
+                for el in iterations
                 if el["titer_srcrpm_hash"] != 0
             }
             if hsh not in self.task["plan"]["add"]["src"].keys()
@@ -290,6 +305,11 @@ class TaskInfo(APIWorker):
                 f"Found source packages missing from plan!\nTask: {self.task_id},"
                 f" hashes: {src_pkg_hashes_not_in_plan}"
             )
+
+        self.status = True
+
+    def _get_task_approvals(self):
+        self.status = False
 
         response = self.send_sql_request(
             self.sql.task_approvals.format(id=self.task_id)
@@ -304,12 +324,12 @@ class TaskInfo(APIWorker):
             task_approvals = []
             tapp_keys = ("id", "date", "type", "name", "message", "revoked")
 
-            for i in range(len(response)):  # type: ignore
+            for i in range(len(response)):
                 task_approvals.append(
                     dict(
                         [
-                            (tapp_keys[j], response[i][0][j])  # type: ignore
-                            for j in range(len(response[i][0]))  # type: ignore
+                            (tapp_keys[j], response[i][0][j])
+                            for j in range(len(response[i][0]))
                         ]
                     )
                 )
@@ -322,25 +342,101 @@ class TaskInfo(APIWorker):
                 for tapp in self.task["subtasks"][subtask]["approvals"]:
                     tapp["date"] = datetime_to_iso(tapp["date"])
 
-        self.task["state"] = self.task["state_raw"]["task_state"]
-        self.task["runby"] = self.task["state_raw"]["task_runby"]
-        self.task["depends"] = self.task["state_raw"]["task_depends"]
-        self.task["testonly"] = self.task["state_raw"]["task_testonly"]
-        self.task["failearly"] = self.task["state_raw"]["task_failearly"]
-        self.task["shared"] = self.task["state_raw"]["task_shared"]
-        self.task["message"] = self.task["state_raw"]["task_message"]
-        self.task["version"] = self.task["state_raw"]["task_version"]
-        self.task["prev"] = self.task["state_raw"]["task_prev"]
-        self.task["last_changed"] = datetime_to_iso(
-            self.task["state_raw"]["task_changed"]  # type: ignore
+        self.status = True
+
+    def get(self):
+        self.task_try = self.args["try"]
+        self.task_iter = self.args["iteration"]
+        self.task_states = self.args["states"]
+
+        self.task = {"id": self.task_id, "try": self.task_try, "iter": self.task_iter}
+        if self.task_try is not None and self.task_iter is not None:
+            try_iter = (self.task_try, self.task_iter)
+        else:
+            try_iter = None
+
+        # task structure init
+        self.task["tplan_hashes"] = {}
+
+        self.task["plan"] = {
+            "add": {"src": {}, "bin": {}},
+            "del": {"src": {}, "bin": {}},
+        }
+
+        # get task owner and repo
+        response = self.send_sql_request(
+            self.sql.task_repo_owner.format(id=self.task_id)
+        )
+        if not self.sql_status:
+            return self.error
+        if not response:
+            return self.store_error(
+                {"Error": f"No data found in database for task '{self.task_id}'"}
+            )
+
+        self.task["branch"] = response[0][0]
+        self.task["user"] = response[0][1]
+
+        # get task rebuilds
+        self._get_task_rebuilds(try_iter)
+        if not self.status:
+            return self.error
+
+        task_changed = (
+            self.task["rebuilds"][try_iter]["changed"]
+            if try_iter == (self.task["try"], self.task["iter"])
+            else None
         )
 
-        for subtask in self.task["subtasks"].keys():
-            contents = {"archs": []}
+        # get task state
+        task_state = self._get_task_state(task_changed)
+        if not self.status or task_state is None:
+            return self.error
 
-            for sub_ in self.task["subtasks_raw"]:
+        task_changed = task_state.task_changed
+
+        self.task.update(**task_state.asdict())
+
+        # return here for deleted task
+        if task_state.task_state == "DELETED":
+            self.task["rebuilds"] = [
+                (str(x[0]) + "." + str(x[1]))
+                for x in sorted(self.task["rebuilds"].keys())
+            ]
+            self.task["subtasks"] = []
+
+            return self.task, 200
+
+        # get subtasks
+        subtasks = self._get_subtasks(task_changed)
+        if not self.status or subtasks is None:
+            return self.error
+
+        # get iterations
+        iterations = self._get_iterations(task_changed)
+        if not self.status or iterations is None:
+            return self.error
+
+        self.task["subtasks"] = {x["subtask_id"]: {} for x in subtasks}
+
+        # process task plan only for tasks that should have it
+        if task_state.task_state in ("DONE", "EPERM", "TESTED") or try_iter is not None:
+            self._get_task_plan(iterations)
+            if not self.status:
+                return self.error
+
+        # get task approvals
+        self._get_task_approvals()
+        if not self.status:
+            return self.error
+
+        # build result
+        for subtask in self.task["subtasks"].keys():
+            contents: dict[str, Any] = {"archs": []}
+
+            for sub_ in subtasks:
                 if sub_["subtask_id"] == subtask:
-                    contents["last_changed"] = datetime_to_iso(sub_["subtask_changed"])  # type: ignore
+                    contents["last_changed"] = datetime_to_iso(sub_["subtask_changed"])
                     contents["userid"] = sub_["subtask_userid"]
                     contents["dir"] = sub_["subtask_dir"]
                     contents["package"] = sub_["subtask_package"]
@@ -355,7 +451,7 @@ class TaskInfo(APIWorker):
                     contents["srpm_evr"] = sub_["subtask_srpm_evr"]
                     break
 
-            for iter_ in self.task["iterations_raw"]:
+            for iter_ in iterations:
                 if iter_["subtask_id"] == subtask and iter_["subtask_arch"] == "x86_64":
                     if (
                         iter_["titer_srcrpm_hash"] != 0
@@ -369,7 +465,7 @@ class TaskInfo(APIWorker):
                         contents["source_package"] = {}  # type: ignore
                     break
 
-            for iter_ in self.task["iterations_raw"]:
+            for iter_ in iterations:
                 if iter_["subtask_id"] == subtask:
                     iteration = {}
                     iteration["last_changed"] = datetime_to_iso(iter_["titer_ts"])
@@ -379,11 +475,10 @@ class TaskInfo(APIWorker):
 
             self.task["subtasks"][subtask].update(contents)
 
-        self.task["all_rebuilds"] = [
-            (str(x[0]) + "." + str(x[1])) for x in sorted(self.task["rebuilds"].keys())
+        self.task["rebuilds"] = [
+            (str(x[0]) + "." + str(x[1]))
+            for x in sorted(self.task["rebuilds"].keys(), reverse=True)
         ]
-
-        self.task["rebuilds"] = self.task["all_rebuilds"]
 
         subtasks = []
 
@@ -407,20 +502,6 @@ class TaskInfo(APIWorker):
             x for x in self.task["plan"]["del"]["bin"].values()
         ]
 
-        del self.task["iterations_raw"]
-        del self.task["subtasks_raw"]
-        del self.task["state_raw"]
         del self.task["tplan_hashes"]
 
-        self.status = True
-        return None
-
-    def get(self):
-        self.task_try = self.args["try"]
-        self.task_iter = self.args["iteration"]
-        self.build_task_state()
-
-        if self.status:
-            return self.task, 200
-        else:
-            return self.error
+        return self.task, 200

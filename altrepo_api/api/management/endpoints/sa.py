@@ -1,0 +1,438 @@
+# ALTRepo API
+# Copyright (C) 2021-2026  BaseALT Ltd
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from enum import Enum
+from typing import Any, NamedTuple, Optional
+
+from altrepo_api.api.base import APIWorker, WorkerResult
+from altrepo_api.api.misc import lut
+from altrepo_api.api.metadata import KnownFilterTypes, MetadataChoiceItem, MetadataItem
+from altrepo_api.settings import namespace as settings
+from altrepo_api.libs.errata_server.errata_sa_service import (
+    ErrataServerError,
+    ErrataSAService,
+    Errata,
+    ErrataJson,
+    SaAction,
+    SaType,
+    UserInfo,
+    serialize,
+    deserialize,
+)
+from altrepo_api.libs.pagination import Paginator
+from altrepo_api.libs.sorting import rich_sort
+from altrepo_api.utils import get_logger, get_real_ip
+
+from .common.constants import DRY_RUN_KEY
+from ..parsers import sa_list_args
+
+
+logger = get_logger(__name__)
+
+
+class ErrataRecordState(Enum):
+    ALL = "all"
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+
+
+class ErrataJsonType(Enum):
+    ALL = "all"
+    CVE = "cve"
+    CPE = "cpe"
+    PACKAGE = "package"
+    ADVISORY = "advisory"
+
+
+def get_errata_service(
+    *, dry_run: bool, access_token: str, user: UserInfo
+) -> ErrataSAService:
+    try:
+        return ErrataSAService(
+            url=settings.ERRATA_MANAGE_URL,
+            access_token=access_token,
+            user=user,
+            dry_run=dry_run,
+        )
+    except ErrataServerError as e:
+        logger.error(f"Failed to connect to ErrataSA service: {e}")
+        raise RuntimeError("error: %s" % e)
+
+
+def _check_sa_overlap(
+    service: ErrataSAService, ej: ErrataJson
+) -> Optional[tuple[str, str]]:
+    """Checks if errata with given JSON is overlapping with existing SA errata form DB."""
+
+    def filter_by_vuln_id(errata: Errata, id: str):
+        return id in {
+            r.link for r in errata.eh.references if r.type == lut.errata_ref_type_vuln
+        }
+
+    #  build a filter for an active errata that has the same vulnerability ID
+    def active_and_matches_vuln_id(errata: Errata):
+        return not errata.is_discarded and filter_by_vuln_id(errata, ej.vuln_id)
+
+    # collect existing active SA erratas from DB using CVE ID
+    try:
+        erratas = [e for e in service.list() if active_and_matches_vuln_id(e)]
+    except ErrataServerError as e:
+        raise ErrataServerError(f"Failed to get erratas from DB: {e}", e.status_code)
+
+    # check for erratas overlap
+    for errata in erratas:
+        db_ej: ErrataJson = errata.eh.json  # type: ignore
+
+        # 1. new errata has an `advisory` type
+        if ej.type == SaType.ADVISORY:
+            # DB errata has an `advisory` type too and branches list overlaps
+            if db_ej.type == SaType.ADVISORY and set(ej.branches).intersection(
+                set(db_ej.branches)
+            ):
+                return ("overlaps with existing advisory errata", errata.eh.id)
+
+            # DB errata has an `exclusion` type and action is `cve`
+            if db_ej.type == SaType.EXCLUSION and db_ej.action == SaAction.CVE:
+                return ("overlaps with existing exclusion errata", errata.eh.id)
+
+            # TODO: don't check overlap for more specific types for `advisory` type for a now
+            continue
+
+        # 2. new errata has an `exclusion` type
+        if ej.type == SaType.EXCLUSION:
+            if db_ej.type == SaType.ADVISORY:
+                # DB errata has an `advisory` type
+                return ("overlaps with existing advisory errata", errata.eh.id)
+
+            if db_ej.type == SaType.EXCLUSION:
+                # DB errata has an `exclusion` type and action is `cve`
+                if db_ej.action == SaAction.CVE:
+                    return ("overlaps with existing CVE exclusion errata", errata.eh.id)
+
+                # more specific overlap check if both erratas have the same action
+
+                # both erratas have an `exclusion` type and action is `cpe`
+                if (
+                    ej.action == SaAction.CPE
+                    and db_ej.action == SaAction.CPE
+                    and ej.vuln_cpe == db_ej.vuln_cpe
+                ):
+                    return ("overlaps with existing CPE exclusion errata", errata.eh.id)
+
+                # both erratas have an `exclusion` type and action is `package`
+                if (
+                    ej.action == SaAction.PACKAGE
+                    and db_ej.action == SaAction.PACKAGE
+                    and ej.pkg_name == db_ej.pkg_name
+                ):
+                    return (
+                        "overlaps with existing package exclusion errata",
+                        errata.eh.id,
+                    )
+
+    return None
+
+
+class ManageSa(APIWorker):
+    def __init__(self, connection, payload, **kwargs):
+        self.payload: dict[str, Any] = payload
+        self.dry_run = kwargs.get(DRY_RUN_KEY, False)
+        self.conn = connection
+        self.args = kwargs
+        self.user: UserInfo
+        super().__init__()
+
+    def check_params(self) -> bool:
+        self.logger.debug(f"args : {self.args}")
+        # use direct indeces to fail early
+        self.dry_run = self.args[DRY_RUN_KEY]
+        self.user = UserInfo(
+            name=self.args["user"],
+            ip=get_real_ip(),
+        )
+
+        if not self.user.name:
+            self.validation_results.append("User name should be specified")
+            return False
+
+        return True
+
+    def post(self):
+        d = deserialize(ErrataJson, self.payload["errata_json"])
+        if d.is_err():
+            return self.store_error(
+                {"message": "Failed to decode request payload"},
+                severity=self.LL.ERROR,
+                http_code=400,
+            )
+
+        service = get_errata_service(
+            dry_run=self.dry_run,
+            access_token=settings.ERRATA_SERVER_TOKEN,
+            user=self.user,
+        )
+
+        try:
+            res = _check_sa_overlap(service, d.unwrap())
+        except ErrataServerError as e:
+            return self.store_error(
+                {"message": f"Error: {e}"},
+                severity=self.LL.ERROR,
+                http_code=e.status_code if e.status_code else 500,
+            )
+        if res:
+            return self.store_error(
+                {
+                    "message": f"Failed to create record in Errata Server: {res[0]} '{res[1]}'",
+                    "reason": res[0],
+                    "errata_id": res[1],
+                },
+                http_code=409,
+            )
+
+        try:
+            response = service.create(d.unwrap().sorted())
+        except ErrataServerError as e:
+            return self.store_error(
+                {"message": f"Failed to create record in Errata Server: {e}"},
+                severity=self.LL.ERROR,
+                http_code=e.status_code if e.status_code else 500,
+            )
+
+        return {"request_args": self.args, **serialize(response)}, 200  # type: ignore
+
+    def put(self):
+        reason = self.payload["reason"]
+        prev = deserialize(ErrataJson, self.payload["prev_errata_json"])
+        new = deserialize(ErrataJson, self.payload["errata_json"])
+        if prev.is_err() or new.is_err():
+            return self.store_error(
+                {
+                    "message": "Failed to decode request payload",
+                    "errors": [str(x.error) for x in (prev, new) if x.is_err()],  # type: ignore
+                },
+                severity=self.LL.ERROR,
+                http_code=400,
+            )
+
+        service = get_errata_service(
+            dry_run=self.dry_run,
+            access_token=settings.ERRATA_SERVER_TOKEN,
+            user=self.user,
+        )
+        try:
+            response = service.update(
+                reason=reason,
+                prev_errata_json=prev.unwrap().sorted(),
+                errata_json=new.unwrap().sorted(),
+            )
+        except ErrataServerError as e:
+            return self.store_error(
+                {"message": f"Failed to update record in Errata Server: {e}"},
+                severity=self.LL.ERROR,
+                http_code=e.status_code if e.status_code else 500,
+            )
+
+        return {"request_args": self.args, **serialize(response)}, 200  # type: ignore
+
+    def delete(self):
+        reason = self.payload["reason"]
+        d = deserialize(ErrataJson, self.payload["errata_json"])
+        if d.is_err():
+            return self.store_error(
+                {
+                    "message": "Failed to decode request payload",
+                    "errors": [str(d.error)],  # type: ignore
+                },
+                severity=self.LL.ERROR,
+                http_code=400,
+            )
+
+        service = get_errata_service(
+            dry_run=self.dry_run,
+            access_token=settings.ERRATA_SERVER_TOKEN,
+            user=self.user,
+        )
+        try:
+            response = service.discard(
+                reason=reason,
+                errata_json=d.unwrap().sorted(),
+            )
+        except ErrataServerError as e:
+            return self.store_error(
+                {"message": f"Failed to discrad record in Errata Server: {e}"},
+                severity=self.LL.ERROR,
+                http_code=e.status_code if e.status_code else 500,
+            )
+
+        return {"request_args": self.args, **serialize(response)}, 200  # type: ignore
+
+
+class SaListArgs(NamedTuple):
+    type: str
+    state: str
+    filter: Optional[str] = None
+    sort: Optional[list[str]] = None
+    page: Optional[int] = None
+    limit: Optional[int] = None
+
+
+class ListSa(APIWorker):
+    def __init__(self, connection, **kwargs):
+        self.conn = connection
+        self.kwargs = kwargs
+        self.args: SaListArgs
+        super().__init__()
+
+    def check_params(self) -> bool:
+        self.args = SaListArgs(**self.kwargs)
+        self.logger.debug(f"args : {self.kwargs}")
+
+        if (
+            self.args.type
+            and self.args.filter
+            and ErrataJsonType[self.args.type.upper()] == ErrataJsonType.ALL
+        ):
+            self.validation_results.append(
+                "Entry value should be specified only "
+                "for filter type which is not 'ALL'"
+            )
+
+        return self.validation_results == []
+
+    def get(self):
+        state_filter = (
+            ErrataRecordState[self.args.state.upper()]
+            if self.args.state
+            else ErrataRecordState.ALL
+        )
+        type_filter = (
+            ErrataJsonType[self.args.type.upper()]
+            if self.args.type
+            else ErrataJsonType.ALL
+        )
+
+        service = get_errata_service(
+            dry_run=True, access_token="", user=UserInfo("", "")
+        )
+        try:
+            erratas = service.list()
+        except ErrataServerError as e:
+            return self.store_error(
+                {"message": f"Failed to get records from Errata Server: {e}"},
+                severity=self.LL.ERROR,
+                http_code=e.status_code or 500,
+            )
+
+        def filter(errata: Errata) -> bool:
+            # filter errata by state
+            if state_filter != ErrataRecordState.ALL and (
+                (state_filter == ErrataRecordState.ACTIVE and errata.is_discarded)
+                or (
+                    state_filter == ErrataRecordState.INACTIVE
+                    and not errata.is_discarded
+                )
+            ):
+                return False
+
+            def filter_by_type_and_value(ej: ErrataJson) -> bool:
+                if type_filter == ErrataJsonType.CVE:
+                    return ej.vuln_id != self.args.filter
+                elif type_filter == ErrataJsonType.CPE:
+                    return ej.vuln_cpe != self.args.filter
+                elif type_filter == ErrataJsonType.PACKAGE:
+                    return ej.pkg_name != self.args.filter
+                return True
+
+            def filter_by_type(ej: ErrataJson) -> bool:
+                if type_filter == ErrataJsonType.ADVISORY:
+                    return ej.type != SaType.ADVISORY
+
+                sa_type_map = {
+                    ErrataJsonType.ALL: None,
+                    ErrataJsonType.CVE: SaAction.CVE,
+                    ErrataJsonType.CPE: SaAction.CPE,
+                    ErrataJsonType.PACKAGE: SaAction.PACKAGE,
+                    ErrataJsonType.ADVISORY: None,
+                }
+
+                return ej.type == SaType.ADVISORY or (
+                    ej.type == SaType.EXCLUSION
+                    and ej.action != sa_type_map[type_filter]
+                )
+
+            # filter errata by type and filter value if specified
+            if type_filter != ErrataJsonType.ALL and (
+                errata.eh.json is None
+                or (
+                    filter_by_type_and_value(errata.eh.json)
+                    if self.args.filter
+                    else filter_by_type(errata.eh.json)
+                )
+            ):
+                return False
+
+            return True
+
+        res = [e.asdict() for e in erratas if filter(e)]
+
+        if not res:
+            return self.store_error(
+                {"message": f"No data found in DB for {self.kwargs}"}, http_code=404
+            )
+
+        if self.args.sort:
+            res = rich_sort(res, self.args.sort)
+
+        paginator = Paginator(res, self.args.limit)
+        res = paginator.get_page(self.args.page)
+
+        return (
+            {"request_args": self.args._asdict(), "length": len(res), "errata": res},
+            200,
+            {
+                "Access-Control-Expose-Headers": "X-Total-Count",
+                "X-Total-Count": int(paginator.count),
+            },
+        )
+
+    def metadata(self) -> WorkerResult:
+        metadata = []
+        for arg in sa_list_args.args:
+            item_info = {
+                "name": arg.name,
+                "label": arg.name.replace("_", " ").capitalize(),
+                "help_text": arg.help,
+            }
+
+            if arg.name in ["state", "type"]:
+                metadata.append(
+                    MetadataItem(
+                        **item_info,
+                        type=KnownFilterTypes.CHOICE,
+                        choices=[
+                            MetadataChoiceItem(
+                                value=choice, display_name=choice.capitalize()
+                            )
+                            for choice in arg.choices
+                        ],
+                    )
+                )
+
+        return {
+            "length": len(metadata),
+            "metadata": [el.asdict() for el in metadata],
+        }, 200

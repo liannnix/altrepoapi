@@ -2,6 +2,8 @@ import pytest
 from flask import url_for
 
 ARCH_IN_DB = "x86_64"
+ARCH_SRPM = "srpm"
+MULTI_ARCH_IN_DB = "x86_64,i586"
 ARCH_NOT_IN_DB = "fakearch"
 BRANCH_IN_DB = "sisyphus"
 BRANCH_IN_DB_WO_TASKS = "sisyphus_mipsel"
@@ -339,6 +341,30 @@ def test_packagesets_by_hash(client, kwargs):
     [
         {"name": SRC_PACKAGE_IN_DB, "branch": None, "arch": None, "status_code": 200},
         {
+            "name": SRC_PACKAGE_IN_DB,
+            "branch": None,
+            "arch": ARCH_SRPM,
+            "status_code": 200
+        },
+        {
+            "name": SRC_PACKAGE_IN_DB,
+            "branch": BRANCH_IN_DB,
+            "arch": ARCH_SRPM,
+            "status_code": 200,
+        },
+        {
+            "name": SRC_PACKAGE_IN_DB,
+            "branch": BRANCH_IN_DB,
+            "arch": MULTI_ARCH_IN_DB,
+            "status_code": 200,
+        },
+        {
+            "name": MULTI_PACKAGE_NAME_IN_DB,
+            "branch": None,
+            "arch": ARCH_SRPM,
+            "status_code": 200
+        },
+        {
             "name": MULTI_PACKAGE_NAME_IN_DB,
             "branch": None,
             "arch": None,
@@ -348,7 +374,13 @@ def test_packagesets_by_hash(client, kwargs):
             "name": MULTI_PACKAGE_NAME_IN_DB,
             "branch": BRANCH_IN_DB,
             "arch": ARCH_IN_DB,
-            "status_code": 200
+            "status_code": 200,
+        },
+        {
+            "name": MULTI_PACKAGE_NAME_IN_DB,
+            "branch": BRANCH_IN_DB,
+            "arch": MULTI_ARCH_IN_DB,
+            "status_code": 200,
         },
         {
             "name": "getssl",
@@ -370,9 +402,27 @@ def test_packagesets_by_hash(client, kwargs):
         },
         {
             "name": BIN_PACKAGE_IN_DB,
+            "branch": BRANCH_IN_DB,
+            "arch": MULTI_ARCH_IN_DB,
+            "status_code": 200,
+        },
+        {
+            "name": BIN_PACKAGE_IN_DB,
+            "branch": None,
+            "arch": MULTI_ARCH_IN_DB,
+            "status_code": 200,
+        },
+        {
+            "name": BIN_PACKAGE_IN_DB,
             "branch": "p8",
             "arch": ARCH_IN_DB,
             "status_code": 200,
+        },
+        {
+            "name": "libcurl-devel",
+            "branch": BRANCH_IN_DB,
+            "arch": ARCH_SRPM,
+            "status_code": 404,
         },
         {
             "name": MULTI_PACKAGE_NAME_NOT_DB,
@@ -425,6 +475,9 @@ def test_find_packages(client, kwargs):
         assert data["packages"] != []
         for pkg in data["packages"]:
             assert pkg["versions"] != []
+            if kwargs["arch"] == ARCH_SRPM:
+                split_name = kwargs["name"].split(",")
+                assert all(word.lower() in pkg["name"].lower() for word in split_name)
 
 
 @pytest.mark.parametrize(

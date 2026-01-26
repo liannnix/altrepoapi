@@ -1,5 +1,5 @@
 # ALTRepo API
-# Copyright (C) 2021-2023  BaseALT Ltd
+# Copyright (C) 2021-2026  BaseALT Ltd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -16,6 +16,7 @@
 
 import zipfile
 from io import BytesIO
+from typing import Union
 
 from altrepo_api.utils import make_tmp_table_name
 from altrepo_api.api.base import APIWorker
@@ -61,6 +62,40 @@ class OvalExport(APIWorker):
 
         return True
 
+    def _get_branch_last_task(self) -> Union[int, None]:
+        response = self.send_sql_request(
+            self.sql.get_last_branch_task.format(branch=self.branch)
+        )
+        if not self.sql_status:
+            return None
+
+        return response[0][0]
+
+    def _branch_tasks_history(self, branch: str) -> Union[list[int], None]:
+        branch_history: list[str] = [branch] + lut.branch_inheritance[branch]
+
+        response = self.send_sql_request(
+            self.sql.branches_tasks_histories.format(branches=branch_history),
+        )
+        if not self.sql_status:
+            return None
+
+        partial_branches_histories = {
+            task_id: task_prev for task_id, task_prev in response
+        }
+
+        full_branch_history: list[int] = []
+        current_task_id = self._get_branch_last_task()
+        # forward SQL error
+        if current_task_id is None:
+            return None
+
+        while task_prev := partial_branches_histories.get(current_task_id):
+            full_branch_history.append(current_task_id)
+            current_task_id = task_prev
+
+        return full_branch_history
+
     def get(self):
         package_name = self.args["package_name"]
         one_file = self.args["one_file"]
@@ -73,30 +108,54 @@ class OvalExport(APIWorker):
             zip_file_name = ZIP_FILE_NAME.format(self.branch)
 
         # get ErrataHistory
+        tmp_table = make_tmp_table_name("tasks_ids")
+        task_history = self._branch_tasks_history(branch=self.branch)
+        if task_history is None:
+            return self.error
+
+        if not task_history:
+            return self.store_error(
+                {
+                    "message": f"No tasks history data found in DB for {self.branch}",
+                }
+            )
+
         response = self.send_sql_request(
             self.sql.get_errata_history_by_branch_tasks.format(
-                branch=self.branch, pkg_name_clause=pkg_name_clause
-            )
+                tmp_table_name=tmp_table, pkg_name_clause=pkg_name_clause
+            ),
+            external_tables=[
+                {
+                    "name": tmp_table,
+                    "structure": [("task_id", "UInt32")],
+                    "data": [{"task_id": task_id} for task_id in task_history],
+                }
+            ],
         )
         if not self.sql_status:
             return self.error
         if not response:
             return self.store_error(
                 {
-                    "message": f"No data found in DB for {self.args}",
+                    "message": f"No Errata' data found in DB for {self.branch}",
                 }
             )
+        # XXX: force current branch into Errata records due to it's used in OVAL distribution
+        # installed test build
         erratas = [
-            ErrataHistoryRecord(ErrataID.from_id(el[0]), *el[1:]) for el in response
+            ErrataHistoryRecord(
+                ErrataID.from_id(el[0]), *el[1:12], self.branch, *el[13:]  # type: ignore
+            )
+            for el in response
         ]
         # collect bugzilla and vulnerability ids from errata
         bz_ids: list[int] = []
         vuln_ids: list[str] = []
         for err in erratas:
             for type_, link in zip(err.eh_references_type, err.eh_references_link):
-                if type_ == "bug":
+                if type_ == lut.errata_ref_type_bug:
                     bz_ids.append(int(link))
-                elif type_ == "vuln":
+                elif type_ == lut.errata_ref_type_vuln:
                     vuln_ids.append(link)
 
         # get binary packages info by source packages hashes
