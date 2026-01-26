@@ -16,6 +16,7 @@ RUN \
     && apt-get update \
     && yes | apt-get dist-upgrade \
     && yes | apt-get install \
+        python3-module-alt_releases_matrix \
         python3-module-flask \
         python3-module-flask-restx \
         python3-module-mmh3 \
