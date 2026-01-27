@@ -82,6 +82,7 @@ __pkg_name_list_match = re.compile(r"^([\w\.\+\-]{2,}[,]?)+$")
 __pkg_VR_match = re.compile(r"^[\w\.\+]+$")
 __pkg_groups_match = re.compile(r"^[A-Z][a-zA-Z0-9\+\ \/-]+$")
 __pkg_disttag_match = re.compile(r"^[a-z0-9\+\.]+$")
+__general_name_match = re.compile(r"^[A-Za-zА-Яа-яЁё 0-9\+\.]+$")
 __packager_name_match = re.compile(r"^[a-zA-Z]+[\w\.\ \-\@]*$")
 __packager_email_match = re.compile(r"^[\w\.\-]+@[\w\.\-]+$")
 __packager_nickname_match = re.compile(r"^[\w\-]{2,}$")
@@ -318,6 +319,21 @@ def packager_name_type(value: Any) -> str:
 packager_name_type.__schema__ = {
     "type": "string",
     "pattern": __packager_name_match.pattern,
+}
+
+
+def general_name_type(value: Any) -> str:
+    """Name validator."""
+
+    value = __get_string(value)
+    if not __general_name_match.search(value):
+        raise ValueError("Invalid name: {0}".format(value))
+    return value
+
+
+general_name_type.__schema__ = {
+    "type": "string",
+    "pattern": __general_name_match.pattern,
 }
 
 
