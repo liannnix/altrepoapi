@@ -24,6 +24,7 @@ from altrepo_api.api.parser import (
     errata_search_type,
     open_vulns_search_type,
     pkg_name_type,
+    general_name_type,
     packager_name_type,
     packager_nick_type,
     positive_integer_type,
@@ -554,6 +555,13 @@ current_vuln_id_opt = parser.register_item(
     type=vuln_id_type,
     required=False,
     help="Current vulnerability ID",
+    location="args",
+)
+general_name_input = parser.register_item(
+    "input",
+    type=general_name_type,
+    required=True,
+    help="Name input",
     location="args",
 )
 
