@@ -138,7 +138,10 @@ class Details:
 
     def __init__(self, js: dict[str, Any]):
         if cpe := js.get("cpe"):
-            self.cpe = CpeInfo(**cpe)
+            if isinstance(cpe, str):
+                self.cpe = CpeInfo(cpe=cpe, state="", project_name="")
+            else:
+                self.cpe = CpeInfo(**cpe)
         if pnc := js.get("pnc"):
             self.pnc = PncInfo(**pnc)
         for key, val in js.items():
@@ -172,6 +175,11 @@ class ChangeHistoryResponse(NamedTuple):
     modules: list[str]
     changes: list[ChangeItem]
     transaction_id: str
+
+    def asdict(self) -> dict[str, Any]:
+        res = self._asdict()
+        res["changes"] = [asdict(el) for el in self.changes]
+        return res
 
 
 class ChangeHistoryArgs(NamedTuple):
@@ -318,7 +326,7 @@ class ChangeHistory(APIWorker):
             {
                 "request_args": self.args._asdict(),
                 "length": len(changes),
-                "change_history": [el._asdict() for el in changes],
+                "change_history": [el.asdict() for el in changes],
             },
             200,
             {
