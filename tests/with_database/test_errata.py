@@ -358,7 +358,7 @@ def test_find_erratas(client, kwargs):
 
             if kwargs.get("type"):
                 if kwargs.get("type") == ERRATA_TYPES_IN_DB[0]:
-                    assert elem["eh_type"] in ("branch", "task")
+                    assert elem["eh_type"] in ("branch", "task", "exclusion")
                 elif kwargs.get("type") == ERRATA_TYPES_IN_DB[1]:
                     assert elem["eh_type"] in ("bulletin",)
 
