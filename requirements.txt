@@ -2,7 +2,7 @@ mmh3
 flask
 flask-restx
 gunicorn
-clickhouse-driver
+clickhouse-driver>=0.2.3
 packaging
 pyjwt
 redis

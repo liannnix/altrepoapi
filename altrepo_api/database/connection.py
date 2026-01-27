@@ -16,7 +16,7 @@
 
 from time import sleep
 from typing import Any, Iterable, Union
-from clickhouse_driver import Client, errors, __version__ as chd_version
+from clickhouse_driver import Client, errors
 from clickhouse_driver.defines import DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET_V2
 
 from altrepo_api.settings import namespace as settings
@@ -39,6 +39,7 @@ class DBConnection:
     ):
         self.query = query
         self.query_kwargs = {}
+        self.connection_status = False
 
         self.clickhouse_client = Client(
             host=clickhouse_host,
@@ -49,39 +50,34 @@ class DBConnection:
             client_revision=DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET_V2,
         )
 
-        try_conn = self._connection_test()
-        if try_conn:
-            raise RuntimeError(try_conn)
 
-        self.connection_status = False
+        self.make_connection()
+        if not self.connection_status:
+            raise RuntimeError(f"Failed connect to database")
 
-    def make_connection(self) -> bool:
+    def make_connection(self):
+        if self.connection_status:
+            try:
+                self.clickhouse_client.execute("SELECT 1")
+                logger.debug("Database connection is alive.")
+                return
+            except errors.Error as error:
+                logger.debug(f"Database connection failed: {error}")
+                self.connection_status = False
+            except Exception as error:
+                logger.error(error)
+                raise
+
         try:
             self.clickhouse_client.connection.connect()
+        except errors.Error as error:
+            logger.error(exception_to_logger(error))
+            return
         except Exception as error:
             logger.error(error)
-            return False
+            raise
 
         self.connection_status = True
-
-        return True
-
-    def _connection_test(self) -> Union[str, None]:
-        logger.debug(
-            f"Connecting to databse {settings.DATABASE_NAME}@{settings.DATABASE_HOST}"
-            f":{settings.DATABASE_PORT}"
-        )
-        try:
-            self.clickhouse_client.connection.connect()
-        except Exception as error:
-            if issubclass(error.__class__, errors.Error):
-                logger.error(exception_to_logger(error))
-                return "Error of database connection."
-            else:
-                raise error
-
-        self.clickhouse_client.disconnect()
-        return None
 
     def _debug_sql_query_printout(self) -> None:
         if not settings.SQL_DEBUG:
@@ -89,17 +85,12 @@ class DBConnection:
         if isinstance(self.query, tuple):
             # SQL query has params
             if not isinstance(self.query[1], Iterable):
-                if chd_version <= "0.2.2":
-                    query = self.clickhouse_client.substitute_params(
-                        self.query[0],
-                        self.query[1],
-                    )  # type: ignore
-                else:
-                    query = self.clickhouse_client.substitute_params(
-                        self.query[0],
-                        self.query[1],
-                        self.clickhouse_client.connection.context,  # works only for clickhouse-driver >= 0.2.3
-                    )
+                # XXX: works only for clickhouse-driver >= 0.2.3
+                query = self.clickhouse_client.substitute_params(
+                    self.query[0],
+                    self.query[1],
+                    self.clickhouse_client.connection.context,
+                )
             else:
                 query = self.query[0]
         else:
@@ -124,12 +115,12 @@ class DBConnection:
             logger.debug(
                 f"SQL request elapsed {self.clickhouse_client.last_query.elapsed:.3f} seconds"  # type: ignore
             )
+        except errors.Error as error:
+            logger.error(exception_to_logger(error))
+            response = json_str_error("Error in SQL query!")
         except Exception as error:
-            if issubclass(error.__class__, errors.Error):
-                logger.error(exception_to_logger(error))
-                response = json_str_error("Error in SQL query!")
-            else:
-                raise error
+            logger.error(error)
+            raise
 
         return response_status, response
 
@@ -157,7 +148,8 @@ class Connection:
             for try_ in range(settings.TRY_CONNECTION_NUMBER):
                 logger.debug("Attempt to connect to the database #{}".format(try_ + 1))
 
-                status = self._db_connection.make_connection()
+                self._db_connection.make_connection()
+                status = self._db_connection.connection_status
                 if status:
                     break
 
