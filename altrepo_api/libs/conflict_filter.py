@@ -85,24 +85,21 @@ class ConflictFilter:
 
         if self._debug:
             self.error["module"] = self.__class__.__name__
-            requestline = self.conn.request_line
+            query = self.conn.query
 
-            if isinstance(requestline, tuple):
+            if isinstance(query, tuple):
                 self.error["sql_request"] = [
-                    line for line in requestline[0].split("\n") if len(line) > 0
+                    line for line in query[0].split("\n") if len(line) > 0
                 ]
             else:
-                self.error["sql_request"] = [line for line in requestline.split("\n")]
+                self.error["sql_request"] = [line for line in query.split("\n")]
 
         logger.error(self.error)
 
     def _get_dict_conflict_provide(self, hshs: list[int]) -> DepsDictType:
         # get conflicts and provides by hash
-        self.conn.request_line = (
-            self.sql.get_dependencies,
-            {"hshs": tuple(hshs)},
-        )
-        status, response = self.conn.send_request()
+        query = (self.sql.get_dependencies, {"hshs": tuple(hshs)})
+        status, response = self.conn.send_request(query)
         if not status:
             self._store_sql_error(response)
             raise SqlRequestError(self.error)

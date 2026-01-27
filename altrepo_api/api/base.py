@@ -21,15 +21,16 @@ from altrepo_api.settings import namespace as settings
 from altrepo_api.utils import response_error_parser, get_logger, logger_level
 
 # type alias
+QueryT = Union[str, tuple[str, Any]]
 WorkerResultWithHeaders = tuple[Any, int, dict[str, str]]
 WorkerResultWithoutHeaders = tuple[Any, int]
 WorkerResult = Union[WorkerResultWithHeaders, WorkerResultWithoutHeaders]
 
 
 class ConnectionProtocol(Protocol):
-    request_line: Union[str, tuple[str, Any]]
+    query: QueryT
 
-    def send_request(self, **query_kwargs) -> tuple[bool, Any]: ...
+    def send_request(self, query: QueryT, **query_kwargs: Any) -> tuple[bool, Any]: ...
 
     def drop_connection(self) -> None: ...
 
@@ -73,7 +74,7 @@ class APIWorker:
 
         if self.DEBUG:
             response["module"] = self.__class__.__name__
-            requestline = self.conn.request_line
+            requestline = self.conn.query
             if isinstance(requestline, tuple):
                 response["sql_request"] = [
                     x for x in requestline[0].split("\n") if len(x) > 0
@@ -92,16 +93,13 @@ class APIWorker:
         self._log_error(severity)
         self.status = False
 
-    def send_sql_request(
-        self, request_line: Any, http_code: int = 500, **kwargs
-    ) -> Any:
+    def send_sql_request(self, query: QueryT, **kwargs: Any) -> Any:
         """Send SQL request and returns response. If request fails,
         saves SQL error to self.error object. Changes self.sql_status field."""
 
-        self.conn.request_line = request_line
-        self.sql_status, response = self.conn.send_request(**kwargs)
+        self.sql_status, response = self.conn.send_request(query, **kwargs)
         if not self.sql_status:
-            self._store_sql_error(response, self.LL.ERROR, http_code)
+            self._store_sql_error(response, self.LL.ERROR, 500)
         return response
 
     def store_error(

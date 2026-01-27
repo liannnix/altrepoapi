@@ -334,14 +334,14 @@ class PackageDependencies:
 
         if self._debug:
             self.error["module"] = self.__class__.__name__
-            requestline = self.conn.request_line
+            query = self.conn.query
 
-            if isinstance(requestline, tuple):
+            if isinstance(query, tuple):
                 self.error["sql_request"] = [
-                    line for line in requestline[0].split("\n") if len(line) > 0
+                    line for line in query[0].split("\n") if len(line) > 0
                 ]
             else:
-                self.error["sql_request"] = [line for line in requestline.split("\n")]
+                self.error["sql_request"] = [line for line in query.split("\n")]
 
         logger.error(self.error)
 
@@ -350,10 +350,10 @@ class PackageDependencies:
         if not hashes:
             return {}
 
-        self.conn.request_line = self.sql.get_pkg_bin_and_src_names_by_hashes.format(
+        query = self.sql.get_pkg_bin_and_src_names_by_hashes.format(
             hashes=tuple(hashes)
         )
-        status, response = self.conn.send_request()
+        status, response = self.conn.send_request(query)
         if not status:
             self._store_sql_error(response)
             raise SqlRequestError(self.error)
@@ -485,17 +485,15 @@ class PackageDependencies:
 
         if USE_SHADOW_TABLES_DEPS_REQUIRE:
             # create shadow last_depends table
-            self.conn.request_line = self.sql.create_shadow_last_depends
-            status, response = self.conn.send_request()
+            query = self.sql.create_shadow_last_depends
+            status, response = self.conn.send_request(query)
             if not status:
                 self._store_sql_error(response)
                 raise SqlRequestError(self.error)
 
             # fill shadow last_depends with data from current branch state
-            self.conn.request_line = self.sql.fill_shadow_last_depends.format(
-                branch=self.branch
-            )
-            status, response = self.conn.send_request()
+            query = self.sql.fill_shadow_last_depends.format(branch=self.branch)
+            status, response = self.conn.send_request(query)
             if not status:
                 self._store_sql_error(response)
                 raise SqlRequestError(self.error)
@@ -505,14 +503,14 @@ class PackageDependencies:
 
         if USE_SHADOW_TABLES_DEPS_REQUIRE:
             # drop shadow last_depends table
-            self.conn.request_line = self.sql.drop_shadow_last_depends
-            status, response = self.conn.send_request()
+            query = self.sql.drop_shadow_last_depends
+            status, response = self.conn.send_request(query)
             if not status:
                 self._store_sql_error(response)
                 raise SqlRequestError(self.error)
 
-        self.conn.request_line = self.sql.create_tmp_table.format(tmp_table=tmp_table)
-        status, response = self.conn.send_request()
+        query = self.sql.create_tmp_table.format(tmp_table=tmp_table)
+        status, response = self.conn.send_request(query)
         if not status:
             self._store_sql_error(response)
             raise SqlRequestError(self.error)
@@ -521,18 +519,18 @@ class PackageDependencies:
             [hsh for val in self.dependencies.values() for hsh in val]
         )
 
-        self.conn.request_line = (
+        query = (
             self.sql.insert_to_tmp_table.format(tmp_tbl=tmp_table),
             ((hsh,) for hsh in hsh_list),
         )
-        status, response = self.conn.send_request()
+        status, response = self.conn.send_request(query)
         if not status:
             self._store_sql_error(response)
             raise SqlRequestError(self.error)
 
         # get information for all packages in hsh_dict (keys and values)
-        self.conn.request_line = self.sql.get_meta_by_hshs.format(tmp_table=tmp_table)
-        status, response = self.conn.send_request()
+        query = self.sql.get_meta_by_hshs.format(tmp_table=tmp_table)
+        status, response = self.conn.send_request(query)
         if not status:
             self._store_sql_error(response)
             raise SqlRequestError(self.error)
@@ -540,8 +538,8 @@ class PackageDependencies:
         dict_info = dict([(tuple(r[0]), r[1:]) for r in response])
 
         # drop temporary table
-        self.conn.request_line = self.sql.drop_tmp_table.format(tmp_table=tmp_table)
-        status, response = self.conn.send_request()
+        query = self.sql.drop_tmp_table.format(tmp_table=tmp_table)
+        status, response = self.conn.send_request(query)
         if not status:
             self._store_sql_error(response)
             raise SqlRequestError(self.error)
@@ -637,23 +635,23 @@ class FindPackagesDependencies:
 
         if self._debug:
             self.error["module"] = self.__class__.__name__
-            requestline = self.conn.request_line
+            query = self.conn.query
 
-            if isinstance(requestline, tuple):
+            if isinstance(query, tuple):
                 self.error["sql_request"] = [
-                    line for line in requestline[0].split("\n") if len(line) > 0
+                    line for line in query[0].split("\n") if len(line) > 0
                 ]
             else:
-                self.error["sql_request"] = [line for line in requestline.split("\n")]
+                self.error["sql_request"] = [line for line in query.split("\n")]
 
         logger.error(self.error)
 
     def _build_dependency_set_requires(self) -> None:
         # if self.dependency_type == "require":
-        self.conn.request_line = self.sql.get_packages_by_requires.format(
+        query = self.sql.get_packages_by_requires.format(
             tmp_table=self._tmp_table, branch=self.branch, archs=self.archs
         )
-        status, response = self.conn.send_request()
+        status, response = self.conn.send_request(query)
         if not status:
             self._store_sql_error(response)
             raise SqlRequestError(self.error)
@@ -735,13 +733,13 @@ class FindPackagesDependencies:
         if dependency_type not in DEP_PKG_TYPE_LUT:
             raise ValueError(f"Unknown dependency type: {dependency_type}")
 
-        self.conn.request_line = self.sql.get_packages_by_provides.format(
+        query = self.sql.get_packages_by_provides.format(
             tmp_table=self._tmp_table,
             branch=self.branch,
             archs=self.archs,
             pkg_type=DEP_PKG_TYPE_LUT[dependency_type],
         )
-        status, response = self.conn.send_request()
+        status, response = self.conn.send_request(query)
         if not status:
             self._store_sql_error(response)
             raise SqlRequestError(self.error)
@@ -751,20 +749,18 @@ class FindPackagesDependencies:
 
     def get_package_dependencies_set_requires(self) -> dict[int, set[int]]:
         # create temporary table
-        self.conn.request_line = self.sql.create_tmp_table.format(
-            tmp_table=self._tmp_table
-        )
-        status, response = self.conn.send_request()
+        query = self.sql.create_tmp_table.format(tmp_table=self._tmp_table)
+        status, response = self.conn.send_request(query)
         if not status:
             self._store_sql_error(response)
             raise SqlRequestError(self.error)
 
         # insert input packages hashes
-        self.conn.request_line = (
+        query = (
             self.sql.insert_to_tmp_table.format(tmp_tbl=self._tmp_table),
             ((hsh,) for hsh in self.in_packages_hashes),
         )
-        status, response = self.conn.send_request()
+        status, response = self.conn.send_request(query)
         if not status:
             self._store_sql_error(response)
             raise SqlRequestError(self.error)
@@ -772,10 +768,8 @@ class FindPackagesDependencies:
         self._build_dependency_set_requires()
 
         # drop temporary table
-        self.conn.request_line = self.sql.drop_tmp_table.format(
-            tmp_table=self._tmp_table
-        )
-        status, response = self.conn.send_request()
+        query = self.sql.drop_tmp_table.format(tmp_table=self._tmp_table)
+        status, response = self.conn.send_request(query)
         if not status:
             self._store_sql_error(response)
             raise SqlRequestError(self.error)

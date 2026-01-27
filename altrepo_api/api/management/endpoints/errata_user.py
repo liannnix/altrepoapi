@@ -302,9 +302,7 @@ class _pAPIWorker(Protocol):
     status: bool
     sql_status: bool
 
-    def send_sql_request(
-        self, request_line: Any, http_code: int = ..., **kwargs
-    ) -> Any: ...
+    def send_sql_request(self, query: Any, **kwargs) -> Any: ...
 
 
 def get_users_display_name(cls: _pAPIWorker, users: list[str]) -> dict[str, str]:

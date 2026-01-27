@@ -28,14 +28,14 @@ def store_errata_user(
     conn: ConnectionProtocol, user_data: dict[str, Any]
 ) -> tuple[bool, str]:
     # get original user name from DB using aliases table
-    conn.request_line = sql.get_original_user_name.format(user=user_data["user"])
-    sql_status, response = conn.send_request()
+    sql_status, response = conn.send_request(
+        sql.get_original_user_name.format(user=user_data["user"])
+    )
     if not sql_status or not response:
         return False, f"Database error info: {response}"
     user_data["user"] = response[0][0]
     # store user data
-    conn.request_line = sql.store_errata_user.format(**user_data)
-    sql_status, response = conn.send_request()
+    sql_status, response = conn.send_request(sql.store_errata_user.format(**user_data))
     if not sql_status:
         return False, f"Database error info: {response}"
 

@@ -2,9 +2,9 @@ from altrepo_api.api.errata.endpoints.search import FindErratas
 
 
 class _NoDbConnection:
-    request_line = ""
+    query = ""
 
-    def send_request(self, **kwargs):
+    def send_request(self, query, **kwargs):
         raise AssertionError("DB access is not expected when type='exclusion'")
 
     def drop_connection(self):
