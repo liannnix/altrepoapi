@@ -1,6 +1,22 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.24.5] - 2026-01-27
+
+Regular API code updates and fixes.
+
+### Added
+- `api/parser`: add validator for a general name
+- `api/management/user/tag`: add `display_name` field support
+### Changed
+- `api`: use `alt_releases_matrix` library for branches, architectures and URL constants
+- `api/database`: refactor code
+- `api/errata/oval`: use OvalXml definitions from `alt_release_matrix` library
+- update project dependencies
+### Fixed
+- `api/management/change_history`: fix serialization errors
+- fix code style
+
 # [1.24.4] - 2026-01-26
 
 Regular API code updates and fixes.
