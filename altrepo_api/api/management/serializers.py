@@ -197,7 +197,11 @@ errata_manage_errata_model = ns.model(
         "task_id": fields.Integer(description="task id", required=True),
         "subtask_id": fields.Integer(description="subtask id", required=True),
         "task_state": fields.String(
-            description="task state", enum=lut.known_states, required=True
+            # XXX: empty string is disallowed here and it's ok as we do not support
+            # branch update and package update type errata from taskless branches here
+            description="task state",
+            enum=lut.known_states,
+            required=True,
         ),
     },
 )
