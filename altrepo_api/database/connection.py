@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from time import sleep
-from typing import Any, Iterable, Union
+from typing import Any, Union
 from clickhouse_driver import Client, errors
 from clickhouse_driver.defines import DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET_V2
 
