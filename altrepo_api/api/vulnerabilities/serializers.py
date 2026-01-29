@@ -32,6 +32,7 @@ vulnerability_model = ns.model(
         "modified": fields.DateTime(description="modified date"),
         "refs": fields.List(fields.String, description="vulnerability references"),
         "json": fields.Raw(description="vulnerability original JSON"),
+        "rejected": fields.Boolean(description="vulnerability is rejected"),
     },
 )
 vuln_reference_element_model = ns.model(

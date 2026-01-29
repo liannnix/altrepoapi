@@ -31,12 +31,11 @@ SELECT
     vuln_published_date,
     {json_field},
     vuln_references.type,
-    vuln_references.link
+    vuln_references.link,
+    vuln_rejected
 FROM Vulnerabilities
-WHERE (vuln_id, vuln_hash) IN (
-    SELECT
-        vuln_id,
-        argMax(vuln_hash, ts)
+WHERE vuln_hash IN (
+    SELECT argMax(vuln_hash, ts)
     FROM Vulnerabilities
     WHERE vuln_id IN {tmp_table}
     GROUP BY vuln_id

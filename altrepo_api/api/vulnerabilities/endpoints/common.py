@@ -232,6 +232,7 @@ class VulnerabilityInfo:
     json: dict[str, Any]
     refs_type: list[str]
     refs_link: list[str]
+    rejected: bool = False
 
     def __post_init__(self):
         parsed = None
@@ -1241,10 +1242,7 @@ class VulnerabilityParsed(NamedTuple):
 
 def make_empty_parsed() -> VulnerabilityParsed:
     return VulnerabilityParsed(
-        references=[],
-        cvss_vectors=[],
-        cwes=[],
-        configurations=[],
+        references=[], cvss_vectors=[], cwes=[], configurations=[]
     )
 
 
