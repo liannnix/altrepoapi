@@ -1,6 +1,19 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.24.6] - 2026-01-29
+
+Regular API code updates and fixes.
+
+### Added
+- `libs/errata_server`: vulnerability rejection status field
+- `api/vulnerabilities`: vulnerability rejection status field
+- `api/management`: vulnerability rejection status field
+### Changed
+- `api/vulnerabilities`: optimize SQL queries for vulnerability lookups
+- `api/management`: optimize SQL queries for vulnerability lookups
+### Fixed
+
 # [1.24.5] - 2026-01-27
 
 Regular API code updates and fixes.
