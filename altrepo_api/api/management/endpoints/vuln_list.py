@@ -66,6 +66,7 @@ class VulnInfo(NamedTuple):
     erratas: list[ErrataInfo] = []
     cpes: list[str] = []
     our: bool = False
+    rejected: bool = False
 
     def asdict(self) -> dict[str, Any]:
         return {
@@ -79,6 +80,7 @@ class VulnInfo(NamedTuple):
             "erratas": [el._asdict() for el in self.erratas],
             "cpes": self.cpes,
             "our": self.our,
+            "rejected": self.rejected,
         }
 
 
@@ -289,8 +291,22 @@ class VulnList(APIWorker):
                 ),
                 cpes=cpes,
                 our=bool(our_cpes),
+                rejected=bool(rejected),
             )
-            for id, severity, status, resolution, summary, modified, published, errata_ids, cpes, our_cpes, _ in response
+            for (
+                id,
+                severity,
+                status,
+                resolution,
+                summary,
+                modified,
+                published,
+                errata_ids,
+                cpes,
+                our_cpes,
+                rejected,
+                _,
+            ) in response
         ]
 
         return (

@@ -54,6 +54,7 @@ class VulnerabilityInfo:
     published_date: datetime = DT_NEVER
     refs_link: list[str] = field(default_factory=list)
     refs_type: list[str] = field(default_factory=list)
+    is_rejected: bool = False
     is_valid: bool = False
     related_vulns: list[str] = field(default_factory=list)
 

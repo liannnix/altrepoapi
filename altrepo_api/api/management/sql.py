@@ -408,12 +408,11 @@ SELECT
     vuln_modified_date,
     vuln_published_date,
     vuln_references.link,
-    vuln_references.type
+    vuln_references.type,
+    vuln_rejected
 FROM Vulnerabilities
-WHERE (vuln_id, vuln_hash) IN (
-    SELECT
-        vuln_id,
-        argMax(vuln_hash, ts)
+WHERE vuln_hash IN (
+    SELECT argMax(vuln_hash, ts)
     FROM Vulnerabilities
     WHERE vuln_id IN (SELECT vuln_id FROM {tmp_table})
     GROUP BY vuln_id
@@ -432,12 +431,11 @@ SELECT
     vuln_modified_date,
     vuln_published_date,
     vuln_references.link,
-    vuln_references.type
+    vuln_references.type,
+    vuln_rejected
 FROM Vulnerabilities
-WHERE (vuln_id, vuln_hash) IN (
-    SELECT
-        vuln_id,
-        argMax(vuln_hash, ts)
+WHERE vuln_hash IN (
+    SELECT argMax(vuln_hash, ts)
     FROM Vulnerabilities
     WHERE vuln_id IN (
         SELECT vuln_id
@@ -946,6 +944,7 @@ SELECT
     errata_ids,
     cpes,
     our,
+    rejected,
     count() OVER () AS total_count
 FROM (
     SELECT
@@ -955,7 +954,8 @@ FROM (
         argMax(vs.vs_resolution, vs.ts) AS resolution,
         argMax(vulns.vuln_summary, vulns.ts) AS summary,
         argMax(vulns.vuln_modified_date, vulns.ts) AS modified,
-        argMax(vulns.vuln_published_date, vulns.ts) AS published
+        argMax(vulns.vuln_published_date, vulns.ts) AS published,
+        argMax(vulns.vuln_rejected, vulns.ts) AS rejected
     FROM Vulnerabilities AS vulns
     LEFT JOIN VulnerabilityStatus AS vs ON vulns.vuln_id = vs.vuln_id
     {where_vuln_input}

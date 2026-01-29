@@ -142,6 +142,7 @@ vuln_model = ns.model(
         "modified_date": fields.DateTime(description="vulnerability modified date"),
         "published_date": fields.DateTime(description="vulnerability published date"),
         "is_valid": fields.Boolean(description="vulnerability information is valid"),
+        "is_rejected": fields.Boolean(description="vulnerability is rejected"),
         "references": fields.List(
             fields.String, description="vulnerability references list", as_list=True
         ),
@@ -686,6 +687,7 @@ vuln_list_el_model = ns.model(
             description="list of CPE records for this vulnerability",
         ),
         "our": fields.Boolean(description="Our"),
+        "rejected": fields.Boolean(description="vulnerability is rejected"),
     },
 )
 vuln_list_model = ns.model(
