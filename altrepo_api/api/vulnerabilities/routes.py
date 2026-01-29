@@ -192,7 +192,7 @@ class routeBduInfo(Resource):
 )
 class routeGhsaInfo(Resource):
     @ns.expect(ghsa_info_args)
-    # @ns.marshal_with(vulnerability_info_model)
+    @ns.marshal_with(vulnerability_info_model)
     def get(self):
         url_logging(logger, g.url)
         args = ghsa_info_args.parse_args(strict=True)
