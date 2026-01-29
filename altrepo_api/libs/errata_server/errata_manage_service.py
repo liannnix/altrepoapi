@@ -39,6 +39,7 @@ class Vulnerability(NamedTuple):
     published_date: datetime
     references: list[str]
     is_valid: bool
+    is_rejected: bool = False
 
 
 class ErrataManageGetResponse(NamedTuple):
