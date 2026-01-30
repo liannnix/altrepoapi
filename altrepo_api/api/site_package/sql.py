@@ -605,19 +605,11 @@ SELECT
     pkg_filesize
 FROM Packages
 WHERE pkg_hash IN (
-    SELECT pkgh_mmh
-    FROM PackageHash
-    WHERE pkgh_sha256 IN (
-        SELECT tplan_sha256
-        FROM TaskPlanPkgHash
-        WHERE tplan_action = 'add'
-            AND tplan_hash IN (
-                SELECT tplan_hash
-                FROM task_plan_hashes
-                WHERE task_id = {taskid}
-                    AND tplan_arch = 'x86_64-i586'
-            )
-    )
+    SELECT pkg_hash
+    FROM BranchPackageHistory
+    WHERE task_id = {taskid}
+        AND tplan_action = 'add'
+        AND pkg_arch = 'x86_64-i586'
 )
 """
 
