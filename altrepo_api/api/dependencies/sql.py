@@ -107,14 +107,6 @@ WHERE pkg_sourcepackage = 1
         (SELECT pkg_hash FROM {tmp_table})
 """
 
-    get_pkgs_name_and_arch = """
-SELECT
-    pkg_name,
-    pkg_arch
-FROM Packages
-WHERE pkg_hash = {pkghash}
-"""
-
     get_pkg_info = """
 SELECT
     pkg_name,

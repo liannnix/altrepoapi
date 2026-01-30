@@ -879,56 +879,6 @@ WHERE fn_hash IN
 )
 """
 
-    get_dependent_packages = """
-SELECT DISTINCT
-    pkg_name,
-    pkg_version,
-    pkg_release,
-    pkg_epoch,
-    pkg_serial_,
-    pkg_filename AS sourcerpm,
-    pkgset_name,
-    groupUniqArray(binary_arch)
-FROM last_packages
-INNER JOIN
-(
-    SELECT
-        pkg_sourcerpm,
-        pkg_arch AS binary_arch
-    FROM last_packages
-    WHERE pkg_name IN
-    (
-        SELECT DISTINCT pkg_name
-        FROM last_depends
-        WHERE dp_name IN
-        (
-            SELECT dp_name
-            FROM last_depends
-            WHERE pkg_name = '{package}'
-                AND dp_type = 'provide'
-                AND pkgset_name = '{branch}'
-                AND pkg_sourcepackage = 0
-        )
-            AND pkgset_name = '{branch}'
-            AND pkg_sourcepackage = 0
-    )
-        AND pkgset_name = '{branch}'
-        AND pkg_sourcepackage = 0
-) AS SrcPkg USING pkg_sourcerpm
-WHERE pkgset_name = '{branch}'
-    AND pkg_sourcepackage = 1
-GROUP BY
-(
-    pkg_name,
-    pkg_version,
-    pkg_release,
-    pkg_epoch,
-    pkg_serial_,
-    sourcerpm,
-    pkgset_name
-)
-"""
-
     get_unpackaged_dirs = """
 SELECT DISTINCT
     Pkg.pkg_name,

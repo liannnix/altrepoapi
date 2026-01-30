@@ -100,76 +100,6 @@ WHERE pkgset_depth = 1
 ORDER BY pkgset_tag ASC, pkgset_date DESC
 """
 
-    get_all_iso_info = """
-WITH
-iso_roots AS (
-    SELECT
-        pkgset_nodename AS name,
-        max(pkgset_date) AS date,
-        argMax(pkgset_uuid, pkgset_date) AS ruuid
-    FROM PackageSetName
-    WHERE pkgset_nodename IN
-    (
-        SELECT DISTINCT pkgset_name
-        FROM lv_pkgset_stat
-        WHERE endsWith(pkgset_name, ':iso')
-            {image_clause}
-    ) AND pkgset_depth = 0
-    GROUP BY pkgset_nodename
-)
-SELECT
-    pkgset_ruuid,
-    pkgset_nodename AS name,
-    pkgset_date AS date,
-    PSL.depth,
-    PSL.uuid,
-    PSL.leaf_name,
-    PSL.leaf_k,
-    PSL.leaf_v
-FROM PackageSetName
-LEFT JOIN
-(
-    SELECT
-        pkgset_ruuid,
-        pkgset_uuid as uuid,
-        pkgset_depth AS depth,
-        pkgset_nodename AS leaf_name,
-        pkgset_kv.k AS leaf_k,
-        pkgset_kv.v AS leaf_v
-    FROM PackageSetName
-    WHERE pkgset_ruuid IN
-    (
-        SELECT ruuid FROM iso_roots
-    )
-    {component_clause}
-) AS PSL USING pkgset_ruuid
-WHERE pkgset_depth = 0
-    AND pkgset_ruuid IN
-    (
-        SELECT ruuid FROM iso_roots
-    )
-ORDER BY name ASC,  depth ASC, date DESC
-"""
-
-    get_pkgs_not_in_db = """
-WITH
-PkgsInDB AS
-(
-    SELECT pkg_hash
-    FROM Packages
-    WHERE pkg_hash IN
-    (
-        SELECT * FROM {tmp_table}
-    )
-)
-SELECT DISTINCT pkg_hash
-FROM {tmp_table}
-WHERE pkg_hash NOT IN
-(
-    SELECT * FROM PkgsInDB
-)
-"""
-
     get_pkgs_not_in_branch = """
 WITH
 PkgsetRoots AS
@@ -685,57 +615,6 @@ WHERE pkg_hash IN
     AND pkg_name NOT LIKE '%%-debuginfo'
     AND pkg_group_ like '{group}%%'
     AND pkg_group_ != '{group}'
-"""
-
-    get_last_image_packages_with_cve_fixes = """
-SELECT
-    task_id,
-    task_changed,
-    tplan_action,
-    pkgset_name,
-    pkg_hash,
-    pkg_name,
-    pkg_version,
-    pkg_release,
-    pkg_arch,
-    chlog_date,
-    chlog_name,
-    chlog_nick,
-    chlog_evr,
-    chlog_text,
-    IMG.pkg_hash,
-    IMG.pkg_summary,
-    IMG.pkg_version,
-    IMG.pkg_release
-FROM BranchPackageHistory
-LEFT JOIN (
-    SELECT DISTINCT *
-    FROM {tmp_table}
-) AS IMG ON IMG.pkg_name = BranchPackageHistory.pkg_name and IMG.pkg_arch = BranchPackageHistory.pkg_arch
-WHERE (pkg_name, pkg_arch) IN (
-    SELECT pkg_name, pkg_arch FROM {tmp_table}
-    )
-    AND (task_id, pkg_name, pkg_arch, tplan_action) IN (
-        SELECT
-            task_id,
-            pkg_name,
-            pkg_arch,
-            if(has(groupUniqArray(tplan_action), 0), 'add', 'delete') AS actions
-        FROM BranchPackageHistory
-        WHERE (pkg_name, pkg_arch) IN (
-            SELECT pkg_name, pkg_arch FROM {tmp_table}
-            )
-            AND pkgset_name = '{branch}'
-            AND pkg_sourcepackage = 0
-        GROUP BY
-            task_id,
-            pkg_name,
-            pkg_arch
-    )
-    AND pkgset_name = '{branch}'
-    AND pkg_sourcepackage = 0
-    AND match(chlog_text, 'CVE-\d{{4}}-(\d{{7}}|\d{{6}}|\d{{5}}|\d{{4}})')
-ORDER BY task_changed DESC
 """
 
     get_active_images = """

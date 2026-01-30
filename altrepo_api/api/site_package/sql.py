@@ -137,37 +137,6 @@ AND (task_id, subtask_id) IN (
 AND subtask_deleted != 1
 """
 
-    get_task_gears_by_hash = """
-SELECT DISTINCT
-    task_repo,
-    task_id,
-    subtask_id,
-    subtask_type,
-    subtask_dir,
-    subtask_tag_id,
-    subtask_srpm_name,
-    subtask_srpm_evr,
-    task_changed
-FROM Tasks
-WHERE (task_id, subtask_id) IN
-(
-    SELECT
-        task_id,
-        subtask_id
-    FROM TaskIterations
-    WHERE titer_srcrpm_hash = {pkghash}
-        OR has(titer_pkgs_hash, {pkghash})
-)
-AND (task_id, task_changed) IN
-(
-    SELECT task_id, task_changed
-    FROM TaskStates
-    WHERE task_state = 'DONE'
-)
-AND subtask_deleted != 1
-ORDER BY task_changed DESC
-"""
-
     get_task_bin_hshs_by_src_hsh = """
 SELECT DISTINCT
     task_id,
@@ -679,49 +648,6 @@ SELECT
     pkgh_md5
 FROM PackageHash_view
 WHERE pkgh_mmh IN {hshs}
-"""
-
-    get_pkg_versions_by_hash = """
-SELECT DISTINCT
-    pkgset_name,
-    pkg_version,
-    pkg_release,
-    toString(pkg_hash)
-FROM static_last_packages
-WHERE pkg_name = (
-    SELECT DISTINCT pkg_name
-    FROM static_last_packages
-    WHERE pkg_hash = {pkghash}
-        AND pkg_sourcepackage = 1
-)
-    AND pkg_sourcepackage = 1
-"""
-
-    get_bin_pkg_versions_by_hash = """
-WITH
-(
-    SELECT DISTINCT pkg_name
-    FROM static_last_packages
-    WHERE pkg_hash = {pkghash}
-        AND pkg_sourcepackage = 0
-) AS pkgname
-SELECT DISTINCT
-    pkgset_name,
-    pkg_version,
-    pkg_release,
-    toString(pkg_hash),
-    PA.pkg_arch
-FROM static_last_packages
-INNER JOIN
-(
-    SELECT pkg_hash, pkg_arch
-    FROM Packages
-    WHERE pkg_sourcepackage = 0
-        AND pkg_name = pkgname
-        AND pkg_arch = '{arch}'
-) AS PA ON PA.pkg_hash  = static_last_packages.pkg_hash
-WHERE pkg_name = pkgname
-    AND pkg_sourcepackage = 0
 """
 
     get_pkgs_binary_list = """

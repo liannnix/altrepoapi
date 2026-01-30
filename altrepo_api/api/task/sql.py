@@ -97,23 +97,6 @@ AND task_changed IN (
 )
 """
 
-    task_iterations_by_ti = """
-WITH
-(
-    SELECT max(task_changed) AS task_changed
-    FROM TaskIterations
-    WHERE task_id = {id}
-        AND (task_try, task_iter) = {ti}
-) AS last_task_changed
-SELECT *
-FROM TaskIterations
-WHERE task_id = {id}
-    AND task_changed = last_task_changed
-ORDER BY
-    subtask_id,
-    subtask_arch
-"""
-
     task_iterations_by_task_changed = """
 SELECT *
 FROM TaskIterations
@@ -140,22 +123,6 @@ ORDER BY
         "titer_buildlog_hash",
         "titer_srpmlog_hash",
     ]
-
-    task_subtasks_by_ti = """
-WITH
-(
-    SELECT max(task_changed) AS task_changed
-    FROM TaskIterations
-    WHERE task_id = {id}
-        AND (task_try, task_iter) = {ti}
-) AS last_task_changed
-SELECT *
-FROM Tasks
-WHERE task_id = {id}
-    AND task_changed = last_task_changed
-    AND subtask_deleted = 0
-ORDER BY subtask_id
-"""
 
     task_subtasks_by_task_changed = """
 SELECT *
@@ -187,20 +154,6 @@ ORDER BY subtask_id
         "subtask_srpm_name",
         "subtask_srpm_evr",
     ]
-
-    task_state_by_ti = """
-WITH
-(
-    SELECT max(task_changed) AS task_changed
-    FROM TaskIterations
-    WHERE task_id = {id}
-        AND (task_try, task_iter) = {ti}
-) AS last_task_changed
-SELECT DISTINCT *
-FROM TaskStates
-WHERE task_id = {id}
-    AND task_changed = last_task_changed
-"""
 
     task_state_by_task_changed = """
 SELECT DISTINCT
@@ -654,23 +607,6 @@ FROM Packages
 WHERE pkg_hash IN
 (
     SELECT titer_srcrpm_hash
-    FROM TaskIterations
-    WHERE task_id = {id}
-        AND task_changed = last_changed
-)
-"""
-
-    task_src_pkg_hashes = """
-WITH
-(
-    SELECT max(task_changed)
-    FROM TaskIterations
-    WHERE task_id = {id}
-) as last_changed
-SELECT DISTINCT pkg_hash
-FROM
-(
-    SELECT titer_srcrpm_hash AS pkg_hash
     FROM TaskIterations
     WHERE task_id = {id}
         AND task_changed = last_changed
