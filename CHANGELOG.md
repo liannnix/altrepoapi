@@ -1,6 +1,17 @@
 # Changelog
 ALTrepo API changelog
 
+# [1.24.7] - 2026-01-30
+
+Regular API code updates and fixes.
+
+### Added
+### Changed
+- `api`: remove dead SQL code
+- `api`: remove dead code
+### Fixed
+- `api/site_package/download`: use `BranchPackageHistory` table for arepo packages
+
 # [1.24.6] - 2026-01-29
 
 Regular API code updates and fixes.
