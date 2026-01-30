@@ -1,5 +1,5 @@
 mmh3
-flask
+flask>=2.0
 flask-restx
 gunicorn
 clickhouse-driver>=0.2.3

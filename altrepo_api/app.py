@@ -91,7 +91,6 @@ def default_error_handler(e):
 @app.after_request
 def add_headers(response):
     """Add headers to all API responses here."""
-    # response.headers["Access-Control-Allow-Origin"] = "*"
     return response
 
 

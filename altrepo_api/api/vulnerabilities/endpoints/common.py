@@ -20,8 +20,6 @@ import logging
 
 from dataclasses import dataclass, asdict, field, replace
 from datetime import datetime
-
-from itertools import islice
 from typing import (
     Any,
     Iterable,
@@ -94,12 +92,6 @@ def unescape(x: str) -> str:
 
 def escape(x: str):
     return re.sub(r":", r"\:", x)
-
-
-def chunks(data: dict[str, Any], size: int) -> Iterable[dict[str, Any]]:
-    it = iter(data)
-    for _ in range(0, len(data), size):
-        yield {k: data[k] for k in islice(it, size)}
 
 
 class PackageVersion(NamedTuple):
@@ -361,18 +353,6 @@ class PackageVulnerability:
 
     def __hash__(self) -> int:
         return hash(json.dumps(self.asdict()))
-
-
-def vulnerability_closed_in_errata(
-    package: PackageVulnerability, errata: Errata
-) -> bool:
-    """Returns `true` if version in errata is less or equal to package's one."""
-    return compare_versions(
-        version1=errata.pkg_version,
-        release1=errata.pkg_release,
-        version2=package.version,
-        release2=package.release,
-    ) in (VersionCompareResult.LESS_THAN, VersionCompareResult.EQUAL)
 
 
 # Protocols
@@ -696,15 +676,6 @@ def deduplicate_erratas(cls: _pDedupErratasCompatible) -> None:
         return None
 
     cls.erratas = list(set(cls.erratas))
-
-
-def deduplicate_packages_vulnerabilities(
-    cls: _pDedupPackagesVulnerabilitiesCompatible,
-) -> None:
-    if not cls.packages_vulnerabilities:
-        return None
-
-    cls.packages_vulnerabilities = list(set(cls.packages_vulnerabilities))
 
 
 def get_errata_by_cve_ids(

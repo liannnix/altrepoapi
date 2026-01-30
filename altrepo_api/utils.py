@@ -18,14 +18,12 @@ import logging
 import mmh3
 import re
 import sys
-import time
 
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from flask import Response, request, send_file, __version__ as FLASK_VERSION
+from flask import Response, request, send_file
 from logging import handlers
-from packaging import version
 from typing import Any, Iterable, TypeVar, Union
 from urllib.parse import unquote
 from uuid import UUID, uuid4
@@ -183,20 +181,6 @@ def remove_duplicate(list_: list[Any]) -> list[Any]:
     return list(set(list_))
 
 
-def func_time(logger: logging.Logger):
-    def decorator(function):
-        def wrapper(*args, **kwargs):
-            start = time.time()
-            resuls = function(*args, **kwargs)
-            logger.info("Time {} is {}".format(function.__name__, time.time() - start))
-            return resuls
-
-        wrapper.__name__ = function.__name__
-        return wrapper
-
-    return decorator
-
-
 def datetime_to_iso(dt: datetime) -> str:
     return dt.isoformat()
 
@@ -325,9 +309,6 @@ def bytes2human(size: Union[int, float]) -> str:
     return f"{size:.1f} ZB"
 
 
-FLASK_BREAKING_CHANGE_VERSION = "2.2.0"
-
-
 def send_file_compat(
     *,
     file: str,
@@ -335,17 +316,6 @@ def send_file_compat(
     as_attachment: bool,
     attachment_filename: str,
 ) -> Response:
-    # check the version of Flask imported
-    flask_version = version.parse(FLASK_VERSION)
-    if flask_version < version.parse(FLASK_BREAKING_CHANGE_VERSION):
-        # use old 'send_file' arguments names
-        return send_file(
-            file,
-            mimetype=mimetype,
-            as_attachment=as_attachment,
-            attachment_filename=attachment_filename,  # type: ignore
-        )
-    # use new 'send_file' arguments names
     return send_file(
         file,
         mimetype=mimetype,
